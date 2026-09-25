@@ -1,0 +1,39 @@
+//! Fixture-based tests for `.env` environment file parsing (`plans/mvp.md`, section 3.4).
+#![allow(clippy::expect_used)]
+
+use postino_core::KeyValue;
+use postino_format::env;
+use pretty_assertions::assert_eq;
+
+#[test]
+fn basic_fixture_parses() {
+    let variables = env::parse(include_str!("fixtures/basic.env")).expect("valid fixture");
+    assert_eq!(
+        variables,
+        vec![
+            KeyValue::new("BASE_URL", "https://api.test"),
+            KeyValue::new("TOKEN", "abc123"),
+        ]
+    );
+}
+
+#[test]
+fn fixture_with_comments_ignores_them() {
+    let variables = env::parse(include_str!("fixtures/with_comments.env")).expect("valid fixture");
+    assert_eq!(
+        variables,
+        vec![
+            KeyValue::new("BASE_URL", "https://api.test"),
+            KeyValue::new("TOKEN", "abc123"),
+        ]
+    );
+}
+
+#[test]
+fn local_env_fixture_parses() {
+    let variables = env::parse(include_str!("fixtures/secrets.local.env")).expect("valid fixture");
+    assert_eq!(
+        variables,
+        vec![KeyValue::new("API_KEY", "super-secret-value")]
+    );
+}

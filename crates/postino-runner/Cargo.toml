@@ -1,0 +1,19 @@
+[package]
+name = "postino-runner"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+postino-core = { path = "../postino-core" }
+postino-script = { path = "../postino-script" }
+postino-http = { path = "../postino-http" }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+# Enables the test server helper for this crate's own tests, without shipping it in release builds.
+postino-http = { path = "../postino-http", features = ["test-support"] }
+
+[lints]
+workspace = true

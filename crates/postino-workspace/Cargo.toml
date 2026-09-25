@@ -1,0 +1,17 @@
+[package]
+name = "postino-workspace"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+postino-core = { path = "../postino-core" }
+postino-format = { path = "../postino-format" }
+thiserror = { workspace = true }
+tempfile = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,15 @@
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+X-Request-Id: {{requestId}}
+
+::: body json
+{ "username": "{{username}}", "password": "{{password}}" }
+
+::: pre
+vars.set("requestId", util.uuid());
+
+::: post
+test("login succeeded", () => {
+  expect(res.status).toBe(200);
+});
+env.set("token", res.json().token);

@@ -1,0 +1,156 @@
+//! Parsing and serialization of `.env` environment files (`plans/mvp.md`, section 3.4).
+//!
+//! An `.env` file holds one flat list of variables: `KEY=value` per line, split on the first
+//! `=`. This module only deals with the content of a single file; merging `<name>.local.env`
+//! over `<name>.env` and attaching the environment name is the job of `postino-workspace`.
+
+use postino_core::KeyValue;
+
+/// An error found while parsing an `.env` file, with the 1-based line number where it was found.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("line {line}: {kind}")]
+pub struct EnvParseError {
+    /// The 1-based line number of the offending line.
+    pub line: usize,
+    /// What went wrong.
+    pub kind: EnvParseErrorKind,
+}
+
+/// The specific problem found while parsing an `.env` file. See [`EnvParseError`].
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum EnvParseErrorKind {
+    /// A non-blank, non-comment line has no `=` to split the key from the value.
+    #[error("missing '=' in {0:?}, expected \"KEY=value\"")]
+    MissingEquals(String),
+}
+
+/// Parses the text of an `.env` file into its list of variables, in file order.
+///
+/// Both `\n` and `\r\n` line endings are accepted. Blank lines are ignored, and a line whose
+/// first non-space character is `#` is a comment and is also ignored. Every other line is split
+/// on the first `=`: the key is trimmed, the value is kept verbatim (no trimming, no quoting, no
+/// escapes, no interpolation between variables, per `plans/mvp.md` section 3.4). The returned
+/// entries always have `enabled: true`, the `.env` format has no concept of a disabled entry.
+pub fn parse(text: &str) -> Result<Vec<KeyValue>, EnvParseError> {
+    let normalized = text.replace("\r\n", "\n");
+    let mut variables = Vec::new();
+    for (index, line) in normalized.split('\n').enumerate() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        match line.split_once('=') {
+            Some((key, value)) => variables.push(KeyValue::new(key.trim(), value)),
+            None => {
+                return Err(EnvParseError {
+                    line: index + 1,
+                    kind: EnvParseErrorKind::MissingEquals(line.to_string()),
+                });
+            }
+        }
+    }
+    Ok(variables)
+}
+
+/// Serializes a list of variables into `.env` file text, one `KEY=value` line per entry, in the
+/// given order. The output always ends with a single trailing `\n`.
+///
+/// The `enabled` flag of each entry is ignored: callers are expected to pass only entries meant
+/// to be written, since `.env` files cannot represent a disabled entry.
+pub fn serialize(variables: &[KeyValue]) -> String {
+    let mut out = String::new();
+    for variable in variables {
+        out.push_str(&variable.key);
+        out.push('=');
+        out.push_str(&variable.value);
+        out.push('\n');
+    }
+    out
+}
+
+#[cfg(test)]
+#[allow(clippy::expect_used)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn parses_simple_key_value_pairs() {
+        let variables = parse("BASE_URL=https://api.test\nTOKEN=abc123\n").expect("valid env file");
+        assert_eq!(
+            variables,
+            vec![
+                KeyValue::new("BASE_URL", "https://api.test"),
+                KeyValue::new("TOKEN", "abc123"),
+            ]
+        );
+    }
+
+    #[test]
+    fn ignores_blank_lines_and_comments() {
+        let variables = parse("# a comment\n\nA=1\n   \n# another\nB=2\n").expect("valid env file");
+        assert_eq!(
+            variables,
+            vec![KeyValue::new("A", "1"), KeyValue::new("B", "2")]
+        );
+    }
+
+    #[test]
+    fn key_is_trimmed_but_value_is_kept_verbatim() {
+        let variables = parse("  KEY  =  value with spaces  \n").expect("valid env file");
+        assert_eq!(
+            variables,
+            vec![KeyValue::new("KEY", "  value with spaces  ")]
+        );
+    }
+
+    #[test]
+    fn value_may_contain_an_equals_sign() {
+        let variables = parse("CONNECTION=host=localhost;port=5432\n").expect("valid env file");
+        assert_eq!(
+            variables,
+            vec![KeyValue::new("CONNECTION", "host=localhost;port=5432")]
+        );
+    }
+
+    #[test]
+    fn accepts_crlf_line_endings() {
+        let variables = parse("A=1\r\nB=2\r\n").expect("valid CRLF env file");
+        assert_eq!(
+            variables,
+            vec![KeyValue::new("A", "1"), KeyValue::new("B", "2")]
+        );
+    }
+
+    #[test]
+    fn line_without_equals_is_an_error() {
+        assert_eq!(
+            parse("A=1\nnot a valid line\n"),
+            Err(EnvParseError {
+                line: 2,
+                kind: EnvParseErrorKind::MissingEquals("not a valid line".to_string())
+            })
+        );
+    }
+
+    #[test]
+    fn empty_file_parses_to_no_variables() {
+        assert_eq!(parse(""), Ok(Vec::new()));
+    }
+
+    #[test]
+    fn serialize_round_trips() {
+        let variables = vec![
+            KeyValue::new("BASE_URL", "https://api.test"),
+            KeyValue::new("TOKEN", "abc123"),
+        ];
+        let text = serialize(&variables);
+        assert_eq!(text, "BASE_URL=https://api.test\nTOKEN=abc123\n");
+        assert_eq!(parse(&text).expect("valid serialized env file"), variables);
+    }
+
+    #[test]
+    fn serialize_of_no_variables_is_an_empty_string() {
+        assert_eq!(serialize(&[]), "");
+    }
+}

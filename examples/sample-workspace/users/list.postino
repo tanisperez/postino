@@ -1,0 +1,6 @@
+GET {{baseUrl}}/users
+
+::: query
+page = 1
+limit = 20
+# verbose = true
