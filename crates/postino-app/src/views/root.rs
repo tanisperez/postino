@@ -14,6 +14,7 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use postino_core::Body;
 use postino_runner::{RunResult, ScriptEngine, SendOptions};
 use postino_script::QuickJsEngine;
 
@@ -23,12 +24,13 @@ use crate::actions::{
     SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
 };
 use crate::state::debug_open::{self, DebugOpenTarget};
-use crate::state::ui_tabs::{RequestTab, ResponseTab};
+use crate::state::ui_tabs::{self, RequestTab, ResponseTab};
 use crate::state::{self, AppState};
 use crate::views::components::{
     DocumentTab, DocumentTabs, IconButton, InlineMessage, InlineMessageKind,
 };
 use crate::views::request_editor::RequestEditorEntities;
+use crate::views::response_view::ResponseEditorEntities;
 use crate::views::send::SendingTask;
 
 use super::sidebar;
@@ -52,6 +54,13 @@ pub struct AppView {
     /// The `gpui` entities behind the request editor's editable fields (Phase 9). See
     /// `views/request_editor.rs`.
     pub(crate) request_editor: RequestEditorEntities,
+    /// The response viewer's read-only body editor entity (`plans/ui-redesign.md` phase 5). See
+    /// `views/response_view.rs`.
+    pub(crate) response_editor: ResponseEditorEntities,
+    /// Whether the method selector shows the inline custom-method `Input` instead of the
+    /// dropdown (`plans/ui-redesign.md` phase 5, reviewer fix item 6). See
+    /// `views/request_editor.rs`'s `begin_editing_custom_method`/`commit_custom_method`.
+    pub(crate) editing_method: bool,
     /// Which request editor tab (Params, Headers, ...) is active. Shared across every open tab
     /// for simplicity: switching tabs keeps the same editor tab selected, which matches how most
     /// tabbed editors behave.
@@ -115,6 +124,8 @@ impl AppView {
             last_selected_request: None,
             workspace_error: None,
             request_editor: RequestEditorEntities::default(),
+            response_editor: ResponseEditorEntities::default(),
+            editing_method: false,
             active_request_tab: RequestTab::default(),
             active_response_tab: ResponseTab::default(),
             response_raw: false,
@@ -281,8 +292,18 @@ impl AppView {
         };
         match workspace.load_request(&id) {
             Ok(request) => {
+                // Only a genuinely new tab gets the `Body`-tab heuristic below: re-selecting an
+                // already open one keeps whatever tab the user last looked at, same as before
+                // (`plans/ui-redesign.md` phase 5, reviewer fix item D).
+                let is_new_tab = self.state.tabs.index_of(&id).is_none();
+                let query_len = request.query.len();
+                let has_body = !matches!(request.body, Body::None);
                 self.state.tabs.open(id, request);
                 self.workspace_error = None;
+                if is_new_tab {
+                    self.active_request_tab =
+                        ui_tabs::tab_to_show_on_open(self.active_request_tab, query_len, has_body);
+                }
             }
             Err(error) => {
                 self.workspace_error = Some(error.to_string());
@@ -543,15 +564,30 @@ impl AppView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        h_resizable("postino-layout")
+        // `ResizablePanelGroup` (`h_resizable`) sizes itself with `size_full()`, which only
+        // resolves correctly if ITS OWN parent hands it a determinate height. The top-level
+        // `Render` impl's `v_flex` used to add this `child(body)` with no `flex_1`/`min_h_0` of
+        // its own, so `body` took its content's natural (unconstrained) height instead of "the
+        // window height minus the title bar and status bar" - overflowing the window and pushing
+        // the status bar (and, one level down, the sidebar footer, whose own already-correct
+        // `flex_1`/`min_h_0` chain never got a real height to shrink within either) out of the
+        // visible area (`plans/ui-redesign.md` phase 5, reviewer fix round 3 item 1). `min_h_0`
+        // is what actually allows this to shrink below its content size instead of just growing;
+        // `flex_1` alone is not enough in a vertical flex chain.
+        div()
+            .flex_1()
+            .min_h_0()
             .child(
-                resizable_panel()
-                    .size(px(280.))
-                    .size_range(px(180.)..px(480.))
-                    .flex_none()
-                    .child(self.render_sidebar(weak.clone(), cx)),
+                h_resizable("postino-layout")
+                    .child(
+                        resizable_panel()
+                            .size(px(280.))
+                            .size_range(px(180.)..px(480.))
+                            .flex_none()
+                            .child(self.render_sidebar(weak.clone(), cx)),
+                    )
+                    .child(resizable_panel().child(self.render_main_area(weak, window, cx))),
             )
-            .child(resizable_panel().child(self.render_main_area(weak, window, cx)))
             .into_any_element()
     }
 
@@ -574,8 +610,17 @@ impl AppView {
             .child(tabs_bar)
             .child(
                 v_resizable("postino-main")
-                    .child(resizable_panel().child(self.render_request_editor(window, cx)))
-                    .child(resizable_panel().child(self.render_response_view(cx))),
+                    .child(
+                        resizable_panel()
+                            // 1.1 : 1 initial split (`plans/ui-redesign.md` phase 5 item 1).
+                            .size(px(462.0))
+                            .child(self.render_request_editor(window, cx)),
+                    )
+                    .child(
+                        resizable_panel()
+                            .size(px(420.0))
+                            .child(self.render_response_view(window, cx)),
+                    ),
             )
             .into_any_element()
     }

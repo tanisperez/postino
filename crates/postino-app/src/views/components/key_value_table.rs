@@ -5,6 +5,12 @@
 //! widths, the disabled-row strikethrough) is a plain `div` layout colored from
 //! [`crate::theme::Palette`], since there is no gpui-kit table widget shaped like this one (a
 //! fixed four-column grid with a trailing "Add" row, not a scrollable data table).
+//!
+//! A row's key/value cell is either plain text ([`KeyValueRow::new`], used by the components
+//! gallery) or an arbitrary element ([`KeyValueRow::with_elements`]), which is how phase 5 wires
+//! this table to the request editor's live `Input` entities: the disabled-row strikethrough only
+//! applies to the text variant, since a caller-supplied element (an `Input`) owns its own text
+//! styling.
 
 use std::rc::Rc;
 
@@ -16,10 +22,17 @@ use gpui_kit::*;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{KEY_VALUE_SIDE_COL_WIDTH, RADIUS_MD};
 
+/// A [`KeyValueRow`]'s key or value cell: plain text (the gallery demo) or a caller-supplied
+/// element (a live `Input`, wired in by the request editor).
+enum Cell {
+    Text(SharedString),
+    Element(AnyElement),
+}
+
 /// One row of a [`KeyValueTable`].
 pub struct KeyValueRow {
-    key: SharedString,
-    value: SharedString,
+    key: Cell,
+    value: Cell,
     enabled: bool,
     on_toggle: Option<ToggleHandler>,
     on_delete: Option<RowHandler>,
@@ -32,11 +45,23 @@ type ToggleHandler = Rc<dyn Fn(bool, &mut Window, &mut App)>;
 type RowHandler = Rc<dyn Fn(&mut Window, &mut App)>;
 
 impl KeyValueRow {
-    /// A new, enabled row.
+    /// A new, enabled row showing `key` and `value` as plain text.
     pub fn new(key: impl Into<SharedString>, value: impl Into<SharedString>) -> Self {
         Self {
-            key: key.into(),
-            value: value.into(),
+            key: Cell::Text(key.into()),
+            value: Cell::Text(value.into()),
+            enabled: true,
+            on_toggle: None,
+            on_delete: None,
+        }
+    }
+
+    /// A new, enabled row whose key and value cells render `key` and `value` as given, for
+    /// example a live `Input` bound to the request editor's own entity, instead of static text.
+    pub fn with_elements(key: impl IntoElement, value: impl IntoElement) -> Self {
+        Self {
+            key: Cell::Element(key.into_any_element()),
+            value: Cell::Element(value.into_any_element()),
             enabled: true,
             on_toggle: None,
             on_delete: None,
@@ -44,21 +69,20 @@ impl KeyValueRow {
     }
 
     /// Sets whether the row is enabled: a disabled row shows `fg_subtle` with a struck-through
-    /// key, and is skipped when resolving the request.
+    /// key (text cells only; an element cell is dimmed instead, see this module's doc comment),
+    /// and is skipped when resolving the request.
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.enabled = enabled;
         self
     }
 
     /// Sets the checkbox's change handler.
-    #[allow(dead_code)] // wired by phase 5, once KeyValueTable backs Params/Headers/Form
     pub fn on_toggle(mut self, handler: impl Fn(bool, &mut Window, &mut App) + 'static) -> Self {
         self.on_toggle = Some(Rc::new(handler));
         self
     }
 
     /// Sets the delete button's click handler.
-    #[allow(dead_code)] // wired by phase 5, once KeyValueTable backs Params/Headers/Form
     pub fn on_delete(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_delete = Some(Rc::new(handler));
         self
@@ -93,14 +117,13 @@ impl KeyValueTable {
     }
 
     /// Overrides the trailing row's label (defaults to `"Add"`).
-    #[allow(dead_code)] // wired by phase 5, once KeyValueTable backs Params/Headers/Form
+    #[allow(dead_code)] // no caller needs a non-default label yet
     pub fn add_label(mut self, label: impl Into<SharedString>) -> Self {
         self.add_label = label.into();
         self
     }
 
     /// Sets the trailing row's click handler.
-    #[allow(dead_code)] // wired by phase 5, once KeyValueTable backs Params/Headers/Form
     pub fn on_add(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_add = Some(Rc::new(handler));
         self
@@ -143,12 +166,8 @@ impl RenderOnce for KeyValueTable {
                         checkbox.on_click(move |checked, window, cx| handler(*checked, window, cx))
                     }),
             );
-            let key_cell = div()
-                .flex_grow(1.0)
-                .text_color(text_color)
-                .when(!enabled, |cell| cell.line_through())
-                .child(row.key);
-            let value_cell = div().flex_grow(1.4).text_color(text_color).child(row.value);
+            let key_cell = key_value_cell(row.key, 1.0, text_color, enabled);
+            let value_cell = key_value_cell(row.value, 1.4, text_color, enabled);
             let delete_cell = div()
                 .id(("kv-delete", index))
                 .flex_none()
@@ -205,5 +224,25 @@ impl RenderOnce for KeyValueTable {
             .child(header)
             .children(rows)
             .child(add_row)
+    }
+}
+
+/// Renders one key or value cell, `flex_grow`-sized by `grow`. A text cell is colored and
+/// struck through when disabled, matching `Components.dc.html`; an element cell (a live `Input`)
+/// keeps its own styling and is only dimmed when disabled, since it cannot be recolored or
+/// struck through generically.
+fn key_value_cell(cell: Cell, grow: f32, text_color: Hsla, enabled: bool) -> AnyElement {
+    match cell {
+        Cell::Text(text) => div()
+            .flex_grow(grow)
+            .text_color(text_color)
+            .when(!enabled, |cell| cell.line_through())
+            .child(text)
+            .into_any_element(),
+        Cell::Element(element) => div()
+            .flex_grow(grow)
+            .when(!enabled, |cell| cell.opacity(0.5))
+            .child(element)
+            .into_any_element(),
     }
 }

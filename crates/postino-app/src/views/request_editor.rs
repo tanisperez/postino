@@ -10,27 +10,34 @@
 //! types; see [`RequestEditorEntities::sync`].
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
-use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::input::{
     Editor, EditorState, Input, InputEvent, InputState, Textarea, TextareaState,
 };
-use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
-use gpui_kit::component::tab::{Tab, TabBar};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use postino_core::{Body, KeyValue, Method, Request};
+use postino_core::{Body, KeyValue, Method, Request, variable_spans};
 
 use crate::state::request_edit::{self, BodyKind};
+use crate::state::script_heuristics;
 use crate::state::ui_tabs::RequestTab;
+use crate::theme::PaletteExt;
+use crate::theme::metrics::{RADIUS_MD, SEND_BUTTON_HEIGHT};
+use crate::views::components::{
+    GhostButton, KeyValueRow, KeyValueTable, PrimaryButton, SegmentedControl, SegmentedItem,
+    UnderlineTabItem, UnderlineTabs, UrlBar,
+};
 
 use super::root::AppView;
 
-/// The standard HTTP methods offered by the method selector. A request whose method is a custom
-/// token (`plans/mvp.md`, section 3.2) still displays and sends correctly; picking one of these
-/// simply replaces it, there is no way to type a custom method in this editor yet.
-const METHODS: [&str; 7] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+/// The Send button's key hint: `Cmd \u{21b5}` on macOS, `Ctrl \u{21b5}` elsewhere, matching
+/// `main.rs`'s key bindings (same local-constant pattern as `views/env_picker.rs`'s
+/// `MODIFIER_KEY`).
+#[cfg(target_os = "macos")]
+const SEND_KEY_HINT: &str = "Cmd \u{21b5}";
+#[cfg(not(target_os = "macos"))]
+const SEND_KEY_HINT: &str = "Ctrl \u{21b5}";
 
 /// Which key-value table a row belongs to: routes an edit to the right field of the active tab's
 /// [`Request`], and, only for [`RowKind::Query`], triggers the Params/URL sync afterward (see
@@ -206,6 +213,13 @@ fn make_script_editor(
 pub(crate) struct RequestEditorEntities {
     built_for: Option<BuildKey>,
     url: Option<Entity<InputState>>,
+    /// The inline `Input` for typing a custom method token (`plans/ui-redesign.md` phase 5,
+    /// reviewer fix item 6), shown by [`UrlBar`] in place of the dropdown while
+    /// [`AppView::editing_method`] is `true`. Its value is seeded once, when editing begins
+    /// ([`AppView::begin_editing_custom_method`]), not resynced here on every render: unlike the
+    /// URL, `request.method` deliberately does not change on every keystroke while editing (see
+    /// that method's doc comment), so an unconditional resync would fight the user's typing.
+    method_input: Option<Entity<InputState>>,
     headers: KeyValueTableEntities,
     query: KeyValueTableEntities,
     form: KeyValueTableEntities,
@@ -219,16 +233,19 @@ impl RequestEditorEntities {
     /// Rebuilds every entity when `request`'s shape (see [`BuildKey`]) differs from what they
     /// were last built for, then, unconditionally, keeps the URL input's displayed text in sync
     /// with `request.url` (needed even without a rebuild: editing the Params table rewrites the
-    /// URL without changing the build key, see [`BuildKey`]'s docs).
+    /// URL without changing the build key, see [`BuildKey`]'s docs). Returns whether a rebuild
+    /// happened, so the caller can reset [`AppView::editing_method`] (a fresh `method_input`
+    /// entity would otherwise show empty while still claiming to be "being edited").
     fn sync(
         &mut self,
         tab_id: &str,
         request: &Request,
         window: &mut Window,
         cx: &mut Context<AppView>,
-    ) {
+    ) -> bool {
         let key = BuildKey::of(tab_id, request);
-        if self.built_for.as_ref() != Some(&key) {
+        let rebuilt = self.built_for.as_ref() != Some(&key);
+        if rebuilt {
             self.rebuild(tab_id, request, window, cx);
             self.built_for = Some(key);
         }
@@ -240,6 +257,21 @@ impl RequestEditorEntities {
                 url.update(cx, |state, cx| state.set_value(new_value, window, cx));
             }
         }
+
+        // The body editor's text can also change without a rebuild: the "Format" button
+        // rewrites `request.body`'s text directly (not by typing into the editor), the same
+        // reason the URL needs the unconditional resync above.
+        if let Some(editor) = &self.body_editor
+            && let Some((text, _language)) = body_language(&request.body)
+        {
+            let current = editor.read(cx).value();
+            if current.as_ref() != text {
+                let new_value = text.to_string();
+                editor.update(cx, |state, cx| state.set_value(new_value, window, cx));
+            }
+        }
+
+        rebuilt
     }
 
     fn rebuild(
@@ -265,6 +297,27 @@ impl RequestEditorEntities {
             .detach();
         }
         self.url = Some(url);
+
+        let method_input = cx.new(|cx| InputState::new(window, cx).placeholder("METHOD"));
+        {
+            let tab_id = tab_id.to_string();
+            cx.subscribe(
+                &method_input,
+                move |view, entity, event: &InputEvent, cx| match event {
+                    InputEvent::PressEnter { .. } => {
+                        let text = entity.read(cx).value().to_string();
+                        view.commit_custom_method(&tab_id, text, false, cx);
+                    }
+                    InputEvent::Blur => {
+                        let text = entity.read(cx).value().to_string();
+                        view.commit_custom_method(&tab_id, text, true, cx);
+                    }
+                    _ => {}
+                },
+            )
+            .detach();
+        }
+        self.method_input = Some(method_input);
 
         self.headers =
             KeyValueTableEntities::build(tab_id, &request.headers, RowKind::Headers, window, cx);
@@ -366,6 +419,49 @@ impl AppView {
         cx.notify();
     }
 
+    /// Enters custom-method edit mode: seeds `method_input` with `prefill` (the current custom
+    /// token, or empty for a fresh "Custom..." pick, see [`UrlBar`]'s own "Custom..." handler)
+    /// and shows it in place of the method dropdown. Deliberately does not write `prefill` into
+    /// `request.method` yet: only a valid, confirmed edit does that (`commit_custom_method`), so
+    /// opening the editor and clicking away without typing anything never leaves an empty custom
+    /// method behind (`plans/ui-redesign.md` phase 5, reviewer fix item 6).
+    pub(crate) fn begin_editing_custom_method(
+        &mut self,
+        prefill: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(input) = &self.request_editor.method_input {
+            input.update(cx, |state, cx| state.set_value(prefill, window, cx));
+        }
+        self.editing_method = true;
+        cx.notify();
+    }
+
+    /// Commits a custom-method edit: if `text` (trimmed) is a valid method token
+    /// (`state::request_edit::is_valid_custom_method_token`, the same rule `postino-format` uses
+    /// when reading a request line), writes it into `request.method` and exits edit mode.
+    /// Otherwise, on `Blur` (`exit_on_invalid`) exits edit mode anyway, discarding the invalid
+    /// edit; on `PressEnter`, stays in edit mode so the user can keep fixing it.
+    pub(crate) fn commit_custom_method(
+        &mut self,
+        tab_id: &str,
+        text: String,
+        exit_on_invalid: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let trimmed = text.trim().to_string();
+        if request_edit::is_valid_custom_method_token(&trimmed) {
+            self.edit_active_request(tab_id, cx, |request| {
+                request.method = Method::Custom(trimmed);
+            });
+            self.editing_method = false;
+        } else if exit_on_invalid {
+            self.editing_method = false;
+        }
+        cx.notify();
+    }
+
     /// Applies `f` to one row of a key-value table, then, for [`RowKind::Query`], re-syncs the
     /// URL from the updated table.
     fn edit_row(
@@ -420,62 +516,105 @@ impl AppView {
     ) -> AnyElement {
         let Some(tab) = self.state.tabs.active() else {
             self.request_editor = RequestEditorEntities::default();
-            return placeholder(cx, "Open a request from the sidebar to edit it here.");
+            return placeholder(cx, "Open a request from the sidebar");
         };
         let tab_id = tab.id.clone();
         let request = tab.request.clone();
-        self.request_editor.sync(&tab_id, &request, window, cx);
+        if self.request_editor.sync(&tab_id, &request, window, cx) {
+            // A fresh `method_input` (built empty) would otherwise show as "being edited" with
+            // nothing in it: a rebuild happens on a tab switch or a row/body-kind change, none
+            // of which should leave a stale custom-method editor open.
+            self.editing_method = false;
+        }
+        // See `plans/ui-redesign.md` phase 5 item 2: computed fresh on every render rather than
+        // from a separate `InputState` subscription, since every edit that could change it
+        // (URL, query, headers, body) already goes through `edit_active_request`, which calls
+        // `cx.notify()` and so triggers exactly this render. Names the pre script sets with
+        // `vars.set(...)` are treated as defined too (reviewer fix item 4a): `preview` never
+        // runs the script, so it cannot see them resolve for real the way an actual send would.
+        let known_from_script = script_heuristics::vars_set_names(&request.pre_script);
+        let unknown_names = self
+            .current_preview()
+            .map(|preview| {
+                preview
+                    .unknown_variables
+                    .into_iter()
+                    .map(|unknown| unknown.name)
+                    .filter(|name| !known_from_script.contains(name))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        // The Body tab's code editor (JSON/Text/XML) scrolls its own content and needs a real,
+        // determinate height to fill (`plans/ui-redesign.md` phase 5, reviewer fix item B): an
+        // ancestor `overflow_y_scroll()` container instead measures its child's intrinsic
+        // height, which collapses a `flex_1` editor to a couple of lines. Params/Headers/Form
+        // (a `KeyValueTable`), Pre/Post (a fixed-height editor, unaffected either way) and Docs
+        // are plain content with no scrolling of their own, so they still need it here.
+        let body_uses_code_editor = self.active_request_tab == RequestTab::Body
+            && matches!(request.body, Body::Json(_) | Body::Text(_) | Body::Xml(_));
+        let content = div().id("request-editor-content").flex_1().min_h_0();
+        let content = if body_uses_code_editor {
+            content
+        } else {
+            content.overflow_y_scroll()
+        };
 
         v_flex()
             .size_full()
-            .child(self.render_method_url_bar(&tab_id, &request, cx))
-            .child(self.render_request_tab_bar(cx))
+            .child(self.render_method_url_bar(&tab_id, &request, unknown_names, cx))
+            .child(self.render_request_tab_bar(&request, cx))
             .child(
-                div()
-                    .id("request-editor-content")
-                    .flex_1()
-                    .min_h_0()
-                    .overflow_y_scroll()
+                content
                     .p_2()
                     .child(self.render_request_tab_content(&tab_id, &request, cx)),
             )
             .into_any_element()
     }
 
-    /// Renders the method selector, URL input and Send/Cancel controls.
+    /// Renders the method selector, URL input (joined in one `UrlBar`) and Send/Cancel controls.
     fn render_method_url_bar(
         &self,
         tab_id: &str,
         request: &Request,
+        unknown_names: std::collections::HashSet<String>,
         cx: &Context<Self>,
     ) -> AnyElement {
         let weak = cx.weak_entity();
-        let method_label = request.method.to_string();
+        let Some(url_input) = self.request_editor.url.clone() else {
+            return div().into_any_element();
+        };
+
         let method_tab_id = tab_id.to_string();
         let method_weak = weak.clone();
-        let method_button = Button::new("method-select")
-            .small()
-            .label(method_label)
-            .dropdown_caret(true)
-            .dropdown_menu(move |mut menu, _, _| {
-                for name in METHODS {
-                    let select_weak = method_weak.clone();
-                    let tab_id = method_tab_id.clone();
-                    menu = menu.item(PopupMenuItem::new(name).on_click(move |_, _, cx| {
-                        // `Method::from_str` never fails (`Err = Infallible`): an unrecognized
-                        // token simply becomes `Method::Custom`, so this match is exhaustive.
-                        let Ok(method) = name.parse::<Method>();
-                        let _ = select_weak.update(cx, |view, cx| {
-                            view.edit_active_request(&tab_id, cx, |request| {
-                                request.method = method
-                            });
-                        });
-                    }));
+        let editing_method_input = if self.editing_method {
+            self.request_editor.method_input.clone()
+        } else {
+            None
+        };
+        let url_bar = UrlBar::new(
+            request.method.clone(),
+            request.url.clone(),
+            variable_spans(&request.url),
+            unknown_names,
+            url_input,
+        )
+        .editing_method(editing_method_input)
+        .on_method_change(move |method, window, cx| {
+            let _ = method_weak.update(cx, |view, cx| {
+                if let Method::Custom(prefill) = method {
+                    // Only ever reached via `UrlBar`'s "Custom..." menu item: opens the inline
+                    // editor instead of committing an empty method right away (see
+                    // `begin_editing_custom_method`'s doc comment).
+                    view.begin_editing_custom_method(prefill, window, cx);
+                } else {
+                    view.edit_active_request(&method_tab_id, cx, |request| request.method = method);
                 }
-                menu
             });
+        });
+        // TODO(phase 7): wire `UrlBar::on_chip_click` to open the Define dialog for a danger
+        // chip. Left unset, so clicking a chip is inert (`plans/ui-redesign.md` phase 5).
 
-        let url_input = self.request_editor.url.clone();
         let sending = self.is_sending(tab_id);
         let send_weak = weak.clone();
         let cancel_weak = weak;
@@ -502,12 +641,9 @@ impl AppView {
                 )
         } else {
             h_flex().child(
-                Button::new("send")
-                    .primary()
-                    .small()
-                    .icon(Icon::new(IconName::Play).small())
-                    .label("Send")
-                    .tooltip("Send (Ctrl+Enter)")
+                PrimaryButton::new("send", "Send")
+                    .height(SEND_BUTTON_HEIGHT)
+                    .key_hint(SEND_KEY_HINT)
                     .on_click(move |_, _, cx| {
                         let _ = send_weak.update(cx, |view, cx| view.send_active_tab(cx));
                     }),
@@ -517,32 +653,44 @@ impl AppView {
         h_flex()
             .gap_2()
             .items_center()
-            .p_2()
-            .child(method_button)
-            .children(url_input.map(|input| div().flex_1().child(Input::new(&input))))
+            .pt(px(12.0))
+            .pb(px(8.0))
+            .px(px(14.0))
+            .child(div().flex_1().child(url_bar))
             .child(controls)
             .into_any_element()
     }
 
-    /// Renders the Params/Headers/Body/Pre-request/Post-response/Docs tab bar.
-    fn render_request_tab_bar(&self, cx: &Context<Self>) -> AnyElement {
+    /// Renders the Params/Headers/Body/Pre-request/Post-response/Docs tab bar, with the enabled
+    /// row count next to Params and Headers (`plans/ui-redesign.md` phase 5 item 1).
+    fn render_request_tab_bar(&self, request: &Request, cx: &Context<Self>) -> AnyElement {
         let weak = cx.weak_entity();
         let active = self.active_request_tab;
-        let selected_index = RequestTab::ALL
-            .iter()
-            .position(|tab| *tab == active)
-            .unwrap_or(0);
-        let mut bar = TabBar::new("request-tabs").selected_index(selected_index);
+        let enabled_params = request.query.iter().filter(|row| row.enabled).count();
+        let enabled_headers = request.headers.iter().filter(|row| row.enabled).count();
+
+        let mut bar = UnderlineTabs::new("request-tabs");
         for tab in RequestTab::ALL {
             let select_weak = weak.clone();
-            bar = bar.child(Tab::new().label(tab.label()).on_click(move |_, _, cx| {
+            let mut item = UnderlineTabItem::new(tab.label()).selected(tab == active);
+            match tab {
+                RequestTab::Params if enabled_params > 0 => {
+                    item = item.count(enabled_params.to_string());
+                }
+                RequestTab::Headers if enabled_headers > 0 => {
+                    item = item.count(enabled_headers.to_string());
+                }
+                _ => {}
+            }
+            item = item.on_click(move |_, cx| {
                 let _ = select_weak.update(cx, |view, cx| {
                     view.active_request_tab = tab;
                     cx.notify();
                 });
-            }));
+            });
+            bar = bar.item(item);
         }
-        bar.into_any_element()
+        div().px(px(14.0)).child(bar).into_any_element()
     }
 
     /// Renders the content of whichever request editor tab is active.
@@ -568,50 +716,78 @@ impl AppView {
                 cx,
             ),
             RequestTab::Body => self.render_body_tab(tab_id, request, cx),
-            RequestTab::Pre => render_editor_or_placeholder(&self.request_editor.pre_editor),
-            RequestTab::Post => render_editor_or_placeholder(&self.request_editor.post_editor),
+            RequestTab::Pre => {
+                render_editor_or_placeholder(&self.request_editor.pre_editor, false, cx)
+            }
+            RequestTab::Post => {
+                render_editor_or_placeholder(&self.request_editor.post_editor, false, cx)
+            }
             RequestTab::Docs => match &self.request_editor.docs {
-                Some(docs) => Textarea::new(docs).h(px(320.)).into_any_element(),
+                Some(docs) => {
+                    let palette = cx.palette();
+                    Textarea::new(docs)
+                        .h(px(320.0))
+                        .border_1()
+                        .border_color(palette.border)
+                        .rounded(px(RADIUS_MD))
+                        .bg(palette.raised)
+                        .into_any_element()
+                }
                 None => div().into_any_element(),
             },
         }
     }
 
-    /// Renders the Body tab: the body type selector plus either a code editor (JSON/Text/XML) or
-    /// the Form key-value table.
+    /// Renders the Body tab: the body type selector, a "Format" button (JSON bodies only) and
+    /// either a code editor (JSON/Text/XML) or the Form key-value table.
     fn render_body_tab(&self, tab_id: &str, request: &Request, cx: &Context<Self>) -> AnyElement {
         let weak = cx.weak_entity();
-        let tab_id_owned = tab_id.to_string();
         let current_kind = BodyKind::of(&request.body);
-        let type_button = Button::new("body-type")
-            .small()
-            .label(current_kind.label())
-            .dropdown_caret(true)
-            .dropdown_menu(move |mut menu, _, _| {
-                for kind in BodyKind::ALL {
-                    let select_weak = weak.clone();
-                    let tab_id = tab_id_owned.clone();
-                    menu = menu.item(
-                        PopupMenuItem::new(kind.label())
-                            .checked(kind == current_kind)
-                            .on_click(move |_, _, cx| {
-                                let _ = select_weak.update(cx, |view, cx| {
-                                    view.edit_active_request(&tab_id, cx, |request| {
-                                        request_edit::set_body_kind(request, kind);
-                                    });
-                                });
-                            }),
-                    );
-                }
-                menu
+
+        let mut type_selector = SegmentedControl::new("body-type");
+        for kind in BodyKind::ALL {
+            let select_weak = weak.clone();
+            let tab_id_owned = tab_id.to_string();
+            type_selector = type_selector.item(
+                SegmentedItem::new(body_type_display_label(kind))
+                    .selected(kind == current_kind)
+                    .on_click(move |_, cx| {
+                        let _ = select_weak.update(cx, |view, cx| {
+                            view.edit_active_request(&tab_id_owned, cx, |request| {
+                                request_edit::set_body_kind(request, kind);
+                            });
+                        });
+                    }),
+            );
+        }
+
+        let format_weak = weak;
+        let format_tab_id = tab_id.to_string();
+        let is_json = matches!(request.body, Body::Json(_));
+        let format_button = GhostButton::new("format-body", "Format")
+            .icon(gpui_kit::assets::IconName::WandSparkles)
+            .disabled(!is_json)
+            .on_click(move |_, _, cx| {
+                let _ = format_weak.update(cx, |view, cx| {
+                    view.edit_active_request(&format_tab_id, cx, |request| {
+                        if let Body::Json(text) = &request.body
+                            && let Some(pretty) = request_edit::format_json_body(text)
+                        {
+                            request.body = Body::Json(pretty);
+                        }
+                    });
+                });
             });
 
         let body_content = match &request.body {
-            Body::None => div()
-                .p_2()
-                .text_color(cx.theme().muted_foreground)
-                .child("This request has no body.")
-                .into_any_element(),
+            Body::None => {
+                let palette = cx.palette();
+                div()
+                    .p_2()
+                    .text_color(palette.fg_muted)
+                    .child("This request has no body.")
+                    .into_any_element()
+            }
             Body::Form(rows) => self.render_key_value_table(
                 tab_id,
                 RowKind::Form,
@@ -620,14 +796,22 @@ impl AppView {
                 cx,
             ),
             Body::Json(_) | Body::Text(_) | Body::Xml(_) => {
-                render_editor_or_placeholder(&self.request_editor.body_editor)
+                render_editor_or_placeholder(&self.request_editor.body_editor, true, cx)
             }
         };
 
         v_flex()
+            .size_full()
             .gap_2()
-            .child(type_button)
-            .child(body_content)
+            .child(
+                h_flex()
+                    .items_center()
+                    .justify_between()
+                    .py(px(8.0))
+                    .child(type_selector)
+                    .child(format_button),
+            )
+            .child(div().flex_1().min_h_0().child(body_content))
             .into_any_element()
     }
 
@@ -643,79 +827,101 @@ impl AppView {
         cx: &Context<Self>,
     ) -> AnyElement {
         let weak = cx.weak_entity();
-        let mut list = v_flex().gap_1();
+        let mut table = KeyValueTable::new(("kv-table", kind as u8 as usize));
         for (index, (row, row_entities)) in rows.iter().zip(entities.rows.iter()).enumerate() {
             let toggle_weak = weak.clone();
             let toggle_tab_id = tab_id.to_string();
             let remove_weak = weak.clone();
             let remove_tab_id = tab_id.to_string();
-            list = list.child(
-                h_flex()
-                    .gap_2()
-                    .items_center()
-                    .child(
-                        Checkbox::new(("row-enabled", index))
-                            .checked(row.enabled)
-                            .on_click(move |enabled, _, cx| {
-                                let enabled = *enabled;
-                                let _ = toggle_weak.update(cx, |view, cx| {
-                                    view.edit_row(&toggle_tab_id, kind, index, cx, |row| {
-                                        row.enabled = enabled
-                                    });
-                                });
-                            }),
-                    )
-                    .child(Input::new(&row_entities.key).w(px(180.)))
-                    .child(Input::new(&row_entities.value).flex_1())
-                    .child(
-                        Button::new(("remove-row", index))
-                            .ghost()
-                            .xsmall()
-                            .icon(Icon::new(IconName::Delete).small())
-                            .tooltip("Remove")
-                            .on_click(move |_, _, cx| {
-                                let _ = remove_weak.update(cx, |view, cx| {
-                                    view.remove_row(&remove_tab_id, kind, index, cx);
-                                });
-                            }),
-                    ),
+            table = table.row(
+                KeyValueRow::with_elements(
+                    Input::new(&row_entities.key).w_full(),
+                    Input::new(&row_entities.value).w_full(),
+                )
+                .enabled(row.enabled)
+                .on_toggle(move |enabled, _, cx| {
+                    let _ = toggle_weak.update(cx, |view, cx| {
+                        view.edit_row(&toggle_tab_id, kind, index, cx, |row| row.enabled = enabled);
+                    });
+                })
+                .on_delete(move |_, cx| {
+                    let _ = remove_weak.update(cx, |view, cx| {
+                        view.remove_row(&remove_tab_id, kind, index, cx);
+                    });
+                }),
             );
         }
 
         let add_weak = weak;
         let add_tab_id = tab_id.to_string();
-        list.child(
-            Button::new("add-row")
-                .ghost()
-                .small()
-                .icon(Icon::new(IconName::Plus).small())
-                .label("Add")
-                .on_click(move |_, _, cx| {
-                    let _ = add_weak.update(cx, |view, cx| view.add_row(&add_tab_id, kind, cx));
-                }),
-        )
-        .into_any_element()
+        table
+            .on_add(move |_, cx| {
+                let _ = add_weak.update(cx, |view, cx| view.add_row(&add_tab_id, kind, cx));
+            })
+            .into_any_element()
+    }
+}
+
+/// The body type segmented control's display label: `BodyKind::label()`'s own text, except for
+/// `Form`, where the design's segmented control shows the bare word "Form" rather than
+/// `BodyKind::label()`'s fuller `"Form (urlencoded)"` (used elsewhere, for example the old body
+/// type menu this phase replaced). A display-only override, not a change to `BodyKind::label()`
+/// itself (`plans/ui-redesign.md` phase 5, reviewer fix item 7).
+fn body_type_display_label(kind: BodyKind) -> &'static str {
+    match kind {
+        BodyKind::Form => "Form",
+        other => other.label(),
     }
 }
 
 /// Renders a code editor entity if present, or an empty placeholder (only possible transiently,
-/// before the first [`RequestEditorEntities::sync`] call).
-fn render_editor_or_placeholder(editor: &Option<Entity<EditorState>>) -> AnyElement {
+/// before the first [`RequestEditorEntities::sync`] call), boxed in a bordered, `raised`
+/// container with line numbers (`plans/ui-redesign.md` phase 5 item 1, `Main A.dc.html`'s
+/// request pane). `fill` makes it grow to the rest of the pane's height (the Body tab, reviewer
+/// fix item B); otherwise (Pre/Post) it keeps the fixed 320 px height used before this phase.
+///
+/// `fill` uses `Editor::h(relative(1.0))`, not the generic `Styled::flex_1()`/`min_h_0()`:
+/// `Editor` has its own inherent `h(impl Into<DefiniteLength>)` (a `gpui-component` widget that
+/// needs a concrete height, in pixels or a percentage of its parent, to lay out its line-based
+/// content and gutter), applied before `refine_style` inside its own `RenderOnce` impl.
+/// `flex_1()` alone leaves that field `None`, and the editor then sizes to its content instead
+/// of the space its `flex_1`/`min_h_0` *wrapper* (see the two call sites) makes available,
+/// matching the pattern `gpui-component`'s own `Editor::new(...).h(relative(1.))` call sites use
+/// (`gpui-component-0.6.6/src/inspector.rs`).
+fn render_editor_or_placeholder(
+    editor: &Option<Entity<EditorState>>,
+    fill: bool,
+    cx: &Context<AppView>,
+) -> AnyElement {
+    let palette = cx.palette();
     match editor {
-        Some(editor) => Editor::new(editor).h(px(320.)).into_any_element(),
+        Some(editor) => {
+            let editor = Editor::new(editor)
+                .border_1()
+                .border_color(palette.border)
+                .rounded(px(RADIUS_MD))
+                .bg(palette.raised);
+            if fill {
+                editor.h(relative(1.0)).into_any_element()
+            } else {
+                editor.h(px(320.0)).into_any_element()
+            }
+        }
         None => div().into_any_element(),
     }
 }
 
-/// Renders a centered, muted placeholder message filling the panel.
+/// Renders a centered, muted placeholder message filling the panel (`plans/ui-redesign.md`
+/// phase 5 item 5, 13/400 `fg_muted`).
 fn placeholder(cx: &Context<AppView>, message: &str) -> AnyElement {
+    let palette = cx.palette();
     v_flex()
         .size_full()
         .items_center()
         .justify_center()
         .child(
             div()
-                .text_color(cx.theme().muted_foreground)
+                .text_color(palette.fg_muted)
                 .child(message.to_string()),
         )
         .into_any_element()

@@ -107,7 +107,6 @@ impl PrimaryButton {
     }
 
     /// Sets the button's height (defaults to [`CONTROL_HEIGHT`]).
-    #[allow(dead_code)] // wired by phase 5, once buttons are used in the request editor
     pub fn height(mut self, height: f32) -> Self {
         self.spec.height = height;
         self
@@ -120,7 +119,6 @@ impl PrimaryButton {
     }
 
     /// Sets the click handler.
-    #[allow(dead_code)] // wired by phase 5, once buttons are used in the request editor
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -153,21 +151,21 @@ impl SecondaryButton {
     }
 
     /// Sets the button's height (defaults to [`CONTROL_HEIGHT`]).
-    #[allow(dead_code)] // wired by phase 5, once buttons are used in the request editor
+    #[allow(dead_code)] // no caller outside the components gallery needs this yet
     pub fn height(mut self, height: f32) -> Self {
         self.spec.height = height;
         self
     }
 
     /// Disables the button (45% opacity, no click).
-    #[allow(dead_code)] // wired by phase 5, once buttons are used in the request editor
+    #[allow(dead_code)] // no caller outside the components gallery needs this yet
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.spec.disabled = disabled;
         self
     }
 
     /// Sets the click handler.
-    #[allow(dead_code)] // wired by phase 5, once buttons are used in the request editor
+    #[allow(dead_code)] // no caller outside the components gallery needs this yet
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -207,21 +205,19 @@ impl GhostButton {
     }
 
     /// Sets the button's height (defaults to [`CONTROL_HEIGHT`]).
-    #[allow(dead_code)] // wired by phase 5, once buttons are used in the request editor
+    #[allow(dead_code)] // no caller needs a non-default height yet
     pub fn height(mut self, height: f32) -> Self {
         self.spec.height = height;
         self
     }
 
     /// Disables the button (45% opacity, no click).
-    #[allow(dead_code)] // wired by phase 5, once buttons are used in the request editor
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.spec.disabled = disabled;
         self
     }
 
     /// Sets the click handler.
-    #[allow(dead_code)] // wired by phase 5, once buttons are used in the request editor
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
@@ -254,21 +250,21 @@ impl DangerButton {
     }
 
     /// Sets the button's height (defaults to [`CONTROL_HEIGHT`]).
-    #[allow(dead_code)] // wired by phase 5, once buttons are used in the request editor
+    #[allow(dead_code)] // no caller outside the components gallery needs this yet
     pub fn height(mut self, height: f32) -> Self {
         self.spec.height = height;
         self
     }
 
     /// Disables the button (45% opacity, no click).
-    #[allow(dead_code)] // wired by phase 5, once buttons are used in the request editor
+    #[allow(dead_code)] // no caller outside the components gallery needs this yet
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.spec.disabled = disabled;
         self
     }
 
     /// Sets the click handler.
-    #[allow(dead_code)] // wired by phase 5, once buttons are used in the request editor
+    #[allow(dead_code)] // no caller outside the components gallery needs this yet
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,

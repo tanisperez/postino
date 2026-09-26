@@ -59,12 +59,14 @@ impl AppView {
                     .min_h_0()
                     .px(px(6.0))
                     .when(has_workspace, |this| {
+                        let row_palette = palette.clone();
                         this.child(
                             tree_view(&tree_state, move |_ix, entry, selected, _window, _cx| {
                                 render_tree_row(
                                     entry,
                                     selected,
                                     methods_by_id.get(entry.item().id.as_ref()),
+                                    &row_palette,
                                 )
                             })
                             .context_menu(move |_ix, entry, menu, window, cx| {
@@ -113,7 +115,11 @@ impl AppView {
                     .child(
                         Input::new(&self.sidebar_filter_input)
                             .h(px(SIDEBAR_FILTER_HEIGHT))
-                            .bordered(false),
+                            .bordered(false)
+                            // Transparent so only the outer pill shows: without this, the
+                            // `Input`'s own background paints a second, visible box inside it
+                            // (`plans/ui-redesign.md` phase 5, reviewer fix item 9).
+                            .bg(palette.bg.opacity(0.0)),
                     ),
             )
             .into_any_element()
@@ -129,6 +135,8 @@ impl AppView {
         let branch = git_branch(workspace.root());
 
         h_flex()
+            .w_full()
+            .overflow_hidden()
             .border_t_1()
             .border_color(palette.border)
             .px(px(14.0))
@@ -138,9 +146,12 @@ impl AppView {
             .text_size(px(12.0))
             .text_color(palette.fg_subtle)
             .child(Icon::new(IconName::HardDrive).small())
-            .child(div().flex_1().child(path_label))
+            // `min_w_0` plus `truncate` lets a long path shrink with an ellipsis instead of
+            // pushing the branch name out of the sidebar.
+            .child(div().flex_1().min_w_0().truncate().child(path_label))
             .children(branch.map(|branch| {
                 h_flex()
+                    .flex_none()
                     .items_center()
                     .gap(px(6.0))
                     .child(Icon::new(gpui_kit::assets::IconName::GitBranch).small())
@@ -269,28 +280,52 @@ fn collect_methods(nodes: &[Node], into: &mut HashMap<String, Method>) {
     }
 }
 
-/// Renders one visible row of the sidebar tree: a folder or file icon, the method label for a
-/// request (an empty [`METHOD_LABEL_WIDTH`]-wide spacer when `method` is `None`, a broken
-/// request, so names stay aligned with their siblings), and the label built by
+/// Width of a row's leading icon slot: a folder's chevron, or an empty spacer of the same width
+/// for a request, so a root-level request's method label starts at the same x as a sibling
+/// folder's chevron does (`Main A.dc.html`'s `r.icon` column is always this wide, even when
+/// empty, `plans/ui-redesign.md` phase 5, reviewer fix item C).
+const TREE_ROW_ICON_WIDTH: f32 = 13.0;
+
+/// Renders one visible row of the sidebar tree, matching `Main A.dc.html`'s tree rows
+/// (`plans/ui-redesign.md` phase 5, reviewer fix item 8): a folder shows a chevron (down when
+/// expanded, right when collapsed) and no folder icon; a request shows no file icon, just the
+/// method label (an empty [`METHOD_LABEL_WIDTH`]-wide spacer when `method` is `None`, a broken
+/// request, so names stay aligned with their siblings) and the label built by
 /// [`build_tree_item`]/[`build_filtered_item`] (already carrying the "(broken)" marker when it
-/// applies).
-fn render_tree_row(entry: &TreeEntry, selected: bool, method: Option<&Method>) -> ListItem {
+/// applies), indented 16 px per depth level. The row itself is exactly [`TREE_ROW_HEIGHT`] tall:
+/// `ListItem`'s own default padding is overridden below, since it would otherwise add to that
+/// height. Selected rows get `accent_text` label color (the `accent_subtle` background and the
+/// `hover` background come from `ListItem`'s own theme mapping, set up in phase 2).
+fn render_tree_row(
+    entry: &TreeEntry,
+    selected: bool,
+    method: Option<&Method>,
+    palette: &crate::theme::Palette,
+) -> ListItem {
     let item = entry.item();
     let is_request = item.id.ends_with(REQUEST_EXTENSION);
-    let icon = if is_request {
-        IconName::File
-    } else if entry.is_expanded() {
-        IconName::FolderOpen
-    } else {
-        IconName::Folder
-    };
+
+    let mut icon_slot = div()
+        .flex_none()
+        .w(px(TREE_ROW_ICON_WIDTH))
+        .flex()
+        .items_center()
+        .justify_center();
+    if !is_request {
+        let chevron = if entry.is_expanded() {
+            IconName::ChevronDown
+        } else {
+            IconName::ChevronRight
+        };
+        icon_slot = icon_slot.child(Icon::new(chevron).small().text_color(palette.fg_subtle));
+    }
 
     let mut row = h_flex()
         .h(px(TREE_ROW_HEIGHT))
         .items_center()
         .gap_1()
-        .pl(px(entry.depth() as f32 * 12.))
-        .child(Icon::new(icon).small());
+        .pl(px(entry.depth() as f32 * 16.0))
+        .child(icon_slot);
     if is_request {
         row = row.child(match method {
             Some(method) => MethodBadge::label(method.clone()).into_any_element(),
@@ -300,9 +335,23 @@ fn render_tree_row(entry: &TreeEntry, selected: bool, method: Option<&Method>) -
                 .into_any_element(),
         });
     }
-    row = row.child(div().text_sm().child(item.label.clone()));
+    let label_color = if selected {
+        palette.accent_text
+    } else {
+        palette.fg
+    };
+    row = row.child(
+        div()
+            .text_sm()
+            .text_color(label_color)
+            .child(item.label.clone()),
+    );
 
-    ListItem::new(item.id.clone()).selected(selected).child(row)
+    ListItem::new(item.id.clone())
+        .selected(selected)
+        .py(px(0.0))
+        .px(px(8.0))
+        .child(row)
 }
 
 /// Builds the right-click context menu for a tree entry: new request/folder (folders only),

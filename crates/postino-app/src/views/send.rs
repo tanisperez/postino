@@ -7,7 +7,7 @@
 
 use gpui_kit::*;
 use postino_core::Environment;
-use postino_runner::Runner;
+use postino_runner::{Preview, Runner, preview};
 
 use super::root::AppView;
 
@@ -42,6 +42,16 @@ impl AppView {
             return Environment::default();
         };
         workspace.load_environment(name).unwrap_or_default()
+    }
+
+    /// The active tab's request resolved against the active environment and the session
+    /// environment, without running its scripts or sending it (`plans/ui-redesign.md` phase 5
+    /// item 2). `None` when no tab is open. Cheap enough to call on every render: it only
+    /// interpolates `{{ }}` markers, it never runs a script or opens a socket.
+    pub(crate) fn current_preview(&self) -> Option<Preview> {
+        let tab = self.state.tabs.active()?;
+        let environment = self.active_environment();
+        Some(preview(&tab.request, &environment, &self.state.session_env))
     }
 
     /// Whether `tab_id` currently has a request in flight.

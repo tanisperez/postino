@@ -11,6 +11,7 @@ pub mod import;
 pub mod palette;
 pub mod request_edit;
 pub mod response_render;
+pub mod script_heuristics;
 pub mod settings;
 pub mod sidebar_filter;
 mod tabs;

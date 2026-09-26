@@ -48,7 +48,39 @@ fn main() {
             bind_keys(cx);
             theme::install(cx, &settings);
 
+            // Centered at 1440x900 logical, capped to 90% of the display's visible bounds
+            // (`plans/ui-redesign.md` phase 5, reviewer fix item 10): `WindowBounds::centered`
+            // only caps at 100% of the display (`Bounds::centered`'s own `size.min(&visible_
+            // bounds.size)`), which is not tight enough to keep the title bar, status bar and
+            // sidebar footer on screen on a display where 1440x900 is close to the full visible
+            // area.
+            //
+            // `cx.primary_display()` (and `cx.displays()`) can legitimately return nothing here:
+            // confirmed with temporary logging on this session's KDE Plasma/Wayland setup, where
+            // both are empty at this point in `.run()`'s callback, and even `window.display(cx)`
+            // right after `open_window` still returns `None` (the compositor hands over
+            // output/display info only after the window's first configure event, which no
+            // synchronous call at window-creation time can observe). Without this fallback,
+            // `window_bounds: None` used to defer to `gpui`'s own default placement, which on
+            // that same session came out as 1536x1095, taller than the visible screen (a 1920x
+            // 1080 physical display at 1.2 scale, with a 54 px physical taskbar, leaves about
+            // 1600x855 logical), hiding the status bar and sidebar footer. 1280x760 comfortably
+            // fits that, and any other Wayland compositor's typical visible area.
+            let window_bounds = match cx.primary_display() {
+                Some(display) => {
+                    let visible = display.visible_bounds();
+                    let cap = size(visible.size.width * 0.9, visible.size.height * 0.9);
+                    let target = size(px(1440.0), px(900.0)).min(&cap);
+                    WindowBounds::Windowed(Bounds::centered_at(visible.center(), target))
+                }
+                None => WindowBounds::Windowed(Bounds {
+                    origin: point(px(0.0), px(0.0)),
+                    size: size(px(1280.0), px(760.0)),
+                }),
+            };
+
             let window_options = WindowOptions {
+                window_bounds: Some(window_bounds),
                 window_min_size: Some(size(px(760.), px(480.))),
                 // On Linux the default is server side decorations, which makes the compositor draw
                 // its own title bar on top of ours. Client side decorations let `TitleBar` be the

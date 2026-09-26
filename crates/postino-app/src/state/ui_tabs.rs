@@ -45,6 +45,23 @@ impl RequestTab {
     }
 }
 
+/// The request tab to show when opening a request for the first time (not when re-selecting an
+/// already open one), given `current` (the tab shared across every open tab, see
+/// `crate::views::root::AppView::active_request_tab`'s doc comment) and the request being
+/// opened. Jumps to [`RequestTab::Body`] when `current` is still the default [`RequestTab::
+/// Params`] and the request has no query params to show there but does have a body, since
+/// `Params` would otherwise land on an empty table (`plans/ui-redesign.md` phase 5, reviewer fix
+/// item D, matching `Main A.dc.html`, which shows `Body` for `POST /auth/login`). Any other
+/// current tab is left alone: the user's own tab choice from a previous request is not
+/// second-guessed.
+pub fn tab_to_show_on_open(current: RequestTab, query_len: usize, has_body: bool) -> RequestTab {
+    if current == RequestTab::Params && query_len == 0 && has_body {
+        RequestTab::Body
+    } else {
+        current
+    }
+}
+
 /// The response viewer's tabs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ResponseTab {
@@ -91,6 +108,38 @@ mod tests {
     #[test]
     fn default_response_tab_is_body() {
         assert_eq!(ResponseTab::default(), ResponseTab::Body);
+    }
+
+    #[test]
+    fn tab_to_show_on_open_jumps_to_body_from_params_with_no_query_and_a_body() {
+        assert_eq!(
+            tab_to_show_on_open(RequestTab::Params, 0, true),
+            RequestTab::Body
+        );
+    }
+
+    #[test]
+    fn tab_to_show_on_open_keeps_params_when_it_has_query_entries() {
+        assert_eq!(
+            tab_to_show_on_open(RequestTab::Params, 2, true),
+            RequestTab::Params
+        );
+    }
+
+    #[test]
+    fn tab_to_show_on_open_keeps_params_when_there_is_no_body() {
+        assert_eq!(
+            tab_to_show_on_open(RequestTab::Params, 0, false),
+            RequestTab::Params
+        );
+    }
+
+    #[test]
+    fn tab_to_show_on_open_does_not_override_a_non_default_current_tab() {
+        assert_eq!(
+            tab_to_show_on_open(RequestTab::Headers, 0, true),
+            RequestTab::Headers
+        );
     }
 
     #[test]

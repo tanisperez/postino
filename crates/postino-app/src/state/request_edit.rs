@@ -92,6 +92,26 @@ pub fn set_body_text(request: &mut Request, text: String) {
     }
 }
 
+/// Whether `token` is a valid custom HTTP method for the `.postino` file format: non-empty and
+/// without a lowercase ASCII letter, the same rule `postino_format`'s parser enforces on a
+/// request line's method token (`crates/postino-format/src/format.rs`'s `InvalidMethod` check).
+/// Not imported from there directly: that check is private to the parser, and duplicating one
+/// boolean condition here is simpler than exposing it as a new public API only this inline
+/// method editor needs. Used by the request editor's "Custom..." method input
+/// (`plans/ui-redesign.md` phase 5, reviewer fix item 6) to decide whether to commit an edit.
+pub fn is_valid_custom_method_token(token: &str) -> bool {
+    !token.is_empty() && !token.chars().any(|c| c.is_ascii_lowercase())
+}
+
+/// Pretty-prints `text` as JSON with two-space indentation, for the request editor's "Format"
+/// button. `None` if `text` is not valid JSON, in which case the caller leaves the body
+/// unchanged (the button is only enabled for a JSON body, so this is a defensive fallback, not
+/// an expected path).
+pub fn format_json_body(text: &str) -> Option<String> {
+    let value: serde_json::Value = serde_json::from_str(text).ok()?;
+    serde_json::to_string_pretty(&value).ok()
+}
+
 /// Appends a new, empty, enabled row (used for the Params, Headers and Form key-value tables).
 pub fn add_row(rows: &mut Vec<KeyValue>) {
     rows.push(KeyValue::new("", ""));
@@ -201,6 +221,36 @@ mod tests {
         let mut request = Request::default();
         set_body_text(&mut request, "ignored".to_string());
         assert_eq!(request.body, Body::None);
+    }
+
+    #[test]
+    fn format_json_body_pretty_prints_valid_json() {
+        assert_eq!(
+            format_json_body(r#"{"a":1,"b":[1,2]}"#),
+            Some("{\n  \"a\": 1,\n  \"b\": [\n    1,\n    2\n  ]\n}".to_string())
+        );
+    }
+
+    #[test]
+    fn format_json_body_rejects_invalid_json() {
+        assert_eq!(format_json_body("not json"), None);
+    }
+
+    #[test]
+    fn is_valid_custom_method_token_accepts_an_uppercase_token() {
+        assert!(is_valid_custom_method_token("PURGE"));
+        assert!(is_valid_custom_method_token("X-CUSTOM2"));
+    }
+
+    #[test]
+    fn is_valid_custom_method_token_rejects_empty() {
+        assert!(!is_valid_custom_method_token(""));
+    }
+
+    #[test]
+    fn is_valid_custom_method_token_rejects_lowercase() {
+        assert!(!is_valid_custom_method_token("purge"));
+        assert!(!is_valid_custom_method_token("Purge"));
     }
 
     #[test]

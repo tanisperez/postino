@@ -48,7 +48,6 @@ impl UnderlineTabItem {
     }
 
     /// Overrides the count's color (for example `success` when every test passed).
-    #[allow(dead_code)] // wired by phase 5, once UnderlineTabs backs the request/response tab rows
     pub fn count_color(mut self, color: Hsla) -> Self {
         self.count_color = Some(color);
         self
@@ -61,7 +60,6 @@ impl UnderlineTabItem {
     }
 
     /// Sets the click handler.
-    #[allow(dead_code)] // wired by phase 5, once UnderlineTabs backs the request/response tab rows
     pub fn on_click(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_click = Some(Rc::new(handler));
         self
@@ -69,12 +67,15 @@ impl UnderlineTabItem {
 }
 
 /// A row of underline tabs: 18 px gaps, a 1 px bottom border, a 2 px accent underline on the
-/// active item (`Components.dc.html` "Tabs").
+/// active item (`Components.dc.html` "Tabs"). An optional [`Self::suffix`] (the response tab
+/// bar's status badge, time and size, `plans/ui-redesign.md` phase 5 reviewer fix item 1) is
+/// pushed to the right of the same bordered row by a flex spacer.
 #[derive(IntoElement)]
 pub struct UnderlineTabs {
     id: ElementId,
     items: Vec<UnderlineTabItem>,
     height: f32,
+    suffix: Option<AnyElement>,
 }
 
 impl UnderlineTabs {
@@ -86,6 +87,7 @@ impl UnderlineTabs {
             id: id.into(),
             items: Vec::new(),
             height: REQUEST_INNER_TABS_HEIGHT,
+            suffix: None,
         }
     }
 
@@ -96,9 +98,15 @@ impl UnderlineTabs {
     }
 
     /// Overrides the row's height.
-    #[allow(dead_code)] // wired by phase 5, once UnderlineTabs backs the request/response tab rows
     pub fn height(mut self, height: f32) -> Self {
         self.height = height;
+        self
+    }
+
+    /// Sets a trailing element, pushed to the right of the tab items by a flex spacer, in the
+    /// same bordered row.
+    pub fn suffix(mut self, suffix: impl IntoElement) -> Self {
+        self.suffix = Some(suffix.into_any_element());
         self
     }
 }
@@ -107,9 +115,11 @@ impl RenderOnce for UnderlineTabs {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let palette = cx.palette();
         let height = self.height;
+        let suffix = self.suffix;
 
         h_flex()
             .id(self.id)
+            .items_center()
             .gap(px(18.0))
             .border_b_1()
             .border_color(palette.border)
@@ -153,5 +163,8 @@ impl RenderOnce for UnderlineTabs {
                 }
                 tab
             }))
+            .when_some(suffix, |bar, suffix| {
+                bar.child(div().flex_1()).child(suffix)
+            })
     }
 }

@@ -57,7 +57,6 @@ impl SegmentedItem {
     }
 
     /// Sets the click handler.
-    #[allow(dead_code)] // wired by phase 5, once SegmentedControl backs the body type switch
     pub fn on_click(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_click = Some(Rc::new(handler));
         self
@@ -106,8 +105,8 @@ impl RenderOnce for SegmentedControl {
                 let handler = item.on_click;
                 let mut cell = h_flex()
                     .id(("segmented-item", index))
-                    .flex_1()
                     .h(px(SEGMENTED_CONTROL_INNER_HEIGHT))
+                    .px(px(10.0))
                     .items_center()
                     .justify_center()
                     .rounded(px(RADIUS_SM - 1.0))
