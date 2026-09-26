@@ -7,8 +7,7 @@ default-members = ["crates/*"]
 edition = "2024"
 version = "0.1.0"
 publish = false
-
-# License is a pending decision (see AGENTS.md), left unset on purpose.
+license = "Apache-2.0"
 
 [workspace.dependencies]
 gpui-kit = "0.6.6"

@@ -35,12 +35,14 @@ Expo/React Native conventions here.
 - Postman import: Collection format v2.1 (v2.0 accepted when it parses the same) and Postman
   environment exports.
 - HTTP client: `ureq` 3 (blocking, rustls), run on GPUI's background executor.
+- License: Apache-2.0 (`LICENSE`, `license` in `[workspace.package]`). Permissive, compatible with
+  GPUI, includes a patent grant and does not grant trademark rights. Contributor terms (CLA or
+  DCO) are still undecided, ask before accepting external contributions.
 
 ## Pending decisions (ask before choosing)
 
 These are to be settled in a dedicated planning session. Do not pick one silently.
 
-- License (MIT or Apache-2.0 would be compatible with GPUI, which is Apache-2.0).
 - Final name, after checking trademark databases (USPTO, EUIPO, OEPM) for "Postino". Backup
   candidates: Corriere, Piccione.
 - Domain and GitHub organization for the project.

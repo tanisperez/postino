@@ -84,7 +84,7 @@ Left out of the MVP on purpose, candidates for later versions:
 - Responses larger than 10 MiB (the current `ureq` read limit).
 - Creating a body from a pre script when the request has none.
 
-A few decisions are still open: license, final name (trademark check), domain and GitHub
+A few decisions are still open: final name (trademark check), domain and GitHub
 organization, and the language of the docs. See
 `AGENTS.md` for the full list.
 
@@ -110,4 +110,4 @@ make help
 
 ## License
 
-To be decided before the first public release.
+Postino is licensed under the [Apache License 2.0](LICENSE).
