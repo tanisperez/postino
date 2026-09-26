@@ -5120,6 +5120,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "postino-load"
+version = "0.1.0"
+dependencies = [
+ "postino-core",
+ "postino-http",
+ "postino-runner",
+ "postino-script",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "postino-runner"
 version = "0.1.0"
 dependencies = [
