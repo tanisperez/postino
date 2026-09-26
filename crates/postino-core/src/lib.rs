@@ -18,7 +18,10 @@ mod response;
 pub use body::Body;
 pub use environment::Environment;
 pub use functions::{Arg, FunctionError};
-pub use interpolate::{Interpolated, TemplateWarning, VarScope, interpolate};
+pub use interpolate::{
+    Interpolated, TemplateWarning, VarScope, VariableKind, VariableSpan, interpolate,
+    variable_spans,
+};
 pub use key_value::KeyValue;
 pub use method::Method;
 pub use request::Request;

@@ -108,6 +108,67 @@ pub fn interpolate(text: &str, scope: &VarScope) -> Interpolated {
     }
 }
 
+/// Whether a [`VariableSpan`] is a plain variable reference or a template function call.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VariableKind {
+    /// `{{name}}`, a reference to a variable.
+    Variable,
+    /// `{{ name(args) }}`, a call to a built-in template function.
+    FunctionCall,
+}
+
+/// A `{{ }}` marker found in a piece of text, without resolving it.
+///
+/// Used by the UI to style variable chips: an unstyled range of `text` around each marker,
+/// underlined when the name is not a known variable (`plans/ui-redesign.md`, phase 1a).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VariableSpan {
+    /// The byte range of the whole marker, including the `{{` and `}}` delimiters.
+    pub range: std::ops::Range<usize>,
+    /// The variable or function name, trimmed of surrounding whitespace.
+    pub name: String,
+    /// Whether `name` is a variable or a function call.
+    pub kind: VariableKind,
+}
+
+/// Finds every `{{ }}` marker in `text`, without resolving it.
+///
+/// Reuses the same marker scan as [`interpolate`]: a marker is `{{` followed, later in the text,
+/// by `}}`; an unmatched `{{` with no closing `}}` is not a marker and is not reported. A marker
+/// is a [`VariableKind::FunctionCall`] when its content parses as `name(args)`
+/// ([`parse_call`]), a [`VariableKind::Variable`] otherwise, whatever its content: this mirrors
+/// [`resolve_marker`], which resolves a non-call marker as a variable name unconditionally.
+#[must_use]
+pub fn variable_spans(text: &str) -> Vec<VariableSpan> {
+    let mut spans = Vec::new();
+    let mut rest = text;
+    let mut offset = 0;
+
+    while let Some(start) = rest.find("{{") {
+        let after_open = &rest[start + 2..];
+        let Some(end) = after_open.find("}}") else {
+            break;
+        };
+        let raw = &after_open[..end];
+        let marker_start = offset + start;
+        let marker_end = marker_start + 2 + end + 2;
+        let trimmed = raw.trim();
+        let (name, kind) = match parse_call(trimmed) {
+            Some((name, _args)) => (name.to_string(), VariableKind::FunctionCall),
+            None => (trimmed.to_string(), VariableKind::Variable),
+        };
+        spans.push(VariableSpan {
+            range: marker_start..marker_end,
+            name,
+            kind,
+        });
+        offset = marker_end;
+        rest = &after_open[end + 2..];
+    }
+
+    spans
+}
+
 /// Resolves the content of a single `{{ ... }}` marker (without the braces) to its replacement
 /// text, or the warning explaining why it could not be resolved.
 fn resolve_marker(raw: &str, scope: &VarScope) -> Result<String, TemplateWarning> {
@@ -414,5 +475,57 @@ mod tests {
             result.warnings,
             vec![TemplateWarning::UnknownVariable("missing".to_string())]
         );
+    }
+
+    #[test]
+    fn variable_spans_finds_a_plain_variable() {
+        let spans = variable_spans("hello {{name}}");
+        assert_eq!(
+            spans,
+            vec![VariableSpan {
+                range: 6..14,
+                name: "name".to_string(),
+                kind: VariableKind::Variable,
+            }]
+        );
+        assert_eq!(&"hello {{name}}"[6..14], "{{name}}");
+    }
+
+    #[test]
+    fn variable_spans_trims_whitespace_inside_braces() {
+        let spans = variable_spans("{{ name }}");
+        assert_eq!(spans[0].name, "name");
+        assert_eq!(spans[0].kind, VariableKind::Variable);
+    }
+
+    #[test]
+    fn variable_spans_classifies_a_function_call() {
+        let spans = variable_spans(r#"{{ base64Encode("a") }}"#);
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].name, "base64Encode");
+        assert_eq!(spans[0].kind, VariableKind::FunctionCall);
+    }
+
+    #[test]
+    fn variable_spans_finds_several_markers_in_order() {
+        let spans = variable_spans("{{a}} and {{b}}");
+        let names: Vec<&str> = spans.iter().map(|span| span.name.as_str()).collect();
+        assert_eq!(names, vec!["a", "b"]);
+    }
+
+    #[test]
+    fn variable_spans_ignores_an_unmatched_opening_marker() {
+        let spans = variable_spans("hello {{name");
+        assert!(spans.is_empty());
+    }
+
+    #[test]
+    fn variable_spans_has_correct_byte_ranges_around_multi_byte_utf8_text() {
+        let text = "héllo wörld {{name}} 世界";
+        let spans = variable_spans(text);
+        assert_eq!(spans.len(), 1);
+        let span = &spans[0];
+        assert_eq!(&text[span.range.clone()], "{{name}}");
+        assert_eq!(span.name, "name");
     }
 }

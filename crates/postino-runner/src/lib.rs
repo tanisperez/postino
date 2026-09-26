@@ -6,6 +6,7 @@
 //! `Result` (see [`RunResult::failed_stage`]).
 #![warn(missing_docs)]
 
+mod preview;
 mod resolve;
 mod result;
 mod runner;
@@ -14,6 +15,7 @@ mod session_env;
 
 pub use postino_http::SendOptions;
 pub use postino_script::ScriptEngine;
+pub use preview::{Preview, UnknownVariable, VariableLocation, preview};
 pub use result::{FailedStage, RunResult};
 pub use runner::Runner;
 pub use session_env::SessionEnv;
