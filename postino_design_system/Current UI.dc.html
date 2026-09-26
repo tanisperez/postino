@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/lucide-static@0.460.0/font/lucide.css">
+<style>body{margin:0;background:#1e1e1e;} a{color:#a3a3a3;} a:hover{color:#fafafa;}</style>
+</helmet>
+<section style="padding:48px;display:flex;flex-direction:column;gap:24px;font-family:Inter,system-ui,sans-serif;">
+  <div style="color:#fafafa;font-size:28px;font-weight:600;">Postino — current UI (recreation)</div>
+  <div style="color:#a3a3a3;font-size:15px;max-width:900px;">Built from <span style="font-family:'JetBrains Mono'">views/root.rs, sidebar.rs, request_editor.rs, response_view.rs, env_picker.rs</span> and the gpui-kit default dark theme. Reference for the redesign.</div>
+  <div style="display:flex;gap:48px;flex-wrap:wrap;">
+    <div id="0a" style="display:flex;flex-direction:column;gap:12px;">
+      <div style="color:#fafafa;font-size:14px;display:flex;gap:8px;align-items:center;"><span style="background:#3b3b3b;padding:2px 8px;border-radius:4px;">0a</span>Empty state</div>
+      <div style="width:1440px;height:900px;background:#0a0a0a;color:#fafafa;display:flex;flex-direction:column;border:1px solid #262626;overflow:hidden;">
+        <div style="height:40px;flex:none;display:flex;align-items:center;gap:4px;padding-left:12px;border-bottom:1px solid #262626;background:#0f0f0f;font-size:14px;">
+          <div>Postino</div><div style="flex:1;"></div>
+          <div style="display:flex;align-items:center;gap:4px;padding:0 8px;font-size:14px;"><i class="icon-inbox" style="font-size:14px;"></i>Import<i class="icon-chevron-down" style="font-size:14px;"></i></div>
+          <div style="display:flex;align-items:center;gap:4px;padding:0 8px;font-size:14px;"><i class="icon-globe" style="font-size:14px;"></i>No environment<i class="icon-chevron-down" style="font-size:14px;"></i></div>
+          <div style="display:flex;"><div style="width:40px;display:flex;justify-content:center;"><i class="icon-minus"></i></div><div style="width:40px;display:flex;justify-content:center;"><i class="icon-square" style="font-size:12px;"></i></div><div style="width:40px;display:flex;justify-content:center;"><i class="icon-x"></i></div></div>
+        </div>
+        <div style="flex:1;display:flex;min-height:0;">
+          <div style="width:280px;flex:none;border-right:1px solid #262626;display:flex;flex-direction:column;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;height:32px;font-size:14px;">Collections<div style="display:flex;gap:4px;"><div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;"><i class="icon-plus" style="font-size:14px;"></i></div><div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;"><i class="icon-folder" style="font-size:14px;"></i></div><div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;"><i class="icon-folder-open" style="font-size:14px;"></i></div></div></div>
+            <sc-for list="{{ tree }}" as="r" hint-placeholder-count="6">
+              <div style="height:38px;display:flex;align-items:center;gap:4px;padding:0 12px;font-size:14px;"><div style="width:{{ r.pad }}px;flex:none;"></div><i class="{{ r.icon }}" style="font-size:14px;"></i>{{ r.label }}</div>
+            </sc-for>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;">
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;color:#a3a3a3;font-size:16px;border-bottom:1px solid #262626;">Open a request from the sidebar to edit it here.</div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;color:#a3a3a3;font-size:16px;">Send a request to see its response here.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="0b" style="display:flex;flex-direction:column;gap:12px;">
+      <div style="color:#fafafa;font-size:14px;display:flex;gap:8px;align-items:center;"><span style="background:#3b3b3b;padding:2px 8px;border-radius:4px;">0b</span>Request open, send failed</div>
+      <div style="width:1440px;height:900px;background:#0a0a0a;color:#fafafa;display:flex;flex-direction:column;border:1px solid #262626;overflow:hidden;">
+        <div style="height:40px;flex:none;display:flex;align-items:center;gap:4px;padding-left:12px;border-bottom:1px solid #262626;background:#0f0f0f;font-size:14px;">
+          <div>Postino</div><div style="flex:1;"></div>
+          <div style="display:flex;align-items:center;gap:4px;padding:0 8px;"><i class="icon-inbox" style="font-size:14px;"></i>Import<i class="icon-chevron-down" style="font-size:14px;"></i></div>
+          <div style="display:flex;align-items:center;gap:4px;padding:0 8px;"><i class="icon-globe" style="font-size:14px;"></i>No environment<i class="icon-chevron-down" style="font-size:14px;"></i></div>
+          <div style="display:flex;"><div style="width:40px;display:flex;justify-content:center;"><i class="icon-minus"></i></div><div style="width:40px;display:flex;justify-content:center;"><i class="icon-square" style="font-size:12px;"></i></div><div style="width:40px;display:flex;justify-content:center;"><i class="icon-x"></i></div></div>
+        </div>
+        <div style="flex:1;display:flex;min-height:0;">
+          <div style="width:280px;flex:none;border-right:1px solid #262626;display:flex;flex-direction:column;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;height:32px;font-size:14px;">Collections<div style="display:flex;gap:4px;"><div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;"><i class="icon-plus" style="font-size:14px;"></i></div><div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;"><i class="icon-folder" style="font-size:14px;"></i></div><div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;"><i class="icon-folder-open" style="font-size:14px;"></i></div></div></div>
+            <sc-for list="{{ tree2 }}" as="r" hint-placeholder-count="6">
+              <div style="height:38px;display:flex;align-items:center;gap:4px;padding:0 12px;font-size:14px;background:{{ r.bg }};"><div style="width:{{ r.pad }}px;flex:none;"></div><i class="{{ r.icon }}" style="font-size:14px;"></i>{{ r.label }}</div>
+            </sc-for>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+            <div style="height:38px;flex:none;display:flex;background:#111111;border-bottom:1px solid #262626;">
+              <div style="display:flex;align-items:center;gap:24px;padding:0 12px;background:#0a0a0a;border-right:1px solid #262626;font-size:14px;margin-bottom:-1px;">auth/login.postino<i class="icon-x" style="font-size:12px;"></i></div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;min-height:0;border-bottom:1px solid #262626;">
+              <div style="display:flex;gap:10px;padding:10px 8px;align-items:center;">
+                <div style="height:30px;border:1px solid #262626;border-radius:6px;display:flex;align-items:center;gap:6px;padding:0 10px;font-size:14px;">POST<i class="icon-chevron-down" style="font-size:13px;"></i></div>
+                <div style="flex:1;height:36px;border:1px solid #262626;border-radius:6px;display:flex;align-items:center;padding:0 12px;font-size:15px;">{{ urlText }}</div>
+                <div style="height:32px;background:#fafafa;color:#0a0a0a;border-radius:6px;display:flex;align-items:center;gap:6px;padding:0 10px;font-size:15px;"><i class="icon-play" style="font-size:14px;"></i>Send</div>
+              </div>
+              <div style="height:38px;display:flex;background:#111111;border-top:1px solid #262626;border-bottom:1px solid #262626;font-size:15px;color:#d4d4d4;">
+                <sc-for list="{{ reqTabs }}" as="t" hint-placeholder-count="6">
+                  <div style="display:flex;align-items:center;padding:0 15px;background:{{ t.bg }};color:{{ t.color }};border-left:1px solid {{ t.bd }};border-right:1px solid {{ t.bd }};">{{ t.label }}</div>
+                </sc-for>
+              </div>
+              <div style="padding:10px 8px 0;"><div style="height:28px;border:1px solid #262626;border-radius:6px;display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:15px;">JSON<i class="icon-chevron-down" style="font-size:13px;"></i></div></div>
+              <div style="flex:1;margin:10px 8px;border:1px solid #262626;border-radius:6px;padding:10px 12px 0 0;font-family:'JetBrains Mono',monospace;font-size:14px;">
+                <div style="display:flex;background:#171717;height:24px;align-items:center;"><span style="width:48px;text-align:right;padding-right:36px;color:#fafafa;">1</span><span>{ <span style="color:#a5b4fc;">"username"</span>: <span style="color:#86efac;">"&#123;&#123;username&#125;&#125;"</span>, <span style="color:#a5b4fc;">"password"</span>: <span style="color:#86efac;">"&#123;&#123;password&#125;&#125;"</span> }</span></div>
+              </div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
+              <div style="display:flex;gap:8px;align-items:center;padding:12px 8px;font-size:18px;color:#f87171;"><i class="icon-triangle-alert" style="font-size:15px;color:#fafafa;"></i>No response</div>
+              <div style="background:#f47272;color:#dc2626;padding:6px 8px;display:flex;flex-direction:column;gap:8px;font-size:15px;">
+                <sc-for list="{{ warnings }}" as="w" hint-placeholder-count="4"><div style="display:flex;gap:10px;align-items:center;"><i class="icon-triangle-alert" style="font-size:14px;"></i>{{ w }}</div></sc-for>
+              </div>
+              <div style="height:38px;display:flex;background:#111111;border-bottom:1px solid #262626;font-size:15px;color:#d4d4d4;">
+                <sc-for list="{{ resTabs }}" as="t" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;padding:0 15px;background:{{ t.bg }};color:{{ t.color }};border-left:1px solid {{ t.bd }};border-right:1px solid {{ t.bd }};">{{ t.label }}</div>
+                </sc-for>
+              </div>
+              <div style="padding:14px 8px;color:#a3a3a3;font-size:17px;">No response body.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const rows = [["auth",0,"icon-folder-open"],["login",14,"icon-file"],["users",0,"icon-folder-open"],["create",14,"icon-file"],["list",14,"icon-file"],["health",0,"icon-file"]];
+    const tree = rows.map(([label,pad,icon]) => ({label,pad,icon,bg:"transparent"}));
+    const tree2 = tree.map(r => ({...r, bg: r.label==="login" ? "#131b2b" : r.label==="auth" ? "#141414" : "transparent"}));
+    const tabs = (labels, sel) => labels.map(l => ({label:l, bg: l===sel?"#0a0a0a":"transparent", color: l===sel?"#fafafa":"#d4d4d4", bd: l===sel?"#262626":"transparent"}));
+    return {
+      tree, tree2,
+      urlText: "{{baseUrl}}/auth/login",
+      reqTabs: tabs(["Params","Headers","Body","Pre-request","Post-response","Docs"], "Body"),
+      resTabs: tabs(["Body","Headers","Tests","Console"], "Body"),
+      warnings: ["unknown variable `baseUrl`","unknown variable `username`","unknown variable `password`","Sending failed: could not build the request: invalid uri character"]
+    };
+  }
+}
+</script>
+</body>
+</html>

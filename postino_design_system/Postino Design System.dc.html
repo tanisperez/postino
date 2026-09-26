@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/lucide-static@0.460.0/font/lucide.css">
+<style>body{margin:0;background:#e9eaee;} a{color:#3f47c4;} a:hover{color:#1b1c22;}</style>
+</helmet>
+<section style="padding:64px;display:flex;flex-direction:column;gap:40px;font-family:'Geist',system-ui,sans-serif;color:#1b1c22;">
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:1000px;">
+    <div style="font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#4f57d8;">Postino · Design system v0.1</div>
+    <div style="font-size:44px;font-weight:600;letter-spacing:-.02em;">Nativo, compacto y local</div>
+    <div style="font-size:17px;line-height:1.55;color:#5c606e;text-wrap:pretty;">Un sistema para una app de escritorio en gpui que se siente en casa en Linux, Windows y macOS. Neutros fríos, un único acento índigo, radios suaves y densidad compacta. Nada de naranja ni iconografía postal. Ver también <a href="Postino Screens.dc.html">Postino Screens</a> y la <a href="Current UI.dc.html">UI actual</a>.</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;max-width:1400px;">
+    <sc-for list="{{ plan }}" as="p" hint-placeholder-count="6">
+      <div style="background:#fff;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:8px;box-shadow:0 0 0 1px #dfe1e7;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="font-family:'Geist Mono',monospace;font-size:12px;font-weight:600;color:#4f57d8;background:#e8e9fd;border-radius:5px;padding:2px 6px;">{{ p.n }}</span><span style="font-weight:600;font-size:15px;">{{ p.title }}</span></div>
+        <div style="font-size:14px;line-height:1.5;color:#5c606e;text-wrap:pretty;">{{ p.body }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:14px;max-width:1400px;">
+    <div style="font-size:24px;font-weight:600;">Color</div>
+    <div style="font-size:14px;color:#5c606e;max-width:900px;line-height:1.5;">Cada token tiene valor claro y oscuro. La columna gpui indica el campo de <span style="font-family:'Geist Mono',monospace;">Theme</span> de gpui-kit al que se asignaría (sugerido; se cargan como ficheros de tema JSON).</div>
+    <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #dfe1e7;overflow:hidden;">
+      <div style="display:grid;grid-template-columns:160px minmax(0,1fr) 140px 140px minmax(0,200px);padding:0 20px;height:38px;align-items:center;font-size:12px;font-weight:600;color:#8b8e9a;border-bottom:1px solid #e3e5ea;"><span>Token</span><span>Uso</span><span>Light</span><span>Dark</span><span>gpui</span></div>
+      <sc-for list="{{ tokens }}" as="t" hint-placeholder-count="20">
+        <div style="display:grid;grid-template-columns:160px minmax(0,1fr) 140px 140px minmax(0,200px);padding:0 20px;height:40px;align-items:center;font-size:13px;border-bottom:1px solid #eef0f3;">
+          <span style="font-family:'Geist Mono',monospace;font-size:12.5px;">{{ t.name }}</span>
+          <span style="color:#5c606e;">{{ t.use }}</span>
+          <span style="display:flex;align-items:center;gap:8px;font-family:'Geist Mono',monospace;font-size:12px;"><span style="width:22px;height:22px;border-radius:6px;background:{{ t.light }};box-shadow:inset 0 0 0 1px rgba(0,0,0,.1);"></span>{{ t.light }}</span>
+          <span style="display:flex;align-items:center;gap:8px;font-family:'Geist Mono',monospace;font-size:12px;"><span style="width:22px;height:22px;border-radius:6px;background:{{ t.dark }};box-shadow:inset 0 0 0 1px rgba(0,0,0,.1);"></span>{{ t.dark }}</span>
+          <span style="font-family:'Geist Mono',monospace;font-size:12px;color:#8b8e9a;">{{ t.gpui }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;max-width:1400px;">
+    <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #dfe1e7;padding:24px;display:flex;flex-direction:column;gap:16px;">
+      <div style="font-size:24px;font-weight:600;">Tipografía</div>
+      <div style="font-size:14px;color:#5c606e;line-height:1.5;">Geist y Geist Mono (OFL), empaquetadas con la app para que se vea igual en las tres plataformas. Base 13 px, ajustable en Settings.</div>
+      <sc-for list="{{ type }}" as="t" hint-placeholder-count="7">
+        <div style="display:grid;grid-template-columns:130px 1fr;align-items:baseline;gap:16px;border-top:1px solid #eef0f3;padding-top:12px;">
+          <span style="font-family:'Geist Mono',monospace;font-size:12px;color:#8b8e9a;">{{ t.spec }}</span>
+          <span style="font-family:{{ t.ff }};font-size:{{ t.size }};font-weight:{{ t.w }};letter-spacing:{{ t.ls }};text-transform:{{ t.tt }};">{{ t.sample }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #dfe1e7;padding:24px;display:flex;flex-direction:column;gap:14px;">
+        <div style="font-size:24px;font-weight:600;">Espaciado</div>
+        <div style="font-size:14px;color:#5c606e;">Base 4 px. Filas 26 px, controles 30 px, barras 36–40 px.</div>
+        <div style="display:flex;align-items:flex-end;gap:14px;">
+          <sc-for list="{{ space }}" as="s" hint-placeholder-count="8"><div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:{{ s.px }};height:{{ s.px }};background:#4f57d8;border-radius:2px;"></div><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#8b8e9a;">{{ s.v }}</span></div></sc-for>
+        </div>
+      </div>
+      <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #dfe1e7;padding:24px;display:flex;flex-direction:column;gap:14px;">
+        <div style="font-size:24px;font-weight:600;">Radios y elevación</div>
+        <div style="display:flex;gap:16px;align-items:flex-end;">
+          <sc-for list="{{ radii }}" as="r" hint-placeholder-count="5"><div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:56px;height:56px;background:#f4f5f7;border:1px solid #cdd0d8;border-radius:{{ r.px }};"></div><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#8b8e9a;">{{ r.label }}</span></div></sc-for>
+        </div>
+        <div style="font-size:13px;color:#5c606e;line-height:1.6;">Tres niveles: plano (paneles, solo borde), elevado (inputs y cards, borde + fondo raised) y overlay (menús, modales: sombra <span style="font-family:'Geist Mono',monospace;">--shadow</span>). Sin sombras en paneles fijos.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:14px;">
+    <div style="font-size:24px;font-weight:600;">Componentes</div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:13px;font-weight:600;color:#5c606e;">Light</div>
+        <div style="border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px #dfe1e7;--bg:#fcfcfd;--surface:#f4f5f7;--raised:#ffffff;--overlay:#ffffff;--border:#e3e5ea;--border-strong:#cdd0d8;--fg:#1b1c22;--fg-muted:#5c606e;--fg-subtle:#8b8e9a;--accent:#4f57d8;--accent-fg:#ffffff;--accent-text:#3f47c4;--accent-subtle:#e8e9fd;--hover:#eceef2;--success:#1d8657;--success-subtle:#e2f4ea;--warning:#9a6500;--warning-subtle:#fbf0d9;--danger:#cf3535;--danger-subtle:#fde7e7;--info:#1c6fb0;--info-subtle:#e1eef9;--m-get:#1d8657;--m-post:#9a6500;--m-put:#1c6fb0;--m-patch:#7a4fd6;--m-delete:#cf3535;--syn-key:#3f47c4;--syn-str:#1d7a4f;--syn-num:#9a6500;--syn-bool:#b03a78;--shadow:0 12px 32px rgba(20,22,40,.14),0 0 0 1px rgba(20,22,40,.06);">
+          <dc-import name="Components" hint-size="680px,1100px"></dc-import>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:13px;font-weight:600;color:#5c606e;">Dark</div>
+        <div style="border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px #dfe1e7;--bg:#15161a;--surface:#1b1c21;--raised:#23252c;--overlay:#262830;--border:#2c2e36;--border-strong:#3b3e48;--fg:#e9eaee;--fg-muted:#a0a3ae;--fg-subtle:#6f7280;--accent:#5b63e6;--accent-fg:#ffffff;--accent-text:#a3a9ff;--accent-subtle:#272b4d;--hover:#25272e;--success:#4fc88f;--success-subtle:#15302a;--warning:#e8b75a;--warning-subtle:#352b15;--danger:#f27171;--danger-subtle:#3b1e21;--info:#62b3f0;--info-subtle:#162a3b;--m-get:#4fc88f;--m-post:#e8b75a;--m-put:#62b3f0;--m-patch:#b597f7;--m-delete:#f27171;--syn-key:#a3a9ff;--syn-str:#86d7a5;--syn-num:#e8b75a;--syn-bool:#f3a2c6;--shadow:0 12px 32px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.04);">
+          <dc-import name="Components" hint-size="680px,1100px"></dc-import>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const t = (name,use,light,dark,gpui) => ({name,use,light,dark,gpui});
+    return {
+      plan: [
+        {n:"01",title:"Fundamentos",body:"Tokens de color, tipografía, espaciado y radios. Se exportan como dos temas JSON (postino-light / postino-dark) para gpui-kit; el modo System sigue usando sync_system_appearance."},
+        {n:"02",title:"Componentes",body:"Wrappers propios sobre gpui-kit: UrlBar, MethodBadge, StatusBadge, VariableChip, KeyValueTable, InlineMessage, SegmentedControl. Un solo sitio para cada decisión visual."},
+        {n:"03",title:"Pantalla principal",body:"Dos direcciones: A (paneles planos, request arriba y response abajo) y B (cards insetadas, request y response lado a lado). Elegir una y llevarla a código."},
+        {n:"04",title:"Settings",body:"Ventana modal con navegación lateral. Primera sección: Apariencia (tema, fuente, tamaño de interfaz y de editor). Se guarda en settings.toml."},
+        {n:"05",title:"Pruebas de rendimiento",body:"Nuevo tipo de pestaña. Configuración de VUs, duración y ramp-up; métricas en vivo; ejecución de colecciones; histórico en .postino/runs/ para comparar."},
+        {n:"06",title:"Autorización y OAuth",body:"Pestaña Auth en el editor (Basic, Bearer, API key, OAuth 2.0). Los tokens obtenidos se guardan en el .local.env, nunca en el fichero versionado."}
+      ],
+      tokens: [
+        t("--bg","Fondo de editor y paneles de contenido","#fcfcfd","#15161a","background"),
+        t("--surface","Sidebar, title bar, barras de pestañas","#f4f5f7","#1b1c21","sidebar / title_bar / tab_bar"),
+        t("--raised","Inputs, cards, editor de código","#ffffff","#23252c","input · secondary"),
+        t("--overlay","Menús, popovers, modales","#ffffff","#262830","popover"),
+        t("--border","Separadores y bordes por defecto","#e3e5ea","#2c2e36","border"),
+        t("--border-strong","Bordes de controles","#cdd0d8","#3b3e48","input (border)"),
+        t("--fg","Texto principal","#1b1c22","#e9eaee","foreground"),
+        t("--fg-muted","Texto secundario, pestañas inactivas","#5c606e","#a0a3ae","muted_foreground"),
+        t("--fg-subtle","Placeholders, iconos, números de línea","#8b8e9a","#6f7280","—"),
+        t("--accent","Botón primario, foco, pestaña activa","#4f57d8","#5b63e6","primary"),
+        t("--accent-text","Texto y enlaces en acento","#3f47c4","#a3a9ff","link"),
+        t("--accent-subtle","Selección, chips de variable","#e8e9fd","#272b4d","list_active · accent"),
+        t("--hover","Hover de filas y botones ghost","#eceef2","#25272e","list_hover"),
+        t("--success","2xx, tests OK, GET","#1d8657","#4fc88f","success"),
+        t("--warning","4xx, avisos, POST","#9a6500","#e8b75a","warning"),
+        t("--danger","5xx, errores, DELETE","#cf3535","#f27171","danger"),
+        t("--info","3xx, PUT","#1c6fb0","#62b3f0","info"),
+        t("--m-patch","Método PATCH","#7a4fd6","#b597f7","—"),
+        t("--syn-key","Claves JSON","#3f47c4","#a3a9ff","highlight theme"),
+        t("--syn-str","Strings","#1d7a4f","#86d7a5","highlight theme")
+      ],
+      type: [
+        {spec:"20 / 600",sample:"Run #12",size:"20px",w:600,ff:"Geist",ls:"-.01em",tt:"none"},
+        {spec:"15 / 600",sample:"Appearance",size:"15px",w:600,ff:"Geist",ls:"0",tt:"none"},
+        {spec:"13 / 500",sample:"Send · Body · Headers",size:"13px",w:500,ff:"Geist",ls:"0",tt:"none"},
+        {spec:"13 / 400",sample:"Open a request from the sidebar",size:"13px",w:400,ff:"Geist",ls:"0",tt:"none"},
+        {spec:"12 / 400",sample:"142 ms · 1.2 KB",size:"12px",w:400,ff:"Geist",ls:"0",tt:"none"},
+        {spec:"11 / 600 caps",sample:"Collections",size:"11px",w:600,ff:"Geist",ls:".06em",tt:"uppercase"},
+        {spec:"mono 12.5",sample:"{ \"token\": \"eyJhbGci…\" }",size:"12.5px",w:400,ff:"'Geist Mono'",ls:"0",tt:"none"},
+        {spec:"mono 10 / 600",sample:"GET  POST  DELETE",size:"10px",w:600,ff:"'Geist Mono'",ls:"0",tt:"none"}
+      ],
+      space: [2,4,6,8,12,16,20,24].map(v=>({v,px:v*2+"px"})),
+      radii: [["4","4px"],["6","6px"],["8","8px"],["10","10px"],["14","14px"]].map(([label,px])=>({label,px}))
+    };
+  }
+}
+</script>
+</body>
+</html>

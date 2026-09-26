@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="white-space:nowrap;width:1440px;height:900px;background:var(--surface);color:var(--fg);font-family:'Geist',system-ui,sans-serif;font-size:13px;display:flex;flex-direction:column;overflow:hidden;">
+  <div style="height:42px;flex:none;display:flex;align-items:center;gap:6px;padding-left:12px;">
+    <div style="width:252px;flex:none;display:flex;align-items:center;gap:8px;">
+      <div style="width:18px;height:18px;border-radius:5px;background:var(--accent);color:var(--accent-fg);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;">P</div>
+      <div style="font-weight:600;">api-workspace</div><i class="icon-chevrons-up-down" style="font-size:12px;color:var(--fg-subtle);"></i>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;gap:4px;min-width:0;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+        <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 8px 0 10px;border-radius:8px;background:{{ t.bg }};color:{{ t.fg }};box-shadow:{{ t.sh }};">
+          <i class="{{ t.icon }}" style="font-size:13px;color:var(--fg-subtle);"></i>
+          <span style="font-family:'Geist Mono',monospace;font-size:10px;font-weight:600;color:{{ t.mc }};">{{ t.m }}</span>{{ t.label }}
+          <i class="{{ t.end }}" style="font-size:{{ t.endSize }};color:var(--fg-subtle);"></i>
+        </div>
+      </sc-for>
+      <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:var(--fg-subtle);"><i class="icon-plus" style="font-size:14px;"></i></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:8px;color:var(--fg-muted);"><span style="width:7px;height:7px;border-radius:50%;border:1.5px solid var(--fg-subtle);box-sizing:border-box;"></span>No environment<i class="icon-chevron-down" style="font-size:12px;"></i></div>
+    <div style="width:30px;height:28px;display:flex;align-items:center;justify-content:center;color:var(--fg-muted);"><i class="icon-settings" style="font-size:15px;"></i></div>
+    <div style="display:flex;color:var(--fg-muted);"><div style="width:40px;height:42px;display:flex;align-items:center;justify-content:center;"><i class="icon-minus" style="font-size:14px;"></i></div><div style="width:40px;height:42px;display:flex;align-items:center;justify-content:center;"><i class="icon-square" style="font-size:11px;"></i></div><div style="width:40px;height:42px;display:flex;align-items:center;justify-content:center;"><i class="icon-x" style="font-size:15px;"></i></div></div>
+  </div>
+  <div style="flex:1;display:flex;min-height:0;gap:8px;padding:0 8px 8px;">
+    <div style="width:256px;flex:none;display:flex;flex-direction:column;">
+      <div style="height:30px;margin:0 2px 8px;border-radius:8px;background:var(--raised);border:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 10px;color:var(--fg-subtle);"><i class="icon-search" style="font-size:13px;"></i><span style="flex:1;">Search</span><span style="font-family:'Geist Mono',monospace;font-size:11px;">Ctrl K</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px 4px 10px;color:var(--fg-muted);font-weight:500;">Collections<div style="display:flex;gap:2px;"><div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;"><i class="icon-plus" style="font-size:14px;"></i></div><div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;"><i class="icon-ellipsis" style="font-size:14px;"></i></div></div></div>
+      <div style="display:flex;flex-direction:column;gap:1px;">
+        <sc-for list="{{ tree }}" as="r" hint-placeholder-count="7">
+          <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 8px;border-radius:7px;background:{{ r.bg }};box-shadow:{{ r.sh }};">
+            <div style="width:{{ r.pad }}px;flex:none;"></div>
+            <i class="{{ r.icon }}" style="font-size:14px;color:var(--fg-subtle);"></i>
+            <span style="font-family:'Geist Mono',monospace;font-size:9.5px;font-weight:600;padding:1px 4px;border-radius:4px;background:{{ r.mbg }};color:{{ r.mc }};">{{ r.m }}</span>
+            <span style="flex:1;">{{ r.label }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex:1;"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px 4px 10px;color:var(--fg-muted);font-weight:500;">Environments<i class="icon-plus" style="font-size:14px;"></i></div>
+      <sc-for list="{{ envs }}" as="e" hint-placeholder-count="3">
+        <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:7px;"><span style="width:7px;height:7px;border-radius:50%;background:{{ e.c }};"></span><span style="flex:1;">{{ e.name }}</span><span style="font-size:11px;color:var(--fg-subtle);">{{ e.note }}</span></div>
+      </sc-for>
+      <div style="margin-top:8px;padding:8px 10px;display:flex;align-items:center;gap:8px;color:var(--fg-subtle);font-size:12px;"><i class="icon-lock" style="font-size:12px;"></i>Stored on this device only</div>
+    </div>
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:6px;color:var(--fg-muted);font-size:12px;">auth<i class="icon-chevron-right" style="font-size:11px;"></i><span style="color:var(--fg);font-weight:500;">login</span></div>
+        <div style="flex:1;"></div>
+        <div style="display:flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:6px;color:var(--fg-muted);font-size:12px;"><i class="icon-code" style="font-size:13px;"></i>Code</div>
+        <div style="display:flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:6px;color:var(--fg-muted);font-size:12px;"><i class="icon-save" style="font-size:13px;"></i>Save</div>
+      </div>
+      <div style="display:flex;gap:8px;padding:12px 14px;">
+        <div style="height:34px;display:flex;align-items:center;gap:6px;padding:0 10px 0 12px;border-radius:8px;background:var(--raised);border:1px solid var(--border-strong);font-family:'Geist Mono',monospace;font-weight:600;font-size:12px;color:var(--m-post);">POST<i class="icon-chevron-down" style="font-size:12px;color:var(--fg-subtle);"></i></div>
+        <div style="flex:1;height:34px;display:flex;align-items:center;padding:0 12px;border-radius:8px;background:var(--raised);border:1px solid var(--border-strong);font-family:'Geist Mono',monospace;font-size:12.5px;">
+          <span style="color:var(--danger);text-decoration:underline wavy var(--danger);text-underline-offset:4px;">{{ baseUrl }}</span><span>/auth/login</span>
+        </div>
+        <div style="height:34px;display:flex;align-items:center;gap:8px;padding:0 16px;border-radius:8px;background:var(--accent);color:var(--accent-fg);font-weight:500;"><i class="icon-send-horizontal" style="font-size:14px;"></i>Send</div>
+      </div>
+      <div style="display:flex;gap:2px;padding:0 10px 8px;border-bottom:1px solid var(--border);">
+        <sc-for list="{{ reqTabs }}" as="t" hint-placeholder-count="6">
+          <div style="height:28px;display:flex;align-items:center;gap:6px;padding:0 10px;border-radius:7px;background:{{ t.bg }};color:{{ t.fg }};font-weight:{{ t.fw }};">{{ t.label }}<span style="font-size:11px;color:var(--fg-subtle);">{{ t.count }}</span></div>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;padding:6px 14px;">
+        <div style="display:grid;grid-template-columns:28px 1fr 1.4fr 28px;height:30px;align-items:center;color:var(--fg-subtle);font-size:11.5px;font-weight:500;border-bottom:1px solid var(--border);"><span></span><span>Key</span><span>Value</span><span></span></div>
+        <sc-for list="{{ headers }}" as="h" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:28px 1fr 1.4fr 28px;height:32px;align-items:center;border-bottom:1px solid var(--border);color:{{ h.fg }};">
+            <span style="width:14px;height:14px;border-radius:4px;display:flex;align-items:center;justify-content:center;background:{{ h.cbg }};border:1px solid {{ h.cbd }};color:{{ h.ic }};"><i class="icon-check" style="font-size:10px;"></i></span>
+            <span style="font-family:'Geist Mono',monospace;font-size:12.5px;">{{ h.k }}</span>
+            <span style="font-family:'Geist Mono',monospace;font-size:12.5px;">{{ h.v }}</span>
+            <i class="icon-trash-2" style="font-size:13px;color:var(--fg-subtle);"></i>
+          </div>
+        </sc-for>
+        <div style="display:grid;grid-template-columns:28px 1fr 1.4fr 28px;height:32px;align-items:center;color:var(--fg-subtle);font-family:'Geist Mono',monospace;font-size:12.5px;"><span></span><span>Add header</span><span>Value</span><span></span></div>
+      </div>
+    </div>
+    <div style="width:560px;flex:none;display:flex;flex-direction:column;background:var(--bg);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);">
+        <div style="font-weight:500;">Response</div>
+        <div style="display:flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:6px;background:var(--danger-subtle);color:var(--danger);font-weight:600;font-size:12px;"><i class="icon-circle-x" style="font-size:12px;"></i>Not sent</div>
+        <div style="flex:1;"></div>
+        <div style="color:var(--fg-subtle);font-size:12px;">— ms · — KB</div>
+      </div>
+      <div style="padding:16px 14px;display:flex;flex-direction:column;gap:12px;">
+        <div style="border:1px solid var(--border);border-radius:10px;background:var(--raised);overflow:hidden;">
+          <div style="display:flex;gap:10px;padding:12px 14px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:8px;background:var(--danger-subtle);color:var(--danger);display:flex;align-items:center;justify-content:center;flex:none;"><i class="icon-triangle-alert" style="font-size:15px;"></i></div>
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <div style="font-weight:600;font-size:14px;">Could not build the request</div>
+              <div style="color:var(--fg-muted);text-wrap:pretty;white-space:normal;">The URL contains an invalid character because 3 variables are not defined. Select an environment or define them.</div>
+            </div>
+          </div>
+          <sc-for list="{{ issues }}" as="i" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:10px;padding:0 14px;height:36px;border-top:1px solid var(--border);">
+              <i class="icon-variable" style="font-size:13px;color:var(--warning);"></i>
+              <span style="font-family:'Geist Mono',monospace;font-size:12.5px;flex:1;">{{ i.name }}<span style="color:var(--fg-subtle);font-family:'Geist',sans-serif;font-size:12px;">  · {{ i.where }}</span></span>
+              <span style="color:var(--accent-text);font-size:12px;font-weight:500;">Define</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div style="height:28px;display:flex;align-items:center;gap:6px;padding:0 12px;border-radius:7px;border:1px solid var(--border-strong);background:var(--raised);font-weight:500;"><span style="width:7px;height:7px;border-radius:50%;background:var(--success);"></span>Use "local" environment</div>
+          <div style="height:28px;display:flex;align-items:center;padding:0 12px;border-radius:7px;color:var(--fg-muted);">Open environments</div>
+        </div>
+      </div>
+      <div style="flex:1;"></div>
+      <div style="display:flex;gap:2px;padding:8px 10px;border-top:1px solid var(--border);color:var(--fg-muted);">
+        <sc-for list="{{ resTabs }}" as="t" hint-placeholder-count="4"><div style="height:26px;display:flex;align-items:center;padding:0 10px;border-radius:7px;background:{{ t.bg }};color:{{ t.fg }};font-weight:{{ t.fw }};">{{ t.label }}</div></sc-for>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  renderVals() {
+    const M = {GET:"--m-get",POST:"--m-post",PUT:"--m-put",PATCH:"--m-patch",DELETE:"--m-delete"};
+    const rows = [["auth",0,"icon-folder-open",""],["login",18,"","POST",true],["refresh",18,"","POST"],["users",0,"icon-folder-open",""],["create",18,"","POST"],["list",18,"","GET"],["delete",18,"","DELETE"],["health",0,"","GET"]];
+    const tree = rows.map(([label,pad,icon,m,sel]) => ({label,pad,icon,m,
+      mc: m?`var(${M[m]})`:"transparent", mbg: m?`color-mix(in oklab, var(${M[m]}) 14%, transparent)`:"transparent",
+      bg: sel?"var(--bg)":"transparent", sh: sel?"0 0 0 1px var(--border), 0 1px 2px rgba(0,0,0,.08)":"none"}));
+    const tabs = [{m:"POST",label:"login",active:true,dirty:true},{m:"GET",label:"list"},{label:"Load test · users",icon:"icon-gauge"}]
+      .map(t=>({icon:t.icon||"",m:t.m||"",label:t.label,mc:t.m?`var(${M[t.m]})`:"",bg:t.active?"var(--bg)":"transparent",fg:t.active?"var(--fg)":"var(--fg-muted)",
+        sh:t.active?"0 0 0 1px var(--border), 0 1px 2px rgba(0,0,0,.08)":"none",end:t.dirty?"icon-circle":"icon-x",endSize:t.dirty?"8px":"12px"}));
+    const pill = (list, sel, counts={}) => list.map(l=>({label:l,count:counts[l]||"",bg:l===sel?"var(--hover)":"transparent",fg:l===sel?"var(--fg)":"var(--fg-muted)",fw:l===sel?500:400}));
+    return {
+      tree, tabs, baseUrl:"{{baseUrl}}",
+      envs:[{name:"local",c:"var(--success)",note:"3 vars"},{name:"staging",c:"var(--warning)",note:"5 vars"},{name:"production",c:"var(--danger)",note:"5 vars"}],
+      reqTabs: pill(["Params","Headers","Body","Pre-request","Post-response","Docs"],"Headers",{Headers:"3",Body:"JSON"}),
+      resTabs: pill(["Body","Headers","Tests","Console"],"Body"),
+      headers:[
+        {k:"Content-Type",v:"application/json",on:true},
+        {k:"Accept",v:"application/json",on:true},
+        {k:"X-Request-Id",v:"{{uuid()}}",on:false}
+      ].map(h=>({...h,fg:h.on?"var(--fg)":"var(--fg-subtle)",cbg:h.on?"var(--accent)":"transparent",ic:h.on?"var(--accent-fg)":"transparent",cbd:h.on?"var(--accent)":"var(--border-strong)"})),
+      issues:[{name:"baseUrl",where:"URL"},{name:"username",where:"Body"},{name:"password",where:"Body"}]
+    };
+  }
+}
+</script>
+</body>
+</html>

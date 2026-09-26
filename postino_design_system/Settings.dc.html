@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="white-space:nowrap;width:1440px;height:900px;position:relative;overflow:hidden;font-family:'Geist',system-ui,sans-serif;font-size:13px;color:var(--fg);">
+  <dc-import name="Main A" hint-size="1440px,900px"></dc-import>
+  <div style="position:absolute;inset:0;background:rgba(10,11,16,.45);display:flex;align-items:center;justify-content:center;">
+    <div style="white-space:normal;width:800px;height:720px;background:var(--overlay);border-radius:14px;box-shadow:var(--shadow);display:flex;overflow:hidden;">
+      <div style="width:188px;flex:none;background:var(--surface);border-right:1px solid var(--border);padding:14px 10px;display:flex;flex-direction:column;gap:2px;">
+        <div style="padding:2px 8px 10px;font-weight:600;font-size:14px;">Settings</div>
+        <div style="height:28px;display:flex;align-items:center;gap:8px;padding:0 8px;border-radius:7px;background:var(--accent-subtle);color:var(--accent-text);font-weight:500;"><i class="icon-palette" style="font-size:14px;"></i>Appearance</div>
+        <div style="flex:1;"></div>
+        <div style="padding:8px;color:var(--fg-subtle);font-size:11.5px;line-height:1.5;white-space:normal;">Saved to<br><span style="font-family:'Geist Mono',monospace;word-break:break-all;">~/.config/postino/settings.toml</span></div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+        <div style="height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid var(--border);">
+          <div style="font-size:15px;font-weight:600;">Appearance</div>
+          <div style="width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--fg-muted);"><i class="icon-x" style="font-size:15px;"></i></div>
+        </div>
+        <div style="flex:1;padding:20px;display:flex;flex-direction:column;gap:22px;overflow:hidden;">
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;flex-direction:column;gap:2px;"><div style="font-weight:500;">Theme</div><div style="color:var(--fg-muted);font-size:12px;white-space:normal;">System follows your OS light/dark setting and switches live.</div></div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+              <sc-for list="{{ themes }}" as="t" hint-placeholder-count="3">
+                <div onClick="{{ t.pick }}" style="display:flex;flex-direction:column;gap:8px;cursor:pointer;">
+                  <div style="height:92px;border-radius:10px;overflow:hidden;display:flex;box-shadow:{{ t.ring }};background:{{ t.bgR }};">
+                    <div style="flex:1;background:{{ t.bgL }};padding:10px 8px;display:flex;flex-direction:column;gap:5px;"><div style="height:5px;width:70%;border-radius:3px;background:{{ t.lineL }};"></div><div style="height:5px;width:50%;border-radius:3px;background:{{ t.accentL }};"></div><div style="height:5px;width:60%;border-radius:3px;background:{{ t.lineL }};"></div></div>
+                    <div style="flex:2;padding:10px;display:flex;flex-direction:column;gap:6px;background:{{ t.bgM }};"><div style="height:12px;border-radius:4px;border:1px solid {{ t.lineM }};"></div><div style="height:5px;width:80%;border-radius:3px;background:{{ t.lineM }};"></div><div style="height:5px;width:55%;border-radius:3px;background:{{ t.lineM }};"></div></div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:50%;box-sizing:border-box;border:{{ t.radio }};"></span>{{ t.label }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="height:1px;background:var(--border);"></div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div style="font-weight:500;">Interface</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+              <div style="display:flex;flex-direction:column;gap:2px;"><div>Font</div><div style="color:var(--fg-muted);font-size:12px;">Geist is bundled, so every platform looks the same.</div></div>
+              <div style="width:220px;height:30px;border-radius:7px;border:1px solid var(--border-strong);background:var(--raised);display:flex;align-items:center;justify-content:space-between;padding:0 10px;">Geist (bundled)<i class="icon-chevrons-up-down" style="font-size:12px;color:var(--fg-subtle);"></i></div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+              <div>Font size</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div onClick="{{ uiDown }}" style="width:30px;height:30px;border-radius:7px;border:1px solid var(--border-strong);background:var(--raised);display:flex;align-items:center;justify-content:center;cursor:pointer;"><i class="icon-minus" style="font-size:13px;"></i></div>
+                <div style="width:64px;text-align:center;font-family:'Geist Mono',monospace;">{{ uiSize }} px</div>
+                <div onClick="{{ uiUp }}" style="width:30px;height:30px;border-radius:7px;border:1px solid var(--border-strong);background:var(--raised);display:flex;align-items:center;justify-content:center;cursor:pointer;"><i class="icon-plus" style="font-size:13px;"></i></div>
+              </div>
+            </div>
+          </div>
+          <div style="height:1px;background:var(--border);"></div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div style="font-weight:500;">Editor</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+              <div>Monospace font</div>
+              <div style="width:220px;height:30px;border-radius:7px;border:1px solid var(--border-strong);background:var(--raised);display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-family:'Geist Mono',monospace;font-size:12.5px;">Geist Mono (bundled)<i class="icon-chevrons-up-down" style="font-size:12px;color:var(--fg-subtle);"></i></div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+              <div>Font size</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div onClick="{{ edDown }}" style="width:30px;height:30px;border-radius:7px;border:1px solid var(--border-strong);background:var(--raised);display:flex;align-items:center;justify-content:center;cursor:pointer;"><i class="icon-minus" style="font-size:13px;"></i></div>
+                <div style="width:64px;text-align:center;font-family:'Geist Mono',monospace;">{{ edSize }} px</div>
+                <div onClick="{{ edUp }}" style="width:30px;height:30px;border-radius:7px;border:1px solid var(--border-strong);background:var(--raised);display:flex;align-items:center;justify-content:center;cursor:pointer;"><i class="icon-plus" style="font-size:13px;"></i></div>
+              </div>
+            </div>
+            <div style="border:1px solid var(--border);border-radius:8px;background:var(--bg);padding:10px 14px;font-family:'Geist Mono',monospace;font-size:{{ edSizePx }};line-height:1.6;">
+              <div><span style="color:var(--fg-muted);">{ </span><span style="color:var(--syn-key);">"token"</span><span style="color:var(--fg-muted);">: </span><span style="color:var(--syn-str);">"eyJhbGciOi…"</span><span style="color:var(--fg-muted);">, </span><span style="color:var(--syn-key);">"expiresIn"</span><span style="color:var(--fg-muted);">: </span><span style="color:var(--syn-num);">3600</span><span style="color:var(--fg-muted);"> }</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-top:1px solid var(--border);">
+          <div style="color:var(--fg-subtle);font-size:12px;white-space:nowrap;">Changes apply immediately.</div>
+          <div style="height:30px;display:flex;align-items:center;padding:0 14px;border-radius:7px;color:var(--fg-muted);">Reset to defaults</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = { theme: "System", ui: 13, ed: 12.5 };
+  renderVals() {
+    const L = {bg:"#f4f5f7",m:"#fcfcfd",line:"#d9dce3"}, D = {bg:"#1b1c21",m:"#15161a",line:"#3b3e48"};
+    const themes = [["System",L,D],["Light",L,L],["Dark",D,D]].map(([label,a,b]) => {
+      const on = this.state.theme === label;
+      return { label, pick: () => this.setState({theme:label}),
+        bgL:a.bg, lineL:a.line, accentL:"#5b63e6", bgM:b.m, lineM:b.line, bgR:b.m,
+        ring: on ? "0 0 0 2px var(--accent)" : "0 0 0 1px var(--border-strong)",
+        radio: on ? "4px solid var(--accent)" : "1.5px solid var(--border-strong)" };
+    });
+    const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+    return {
+      themes, uiSize: this.state.ui, edSize: this.state.ed, edSizePx: this.state.ed + "px",
+      uiDown: () => this.setState(s => ({ui: clamp(s.ui-1,11,16)})), uiUp: () => this.setState(s => ({ui: clamp(s.ui+1,11,16)})),
+      edDown: () => this.setState(s => ({ed: clamp(s.ed-0.5,10,18)})), edUp: () => this.setState(s => ({ed: clamp(s.ed+0.5,10,18)}))
+    };
+  }
+}
+</script>
+</body>
+</html>
