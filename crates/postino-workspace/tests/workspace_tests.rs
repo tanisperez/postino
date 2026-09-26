@@ -5,6 +5,7 @@
 use std::fs;
 use std::path::Path;
 
+use postino_core::Method;
 use postino_workspace::{Node, Workspace, WorkspaceError};
 use pretty_assertions::assert_eq;
 use tempfile::TempDir;
@@ -68,6 +69,22 @@ fn scans_nested_folders_and_requests() {
     assert_eq!(login.id, "auth/login.postino");
     assert_eq!(login.name, "login");
     assert_eq!(login.broken, None);
+    assert_eq!(login.method, Some(Method::Get));
+}
+
+#[test]
+fn method_is_read_from_the_parsed_request_without_a_second_read() {
+    let temp = TempDir::new().expect("temp dir");
+    write_file(
+        &temp.path().join("create.postino"),
+        "POST https://example.com/users\n",
+    );
+
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+    let Node::Request(create) = &workspace.tree()[0] else {
+        panic!("expected a request node")
+    };
+    assert_eq!(create.method, Some(Method::Post));
 }
 
 #[test]
@@ -152,11 +169,13 @@ fn a_broken_request_file_is_listed_but_does_not_fail_the_scan() {
         broken.broken.is_some(),
         "the broken file should be marked broken"
     );
+    assert_eq!(broken.method, None);
 
     let Node::Request(good) = tree.iter().find(|node| node.name() == "good").unwrap() else {
         panic!("expected a request node")
     };
     assert_eq!(good.broken, None);
+    assert_eq!(good.method, Some(Method::Get));
 }
 
 #[test]

@@ -10,6 +10,7 @@
 
 use std::rc::Rc;
 
+use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -27,6 +28,7 @@ pub struct DocumentTab {
     label: SharedString,
     dirty: bool,
     selected: bool,
+    tooltip: Option<SharedString>,
     on_click: Option<TabHandler>,
     on_close: Option<TabHandler>,
 }
@@ -43,6 +45,7 @@ impl DocumentTab {
             label: label.into(),
             dirty: false,
             selected: false,
+            tooltip: None,
             on_click: None,
             on_close: None,
         }
@@ -74,15 +77,20 @@ impl DocumentTab {
         self
     }
 
+    /// Sets a hover tooltip, for example the request's full workspace-relative id (the tab's own
+    /// label is only its file stem, `plans/ui-redesign.md` section 2.3 point 3).
+    pub fn tooltip(mut self, tooltip: impl Into<SharedString>) -> Self {
+        self.tooltip = Some(tooltip.into());
+        self
+    }
+
     /// Sets the handler for clicking the tab itself (activates it).
-    #[allow(dead_code)] // wired by phase 4, once DocumentTabs backs the real open-tabs bar
     pub fn on_click(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_click = Some(Rc::new(handler));
         self
     }
 
     /// Sets the handler for the close button (or the dirty dot, once hovered).
-    #[allow(dead_code)] // wired by phase 4, once DocumentTabs backs the real open-tabs bar
     pub fn on_close(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_close = Some(Rc::new(handler));
         self
@@ -115,7 +123,6 @@ impl DocumentTabs {
     }
 
     /// Sets the trailing element after the last tab (the "+" new-request button).
-    #[allow(dead_code)] // wired by phase 4, once DocumentTabs backs the real open-tabs bar
     pub fn suffix(mut self, suffix: impl IntoElement) -> Self {
         self.suffix = Some(suffix.into_any_element());
         self
@@ -167,6 +174,10 @@ impl RenderOnce for DocumentTabs {
                     tab = tab.child(MethodBadge::label(method));
                 }
                 tab = tab.child(item.label);
+                if let Some(tooltip) = item.tooltip {
+                    tab = tab
+                        .tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx));
+                }
                 if let Some(handler) = click_handler {
                     tab = tab.on_click(move |_, window, cx| handler(window, cx));
                 }

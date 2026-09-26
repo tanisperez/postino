@@ -1,8 +1,11 @@
-//! The sidebar: a header with "new request" / "new folder" / "open folder" buttons, and the
-//! workspace's collection tree below it, with a right-click context menu for new/rename/delete
-//! (`plans/mvp.md`, phase 8).
+//! The sidebar: a header with "new request" / "new folder" icon buttons, a filter input, the
+//! workspace's collection tree, and a footer with the workspace path and git branch
+//! (`plans/ui-redesign.md` section 2.3 point 2). Right-clicking a tree row still opens the
+//! rename/delete/new request/new folder context menu (`plans/mvp.md`, phase 8).
 
-use gpui_kit::component::button::{Button, ButtonVariant, ButtonVariants as _};
+use std::collections::{HashMap, HashSet};
+
+use gpui_kit::component::button::ButtonVariant;
 use gpui_kit::component::dialog::DialogButtonProps;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::component::list::ListItem;
@@ -12,7 +15,15 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use postino_workspace::Node;
+use postino_core::Method;
+use postino_workspace::{Node, RequestEntry, git_branch};
+
+use crate::state;
+use crate::theme::PaletteExt;
+use crate::theme::metrics::{
+    METHOD_LABEL_WIDTH, RADIUS_MD, SIDEBAR_FILTER_HEIGHT, TREE_ROW_HEIGHT,
+};
+use crate::views::components::{IconButton, MethodBadge, SectionLabel};
 
 use super::root::AppView;
 
@@ -21,7 +32,7 @@ use super::root::AppView;
 const REQUEST_EXTENSION: &str = ".postino";
 
 impl AppView {
-    /// Renders the sidebar's header and collection tree.
+    /// Renders the sidebar: header, filter input, collection tree, and footer.
     pub(crate) fn render_sidebar(
         &mut self,
         weak: WeakEntity<Self>,
@@ -29,71 +40,32 @@ impl AppView {
     ) -> AnyElement {
         let has_workspace = self.state.workspace.is_some();
         let tree_state = self.tree_state.clone();
+        let palette = cx.palette();
+        let mut methods_by_id = HashMap::new();
+        if let Some(workspace) = self.state.workspace.as_ref() {
+            collect_methods(workspace.tree(), &mut methods_by_id);
+        }
 
         v_flex()
             .size_full()
-            .child(
-                h_flex()
-                    .justify_between()
-                    .items_center()
-                    .px_2()
-                    .py_1()
-                    .gap_1()
-                    .child(div().text_sm().child("Collections"))
-                    .child(
-                        h_flex()
-                            .gap_1()
-                            .child(
-                                Button::new("new-request-root")
-                                    .ghost()
-                                    .xsmall()
-                                    .icon(Icon::new(IconName::Plus).small())
-                                    .tooltip("New request")
-                                    .disabled(!has_workspace)
-                                    .on_click({
-                                        let weak = weak.clone();
-                                        move |_, window, cx| {
-                                            open_new_request_dialog(weak.clone(), None, window, cx);
-                                        }
-                                    }),
-                            )
-                            .child(
-                                Button::new("new-folder-root")
-                                    .ghost()
-                                    .xsmall()
-                                    .icon(Icon::new(IconName::Folder).small())
-                                    .tooltip("New folder")
-                                    .disabled(!has_workspace)
-                                    .on_click({
-                                        let weak = weak.clone();
-                                        move |_, window, cx| {
-                                            open_new_folder_dialog(weak.clone(), None, window, cx);
-                                        }
-                                    }),
-                            )
-                            .child(
-                                Button::new("open-folder")
-                                    .ghost()
-                                    .xsmall()
-                                    .icon(Icon::new(IconName::FolderOpen).small())
-                                    .tooltip("Open workspace folder")
-                                    .on_click({
-                                        let weak = weak.clone();
-                                        move |_, _, cx| {
-                                            pick_workspace_folder(weak.clone(), cx);
-                                        }
-                                    }),
-                            ),
-                    ),
-            )
+            .bg(palette.surface)
+            .border_r_1()
+            .border_color(palette.border)
+            .child(render_header(weak.clone(), has_workspace))
+            .child(self.render_filter_row(cx))
             .child(
                 div()
                     .flex_1()
                     .min_h_0()
+                    .px(px(6.0))
                     .when(has_workspace, |this| {
                         this.child(
-                            tree_view(&tree_state, |_ix, entry, selected, _window, _cx| {
-                                render_tree_row(entry, selected)
+                            tree_view(&tree_state, move |_ix, entry, selected, _window, _cx| {
+                                render_tree_row(
+                                    entry,
+                                    selected,
+                                    methods_by_id.get(entry.item().id.as_ref()),
+                                )
                             })
                             .context_menu(move |_ix, entry, menu, window, cx| {
                                 build_context_menu(weak.clone(), entry, menu, window, cx)
@@ -106,40 +78,203 @@ impl AppView {
                             div()
                                 .p_4()
                                 .text_sm()
-                                .text_color(cx.theme().muted_foreground)
+                                .text_color(palette.fg_subtle)
                                 .child("Open a folder to get started."),
                         )
                     }),
             )
+            .child(self.render_footer(&palette))
+            .into_any_element()
+    }
+
+    /// Renders the filter row: a `list-filter` icon and a borderless [`Input`] inside a bordered
+    /// `raised` pill, backed by [`AppView::sidebar_filter_input`]. Narrowing the tree as the user
+    /// types happens in [`AppView::on_sidebar_filter_changed`], subscribed once in
+    /// [`AppView::new`].
+    fn render_filter_row(&self, cx: &Context<Self>) -> AnyElement {
+        let palette = cx.palette();
+
+        h_flex()
+            .px(px(10.0))
+            .pb(px(8.0))
+            .child(
+                h_flex()
+                    .flex_1()
+                    .h(px(SIDEBAR_FILTER_HEIGHT))
+                    .items_center()
+                    .gap_2()
+                    .px(px(9.0))
+                    .rounded(px(RADIUS_MD - 1.0))
+                    .bg(palette.raised)
+                    .border_1()
+                    .border_color(palette.border)
+                    .text_color(palette.fg_subtle)
+                    .child(Icon::new(gpui_kit::assets::IconName::ListFilter).small())
+                    .child(
+                        Input::new(&self.sidebar_filter_input)
+                            .h(px(SIDEBAR_FILTER_HEIGHT))
+                            .bordered(false),
+                    ),
+            )
+            .into_any_element()
+    }
+
+    /// Renders the footer: the `hard-drive` icon, the workspace path shortened with `~`, and,
+    /// when the workspace is inside a git repository, the `git-branch` icon and branch name.
+    fn render_footer(&self, palette: &crate::theme::Palette) -> AnyElement {
+        let Some(workspace) = self.state.workspace.as_ref() else {
+            return div().into_any_element();
+        };
+        let path_label = state::format::shorten_path(workspace.root(), dirs::home_dir().as_deref());
+        let branch = git_branch(workspace.root());
+
+        h_flex()
+            .border_t_1()
+            .border_color(palette.border)
+            .px(px(14.0))
+            .py(px(8.0))
+            .items_center()
+            .gap_2()
+            .text_size(px(12.0))
+            .text_color(palette.fg_subtle)
+            .child(Icon::new(IconName::HardDrive).small())
+            .child(div().flex_1().child(path_label))
+            .children(branch.map(|branch| {
+                h_flex()
+                    .items_center()
+                    .gap(px(6.0))
+                    .child(Icon::new(gpui_kit::assets::IconName::GitBranch).small())
+                    .child(branch)
+            }))
             .into_any_element()
     }
 }
 
-/// Turns the workspace's collection tree into the `TreeItem`s the sidebar's `Tree` renders.
-/// Every folder starts expanded, since the sample workspaces used during development are small
-/// enough that a fully collapsed tree would just hide everything behind an extra click.
-pub(crate) fn build_tree_items(nodes: &[Node]) -> Vec<TreeItem> {
-    nodes.iter().map(build_tree_item).collect()
+/// Renders the sidebar's header row: the "Collections" section label, and the "new request" /
+/// "new folder" icon buttons.
+fn render_header(weak: WeakEntity<AppView>, has_workspace: bool) -> impl IntoElement {
+    h_flex()
+        .justify_between()
+        .items_center()
+        .pt(px(10.0))
+        .pr(px(10.0))
+        .pb(px(6.0))
+        .pl(px(14.0))
+        .child(SectionLabel::new("Collections"))
+        .child(
+            h_flex()
+                .gap(px(2.0))
+                .child(
+                    IconButton::new("new-request-root", IconName::Plus)
+                        .tooltip("New request")
+                        .disabled(!has_workspace)
+                        .on_click({
+                            let weak = weak.clone();
+                            move |_, window, cx| {
+                                open_new_request_dialog(weak.clone(), None, window, cx);
+                            }
+                        }),
+                )
+                .child(
+                    IconButton::new("new-folder-root", gpui_kit::assets::IconName::FolderPlus)
+                        .tooltip("New folder")
+                        .disabled(!has_workspace)
+                        .on_click({
+                            let weak = weak.clone();
+                            move |_, window, cx| {
+                                open_new_folder_dialog(weak.clone(), None, window, cx);
+                            }
+                        }),
+                ),
+        )
 }
 
-fn build_tree_item(node: &Node) -> TreeItem {
+/// Turns the workspace's collection tree into the `TreeItem`s the sidebar's `Tree` renders,
+/// unfiltered. `expansion`, when given, restores each folder's expand flag from a snapshot taken
+/// before the sidebar filter went from empty to non-empty (`AppView::on_sidebar_filter_changed`);
+/// `None` expands every folder, matching the workspace's normal, filter-free behavior.
+pub(crate) fn build_tree_items(
+    nodes: &[Node],
+    expansion: Option<&HashMap<String, bool>>,
+) -> Vec<TreeItem> {
+    nodes
+        .iter()
+        .map(|node| build_tree_item(node, expansion))
+        .collect()
+}
+
+fn build_tree_item(node: &Node, expansion: Option<&HashMap<String, bool>>) -> TreeItem {
+    match node {
+        Node::Folder(folder) => {
+            let expanded = expansion
+                .and_then(|map| map.get(&folder.id))
+                .copied()
+                .unwrap_or(true);
+            TreeItem::new(folder.id.clone(), folder.name.clone())
+                .children(build_tree_items(&folder.children, expansion))
+                .expanded(expanded)
+        }
+        Node::Request(request) => TreeItem::new(request.id.clone(), request_label(request)),
+    }
+}
+
+/// Turns the workspace's collection tree into the `TreeItem`s shown while the sidebar filter is
+/// non-empty: only the ids `state::sidebar_filter::visible_ids` returns, every included folder
+/// forced expanded so a match is never hidden (`plans/ui-redesign.md` section 2.3 point 2).
+pub(crate) fn build_filtered_tree_items(nodes: &[Node], query: &str) -> Vec<TreeItem> {
+    let visible = state::sidebar_filter::visible_ids(nodes, query);
+    build_filtered_items(nodes, &visible)
+}
+
+fn build_filtered_items(nodes: &[Node], visible: &HashSet<String>) -> Vec<TreeItem> {
+    nodes
+        .iter()
+        .filter(|node| visible.contains(node.id()))
+        .map(|node| build_filtered_item(node, visible))
+        .collect()
+}
+
+fn build_filtered_item(node: &Node, visible: &HashSet<String>) -> TreeItem {
     match node {
         Node::Folder(folder) => TreeItem::new(folder.id.clone(), folder.name.clone())
-            .children(build_tree_items(&folder.children))
+            .children(build_filtered_items(&folder.children, visible))
             .expanded(true),
-        Node::Request(request) => {
-            let label = match &request.broken {
-                Some(_) => format!("{} (broken)", request.name),
-                None => request.name.clone(),
-            };
-            TreeItem::new(request.id.clone(), label)
+        Node::Request(request) => TreeItem::new(request.id.clone(), request_label(request)),
+    }
+}
+
+/// The label shown for a request row: its name, with a "(broken)" suffix when the file failed to
+/// parse.
+fn request_label(request: &RequestEntry) -> String {
+    match &request.broken {
+        Some(_) => format!("{} (broken)", request.name),
+        None => request.name.clone(),
+    }
+}
+
+/// Collects every request's method by id, for [`render_tree_row`] to look up: `TreeItem` (built by
+/// [`build_tree_item`]/[`build_filtered_item`]) has no field for it, so the tree row renderer
+/// looks it up from this side map instead (`plans/ui-redesign.md` section 2.3 point 2: "method
+/// label 34 wide for requests").
+fn collect_methods(nodes: &[Node], into: &mut HashMap<String, Method>) {
+    for node in nodes {
+        match node {
+            Node::Folder(folder) => collect_methods(&folder.children, into),
+            Node::Request(request) => {
+                if let Some(method) = &request.method {
+                    into.insert(request.id.clone(), method.clone());
+                }
+            }
         }
     }
 }
 
-/// Renders one visible row of the sidebar tree: a folder or file icon, and the label built by
-/// [`build_tree_item`] (already carrying the "(broken)" marker when it applies).
-fn render_tree_row(entry: &TreeEntry, selected: bool) -> ListItem {
+/// Renders one visible row of the sidebar tree: a folder or file icon, the method label for a
+/// request (an empty [`METHOD_LABEL_WIDTH`]-wide spacer when `method` is `None`, a broken
+/// request, so names stay aligned with their siblings), and the label built by
+/// [`build_tree_item`]/[`build_filtered_item`] (already carrying the "(broken)" marker when it
+/// applies).
+fn render_tree_row(entry: &TreeEntry, selected: bool, method: Option<&Method>) -> ListItem {
     let item = entry.item();
     let is_request = item.id.ends_with(REQUEST_EXTENSION);
     let icon = if is_request {
@@ -150,14 +285,24 @@ fn render_tree_row(entry: &TreeEntry, selected: bool) -> ListItem {
         IconName::Folder
     };
 
-    ListItem::new(item.id.clone()).selected(selected).child(
-        h_flex()
-            .items_center()
-            .gap_1()
-            .pl(px(entry.depth() as f32 * 12.))
-            .child(Icon::new(icon).small())
-            .child(div().text_sm().child(item.label.clone())),
-    )
+    let mut row = h_flex()
+        .h(px(TREE_ROW_HEIGHT))
+        .items_center()
+        .gap_1()
+        .pl(px(entry.depth() as f32 * 12.))
+        .child(Icon::new(icon).small());
+    if is_request {
+        row = row.child(match method {
+            Some(method) => MethodBadge::label(method.clone()).into_any_element(),
+            None => div()
+                .flex_none()
+                .w(px(METHOD_LABEL_WIDTH))
+                .into_any_element(),
+        });
+    }
+    row = row.child(div().text_sm().child(item.label.clone()));
+
+    ListItem::new(item.id.clone()).selected(selected).child(row)
 }
 
 /// Builds the right-click context menu for a tree entry: new request/folder (folders only),
@@ -233,7 +378,9 @@ fn build_context_menu(
 }
 
 /// Opens a native folder picker and, when the user confirms a folder, opens it as the workspace.
-fn pick_workspace_folder(view: WeakEntity<AppView>, cx: &mut App) {
+/// Also called from the title bar's workspace switcher menu ("Open folder...").
+pub(crate) fn pick_workspace_folder(view: WeakEntity<AppView>, window: &mut Window, cx: &mut App) {
+    let window_handle = window.window_handle();
     let options = PathPromptOptions {
         files: false,
         directories: true,
@@ -248,14 +395,17 @@ fn pick_workspace_folder(view: WeakEntity<AppView>, cx: &mut App) {
         let Some(root) = paths.pop() else {
             return;
         };
-        let _ = view.update(cx, |view, cx| view.open_workspace_at(&root, cx));
+        let _ = cx.update_window(window_handle, |_, window, cx| {
+            let _ = view.update(cx, |view, cx| view.open_workspace_at(&root, window, cx));
+        });
     })
     .detach();
 }
 
 /// Opens an in-app dialog (never a native blocking one) asking for a new request's name, inside
-/// `parent` (the workspace root when `None`).
-fn open_new_request_dialog(
+/// `parent` (the workspace root when `None`). Also called from the open-tabs bar's trailing "+"
+/// button (`plans/ui-redesign.md` section 2.3 point 3).
+pub(crate) fn open_new_request_dialog(
     view: WeakEntity<AppView>,
     parent: Option<String>,
     window: &mut Window,

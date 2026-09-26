@@ -68,3 +68,5 @@ pub const KEY_VALUE_SIDE_COL_WIDTH: f32 = 30.0;
 pub const MENU_DOT_COLUMN_WIDTH: f32 = 13.0;
 /// Height of the title bar's `EnvPill` trigger (`Main A.dc.html`'s title bar).
 pub const ENV_PILL_HEIGHT: f32 = 26.0;
+/// Height of the sidebar's filter input (`Main A.dc.html`'s sidebar).
+pub const SIDEBAR_FILTER_HEIGHT: f32 = 28.0;

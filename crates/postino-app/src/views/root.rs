@@ -8,9 +8,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use gpui_kit::component::button::{Button, ButtonVariants as _};
-use gpui_kit::component::input::InputState;
-use gpui_kit::component::tab::{Tab, TabBar};
+use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::component::tree::TreeState;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -19,12 +17,21 @@ use gpui_kit::*;
 use postino_runner::{RunResult, ScriptEngine, SendOptions};
 use postino_script::QuickJsEngine;
 
-use crate::actions::{SaveActiveTab, SendActiveTab};
+use crate::actions::{
+    SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
+    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
+    SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+};
 use crate::state::debug_open::{self, DebugOpenTarget};
 use crate::state::ui_tabs::{RequestTab, ResponseTab};
 use crate::state::{self, AppState};
+use crate::views::components::{
+    DocumentTab, DocumentTabs, IconButton, InlineMessage, InlineMessageKind,
+};
 use crate::views::request_editor::RequestEditorEntities;
 use crate::views::send::SendingTask;
+
+use super::sidebar;
 
 /// The main window view: title bar, resizable sidebar, and main area (open tabs plus the
 /// request editor and response viewer).
@@ -71,6 +78,13 @@ pub struct AppView {
     /// (`views/components/gallery.rs`). Created lazily by [`Self::apply_debug_open`], never on a
     /// normal launch.
     pub(crate) gallery_url_input: Option<Entity<InputState>>,
+    /// The sidebar filter's live text input (`plans/ui-redesign.md` section 2.3 point 2).
+    /// Subscribed once in [`Self::new`]; edits call [`Self::on_sidebar_filter_changed`].
+    pub(crate) sidebar_filter_input: Entity<InputState>,
+    /// The sidebar tree's per-folder expand state, captured right before the filter went from
+    /// empty to non-empty, so clearing the filter can restore it instead of resetting every
+    /// folder to expanded. `None` while the filter is empty.
+    pub(crate) sidebar_filter_pre_expansion: Option<HashMap<String, bool>>,
 }
 
 impl AppView {
@@ -84,6 +98,17 @@ impl AppView {
         cx: &mut Context<Self>,
     ) -> Self {
         let tree_state = cx.new(|cx| TreeState::new(cx));
+        let sidebar_filter_input = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
+        cx.subscribe(
+            &sidebar_filter_input,
+            |view, _entity, event: &InputEvent, cx| {
+                if matches!(event, InputEvent::Change) {
+                    view.on_sidebar_filter_changed(cx);
+                }
+            },
+        )
+        .detach();
+
         let mut view = Self {
             state: AppState::new(),
             tree_state,
@@ -99,9 +124,11 @@ impl AppView {
             send_options: SendOptions::default(),
             debug_open: None,
             gallery_url_input: None,
+            sidebar_filter_input,
+            sidebar_filter_pre_expansion: None,
         };
         if let Some(root) = initial_workspace {
-            view.open_workspace_at(&root, cx);
+            view.open_workspace_at(&root, window, cx);
         }
         view.apply_debug_autosend(cx);
         view.apply_debug_open(window, cx);
@@ -153,9 +180,16 @@ impl AppView {
         }
     }
 
-    /// Opens `root` as the workspace, remembers it for next launch, and refreshes the sidebar
-    /// tree. Used both at startup and by the "Open folder" picker.
-    pub(crate) fn open_workspace_at(&mut self, root: &Path, cx: &mut Context<Self>) {
+    /// Opens `root` as the workspace, remembers it for next launch, clears the sidebar filter
+    /// (it belonged to the previous workspace), and refreshes the sidebar tree. Used at startup
+    /// and by the title bar's workspace switcher ("Open folder..." and picking a recent
+    /// workspace).
+    pub(crate) fn open_workspace_at(
+        &mut self,
+        root: &Path,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         match self.state.open_workspace(root) {
             Ok(()) => {
                 self.workspace_error = None;
@@ -170,21 +204,74 @@ impl AppView {
             }
         }
         self.last_selected_request = None;
+        self.sidebar_filter_pre_expansion = None;
+        self.sidebar_filter_input.update(cx, |state, cx| {
+            state.set_value(String::new(), window, cx);
+        });
         self.refresh_tree(cx);
         cx.notify();
     }
 
-    /// Rebuilds the sidebar tree from the workspace's current on-disk state. Call after any
-    /// operation that changes the workspace (save, create, rename, delete).
+    /// Rebuilds the sidebar tree from the workspace's current on-disk state, respecting the
+    /// sidebar filter's current text. Call after any operation that changes the workspace (save,
+    /// create, rename, delete).
     pub(crate) fn refresh_tree(&mut self, cx: &mut Context<Self>) {
-        let items = self
-            .state
-            .workspace
-            .as_ref()
-            .map(|workspace| crate::views::sidebar::build_tree_items(workspace.tree()))
-            .unwrap_or_default();
+        let query = self.sidebar_filter_input.read(cx).value().to_string();
+        let items = self.tree_items_for_query(&query, None);
         self.tree_state
             .update(cx, |state, cx| state.set_items(items, cx));
+    }
+
+    /// Called on every edit to [`Self::sidebar_filter_input`]. Narrows the tree while the filter
+    /// is non-empty (capturing the current expand state once, on the empty-to-non-empty
+    /// transition); restores that captured expand state when the filter goes back to empty
+    /// (`plans/ui-redesign.md` section 2.3 point 2).
+    pub(crate) fn on_sidebar_filter_changed(&mut self, cx: &mut Context<Self>) {
+        let query = self.sidebar_filter_input.read(cx).value().to_string();
+        let items = if query.trim().is_empty() {
+            let expansion = self.sidebar_filter_pre_expansion.take();
+            self.tree_items_for_query(&query, expansion.as_ref())
+        } else {
+            if self.sidebar_filter_pre_expansion.is_none() {
+                self.sidebar_filter_pre_expansion = Some(self.snapshot_tree_expansion(cx));
+            }
+            self.tree_items_for_query(&query, None)
+        };
+        self.tree_state
+            .update(cx, |state, cx| state.set_items(items, cx));
+    }
+
+    /// Builds the sidebar's `TreeItem`s for the open workspace: the ordinary (optionally
+    /// `expansion`-restored) tree when `query` is empty, the filtered tree otherwise. Empty (no
+    /// workspace open) when there is nothing to show.
+    fn tree_items_for_query(
+        &self,
+        query: &str,
+        expansion: Option<&HashMap<String, bool>>,
+    ) -> Vec<gpui_kit::component::tree::TreeItem> {
+        let Some(workspace) = self.state.workspace.as_ref() else {
+            return Vec::new();
+        };
+        if query.trim().is_empty() {
+            sidebar::build_tree_items(workspace.tree(), expansion)
+        } else {
+            sidebar::build_filtered_tree_items(workspace.tree(), query)
+        }
+    }
+
+    /// Snapshots every folder's current expand flag from the live sidebar tree, so
+    /// [`Self::on_sidebar_filter_changed`] can restore it once the filter is cleared.
+    fn snapshot_tree_expansion(&self, cx: &Context<Self>) -> HashMap<String, bool> {
+        let tree_state = self.tree_state.read(cx);
+        let mut map = HashMap::new();
+        let mut index = 0;
+        while let Some(entry) = tree_state.entry(index) {
+            if entry.is_folder() {
+                map.insert(entry.item().id.to_string(), entry.is_expanded());
+            }
+            index += 1;
+        }
+        map
     }
 
     /// Loads `id` from the workspace and opens it as a tab (or activates it, if already open).
@@ -325,6 +412,130 @@ impl AppView {
         self.send_active_tab(cx);
     }
 
+    /// Sets the active environment (`None` for "No environment"). Used by the environment
+    /// picker's clicks and by [`Self::select_environment_by_shortcut`].
+    pub(crate) fn select_environment(&mut self, name: Option<String>, cx: &mut Context<Self>) {
+        self.state.active_environment = name;
+        cx.notify();
+    }
+
+    /// Selects the `one_based_index`-th environment (1..=9) of the open workspace, for the
+    /// `Ctrl 1..9` / `Cmd 1..9` shortcuts (`plans/ui-redesign.md` phase 4 item 1). A no-op when
+    /// there is no workspace open or fewer than `one_based_index` environments.
+    pub(crate) fn select_environment_by_shortcut(
+        &mut self,
+        one_based_index: usize,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(workspace) = self.state.workspace.as_ref() else {
+            return;
+        };
+        let environments = workspace.list_environments().unwrap_or_default();
+        if let Some(name) = environments.into_iter().nth(one_based_index - 1) {
+            self.select_environment(Some(name), cx);
+        }
+    }
+
+    /// Handles the `Ctrl 1` / `Cmd 1` key binding.
+    fn on_select_environment_1(
+        &mut self,
+        _: &SelectEnvironment1,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.select_environment_by_shortcut(1, cx);
+    }
+
+    /// Handles the `Ctrl 2` / `Cmd 2` key binding.
+    fn on_select_environment_2(
+        &mut self,
+        _: &SelectEnvironment2,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.select_environment_by_shortcut(2, cx);
+    }
+
+    /// Handles the `Ctrl 3` / `Cmd 3` key binding.
+    fn on_select_environment_3(
+        &mut self,
+        _: &SelectEnvironment3,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.select_environment_by_shortcut(3, cx);
+    }
+
+    /// Handles the `Ctrl 4` / `Cmd 4` key binding.
+    fn on_select_environment_4(
+        &mut self,
+        _: &SelectEnvironment4,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.select_environment_by_shortcut(4, cx);
+    }
+
+    /// Handles the `Ctrl 5` / `Cmd 5` key binding.
+    fn on_select_environment_5(
+        &mut self,
+        _: &SelectEnvironment5,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.select_environment_by_shortcut(5, cx);
+    }
+
+    /// Handles the `Ctrl 6` / `Cmd 6` key binding.
+    fn on_select_environment_6(
+        &mut self,
+        _: &SelectEnvironment6,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.select_environment_by_shortcut(6, cx);
+    }
+
+    /// Handles the `Ctrl 7` / `Cmd 7` key binding.
+    fn on_select_environment_7(
+        &mut self,
+        _: &SelectEnvironment7,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.select_environment_by_shortcut(7, cx);
+    }
+
+    /// Handles the `Ctrl 8` / `Cmd 8` key binding.
+    fn on_select_environment_8(
+        &mut self,
+        _: &SelectEnvironment8,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.select_environment_by_shortcut(8, cx);
+    }
+
+    /// Handles the `Ctrl 9` / `Cmd 9` key binding.
+    fn on_select_environment_9(
+        &mut self,
+        _: &SelectEnvironment9,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.select_environment_by_shortcut(9, cx);
+    }
+
+    /// Handles the `Ctrl 0` / `Cmd 0` key binding ("No environment").
+    fn on_select_no_environment(
+        &mut self,
+        _: &SelectNoEnvironment,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.select_environment(None, cx);
+    }
+
     /// Renders the resizable sidebar and main area below the title bar.
     fn render_body(
         &mut self,
@@ -341,17 +552,6 @@ impl AppView {
                     .child(self.render_sidebar(weak.clone(), cx)),
             )
             .child(resizable_panel().child(self.render_main_area(weak, window, cx)))
-            .into_any_element()
-    }
-
-    /// Renders the title bar's content: the app name, a spacer, the Import menu and the
-    /// environment picker.
-    fn render_title_bar(&mut self, weak: WeakEntity<Self>, cx: &mut Context<Self>) -> AnyElement {
-        TitleBar::new()
-            .child(div().text_sm().child("Postino"))
-            .child(div().flex_1())
-            .child(self.render_import_menu(cx))
-            .child(self.render_env_picker(weak, cx))
             .into_any_element()
     }
 
@@ -380,44 +580,45 @@ impl AppView {
             .into_any_element()
     }
 
-    /// Renders the bar of open tabs, with a dirty marker and a close button on each.
+    /// Renders the open-tabs bar (`plans/ui-redesign.md` section 2.3 point 3): a [`DocumentTab`]
+    /// per open request, with a dirty marker and a close button, and a trailing "+" that opens
+    /// the same new-request dialog as the sidebar header.
     fn render_tabs_bar(&mut self, weak: WeakEntity<Self>, _cx: &mut Context<Self>) -> AnyElement {
         if self.state.tabs.open_tabs().is_empty() {
             return div().into_any_element();
         }
 
-        let active_index = self.state.tabs.active_index().unwrap_or(0);
-        let mut bar = TabBar::new("open-tabs").selected_index(active_index);
-
+        let active_index = self.state.tabs.active_index();
+        let mut tabs = DocumentTabs::new("open-tabs");
         for (index, tab) in self.state.tabs.open_tabs().iter().enumerate() {
-            let label = if tab.dirty {
-                format!("* {}", tab.id)
-            } else {
-                tab.id.clone()
-            };
             let select_weak = weak.clone();
             let close_weak = weak.clone();
-            bar = bar.child(
-                Tab::new()
-                    .label(label)
-                    .suffix(
-                        Button::new(("close-tab", index))
-                            .ghost()
-                            .xsmall()
-                            .icon(Icon::new(IconName::Close).small())
-                            .on_click(move |_, _, cx| {
-                                let _ = close_weak.update(cx, |view, cx| view.close_tab(index, cx));
-                            }),
-                    )
-                    .on_click(move |_, _, cx| {
-                        let _ = select_weak.update(cx, |view, cx| {
-                            view.state.tabs.set_active(index);
-                            cx.notify();
-                        });
-                    }),
-            );
+            let full_id = tab.id.clone();
+            let doc_tab = DocumentTab::new(state::format::tab_label(&tab.id).to_string())
+                .method(tab.request.method.clone())
+                .dirty(tab.dirty)
+                .selected(active_index == Some(index))
+                .tooltip(full_id)
+                .on_click(move |_, cx| {
+                    let _ = select_weak.update(cx, |view, cx| {
+                        view.state.tabs.set_active(index);
+                        cx.notify();
+                    });
+                })
+                .on_close(move |_, cx| {
+                    let _ = close_weak.update(cx, |view, cx| view.close_tab(index, cx));
+                });
+            tabs = tabs.item(doc_tab);
         }
-        bar.into_any_element()
+
+        tabs = tabs.suffix(
+            IconButton::new("open-tabs-new-request", IconName::Plus)
+                .tooltip("New request")
+                .on_click(move |_, window, cx| {
+                    sidebar::open_new_request_dialog(weak.clone(), None, window, cx);
+                }),
+        );
+        tabs.into_any_element()
     }
 }
 
@@ -441,33 +642,44 @@ impl Render for AppView {
         }
 
         let weak = cx.weak_entity();
-        let theme = cx.theme();
-        let background = theme.background;
-        let danger_bg = theme.danger;
-        let danger_fg = theme.danger_foreground;
+        let background = cx.theme().background;
 
-        let title_bar = self.render_title_bar(weak.clone(), cx);
+        let title_bar = self.render_title_bar(weak.clone(), window, cx);
         let error_banner = self.workspace_error.clone().map(|message| {
-            h_flex()
-                .w_full()
-                .px_2()
-                .py_1()
-                .gap_2()
-                .items_center()
-                .bg(danger_bg)
-                .text_color(danger_fg)
-                .child(Icon::new(IconName::TriangleAlert).small())
-                .child(message)
+            let dismiss_weak = weak.clone();
+            div().px_3().pt_2().child(
+                InlineMessage::new(InlineMessageKind::Danger, message).action(
+                    "Dismiss",
+                    move |_, cx| {
+                        let _ = dismiss_weak.update(cx, |view, cx| {
+                            view.workspace_error = None;
+                            cx.notify();
+                        });
+                    },
+                ),
+            )
         });
         let body = self.render_body(weak, window, cx);
+        let status_bar = self.render_status_bar(cx);
 
         v_flex()
             .size_full()
             .bg(background)
             .on_action(cx.listener(Self::on_save_action))
             .on_action(cx.listener(Self::on_send_action))
+            .on_action(cx.listener(Self::on_select_environment_1))
+            .on_action(cx.listener(Self::on_select_environment_2))
+            .on_action(cx.listener(Self::on_select_environment_3))
+            .on_action(cx.listener(Self::on_select_environment_4))
+            .on_action(cx.listener(Self::on_select_environment_5))
+            .on_action(cx.listener(Self::on_select_environment_6))
+            .on_action(cx.listener(Self::on_select_environment_7))
+            .on_action(cx.listener(Self::on_select_environment_8))
+            .on_action(cx.listener(Self::on_select_environment_9))
+            .on_action(cx.listener(Self::on_select_no_environment))
             .child(title_bar)
             .children(error_banner)
             .child(body)
+            .child(status_bar)
     }
 }

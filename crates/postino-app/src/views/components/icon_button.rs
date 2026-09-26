@@ -54,14 +54,12 @@ impl IconButton {
     }
 
     /// Disables the button (45% opacity, no click).
-    #[allow(dead_code)] // wired by phase 4/5, once IconButton instances need it
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
         self
     }
 
     /// Sets the click handler.
-    #[allow(dead_code)] // wired by phase 4/5, once IconButton instances need it
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,

@@ -13,7 +13,11 @@ use gpui_kit::component::theme::{Theme, ThemeMode};
 use gpui_kit::component::{Root, TitleBar};
 use gpui_kit::*;
 
-use actions::{SaveActiveTab, SendActiveTab};
+use actions::{
+    SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
+    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
+    SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+};
 use state::settings::ThemeChoice;
 use views::AppView;
 
@@ -92,10 +96,30 @@ fn bind_keys(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("cmd-s", SaveActiveTab, None),
         KeyBinding::new("cmd-enter", SendActiveTab, None),
+        KeyBinding::new("cmd-1", SelectEnvironment1, None),
+        KeyBinding::new("cmd-2", SelectEnvironment2, None),
+        KeyBinding::new("cmd-3", SelectEnvironment3, None),
+        KeyBinding::new("cmd-4", SelectEnvironment4, None),
+        KeyBinding::new("cmd-5", SelectEnvironment5, None),
+        KeyBinding::new("cmd-6", SelectEnvironment6, None),
+        KeyBinding::new("cmd-7", SelectEnvironment7, None),
+        KeyBinding::new("cmd-8", SelectEnvironment8, None),
+        KeyBinding::new("cmd-9", SelectEnvironment9, None),
+        KeyBinding::new("cmd-0", SelectNoEnvironment, None),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
         KeyBinding::new("ctrl-s", SaveActiveTab, None),
         KeyBinding::new("ctrl-enter", SendActiveTab, None),
+        KeyBinding::new("ctrl-1", SelectEnvironment1, None),
+        KeyBinding::new("ctrl-2", SelectEnvironment2, None),
+        KeyBinding::new("ctrl-3", SelectEnvironment3, None),
+        KeyBinding::new("ctrl-4", SelectEnvironment4, None),
+        KeyBinding::new("ctrl-5", SelectEnvironment5, None),
+        KeyBinding::new("ctrl-6", SelectEnvironment6, None),
+        KeyBinding::new("ctrl-7", SelectEnvironment7, None),
+        KeyBinding::new("ctrl-8", SelectEnvironment8, None),
+        KeyBinding::new("ctrl-9", SelectEnvironment9, None),
+        KeyBinding::new("ctrl-0", SelectNoEnvironment, None),
     ]);
 }

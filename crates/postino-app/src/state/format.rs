@@ -42,13 +42,20 @@ pub fn human_duration(duration: Duration) -> String {
 /// Shortens `path` to start with `~` when it is inside `home`, for example `/home/tanis/dev`
 /// with home `/home/tanis` becomes `~/dev`. Returns the path unchanged (as a string) if it is
 /// not inside `home`, or if `home` is `None`.
-#[allow(dead_code)] // wired by the title bar and sidebar footer of phase 4
 pub fn shorten_path(path: &Path, home: Option<&Path>) -> String {
     match home.and_then(|home| path.strip_prefix(home).ok()) {
         Some(relative) if relative.as_os_str().is_empty() => "~".to_string(),
         Some(relative) => format!("~/{}", relative.display()),
         None => path.display().to_string(),
     }
+}
+
+/// The label shown in the open-tabs bar for an open request tab: the file stem (its name without
+/// the `.postino` extension), for example `"login"` for `"auth/login.postino"`. The full id is
+/// shown in the tab's tooltip instead (`plans/ui-redesign.md` section 2.3 point 3).
+pub fn tab_label(id: &str) -> &str {
+    let name = id.rsplit('/').next().unwrap_or(id);
+    name.strip_suffix(".postino").unwrap_or(name)
 }
 
 /// A relative label for a day, comparing UTC day boundaries: `"today"`, `"yesterday"`, or `"N
@@ -118,6 +125,12 @@ mod tests {
     #[test]
     fn shorten_path_without_a_home_is_unchanged() {
         assert_eq!(shorten_path(Path::new("/var/log"), None), "/var/log");
+    }
+
+    #[test]
+    fn tab_label_is_the_file_stem() {
+        assert_eq!(tab_label("auth/login.postino"), "login");
+        assert_eq!(tab_label("health.postino"), "health");
     }
 
     #[test]

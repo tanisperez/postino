@@ -3,6 +3,8 @@
 use std::fs;
 use std::path::Path;
 
+use postino_core::Method;
+
 use crate::error::WorkspaceError;
 use crate::ids::path_to_id;
 use crate::tree::{Folder, Node, RequestEntry, sort_nodes};
@@ -60,11 +62,12 @@ pub(crate) fn scan_folder(
                 continue;
             };
             let id = path_to_id(root, &path);
-            let broken = read_and_check(&path);
+            let (broken, method) = read_and_parse(&path);
             nodes.push(Node::Request(RequestEntry {
                 id,
                 name: stem.to_string(),
                 broken,
+                method,
             }));
         }
         // Symlinks and other special file types are neither a folder nor a request, so they are
@@ -75,15 +78,17 @@ pub(crate) fn scan_folder(
     Ok(nodes)
 }
 
-/// Reads and parses a `.postino` file just to detect whether it is broken.
+/// Reads and parses a `.postino` file once, for both [`RequestEntry::broken`] and
+/// [`RequestEntry::method`], so a broken or valid file is never read or parsed twice.
 ///
-/// Returns `None` when the file is valid, or `Some(message)` describing why it is not: either an
-/// IO error (an unreadable file) or a [`postino_format::ParseError`].
-fn read_and_check(path: &Path) -> Option<String> {
+/// Returns `(None, Some(method))` when the file is valid, or `(Some(message), None)` describing
+/// why it is not: either an IO error (an unreadable file) or a [`postino_format::ParseError`].
+fn read_and_parse(path: &Path) -> (Option<String>, Option<Method>) {
     match fs::read_to_string(path) {
-        Ok(text) => postino_format::parse(&text)
-            .err()
-            .map(|error| error.to_string()),
-        Err(error) => Some(error.to_string()),
+        Ok(text) => match postino_format::parse(&text) {
+            Ok(request) => (None, Some(request.method)),
+            Err(error) => (Some(error.to_string()), None),
+        },
+        Err(error) => (Some(error.to_string()), None),
     }
 }

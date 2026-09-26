@@ -3,6 +3,8 @@
 
 use std::cmp::Ordering;
 
+use postino_core::Method;
+
 /// One entry of the collection tree: a folder or a request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Node {
@@ -56,6 +58,9 @@ pub struct RequestEntry {
     /// single broken file never breaks the whole scan, but [`crate::Workspace::load_request`]
     /// will fail for it until the file is fixed.
     pub broken: Option<String>,
+    /// The request's HTTP method, read from the same parse that fills [`Self::broken`] (no
+    /// second read of the file). `None` when the file is broken.
+    pub method: Option<Method>,
 }
 
 /// Sorts a list of nodes in place: folders before requests, then natural sort by name within
@@ -146,6 +151,7 @@ mod tests {
             id: format!("{name}.postino"),
             name: name.to_string(),
             broken: None,
+            method: Some(Method::Get),
         })
     }
 

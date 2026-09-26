@@ -14,5 +14,26 @@ actions!(
         SaveActiveTab,
         /// Sends the active tab's request (`Ctrl+Enter` / `Cmd+Enter`), `plans/mvp.md` Phase 9.
         SendActiveTab,
+        /// Selects the workspace's 1st environment (`Ctrl 1` / `Cmd 1`), `plans/ui-redesign.md`
+        /// phase 4 item 1.
+        SelectEnvironment1,
+        /// Selects the workspace's 2nd environment (`Ctrl 2` / `Cmd 2`).
+        SelectEnvironment2,
+        /// Selects the workspace's 3rd environment (`Ctrl 3` / `Cmd 3`).
+        SelectEnvironment3,
+        /// Selects the workspace's 4th environment (`Ctrl 4` / `Cmd 4`).
+        SelectEnvironment4,
+        /// Selects the workspace's 5th environment (`Ctrl 5` / `Cmd 5`).
+        SelectEnvironment5,
+        /// Selects the workspace's 6th environment (`Ctrl 6` / `Cmd 6`).
+        SelectEnvironment6,
+        /// Selects the workspace's 7th environment (`Ctrl 7` / `Cmd 7`).
+        SelectEnvironment7,
+        /// Selects the workspace's 8th environment (`Ctrl 8` / `Cmd 8`).
+        SelectEnvironment8,
+        /// Selects the workspace's 9th environment (`Ctrl 9` / `Cmd 9`).
+        SelectEnvironment9,
+        /// Selects "No environment" (`Ctrl 0` / `Cmd 0`).
+        SelectNoEnvironment,
     ]
 );

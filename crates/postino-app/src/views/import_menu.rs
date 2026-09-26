@@ -11,6 +11,7 @@ use gpui_kit::*;
 use postino_workspace::{ImportReport, WorkspaceError};
 
 use crate::state::import;
+use crate::theme::metrics::ENV_PILL_HEIGHT;
 
 use super::root::AppView;
 
@@ -33,8 +34,8 @@ impl AppView {
         let environment_weak = weak;
         Button::new("import-menu")
             .ghost()
-            .small()
-            .icon(Icon::new(IconName::Inbox).small())
+            .h(px(ENV_PILL_HEIGHT))
+            .icon(Icon::new(gpui_kit::assets::IconName::Download).small())
             .label("Import")
             .disabled(!has_workspace)
             .dropdown_caret(true)

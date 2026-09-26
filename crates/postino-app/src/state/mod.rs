@@ -12,6 +12,7 @@ pub mod palette;
 pub mod request_edit;
 pub mod response_render;
 pub mod settings;
+pub mod sidebar_filter;
 mod tabs;
 pub mod ui_tabs;
 

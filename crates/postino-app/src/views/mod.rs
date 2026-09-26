@@ -12,5 +12,7 @@ pub mod response_view;
 pub mod root;
 pub mod send;
 pub mod sidebar;
+pub mod status_bar;
+pub mod title_bar;
 
 pub use root::AppView;
