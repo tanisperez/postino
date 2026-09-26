@@ -4,6 +4,7 @@
 //! entities and renders it.
 
 pub mod config;
+pub mod debug_open;
 pub mod env_color;
 pub mod format;
 pub mod import;

@@ -52,3 +52,19 @@ pub const RADIUS_MD: f32 = 8.0;
 pub const RADIUS_LG: f32 = 10.0;
 /// Radius for modals (for example the Settings dialog).
 pub const RADIUS_MODAL: f32 = 14.0;
+
+/// Height of a `StatusBadge`.
+pub const STATUS_BADGE_HEIGHT: f32 = 22.0;
+/// Fixed width of a `MethodBadge`'s `label` variant, and of the method label in a sidebar tree
+/// row or open tab.
+pub const METHOD_LABEL_WIDTH: f32 = 34.0;
+/// Side length of an `IconButton`'s small size.
+pub const ICON_BUTTON_SM: f32 = 24.0;
+/// Side length of an `IconButton`'s large size.
+pub const ICON_BUTTON_LG: f32 = 28.0;
+/// Width of the checkbox and delete columns of a `KeyValueTable`.
+pub const KEY_VALUE_SIDE_COL_WIDTH: f32 = 30.0;
+/// Width of the column that centers a colored dot in an `EnvMenu` row.
+pub const MENU_DOT_COLUMN_WIDTH: f32 = 13.0;
+/// Height of the title bar's `EnvPill` trigger (`Main A.dc.html`'s title bar).
+pub const ENV_PILL_HEIGHT: f32 = 26.0;

@@ -31,9 +31,14 @@ fn main() {
     let theme_choice = settings.theme;
 
     // `with_assets` registers the bundled icon SVGs. Without it every `Icon` (tree chevrons,
-    // window controls, checkboxes) renders as empty space.
+    // window controls, checkboxes) renders as empty space. `gpui_kit::assets::Assets` only
+    // embeds the small curated subset generated from `default-icons.txt`
+    // (`gpui-kit-assets-0.6.6/src/native_assets.rs`); `AllAssets` embeds the complete Lucide
+    // catalog (`gpui_kit::assets::IconName`, 1830 icons) that `plans/ui-redesign.md`'s design
+    // uses (`gauge`, `wand-sparkles`, `send-horizontal`, ...), a strict superset of the curated
+    // one, so switching to it does not affect any icon that already worked.
     gpui_kit::application()
-        .with_assets(gpui_kit::assets::Assets)
+        .with_assets(gpui_kit::assets::AllAssets)
         .run(move |cx| {
             gpui_kit::init(cx);
             bind_keys(cx);
@@ -67,7 +72,7 @@ fn main() {
                         ThemeChoice::Dark => Theme::change(ThemeMode::Dark, Some(window), cx),
                     }
 
-                    let view = cx.new(|cx| AppView::new(initial_workspace.clone(), cx));
+                    let view = cx.new(|cx| AppView::new(initial_workspace.clone(), window, cx));
                     cx.new(|cx| Root::new(view, window, cx))
                 });
                 // Opening the very first window failing is not recoverable: there is nothing left

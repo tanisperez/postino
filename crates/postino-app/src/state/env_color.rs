@@ -4,7 +4,6 @@
 /// Which color category an environment's dot should use, derived from its name. "No
 /// environment" is not covered here: the view draws a hollow ring for it instead of a color.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)] // wired by the environment pill/menu views of phase 4
 pub enum EnvColor {
     /// The name contains "prod".
     Danger,
@@ -19,7 +18,6 @@ const WARNING_NEEDLES: [&str; 4] = ["stag", "test", "qa", "uat"];
 
 /// Derives the [`EnvColor`] of an environment from its name, case-insensitive
 /// (`plans/ui-redesign.md`, section 2.1).
-#[allow(dead_code)] // wired by the environment pill/menu views of phase 4
 pub fn env_color(name: &str) -> EnvColor {
     let lower = name.to_ascii_lowercase();
     if lower.contains("prod") {

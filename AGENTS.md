@@ -71,9 +71,11 @@ postino-app ──> postino-runner ──> postino-script ──> postino-core
 Everything except `postino-app` is testable with `cargo test`, with no window, no GPU and no
 network other than a local test server.
 
-`postino-app` must call `.with_assets(gpui_kit::assets::Assets)` when building the `gpui`
+`postino-app` must call `.with_assets(gpui_kit::assets::AllAssets)` when building the `gpui`
 application (`main.rs`), or every `Icon` (tree chevrons, window controls, checkboxes, ...) renders
-as empty space. On Linux, the window is opened with `WindowDecorations::Client`, so `gpui-kit`'s
+as empty space. `AllAssets` embeds the full Lucide catalog used through
+`gpui_kit::assets::IconName`; the smaller `Assets` only has gpui-component's curated subset, and
+any other icon silently renders empty. On Linux, the window is opened with `WindowDecorations::Client`, so `gpui-kit`'s
 `TitleBar` and `Root` draw the whole window chrome themselves instead of the compositor.
 
 ## Testing

@@ -163,11 +163,9 @@ const DARK: Tokens = Tokens {
 /// only from here, through [`PaletteExt::palette`], never from `cx.theme()` directly and never
 /// from a literal.
 ///
-/// Most fields are read directly by views from phase 3 on (`bg`, `border`, `syn_key`, ...); a
-/// handful already have a Rust-side helper in this file (`method_color`, `status_colors`,
-/// `env_color`). Nothing calls either kind yet, so this struct allows dead code for itself.
+/// Most fields are read directly by views (`bg`, `border`, `syn_key`, ...); a handful have a
+/// Rust-side helper in this file (`method_color`, `status_colors`, `env_color`).
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct Palette {
     /// Background of editor and content panels.
     pub bg: Hsla,
@@ -223,18 +221,27 @@ pub struct Palette {
     pub m_patch: Hsla,
     /// DELETE method color.
     pub m_delete: Hsla,
-    /// JSON object key syntax highlight color.
+    /// JSON object key syntax highlight color. Not read directly by phase 3: the request/
+    /// response code editors (phase 5) get this for free from the theme JSON's own
+    /// `highlight.syntax` config ([`theme_colors_and_highlight`]), which gpui-component's own
+    /// highlighter already applies; kept here for the rare view that colors a code line by hand
+    /// outside a live editor entity, matching `Main A.dc.html`'s request/response line mock.
+    #[allow(dead_code)]
     pub syn_key: Hsla,
-    /// String syntax highlight color.
+    /// String syntax highlight color, see [`Self::syn_key`].
+    #[allow(dead_code)]
     pub syn_str: Hsla,
-    /// Number syntax highlight color.
+    /// Number syntax highlight color, see [`Self::syn_key`].
+    #[allow(dead_code)]
     pub syn_num: Hsla,
-    /// Boolean syntax highlight color.
+    /// Boolean syntax highlight color, see [`Self::syn_key`].
+    #[allow(dead_code)]
     pub syn_bool: Hsla,
     /// The elevation shadow for `overlay`-level surfaces (menus, popovers, the Settings modal),
     /// the two layers of the design's `--shadow` token. There is no `ThemeConfigColors` field
     /// for it (`plans/ui-redesign-spikes.md` section 1.1), so views apply it directly with
-    /// gpui's own `.shadow(...)`. Used from phase 3 on (`Card`, menus, the Settings dialog).
+    /// gpui's own `.shadow(...)`. Used by the `Card` component; menus and the Settings dialog
+    /// (phases 4 and 6) will use it too.
     pub shadow: Vec<BoxShadow>,
 }
 
@@ -288,8 +295,7 @@ impl Palette {
 
     /// The color a method is drawn in: the five standard methods get their own color, HEAD,
     /// OPTIONS and custom methods fall back to `fg_muted` (`plans/ui-redesign.md` section 2.1).
-    /// Used from phase 3 on (`MethodBadge`).
-    #[allow(dead_code)]
+    /// Used by the `MethodBadge` component.
     pub fn method_color(&self, method: &Method) -> Hsla {
         match method {
             Method::Get => self.m_get,
@@ -302,17 +308,15 @@ impl Palette {
     }
 
     /// The method badge's background: the method color at 14% alpha, matching the design's
-    /// `color-mix(... 14%, transparent)`. Used from phase 3 on (`MethodBadge`).
-    #[allow(dead_code)]
+    /// `color-mix(... 14%, transparent)`. Used by the `MethodBadge` component's `pill` variant.
     pub fn method_badge_bg(&self, method: &Method) -> Hsla {
         self.method_color(method).opacity(0.14)
     }
 
     /// The status badge's foreground and background for a response status code
     /// (`plans/ui-redesign.md` section 2.1): 2xx `success`, 3xx `info`, 4xx `warning`, 5xx
-    /// `danger`. `None` ("Not sent" or a send failure) is `fg_muted` on `hover`. Used from
-    /// phase 3 on (`StatusBadge`).
-    #[allow(dead_code)]
+    /// `danger`. `None` ("Not sent" or a send failure) is `fg_muted` on `hover`. Used by the
+    /// `StatusBadge` component.
     pub fn status_colors(&self, status: Option<u16>) -> (Hsla, Hsla) {
         match status {
             Some(code) if (200..300).contains(&code) => (self.success, self.success_subtle),
@@ -325,9 +329,8 @@ impl Palette {
 
     /// The dot color for an environment tier, from `state::env_color::EnvColor`. "No
     /// environment" has no [`EnvColor`] of its own (`state::env_color`'s doc comment): views draw
-    /// its hollow ring straight from `fg_subtle` instead of calling this. Used from phase 3 on
-    /// (`EnvPill`, `EnvMenu`).
-    #[allow(dead_code)]
+    /// its hollow ring straight from `fg_subtle` instead of calling this. Used by the `EnvPill`
+    /// and `EnvMenu` components.
     pub fn env_color(&self, color: EnvColor) -> Hsla {
         match color {
             EnvColor::Danger => self.danger,
@@ -339,8 +342,7 @@ impl Palette {
 
 /// Gives any `App` (and anything that derefs to it, such as `Context<T>`, the same way
 /// `cx.theme()` already works) one-call access to the palette matching the active theme mode.
-/// Used from phase 3 on; nothing calls it yet.
-#[allow(dead_code)]
+/// Every component in `views/components/` reaches the palette through this trait.
 pub trait PaletteExt {
     /// The light or dark [`Palette`], matching `cx.theme().is_dark()`.
     fn palette(&self) -> Palette;
@@ -385,6 +387,13 @@ pub(super) fn theme_colors_and_highlight(dark: bool) -> (serde_json::Value, serd
         "warning.background": tokens.warning,
         "danger.background": tokens.danger,
         "info.background": tokens.info,
+        // Phase 3's `Switch` wraps gpui-kit's own switch as is: its unchecked-track and thumb
+        // colors read these two fields, which otherwise fall back to formulas derived from
+        // `secondary`/`background` that do not match the design's `border_strong` track and
+        // white thumb (`plans/ui-redesign-spikes.md` has no entry for them, since phase 0 did
+        // not yet know phase 3 would need them).
+        "switch.background": tokens.border_strong,
+        "switch.thumb.background": tokens.accent_fg,
     });
     let highlight = serde_json::json!({
         "syntax": {

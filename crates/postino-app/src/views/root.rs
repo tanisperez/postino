@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::input::InputState;
 use gpui_kit::component::tab::{Tab, TabBar};
 use gpui_kit::component::tree::TreeState;
 use gpui_kit::component::*;
@@ -19,6 +20,7 @@ use postino_runner::{RunResult, ScriptEngine, SendOptions};
 use postino_script::QuickJsEngine;
 
 use crate::actions::{SaveActiveTab, SendActiveTab};
+use crate::state::debug_open::{self, DebugOpenTarget};
 use crate::state::ui_tabs::{RequestTab, ResponseTab};
 use crate::state::{self, AppState};
 use crate::views::request_editor::RequestEditorEntities;
@@ -62,12 +64,25 @@ pub struct AppView {
     /// The options every send uses (timeout, redirects, TLS verification). Defaults are fine for
     /// the MVP; there is no UI to change them yet.
     pub(crate) send_options: SendOptions,
+    /// The UI state `POSTINO_OPEN` requested at startup, if any (`state::debug_open`). `None` on
+    /// a normal launch.
+    pub(crate) debug_open: Option<DebugOpenTarget>,
+    /// The `InputState` backing the components gallery's `UrlBar` demo
+    /// (`views/components/gallery.rs`). Created lazily by [`Self::apply_debug_open`], never on a
+    /// normal launch.
+    pub(crate) gallery_url_input: Option<Entity<InputState>>,
 }
 
 impl AppView {
     /// Creates a fresh view, opening `initial_workspace` right away if one was given (the CLI
-    /// argument or the remembered last workspace, see `main.rs`).
-    pub fn new(initial_workspace: Option<PathBuf>, cx: &mut Context<Self>) -> Self {
+    /// argument or the remembered last workspace, see `main.rs`). `window` is only needed for
+    /// [`Self::apply_debug_open`] (opening a dialog, or here creating the gallery's `InputState`,
+    /// needs it); every other debug hook ignores it.
+    pub fn new(
+        initial_workspace: Option<PathBuf>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let tree_state = cx.new(|cx| TreeState::new(cx));
         let mut view = Self {
             state: AppState::new(),
@@ -82,12 +97,38 @@ impl AppView {
             responses: HashMap::new(),
             script_engine: Arc::new(QuickJsEngine),
             send_options: SendOptions::default(),
+            debug_open: None,
+            gallery_url_input: None,
         };
         if let Some(root) = initial_workspace {
             view.open_workspace_at(&root, cx);
         }
         view.apply_debug_autosend(cx);
+        view.apply_debug_open(window, cx);
         view
+    }
+
+    /// `POSTINO_OPEN=<target>` opens a specific UI state at startup, for the orchestrator to
+    /// screenshot after a UI phase (`plans/ui-redesign-spikes.md` section 10). A no-op when
+    /// unset or unrecognized, same convention as [`Self::apply_debug_autosend`]: not a supported
+    /// feature, not surfaced in any menu. Recognized targets are listed on
+    /// [`crate::state::debug_open::DebugOpenTarget`].
+    fn apply_debug_open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Ok(value) = std::env::var("POSTINO_OPEN") else {
+            return;
+        };
+        let Some(target) = debug_open::parse(&value) else {
+            return;
+        };
+        self.debug_open = Some(target);
+        match target {
+            DebugOpenTarget::Components => {
+                self.gallery_url_input = Some(cx.new(|cx| {
+                    InputState::new(window, cx).default_value("{{baseUrl}}/users/{{missing}}")
+                }));
+            }
+        }
+        cx.notify();
     }
 
     /// Hidden debug hooks for end-to-end checks, since there is no tool to simulate clicks in
@@ -322,6 +363,10 @@ impl AppView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
+        if self.debug_open == Some(DebugOpenTarget::Components) {
+            return self.render_components_gallery(window, cx);
+        }
+
         let tabs_bar = self.render_tabs_bar(weak, cx);
 
         v_flex()

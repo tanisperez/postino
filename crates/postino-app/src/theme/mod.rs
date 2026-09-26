@@ -9,8 +9,7 @@
 pub mod metrics;
 pub mod palette;
 
-// Re-exported for views from phase 3 on (`cx.palette()`); nothing in the crate calls either yet.
-#[allow(unused_imports)]
+// Re-exported for views (`cx.palette()`); every component in `views/components/` uses it.
 pub use palette::{Palette, PaletteExt};
 
 use std::borrow::Cow;
