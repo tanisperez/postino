@@ -199,7 +199,7 @@ their own branch, since the orchestrator merges branches).
 2. Run `make format-check`, `make lint`, `make test`.
 3. For UI phases, visual check: run the app on `examples/sample-workspace` (use the debug hooks
    of section 5, `POSTINO_OPEN`), take a screenshot (`grim` on Wayland, `import -window root` on
-   X11) and compare it with the design file rendered in the browser, in both light and dark.
+   X11, `spectacle -b -n -a -o <file>.png` on this KDE machine) and compare it with the design file rendered in the browser, in both light and dark.
    List the differences; small ones go back to the same subagent via `SendMessage`, the rest
    become notes for the user.
 4. Commit on `main` with an English message, close the phase issue with a comment
