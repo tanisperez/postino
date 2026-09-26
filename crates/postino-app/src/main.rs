@@ -4,14 +4,17 @@
 
 mod actions;
 mod state;
+mod theme;
 mod views;
 
 use std::path::PathBuf;
 
-use gpui_kit::component::{Root, TitleBar, theme::Theme};
+use gpui_kit::component::theme::{Theme, ThemeMode};
+use gpui_kit::component::{Root, TitleBar};
 use gpui_kit::*;
 
 use actions::{SaveActiveTab, SendActiveTab};
+use state::settings::ThemeChoice;
 use views::AppView;
 
 fn main() {
@@ -22,6 +25,11 @@ fn main() {
         .map(PathBuf::from)
         .or_else(state::config::load_last_workspace);
 
+    // Settings are not wired to a UI yet (Phase 6), but startup already honors whatever is on
+    // disk (or the documented defaults: System theme, Geist 13px, Geist Mono 12.5px).
+    let settings = state::settings::load_settings();
+    let theme_choice = settings.theme;
+
     // `with_assets` registers the bundled icon SVGs. Without it every `Icon` (tree chevrons,
     // window controls, checkboxes) renders as empty space.
     gpui_kit::application()
@@ -29,6 +37,7 @@ fn main() {
         .run(move |cx| {
             gpui_kit::init(cx);
             bind_keys(cx);
+            theme::install(cx, &settings);
 
             let window_options = WindowOptions {
                 window_min_size: Some(size(px(760.), px(480.))),
@@ -42,14 +51,21 @@ fn main() {
 
             cx.spawn(async move |cx| {
                 let opened = cx.open_window(window_options, move |window, cx| {
-                    // Match the OS light/dark setting on open, and keep matching it if the user
-                    // changes it while Postino is running.
-                    Theme::sync_system_appearance(Some(window), cx);
-                    window
-                        .observe_window_appearance(|window, cx| {
+                    // "System" keeps matching the OS light/dark setting, including if the user
+                    // changes it while Postino is running; an explicit choice sets the mode once
+                    // and does not observe further OS changes.
+                    match theme_choice {
+                        ThemeChoice::System => {
                             Theme::sync_system_appearance(Some(window), cx);
-                        })
-                        .detach();
+                            window
+                                .observe_window_appearance(|window, cx| {
+                                    Theme::sync_system_appearance(Some(window), cx);
+                                })
+                                .detach();
+                        }
+                        ThemeChoice::Light => Theme::change(ThemeMode::Light, Some(window), cx),
+                        ThemeChoice::Dark => Theme::change(ThemeMode::Dark, Some(window), cx),
+                    }
 
                     let view = cx.new(|cx| AppView::new(initial_workspace.clone(), cx));
                     cx.new(|cx| Root::new(view, window, cx))

@@ -83,7 +83,6 @@ impl Default for Settings {
 
 /// Loads the settings from `<config dir>/postino/settings.toml`, or [`Settings::default`] if the
 /// OS config directory is unknown, the file is missing, or its content is not valid TOML.
-#[allow(dead_code)] // wired at startup by phase 2 (theme) and phase 6 (Settings view)
 pub fn load_settings() -> Settings {
     match dirs::config_dir() {
         Some(base) => read_settings(&base),
