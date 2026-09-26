@@ -6,11 +6,15 @@
 //!
 //! The `postman` module (Postman collection import, section 6 phase 7) maps Postman collection
 //! and environment exports into the same `postino-core` types, pure JSON in, plain data out.
+//!
+//! The `snippet` module (`plans/ui-redesign.md`, phase 1b) turns a resolved request into
+//! copyable code (curl, JavaScript `fetch`, Python `requests`) for the UI's "Code" action.
 #![warn(missing_docs)]
 
 mod format;
 
 pub mod env;
 pub mod postman;
+pub mod snippet;
 
 pub use format::{ParseError, ParseErrorKind, parse, serialize};
