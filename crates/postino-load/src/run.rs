@@ -97,7 +97,7 @@ impl LoadRun {
 
     /// Asks the run to stop as soon as possible.
     ///
-    /// Every virtual user thread checks this at least once every [`POLL_INTERVAL`] (between
+    /// Every virtual user thread checks this at least once every `POLL_INTERVAL` (between
     /// targets, and while sleeping through `think_time`), so a call to `stop` finishes the run
     /// promptly, well under a second, even with a long `think_time` or `duration` left to go.
     pub fn stop(&self) {
