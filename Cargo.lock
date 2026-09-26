@@ -5079,8 +5079,10 @@ dependencies = [
  "postino-script",
  "postino-workspace",
  "pretty_assertions",
+ "serde",
  "serde_json",
  "tempfile",
+ "toml 0.8.23",
 ]
 
 [[package]]

@@ -466,6 +466,102 @@ fn load_environment_fails_for_an_unknown_name() {
     ));
 }
 
+// --- Environment writes ---------------------------------------------------------------------
+
+#[test]
+fn set_environment_var_creates_the_folder_and_file_when_missing() {
+    let temp = TempDir::new().expect("temp dir");
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+
+    workspace
+        .set_environment_var("dev", "BASE_URL", "https://dev.test", false)
+        .expect("set environment var");
+
+    let content =
+        fs::read_to_string(temp.path().join("environments/dev.env")).expect("read env file");
+    assert_eq!(content, "BASE_URL=https://dev.test\n");
+}
+
+#[test]
+fn set_environment_var_writes_the_local_variant() {
+    let temp = TempDir::new().expect("temp dir");
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+
+    workspace
+        .set_environment_var("dev", "TOKEN", "secret", true)
+        .expect("set environment var");
+
+    let content = fs::read_to_string(temp.path().join("environments/dev.local.env"))
+        .expect("read local env file");
+    assert_eq!(content, "TOKEN=secret\n");
+    assert!(!temp.path().join("environments/dev.env").exists());
+}
+
+#[test]
+fn set_environment_var_replaces_a_key_preserving_comments_and_order() {
+    let temp = TempDir::new().expect("temp dir");
+    write_file(
+        &temp.path().join("environments/dev.env"),
+        "# base config\nBASE_URL=https://old.test\nTIMEOUT=30\n",
+    );
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+
+    workspace
+        .set_environment_var("dev", "BASE_URL", "https://new.test", false)
+        .expect("set environment var");
+
+    let content =
+        fs::read_to_string(temp.path().join("environments/dev.env")).expect("read env file");
+    assert_eq!(
+        content,
+        "# base config\nBASE_URL=https://new.test\nTIMEOUT=30\n"
+    );
+}
+
+#[test]
+fn set_environment_var_appends_a_missing_key() {
+    let temp = TempDir::new().expect("temp dir");
+    write_file(&temp.path().join("environments/dev.env"), "A=1\n");
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+
+    workspace
+        .set_environment_var("dev", "B", "2", false)
+        .expect("set environment var");
+
+    let content =
+        fs::read_to_string(temp.path().join("environments/dev.env")).expect("read env file");
+    assert_eq!(content, "A=1\nB=2\n");
+}
+
+#[test]
+fn create_environment_creates_an_empty_env_file() {
+    let temp = TempDir::new().expect("temp dir");
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+
+    workspace
+        .create_environment("staging")
+        .expect("create environment");
+
+    assert_eq!(
+        workspace.list_environments().expect("list environments"),
+        vec!["staging".to_string()]
+    );
+}
+
+#[test]
+fn create_environment_fails_if_it_already_exists() {
+    let temp = TempDir::new().expect("temp dir");
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+    workspace
+        .create_environment("staging")
+        .expect("create environment");
+
+    assert!(matches!(
+        workspace.create_environment("staging"),
+        Err(WorkspaceError::AlreadyExists(_))
+    ));
+}
+
 // --- Path traversal rejection --------------------------------------------------------------
 
 #[test]

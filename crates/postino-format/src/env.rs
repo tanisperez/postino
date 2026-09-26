@@ -68,6 +68,81 @@ pub fn serialize(variables: &[KeyValue]) -> String {
     out
 }
 
+/// A single line of an `.env` file that keeps comments and blank lines, used to edit a file
+/// without losing anything [`parse`]/[`serialize`] would drop (`plans/ui-redesign.md`, phase 1c:
+/// "preserving the order and comments of other lines"). Those two functions above stay as they
+/// are, they are enough for reading an environment to resolve variables, where comments do not
+/// matter.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EnvLine {
+    /// A `KEY=value` line.
+    Variable(KeyValue),
+    /// Any other line (a comment or a blank line), kept exactly as read.
+    Verbatim(String),
+}
+
+/// Parses the text of an `.env` file into its lines, keeping comments and blank lines verbatim
+/// (see [`EnvLine`]) instead of dropping them like [`parse`] does.
+pub fn parse_lines(text: &str) -> Result<Vec<EnvLine>, EnvParseError> {
+    let normalized = text.replace("\r\n", "\n");
+    let mut input_lines: Vec<&str> = normalized.split('\n').collect();
+    // `split('\n')` on text ending in "\n" yields a trailing empty element for that final,
+    // absent line: drop it so `serialize_lines` does not grow the file by one blank line on
+    // every round trip.
+    if input_lines.last() == Some(&"") {
+        input_lines.pop();
+    }
+    let mut lines = Vec::with_capacity(input_lines.len());
+    for (index, line) in input_lines.into_iter().enumerate() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            lines.push(EnvLine::Verbatim(line.to_string()));
+            continue;
+        }
+        match line.split_once('=') {
+            Some((key, value)) => lines.push(EnvLine::Variable(KeyValue::new(key.trim(), value))),
+            None => {
+                return Err(EnvParseError {
+                    line: index + 1,
+                    kind: EnvParseErrorKind::MissingEquals(line.to_string()),
+                });
+            }
+        }
+    }
+    Ok(lines)
+}
+
+/// Serializes [`EnvLine`]s back into `.env` file text, one line per entry, each ending with `\n`.
+pub fn serialize_lines(lines: &[EnvLine]) -> String {
+    let mut out = String::new();
+    for line in lines {
+        match line {
+            EnvLine::Variable(variable) => {
+                out.push_str(&variable.key);
+                out.push('=');
+                out.push_str(&variable.value);
+            }
+            EnvLine::Verbatim(text) => out.push_str(text),
+        }
+        out.push('\n');
+    }
+    out
+}
+
+/// Sets `key` to `value` in `lines`, in place: replaces the value of the existing `key=value`
+/// line if one is present, keeping its position and every other line untouched, or appends a new
+/// `key=value` line at the end otherwise.
+pub fn set_variable(lines: &mut Vec<EnvLine>, key: &str, value: &str) {
+    let existing = lines.iter_mut().find_map(|line| match line {
+        EnvLine::Variable(variable) if variable.key == key => Some(variable),
+        _ => None,
+    });
+    match existing {
+        Some(variable) => variable.value = value.to_string(),
+        None => lines.push(EnvLine::Variable(KeyValue::new(key, value))),
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::expect_used)]
 mod tests {
@@ -152,5 +227,66 @@ mod tests {
     #[test]
     fn serialize_of_no_variables_is_an_empty_string() {
         assert_eq!(serialize(&[]), "");
+    }
+
+    #[test]
+    fn parse_lines_keeps_comments_and_blank_lines_verbatim() {
+        let lines = parse_lines("# a comment\nA=1\n\nB=2\n").expect("valid env file");
+        assert_eq!(
+            lines,
+            vec![
+                EnvLine::Verbatim("# a comment".to_string()),
+                EnvLine::Variable(KeyValue::new("A", "1")),
+                EnvLine::Verbatim(String::new()),
+                EnvLine::Variable(KeyValue::new("B", "2")),
+            ]
+        );
+    }
+
+    #[test]
+    fn parse_lines_round_trips_exactly() {
+        let text = "# header\nA=1\n\nB=2\n# trailing\n";
+        let lines = parse_lines(text).expect("valid env file");
+        assert_eq!(serialize_lines(&lines), text);
+    }
+
+    #[test]
+    fn parse_lines_of_empty_text_is_no_lines() {
+        assert_eq!(parse_lines("").expect("valid env file"), Vec::new());
+    }
+
+    #[test]
+    fn parse_lines_reports_the_same_error_as_parse() {
+        assert_eq!(
+            parse_lines("A=1\nnot a valid line\n"),
+            Err(EnvParseError {
+                line: 2,
+                kind: EnvParseErrorKind::MissingEquals("not a valid line".to_string())
+            })
+        );
+    }
+
+    #[test]
+    fn set_variable_replaces_an_existing_key_keeping_position_and_comments() {
+        let mut lines = parse_lines("# header\nA=1\nB=2\n").expect("valid env file");
+        set_variable(&mut lines, "A", "new-value");
+        assert_eq!(
+            serialize_lines(&lines),
+            "# header\nA=new-value\nB=2\n".to_string()
+        );
+    }
+
+    #[test]
+    fn set_variable_appends_a_new_key_at_the_end() {
+        let mut lines = parse_lines("A=1\n").expect("valid env file");
+        set_variable(&mut lines, "B", "2");
+        assert_eq!(serialize_lines(&lines), "A=1\nB=2\n");
+    }
+
+    #[test]
+    fn set_variable_on_an_empty_file_creates_the_first_line() {
+        let mut lines = parse_lines("").expect("valid env file");
+        set_variable(&mut lines, "TOKEN", "secret");
+        assert_eq!(serialize_lines(&lines), "TOKEN=secret\n");
     }
 }

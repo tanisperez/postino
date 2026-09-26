@@ -10,6 +10,7 @@
 #![warn(missing_docs)]
 
 mod error;
+mod git;
 mod ids;
 mod postman;
 mod sanitize;
@@ -18,6 +19,7 @@ mod tree;
 mod workspace;
 
 pub use error::WorkspaceError;
+pub use git::git_branch;
 pub use postman::ImportReport;
 pub use sanitize::sanitize_file_name;
 pub use tree::{Folder, Node, RequestEntry};

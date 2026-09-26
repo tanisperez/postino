@@ -122,7 +122,7 @@ impl AppView {
                 // example) would resolve against whatever directory the app happens to be
                 // launched from next time, not necessarily the same folder.
                 let absolute = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
-                state::config::save_last_workspace(&absolute);
+                state::config::record_workspace(&absolute);
             }
             Err(error) => {
                 self.workspace_error = Some(error.to_string());

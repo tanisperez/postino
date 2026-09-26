@@ -18,7 +18,9 @@ anyhow = { workspace = true }
 # which bundles the JSON grammar, so it is not listed again here.
 gpui-kit = { workspace = true, features = ["tree-sitter-javascript", "tree-sitter-html"] }
 dirs = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+toml = { workspace = true }
 postino-core = { path = "../postino-core" }
 postino-workspace = { path = "../postino-workspace" }
 postino-runner = { path = "../postino-runner" }

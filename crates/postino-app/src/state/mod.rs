@@ -4,9 +4,13 @@
 //! entities and renders it.
 
 pub mod config;
+pub mod env_color;
+pub mod format;
 pub mod import;
+pub mod palette;
 pub mod request_edit;
 pub mod response_render;
+pub mod settings;
 mod tabs;
 pub mod ui_tabs;
 
