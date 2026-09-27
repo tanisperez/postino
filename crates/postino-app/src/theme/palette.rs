@@ -50,6 +50,12 @@ struct Tokens {
     syn_str: &'static str,
     syn_num: &'static str,
     syn_bool: &'static str,
+    /// The dimmed backdrop behind a modal (`Settings.dc.html`'s `rgba(10,11,16,.45)`), mapped to
+    /// gpui-component's `ThemeConfigColors::overlay` field (`"overlay"` in the theme JSON, read
+    /// by `Dialog`'s own `overlay_color()` as the backdrop scrim), a different field from
+    /// `overlay` above (`"popover.background"`, the modal/menu surface fill). Same value in both
+    /// modes, like the design's own token.
+    scrim: &'static str,
     /// The two `--shadow` layers, in CSS `box-shadow` order (offset y, blur, spread, color).
     /// Horizontal offset is always 0 in this design, so it is not stored.
     shadow: [ShadowLayer; 2],
@@ -95,6 +101,7 @@ const LIGHT: Tokens = Tokens {
     syn_str: "#1d7a4f",
     syn_num: "#9a6500",
     syn_bool: "#b03a78",
+    scrim: "#0a0b1073",
     shadow: [
         ShadowLayer {
             offset_y: 12.0,
@@ -143,6 +150,7 @@ const DARK: Tokens = Tokens {
     syn_str: "#86d7a5",
     syn_num: "#e8b75a",
     syn_bool: "#f3a2c6",
+    scrim: "#0a0b1073",
     shadow: [
         ShadowLayer {
             offset_y: 12.0,
@@ -173,7 +181,10 @@ pub struct Palette {
     pub surface: Hsla,
     /// Inputs, cards and the code editor background.
     pub raised: Hsla,
-    /// Menus, popovers and modals background.
+    /// Menus, popovers and modals background (their own surface fill, JSON key
+    /// `"popover.background"`). Not the dialog backdrop scrim: that is `Tokens::scrim`, mapped to
+    /// the JSON's separate `"overlay"` key and read by `Dialog` itself, not exposed here since no
+    /// view needs it directly.
     pub overlay: Hsla,
     /// Default separator and border color.
     pub border: Hsla,
@@ -370,6 +381,10 @@ pub(super) fn theme_colors_and_highlight(dark: bool) -> (serde_json::Value, serd
         "tab_bar.background": tokens.surface,
         "secondary.background": tokens.raised,
         "popover.background": tokens.overlay,
+        // A different field from `popover.background` above: this is `Dialog`'s own backdrop
+        // scrim color (`overlay_color()`, `gpui-component-0.6.6/src/dialog/dialog.rs:277`,
+        // reading `cx.theme().overlay`), not the modal/popover surface fill.
+        "overlay": tokens.scrim,
         "border": tokens.border,
         "input.border": tokens.border_strong,
         "foreground": tokens.fg,

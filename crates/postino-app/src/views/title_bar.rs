@@ -48,9 +48,9 @@ impl AppView {
                             .justify_center()
                             .child(render_search_trigger(&palette, mono_font)),
                     )
-                    .child(self.render_env_picker(weak, cx))
+                    .child(self.render_env_picker(weak.clone(), cx))
                     .child(self.render_import_menu(cx))
-                    .child(render_settings_gear(&palette)),
+                    .child(render_settings_gear(weak, &palette)),
             )
             .into_any_element()
     }
@@ -189,17 +189,22 @@ fn render_search_trigger(palette: &Palette, mono_font: SharedString) -> impl Int
         )
 }
 
-/// The settings gear. Inert until phase 6 builds the Settings modal.
-fn render_settings_gear(palette: &Palette) -> impl IntoElement {
-    // TODO(phase 6): open Settings.
+/// The settings gear: opens the Settings modal (`views/settings.rs`, `plans/ui-redesign.md`
+/// phase 6).
+fn render_settings_gear(weak: WeakEntity<AppView>, palette: &Palette) -> impl IntoElement {
     div()
+        .id("title-bar-settings-gear")
         .size(px(ENV_PILL_HEIGHT))
         .flex()
         .items_center()
         .justify_center()
+        .cursor_pointer()
         .rounded(px(RADIUS_MD - 2.0))
         .text_color(palette.fg_muted)
         .child(Icon::new(IconName::Settings).small())
+        .on_click(move |_, window, cx| {
+            let _ = weak.update(cx, |view, cx| view.open_settings(window, cx));
+        })
 }
 
 /// `"Ctrl K"` (`"Cmd K"` on macOS): the search trigger's key hint.

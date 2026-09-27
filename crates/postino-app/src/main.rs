@@ -14,9 +14,9 @@ use gpui_kit::component::{Root, TitleBar};
 use gpui_kit::*;
 
 use actions::{
-    SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
-    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
-    SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+    OpenSettings, SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3,
+    SelectEnvironment4, SelectEnvironment5, SelectEnvironment6, SelectEnvironment7,
+    SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
 };
 use state::settings::ThemeChoice;
 use views::AppView;
@@ -93,22 +93,36 @@ fn main() {
             cx.spawn(async move |cx| {
                 let opened = cx.open_window(window_options, move |window, cx| {
                     // "System" keeps matching the OS light/dark setting, including if the user
-                    // changes it while Postino is running; an explicit choice sets the mode once
-                    // and does not observe further OS changes.
+                    // changes it while Postino is running; an explicit choice sets the mode once.
                     match theme_choice {
-                        ThemeChoice::System => {
-                            Theme::sync_system_appearance(Some(window), cx);
-                            window
-                                .observe_window_appearance(|window, cx| {
-                                    Theme::sync_system_appearance(Some(window), cx);
-                                })
-                                .detach();
-                        }
+                        ThemeChoice::System => Theme::sync_system_appearance(Some(window), cx),
                         ThemeChoice::Light => Theme::change(ThemeMode::Light, Some(window), cx),
                         ThemeChoice::Dark => Theme::change(ThemeMode::Dark, Some(window), cx),
                     }
 
-                    let view = cx.new(|cx| AppView::new(initial_workspace.clone(), window, cx));
+                    let view =
+                        cx.new(|cx| AppView::new(initial_workspace.clone(), settings, window, cx));
+
+                    // Always listen for OS appearance changes, live, regardless of the theme
+                    // choice at startup: the Settings view (`plans/ui-redesign.md` phase 6) can
+                    // switch the choice at any time afterwards, and "System" must start following
+                    // the OS the moment it is picked, even if the app launched in Light or Dark.
+                    // Checking the *current* setting on every OS change (instead of only
+                    // attaching this observer when `theme_choice == System`) is what lets Light
+                    // and Dark stop following it without detaching anything: the observer simply
+                    // no-ops while they are active.
+                    let weak = view.downgrade();
+                    window
+                        .observe_window_appearance(move |window, cx| {
+                            let follows_system = weak.upgrade().is_some_and(|view| {
+                                view.read(cx).state.settings.theme == ThemeChoice::System
+                            });
+                            if follows_system {
+                                Theme::sync_system_appearance(Some(window), cx);
+                            }
+                        })
+                        .detach();
+
                     cx.new(|cx| Root::new(view, window, cx))
                 });
                 // Opening the very first window failing is not recoverable: there is nothing left
@@ -138,6 +152,7 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-8", SelectEnvironment8, None),
         KeyBinding::new("cmd-9", SelectEnvironment9, None),
         KeyBinding::new("cmd-0", SelectNoEnvironment, None),
+        KeyBinding::new("cmd-,", OpenSettings, None),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
@@ -153,5 +168,6 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-8", SelectEnvironment8, None),
         KeyBinding::new("ctrl-9", SelectEnvironment9, None),
         KeyBinding::new("ctrl-0", SelectNoEnvironment, None),
+        KeyBinding::new("ctrl-,", OpenSettings, None),
     ]);
 }

@@ -35,5 +35,7 @@ actions!(
         SelectEnvironment9,
         /// Selects "No environment" (`Ctrl 0` / `Cmd 0`).
         SelectNoEnvironment,
+        /// Opens the Settings modal (`Ctrl ,` / `Cmd ,`), `plans/ui-redesign.md` phase 6 item 1.
+        OpenSettings,
     ]
 );

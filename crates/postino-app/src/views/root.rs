@@ -19,11 +19,12 @@ use postino_runner::{RunResult, ScriptEngine, SendOptions};
 use postino_script::QuickJsEngine;
 
 use crate::actions::{
-    SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
-    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
-    SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+    OpenSettings, SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3,
+    SelectEnvironment4, SelectEnvironment5, SelectEnvironment6, SelectEnvironment7,
+    SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
 };
 use crate::state::debug_open::{self, DebugOpenTarget};
+use crate::state::settings::Settings;
 use crate::state::ui_tabs::{self, RequestTab, ResponseTab};
 use crate::state::{self, AppState};
 use crate::views::components::{
@@ -98,11 +99,15 @@ pub struct AppView {
 
 impl AppView {
     /// Creates a fresh view, opening `initial_workspace` right away if one was given (the CLI
-    /// argument or the remembered last workspace, see `main.rs`). `window` is only needed for
-    /// [`Self::apply_debug_open`] (opening a dialog, or here creating the gallery's `InputState`,
-    /// needs it); every other debug hook ignores it.
+    /// argument or the remembered last workspace, see `main.rs`). `settings` is whatever `main.rs`
+    /// loaded from `settings.toml` (or its defaults) before opening the window; the theme and
+    /// fonts it describes are already applied by the time this runs, this just remembers it so
+    /// the Settings view (`views/settings.rs`) has a value to show and change. `window` is only
+    /// needed for [`Self::apply_debug_open`] (opening a dialog, or here creating the gallery's
+    /// `InputState`, needs it); every other debug hook ignores it.
     pub fn new(
         initial_workspace: Option<PathBuf>,
+        settings: Settings,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -119,7 +124,10 @@ impl AppView {
         .detach();
 
         let mut view = Self {
-            state: AppState::new(),
+            state: AppState {
+                settings,
+                ..AppState::new()
+            },
             tree_state,
             last_selected_request: None,
             workspace_error: None,
@@ -164,6 +172,19 @@ impl AppView {
                 self.gallery_url_input = Some(cx.new(|cx| {
                     InputState::new(window, cx).default_value("{{baseUrl}}/users/{{missing}}")
                 }));
+            }
+            DebugOpenTarget::Settings => {
+                // Opening a dialog needs the window's `Root` (`WindowExt::open_dialog` panics
+                // otherwise, "window first layer should be a gpui_component::Root"), which does
+                // not exist yet this early: `AppView::new` (this hook's caller) still runs inside
+                // `gpui`'s own `open_window`, before it assigns the view this method builds as
+                // the window's root. Deferring one tick, with `window.defer`, runs after that
+                // assignment, same as everywhere else in `gpui` that must wait for it (see
+                // `open_window`'s own use of `window.defer` for `appearance_changed`).
+                let weak = cx.weak_entity();
+                window.defer(cx, move |window, cx| {
+                    let _ = weak.update(cx, |view, cx| view.open_settings(window, cx));
+                });
             }
         }
         cx.notify();
@@ -431,6 +452,18 @@ impl AppView {
     /// Handles the `Ctrl+Enter` / `Cmd+Enter` key binding (see `main.rs`'s `bind_keys`).
     fn on_send_action(&mut self, _: &SendActiveTab, _window: &mut Window, cx: &mut Context<Self>) {
         self.send_active_tab(cx);
+    }
+
+    /// Handles the `Ctrl ,` / `Cmd ,` key binding (see `main.rs`'s `bind_keys`), and the title
+    /// bar's settings gear (`views/title_bar.rs`) and the command palette (phase 7) call
+    /// [`Self::open_settings`] directly.
+    fn on_open_settings_action(
+        &mut self,
+        _: &OpenSettings,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.open_settings(window, cx);
     }
 
     /// Sets the active environment (`None` for "No environment"). Used by the environment
@@ -706,12 +739,22 @@ impl Render for AppView {
         });
         let body = self.render_body(weak, window, cx);
         let status_bar = self.render_status_bar(cx);
+        // gpui-kit's `Root` (`main.rs` wraps this view in one) does not render the dialog layer
+        // on its own: `Root::render_dialog_layer` is a method the *consuming* view must call
+        // itself (its own doc comment: "A dialog that opens into a root which never renders this
+        // layer looks exactly like one that does not open", confirmed the hard way while
+        // screenshotting the Settings modal for this phase, `has_active_dialog` was `true` but
+        // nothing painted until this was added). Settings (`views/settings.rs`) is the first
+        // dialog user; later phases (command palette, snippet dialog, define variable) need no
+        // further wiring here, they reuse the same layer.
+        let dialog_layer = Root::render_dialog_layer(window, cx);
 
         v_flex()
             .size_full()
             .bg(background)
             .on_action(cx.listener(Self::on_save_action))
             .on_action(cx.listener(Self::on_send_action))
+            .on_action(cx.listener(Self::on_open_settings_action))
             .on_action(cx.listener(Self::on_select_environment_1))
             .on_action(cx.listener(Self::on_select_environment_2))
             .on_action(cx.listener(Self::on_select_environment_3))
@@ -726,5 +769,6 @@ impl Render for AppView {
             .children(error_banner)
             .child(body)
             .child(status_bar)
+            .children(dialog_layer)
     }
 }

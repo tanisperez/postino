@@ -5,7 +5,7 @@
 
 use std::fs;
 use std::ops::RangeInclusive;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
@@ -15,16 +15,14 @@ const SETTINGS_FILE: &str = "postino/settings.toml";
 /// Valid range of [`Settings::ui_font_size`], in points (`plans/ui-redesign.md`, section 1).
 pub const UI_FONT_SIZE_RANGE: RangeInclusive<f32> = 11.0..=16.0;
 
-/// Step of the UI font size stepper in the Settings view. Read by that view, added in phase 6.
-#[allow(dead_code)] // wired by the Settings view of phase 6
+/// Step of the UI font size stepper in the Settings view (`plans/ui-redesign.md` phase 6 item 4).
 pub const UI_FONT_SIZE_STEP: f32 = 1.0;
 
 /// Valid range of [`Settings::mono_font_size`], in points.
 pub const MONO_FONT_SIZE_RANGE: RangeInclusive<f32> = 10.0..=18.0;
 
-/// Step of the monospace font size stepper in the Settings view. Read by that view, added in
-/// phase 6.
-#[allow(dead_code)] // wired by the Settings view of phase 6
+/// Step of the monospace font size stepper in the Settings view (`plans/ui-redesign.md` phase 6
+/// item 5).
 pub const MONO_FONT_SIZE_STEP: f32 = 0.5;
 
 /// Which theme mode the app follows, chosen in Settings, "Appearance" (wired in phase 6).
@@ -93,11 +91,39 @@ pub fn load_settings() -> Settings {
 /// Saves `settings` to `<config dir>/postino/settings.toml`, creating the folder if needed.
 /// Failing to persist this is not worth interrupting the user over, so any error (a missing
 /// config directory, a read-only filesystem, ...) is silently ignored.
-#[allow(dead_code)] // wired by the Settings view of phase 6
 pub fn save_settings(settings: &Settings) {
     if let Some(base) = dirs::config_dir() {
         write_settings(&base, settings);
     }
+}
+
+/// The real path of the settings file, `None` when the OS config directory is unknown. Used by
+/// the Settings view's "Saved to" line (`plans/ui-redesign.md` phase 6 item 2), shortened with
+/// `~` by `state::format::shorten_path`.
+pub fn settings_path() -> Option<PathBuf> {
+    dirs::config_dir().map(|base| base.join(SETTINGS_FILE))
+}
+
+/// Steps `current` by `step` (positive or negative), clamped to `range`. Used by the Settings
+/// view's font size steppers (`plans/ui-redesign.md` phase 6 items 4 and 5): the `-`/`+` buttons
+/// pass `-step`/`step` of [`UI_FONT_SIZE_STEP`] or [`MONO_FONT_SIZE_STEP`], with
+/// [`UI_FONT_SIZE_RANGE`] or [`MONO_FONT_SIZE_RANGE`].
+pub fn step_size(current: f32, step: f32, range: RangeInclusive<f32>) -> f32 {
+    (current + step).clamp(*range.start(), *range.end())
+}
+
+/// Builds the options for a font picker: `bundled` first, always, then every other entry of
+/// `installed` (as returned by `cx.text_system().all_font_names()`, already sorted), skipping the
+/// bundled family's own name if it repeats there and de-duplicating (`plans/ui-redesign.md` phase
+/// 6 items 4 and 5).
+pub fn font_options(bundled: &str, installed: &[String]) -> Vec<String> {
+    let mut options = vec![bundled.to_string()];
+    for name in installed {
+        if name != bundled && !options.contains(name) {
+            options.push(name.clone());
+        }
+    }
+    options
 }
 
 /// Reads and parses `<base>/postino/settings.toml`. Split out from [`load_settings`] so tests can
@@ -261,5 +287,61 @@ mod tests {
         assert_eq!(ThemeChoice::parse("DARK"), Some(ThemeChoice::Dark));
         assert_eq!(ThemeChoice::parse("Light"), Some(ThemeChoice::Light));
         assert_eq!(ThemeChoice::parse("nonsense"), None);
+    }
+
+    #[test]
+    fn step_size_steps_within_range() {
+        assert_eq!(step_size(13.0, UI_FONT_SIZE_STEP, UI_FONT_SIZE_RANGE), 14.0);
+        assert_eq!(
+            step_size(13.0, -UI_FONT_SIZE_STEP, UI_FONT_SIZE_RANGE),
+            12.0
+        );
+        assert_eq!(
+            step_size(12.5, MONO_FONT_SIZE_STEP, MONO_FONT_SIZE_RANGE),
+            13.0
+        );
+    }
+
+    #[test]
+    fn step_size_clamps_at_the_range_bounds() {
+        assert_eq!(step_size(16.0, UI_FONT_SIZE_STEP, UI_FONT_SIZE_RANGE), 16.0);
+        assert_eq!(
+            step_size(11.0, -UI_FONT_SIZE_STEP, UI_FONT_SIZE_RANGE),
+            11.0
+        );
+        assert_eq!(
+            step_size(18.0, MONO_FONT_SIZE_STEP, MONO_FONT_SIZE_RANGE),
+            18.0
+        );
+        assert_eq!(
+            step_size(10.0, -MONO_FONT_SIZE_STEP, MONO_FONT_SIZE_RANGE),
+            10.0
+        );
+    }
+
+    #[test]
+    fn font_options_puts_the_bundled_family_first() {
+        let installed = vec![
+            "Arial".to_string(),
+            "Geist".to_string(),
+            "Fira Code".to_string(),
+        ];
+        assert_eq!(
+            font_options("Geist", &installed),
+            vec![
+                "Geist".to_string(),
+                "Arial".to_string(),
+                "Fira Code".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn font_options_deduplicates() {
+        let installed = vec!["Arial".to_string(), "Arial".to_string()];
+        assert_eq!(
+            font_options("Geist", &installed),
+            vec!["Geist".to_string(), "Arial".to_string()]
+        );
     }
 }

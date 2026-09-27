@@ -13,9 +13,10 @@ pub mod palette;
 pub use palette::{Palette, PaletteExt};
 
 use std::borrow::Cow;
+use std::rc::Rc;
 
 use gpui_kit::App;
-use gpui_kit::component::{Theme, ThemeRegistry};
+use gpui_kit::component::{Theme, ThemeConfig, ThemeRegistry};
 
 use crate::state::settings::Settings;
 
@@ -57,6 +58,37 @@ pub fn install(cx: &mut App, settings: &Settings) {
     if let Some(dark) = dark {
         theme.dark_theme = dark;
     }
+}
+
+/// Rebuilds the "Postino Light"/"Postino Dark" `ThemeConfig`s from `settings` and assigns them as
+/// the active `Theme`'s light/dark themes, live (`plans/ui-redesign.md` phase 6 item 6: every
+/// Settings change updates the global `Theme` immediately). Unlike [`install`] (called once at
+/// startup), this does not go through `ThemeRegistry::load_themes_from_str`: that call silently
+/// no-ops when a theme name it already knows is loaded again (`plans/ui-redesign-spikes.md`
+/// section 1), which would make a font or size change in Settings invisible. Parsing each mode's
+/// `ThemeConfig` JSON directly and assigning it to `Theme::global_mut(cx).light_theme`/
+/// `.dark_theme` sidesteps that: `Theme::change` always re-reads those two fields.
+///
+/// The caller still has to call `Theme::change`/`Theme::sync_system_appearance` afterwards to
+/// actually repaint the window with the new config (this function only updates what those calls
+/// read).
+pub fn apply_settings(cx: &mut App, settings: &Settings) {
+    let light_json = theme_config_json(LIGHT_THEME_NAME, "light", false, settings).to_string();
+    let dark_json = theme_config_json(DARK_THEME_NAME, "dark", true, settings).to_string();
+    // Built by this module from the fixed, well-formed shape `theme_config_json` always
+    // produces (the same guarantee `install`'s `theme_family_json` relies on, covered by this
+    // module's own tests): a parse failure here would be a bug in this function, not a runtime
+    // condition, one of AGENTS.md's "truly impossible state" exceptions.
+    #[allow(clippy::expect_used)]
+    let light: ThemeConfig = serde_json::from_str(&light_json)
+        .expect("theme_config_json always builds a valid ThemeConfig");
+    #[allow(clippy::expect_used)]
+    let dark: ThemeConfig = serde_json::from_str(&dark_json)
+        .expect("theme_config_json always builds a valid ThemeConfig");
+
+    let theme = Theme::global_mut(cx);
+    theme.light_theme = Rc::new(light);
+    theme.dark_theme = Rc::new(dark);
 }
 
 /// Registers the bundled Geist and Geist Mono TTFs with `cx`'s text system

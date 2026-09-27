@@ -1,0 +1,808 @@
+//! The Settings modal (`plans/ui-redesign.md` phase 6): opened from the title bar gear
+//! (`views/title_bar.rs`), the command palette (phase 7 only needs to expose the action) and
+//! `Ctrl ,` / `Cmd ,` (`main.rs`'s `bind_keys`, `actions::OpenSettings`). Closed with the `x`,
+//! Escape, or a click on the dimmed backdrop, all handled by gpui-component's own `Dialog`
+//! (`plans/ui-redesign-spikes.md` section 6).
+//!
+//! Built as a `Dialog` with fully custom content: a left nav ("Settings" title, the single
+//! "Appearance" item) and a right column (header, scrollable body, footer), matching
+//! `postino_design_system/Settings.dc.html`. Every control writes straight to
+//! `AppState::settings` and calls [`AppView::apply_settings_live`], so it updates the global
+//! `Theme` and persists to `settings.toml` immediately: there is no "Save" button.
+
+use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
+use gpui_kit::component::theme::{Theme, ThemeMode};
+use gpui_kit::component::*;
+use gpui_kit::prelude::*;
+use gpui_kit::*;
+
+use crate::state;
+use crate::state::settings::{Settings, ThemeChoice};
+use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_LG, RADIUS_MD};
+use crate::theme::{self, Palette, PaletteExt};
+
+use super::components::{GhostButton, IconButton};
+use super::root::AppView;
+
+/// Width of the modal itself.
+const MODAL_WIDTH: f32 = 800.0;
+/// Height of the modal itself.
+const MODAL_HEIGHT: f32 = 720.0;
+/// Least vertical margin kept between the modal and the window edges.
+const MODAL_MARGIN_MIN: f32 = 16.0;
+/// Width of the modal's left nav column.
+const NAV_WIDTH: f32 = 188.0;
+/// Height of the right column's header and footer strips.
+const HEADER_FOOTER_HEIGHT: f32 = 52.0;
+/// Width of a font picker's select box.
+const SELECT_WIDTH: f32 = 220.0;
+/// Width of a font size stepper's numeric readout.
+const STEPPER_VALUE_WIDTH: f32 = 64.0;
+
+impl AppView {
+    /// Opens the Settings modal (`plans/ui-redesign.md` phase 6 item 1).
+    pub(crate) fn open_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let weak = cx.weak_entity();
+        window.open_dialog(cx, move |dialog, window, cx| {
+            let palette = cx.palette();
+            let weak = weak.clone();
+            // `Dialog` otherwise defaults `margin_top` to a tenth of the viewport and lets
+            // `max_h` (viewport minus that margin) win over our own `h(720px)` on a short window
+            // (this environment's own 1280x760 fallback window included), clipping the footer.
+            // Centering the modal vertically ourselves, with a 16px floor so it never touches the
+            // window edge, keeps the requested height on any window tall enough for it and only
+            // shrinks (via the scrollable body, not this) on one that is not.
+            let viewport_height: f32 = window.viewport_size().height.into();
+            let margin_top = ((viewport_height - MODAL_HEIGHT) / 2.0).max(MODAL_MARGIN_MIN);
+            dialog
+                .w(px(MODAL_WIDTH))
+                .h(px(MODAL_HEIGHT))
+                .margin_top(px(margin_top))
+                .p_0()
+                .border_0()
+                .bg(palette.overlay)
+                .close_button(false)
+                .content(move |content, _window, cx| {
+                    // `DialogContent` (`gpui-component-0.6.6/src/dialog/content.rs`) is
+                    // `v_flex().flex_1()` inside the dialog's own `overflow_hidden()` wrapper, but
+                    // a flex item's automatic minimum size defaults to its content's natural
+                    // size, not 0: without overriding that here, `DialogContent` (and everything
+                    // under it, including the scrollable body `render_right_column` builds)
+                    // simply grows to fit tall content instead of being clamped to the 720px
+                    // `h()`/`max_h` this dialog already has, which is what let the header/footer
+                    // through at the default font sizes but not at larger ones, where the grown
+                    // content pushed the footer past the ancestor's `overflow_hidden()` with no
+                    // way to scroll to it. `min_h_0()` here is what makes the body's own
+                    // `overflow_y_scroll()` (`render_right_column`) actually take effect instead.
+                    content
+                        .min_h_0()
+                        .child(render_settings_body(weak.clone(), cx))
+                })
+        });
+    }
+
+    /// Applies `self.state.settings` to the live `Theme` (colors, fonts and sizes) and to the
+    /// theme mode, refreshes `window`, and persists the file (`plans/ui-redesign.md` phase 6 item
+    /// 6). Called after every control in the Settings view changes a value; there is no separate
+    /// "Save" action.
+    fn apply_settings_live(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        theme::apply_settings(cx, &self.state.settings);
+        match self.state.settings.theme {
+            ThemeChoice::System => Theme::sync_system_appearance(Some(window), cx),
+            ThemeChoice::Light => Theme::change(ThemeMode::Light, Some(window), cx),
+            ThemeChoice::Dark => Theme::change(ThemeMode::Dark, Some(window), cx),
+        }
+        state::settings::save_settings(&self.state.settings);
+        cx.notify();
+    }
+
+    /// Picks a theme card (`plans/ui-redesign.md` phase 6 item 3).
+    fn set_theme_choice(
+        &mut self,
+        choice: ThemeChoice,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.state.settings.theme = choice;
+        self.apply_settings_live(window, cx);
+    }
+
+    /// Picks the UI font family (`plans/ui-redesign.md` phase 6 item 4).
+    fn set_ui_font(&mut self, font: String, window: &mut Window, cx: &mut Context<Self>) {
+        self.state.settings.ui_font = font;
+        self.apply_settings_live(window, cx);
+    }
+
+    /// Steps the UI font size by `delta` (`plans/ui-redesign.md` phase 6 item 4).
+    fn step_ui_font_size(&mut self, delta: f32, window: &mut Window, cx: &mut Context<Self>) {
+        self.state.settings.ui_font_size = state::settings::step_size(
+            self.state.settings.ui_font_size,
+            delta,
+            state::settings::UI_FONT_SIZE_RANGE,
+        );
+        self.apply_settings_live(window, cx);
+    }
+
+    /// Picks the monospace font family (`plans/ui-redesign.md` phase 6 item 5).
+    fn set_mono_font(&mut self, font: String, window: &mut Window, cx: &mut Context<Self>) {
+        self.state.settings.mono_font = font;
+        self.apply_settings_live(window, cx);
+    }
+
+    /// Steps the monospace font size by `delta` (`plans/ui-redesign.md` phase 6 item 5).
+    fn step_mono_font_size(&mut self, delta: f32, window: &mut Window, cx: &mut Context<Self>) {
+        self.state.settings.mono_font_size = state::settings::step_size(
+            self.state.settings.mono_font_size,
+            delta,
+            state::settings::MONO_FONT_SIZE_RANGE,
+        );
+        self.apply_settings_live(window, cx);
+    }
+
+    /// Restores `Settings::default()` (`plans/ui-redesign.md` phase 6 item 6, "Reset to
+    /// defaults").
+    fn reset_settings_to_defaults(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.state.settings = Settings::default();
+        self.apply_settings_live(window, cx);
+    }
+}
+
+/// Renders the dialog's whole content: the left nav plus the right column. `weak` lets every
+/// control reach back into [`AppView`] to change a setting; `cx` is re-read fresh every time the
+/// window repaints the dialog (the content builder gpui-component calls is a plain `Fn`, not a
+/// `FnMut`, so nothing here is memoized across frames), which is what makes every change appear
+/// immediately.
+fn render_settings_body(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
+    let Some(view) = weak.upgrade() else {
+        return div().into_any_element();
+    };
+    let settings = view.read(cx).state.settings.clone();
+    let palette = cx.palette();
+    let mono_font_family = cx.theme().mono_font_family.clone();
+    let installed = cx.text_system().all_font_names();
+
+    h_flex()
+        .size_full()
+        .child(render_nav(&palette, &mono_font_family))
+        .child(render_right_column(
+            weak,
+            &palette,
+            &settings,
+            &installed,
+            &mono_font_family,
+        ))
+        .into_any_element()
+}
+
+/// The left nav: "Settings" title, the single "Appearance" item, and the "Saved to" footer.
+fn render_nav(palette: &Palette, mono_font_family: &SharedString) -> AnyElement {
+    let path_label = state::settings::settings_path()
+        .map(|path| state::format::shorten_path(&path, dirs::home_dir().as_deref()))
+        .unwrap_or_else(|| "unknown".to_string());
+
+    v_flex()
+        .flex_none()
+        .w(px(NAV_WIDTH))
+        .h_full()
+        .bg(palette.surface)
+        .border_r_1()
+        .border_color(palette.border)
+        .px(px(10.0))
+        .py(px(14.0))
+        .gap(px(2.0))
+        .child(
+            div()
+                .px(px(8.0))
+                .pt(px(2.0))
+                .pb(px(10.0))
+                .font_weight(FontWeight::SEMIBOLD)
+                .text_size(px(14.0))
+                .child("Settings"),
+        )
+        .child(
+            h_flex()
+                .h(px(28.0))
+                .items_center()
+                .gap_2()
+                .px(px(8.0))
+                .rounded(px(RADIUS_MD - 1.0))
+                .bg(palette.accent_subtle)
+                .text_color(palette.accent_text)
+                .font_weight(FontWeight::MEDIUM)
+                .child(Icon::new(IconName::Palette).small())
+                .child("Appearance"),
+        )
+        .child(div().flex_1())
+        .child(
+            v_flex()
+                .p(px(8.0))
+                .text_color(palette.fg_subtle)
+                .text_size(px(11.5))
+                .line_height(relative(1.5))
+                .child("Saved to")
+                .child(
+                    div()
+                        .font_family(mono_font_family.clone())
+                        .child(path_label),
+                ),
+        )
+        .into_any_element()
+}
+
+/// The right column: header, scrollable body (theme, interface, editor) and footer.
+fn render_right_column(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    settings: &Settings,
+    installed: &[String],
+    mono_font_family: &SharedString,
+) -> AnyElement {
+    v_flex()
+        .flex_1()
+        .min_w_0()
+        .h_full()
+        .child(render_header(palette))
+        .child(
+            v_flex()
+                .id("settings-body")
+                .flex_1()
+                .min_h_0()
+                .overflow_y_scroll()
+                .p(px(20.0))
+                .gap(px(22.0))
+                .child(render_theme_section(weak.clone(), palette, settings.theme))
+                .child(divider(palette))
+                .child(render_interface_section(
+                    weak.clone(),
+                    palette,
+                    settings,
+                    installed,
+                    mono_font_family,
+                ))
+                .child(divider(palette))
+                .child(render_editor_section(
+                    weak.clone(),
+                    palette,
+                    settings,
+                    installed,
+                    mono_font_family,
+                )),
+        )
+        .child(render_footer(weak, palette))
+        .into_any_element()
+}
+
+/// A full-width 1px divider between sections.
+fn divider(palette: &Palette) -> AnyElement {
+    div().h(px(1.0)).bg(palette.border).into_any_element()
+}
+
+/// The right column's header: "Appearance" title and the close button.
+fn render_header(palette: &Palette) -> AnyElement {
+    h_flex()
+        .h(px(HEADER_FOOTER_HEIGHT))
+        .flex_none()
+        .items_center()
+        .justify_between()
+        .px(px(20.0))
+        .border_b_1()
+        .border_color(palette.border)
+        .child(
+            div()
+                .text_size(px(15.0))
+                .font_weight(FontWeight::SEMIBOLD)
+                .child("Appearance"),
+        )
+        .child(
+            IconButton::new("settings-close", IconName::Close)
+                .large()
+                .tooltip("Close")
+                .on_click(move |_, window, cx| {
+                    window.close_dialog(cx);
+                }),
+        )
+        .into_any_element()
+}
+
+/// The right column's footer: "Changes apply immediately." and "Reset to defaults".
+fn render_footer(weak: WeakEntity<AppView>, palette: &Palette) -> AnyElement {
+    h_flex()
+        .h(px(HEADER_FOOTER_HEIGHT))
+        .flex_none()
+        .items_center()
+        .justify_between()
+        .px(px(20.0))
+        .border_t_1()
+        .border_color(palette.border)
+        .child(
+            div()
+                .text_color(palette.fg_subtle)
+                .text_size(px(12.0))
+                .child("Changes apply immediately."),
+        )
+        .child(
+            GhostButton::new("settings-reset", "Reset to defaults").on_click(
+                move |_, window, cx| {
+                    let _ = weak.update(cx, |view, cx| view.reset_settings_to_defaults(window, cx));
+                },
+            ),
+        )
+        .into_any_element()
+}
+
+/// The "Theme" section: the description and the three theme cards.
+fn render_theme_section(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    current: ThemeChoice,
+) -> AnyElement {
+    v_flex()
+        .gap(px(10.0))
+        .child(
+            v_flex()
+                .gap(px(2.0))
+                .child(div().font_weight(FontWeight::MEDIUM).child("Theme"))
+                .child(
+                    div()
+                        .text_color(palette.fg_muted)
+                        .text_size(px(12.0))
+                        .child("System follows your OS light/dark setting and switches live."),
+                ),
+        )
+        .child(
+            h_flex().gap(px(12.0)).children(
+                [ThemeChoice::System, ThemeChoice::Light, ThemeChoice::Dark]
+                    .into_iter()
+                    .map(|choice| {
+                        render_theme_card(weak.clone(), palette, choice, choice == current)
+                    }),
+            ),
+        )
+        .into_any_element()
+}
+
+/// One theme card (System, Light or Dark): the mini light/dark preview, the radio and the label.
+fn render_theme_card(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    choice: ThemeChoice,
+    selected: bool,
+) -> AnyElement {
+    let (id, label): (&'static str, &'static str) = match choice {
+        ThemeChoice::System => ("settings-theme-system", "System"),
+        ThemeChoice::Light => ("settings-theme-light", "Light"),
+        ThemeChoice::Dark => ("settings-theme-dark", "Dark"),
+    };
+    // System's preview is half light, half dark; Light and Dark show their own single mode on
+    // both sides (`Settings.dc.html`'s own `renderVals()`: `[["System",L,D],["Light",L,L],
+    // ["Dark",D,D]]`, the two palettes passed to each card's left and right half).
+    let (left, right) = match choice {
+        ThemeChoice::System => (Palette::light(), Palette::dark()),
+        ThemeChoice::Light => (Palette::light(), Palette::light()),
+        ThemeChoice::Dark => (Palette::dark(), Palette::dark()),
+    };
+    // Every card's left half draws its accent line in the dark palette's accent color, regardless
+    // of which theme the card represents: a fixed swatch color `Settings.dc.html` uses for visual
+    // consistency across the three previews, not the current theme mode's own accent (its own
+    // markup hardcodes the same hex in all three `renderVals()` entries).
+    let accent_line = Palette::dark().accent;
+
+    let ring_color = if selected {
+        palette.accent
+    } else {
+        palette.border_strong
+    };
+    let radio_color = if selected {
+        palette.accent
+    } else {
+        palette.border_strong
+    };
+
+    let mut radio = div()
+        .size(px(14.0))
+        .rounded_full()
+        .border_color(radio_color);
+    radio = if selected {
+        radio.border_4()
+    } else {
+        radio.border_1()
+    };
+
+    // A real border, not a `box-shadow` ring (`Settings.dc.html`'s own `0 0 0 Npx` trick): a
+    // spread, zero-blur, zero-offset shadow on a `rounded()` + `overflow_hidden()` box rendered
+    // as a filled halo covering the box's own content here, not a thin outline as CSS would, so
+    // the border achieves the same "ring" look without that.
+    let mut preview_box = h_flex()
+        .h(px(92.0))
+        .rounded(px(RADIUS_LG))
+        .overflow_hidden()
+        .border_color(ring_color);
+    preview_box = if selected {
+        preview_box.border_2()
+    } else {
+        preview_box.border_1()
+    };
+
+    v_flex()
+        .id(id)
+        .flex_1()
+        .gap(px(8.0))
+        .cursor_pointer()
+        .child(
+            preview_box
+                .child(
+                    v_flex()
+                        .flex_1()
+                        .bg(left.surface)
+                        .p(px(10.0))
+                        .gap(px(5.0))
+                        .child(preview_line(0.7, left.border_strong))
+                        .child(preview_line(0.5, accent_line))
+                        .child(preview_line(0.6, left.border_strong)),
+                )
+                .child(
+                    v_flex()
+                        .flex_grow(2.0)
+                        .flex_shrink(1.0)
+                        .flex_basis(relative(0.0))
+                        .bg(right.bg)
+                        .p(px(10.0))
+                        .gap(px(6.0))
+                        .child(
+                            div()
+                                .h(px(12.0))
+                                .rounded(px(4.0))
+                                .border_1()
+                                .border_color(right.border_strong),
+                        )
+                        .child(preview_line(0.8, right.border_strong))
+                        .child(preview_line(0.55, right.border_strong)),
+                ),
+        )
+        .child(
+            h_flex()
+                .items_center()
+                .gap(px(8.0))
+                .child(radio)
+                .child(label),
+        )
+        .on_click(move |_, window, cx| {
+            let _ = weak.update(cx, |view, cx| view.set_theme_choice(choice, window, cx));
+        })
+        .into_any_element()
+}
+
+/// A mini preview "line": a thin, colored, rounded bar `width_fraction` of its parent's width.
+fn preview_line(width_fraction: f32, color: Hsla) -> impl IntoElement {
+    div()
+        .h(px(5.0))
+        .w(relative(width_fraction))
+        .rounded(px(3.0))
+        .bg(color)
+}
+
+/// The "Interface" section: the UI font picker and its size stepper.
+fn render_interface_section(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    settings: &Settings,
+    installed: &[String],
+    mono_font_family: &SharedString,
+) -> AnyElement {
+    let options = state::settings::font_options("Geist", installed);
+    v_flex()
+        .gap(px(14.0))
+        .child(div().font_weight(FontWeight::MEDIUM).child("Interface"))
+        .child(labeled_row(
+            palette,
+            "Font",
+            Some("Geist is bundled, so every platform looks the same."),
+            render_font_picker(
+                FontPickerSpec {
+                    id: "settings-ui-font",
+                    palette,
+                    mono_style: None,
+                    bundled: "Geist",
+                    current: &settings.ui_font,
+                    options: &options,
+                },
+                weak.clone(),
+                |view, font, window, cx| view.set_ui_font(font, window, cx),
+            ),
+        ))
+        .child(labeled_row(
+            palette,
+            "Font size",
+            None,
+            render_size_stepper(
+                "settings-ui-size",
+                weak,
+                palette,
+                settings.ui_font_size,
+                mono_font_family.clone(),
+                state::settings::UI_FONT_SIZE_STEP,
+                |view, delta, window, cx| view.step_ui_font_size(delta, window, cx),
+            ),
+        ))
+        .into_any_element()
+}
+
+/// The "Editor" section: the monospace font picker, its size stepper, and the live JSON preview.
+fn render_editor_section(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    settings: &Settings,
+    installed: &[String],
+    mono_font_family: &SharedString,
+) -> AnyElement {
+    let options = state::settings::font_options("Geist Mono", installed);
+    v_flex()
+        .gap(px(14.0))
+        .child(div().font_weight(FontWeight::MEDIUM).child("Editor"))
+        .child(labeled_row(
+            palette,
+            "Monospace font",
+            None,
+            render_font_picker(
+                FontPickerSpec {
+                    id: "settings-mono-font",
+                    palette,
+                    mono_style: Some(mono_font_family.clone()),
+                    bundled: "Geist Mono",
+                    current: &settings.mono_font,
+                    options: &options,
+                },
+                weak.clone(),
+                |view, font, window, cx| view.set_mono_font(font, window, cx),
+            ),
+        ))
+        .child(labeled_row(
+            palette,
+            "Font size",
+            None,
+            render_size_stepper(
+                "settings-mono-size",
+                weak.clone(),
+                palette,
+                settings.mono_font_size,
+                mono_font_family.clone(),
+                state::settings::MONO_FONT_SIZE_STEP,
+                |view, delta, window, cx| view.step_mono_font_size(delta, window, cx),
+            ),
+        ))
+        .child(render_json_preview(
+            palette,
+            mono_font_family.clone(),
+            settings.mono_font_size,
+        ))
+        .into_any_element()
+}
+
+/// A label (with an optional muted description) on the left, an arbitrary control on the right.
+fn labeled_row(
+    palette: &Palette,
+    label: &'static str,
+    description: Option<&'static str>,
+    control: AnyElement,
+) -> AnyElement {
+    let leading = match description {
+        Some(text) => v_flex()
+            .gap(px(2.0))
+            .child(div().child(label))
+            .child(
+                div()
+                    .text_color(palette.fg_muted)
+                    .text_size(px(12.0))
+                    .child(text),
+            )
+            .into_any_element(),
+        None => div().child(label).into_any_element(),
+    };
+
+    h_flex()
+        .items_center()
+        .justify_between()
+        .gap(px(16.0))
+        .child(leading)
+        .child(control)
+        .into_any_element()
+}
+
+/// The display inputs of a [`render_font_picker`], grouped into one struct so the function itself
+/// keeps a reasonable argument count.
+struct FontPickerSpec<'a> {
+    id: &'static str,
+    palette: &'a Palette,
+    /// The family the trigger renders its own label in, when it differs from the UI font (the
+    /// Editor section's monospace picker, per `Settings.dc.html`), at 12.5px.
+    mono_style: Option<SharedString>,
+    bundled: &'a str,
+    current: &'a str,
+    options: &'a [String],
+}
+
+/// A font picker: a select-styled trigger showing the current family (`"<bundled> (bundled)"` for
+/// the bundled one), opening a dropdown menu of `spec.options` (as built by
+/// `state::settings::font_options`).
+fn render_font_picker(
+    spec: FontPickerSpec,
+    weak: WeakEntity<AppView>,
+    on_pick: impl Fn(&mut AppView, String, &mut Window, &mut Context<AppView>) + Clone + 'static,
+) -> AnyElement {
+    let FontPickerSpec {
+        id,
+        palette,
+        mono_style,
+        bundled,
+        current,
+        options,
+    } = spec;
+    let label = if current == bundled {
+        format!("{current} (bundled)")
+    } else {
+        current.to_string()
+    };
+
+    let trigger = Button::new(id)
+        .ghost()
+        .w(px(SELECT_WIDTH))
+        .h(px(CONTROL_HEIGHT))
+        .px(px(10.0))
+        .rounded(px(RADIUS_MD - 1.0))
+        .border_1()
+        .border_color(palette.border_strong)
+        .bg(palette.raised)
+        .text_color(palette.fg);
+    // The mono family and size go on the label itself: set on the `Button`, its own text size
+    // wins and the label grows with the editor font size, pushing the chevron out of the box.
+    let mut label_el = div().child(label);
+    if let Some(family) = mono_style {
+        label_el = label_el.font_family(family).text_size(px(12.5));
+    }
+    // Not `.label(...)`/`.icon(...)`: `Button` lays those out in its own inner content row,
+    // which hardcodes `justify_center()` on a style field this crate has no builder to reach
+    // (`content_style`, `gpui-component-0.6.6/src/button/button.rs:207,289,712`, `pub(crate)`).
+    // A single, full-width child of our own, given to `Button` as an ordinary child instead,
+    // sidesteps that: `Button`'s row centers *it* (a no-op once it already fills the width), and
+    // this row's own `justify_between()` places the label left and the chevron right, matching
+    // `Settings.dc.html`'s `justify-content:space-between` selects.
+    let trigger = trigger.child(
+        h_flex()
+            .w_full()
+            .items_center()
+            .justify_between()
+            .child(label_el)
+            .child(
+                Icon::new(IconName::ChevronsUpDown)
+                    .small()
+                    .text_color(palette.fg_subtle),
+            ),
+    );
+
+    let options = options.to_vec();
+    let bundled = bundled.to_string();
+    let current = current.to_string();
+    trigger
+        .dropdown_menu(move |mut menu, _, _| {
+            for name in &options {
+                let item_label = if *name == bundled {
+                    format!("{name} (bundled)")
+                } else {
+                    name.clone()
+                };
+                let selected = *name == current;
+                let value = name.clone();
+                let target = weak.clone();
+                let on_pick = on_pick.clone();
+                menu = menu.item(PopupMenuItem::new(item_label).checked(selected).on_click(
+                    move |_, window, cx| {
+                        let value = value.clone();
+                        let on_pick = on_pick.clone();
+                        let _ = target.update(cx, |view, cx| on_pick(view, value, window, cx));
+                    },
+                ));
+            }
+            menu
+        })
+        .into_any_element()
+}
+
+/// A `-`/`N px`/`+` stepper (`plans/ui-redesign.md` phase 6 items 4 and 5).
+fn render_size_stepper(
+    id_prefix: &'static str,
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    value: f32,
+    mono_font_family: SharedString,
+    step: f32,
+    on_step: impl Fn(&mut AppView, f32, &mut Window, &mut Context<AppView>) + Clone + 'static,
+) -> AnyElement {
+    let minus_weak = weak.clone();
+    let minus_on_step = on_step.clone();
+    let plus_on_step = on_step;
+
+    h_flex()
+        .items_center()
+        .gap(px(8.0))
+        .child(stepper_button(
+            format!("{id_prefix}-minus"),
+            palette,
+            IconName::Minus,
+            move |window, cx| {
+                let _ = minus_weak.update(cx, |view, cx| minus_on_step(view, -step, window, cx));
+            },
+        ))
+        .child(
+            div()
+                .w(px(STEPPER_VALUE_WIDTH))
+                .text_center()
+                .font_family(mono_font_family)
+                .child(format!("{value} px")),
+        )
+        .child(stepper_button(
+            format!("{id_prefix}-plus"),
+            palette,
+            IconName::Plus,
+            move |window, cx| {
+                let _ = weak.update(cx, |view, cx| plus_on_step(view, step, window, cx));
+            },
+        ))
+        .into_any_element()
+}
+
+/// One `-`/`+` square button of a [`render_size_stepper`].
+fn stepper_button(
+    id: impl Into<ElementId>,
+    palette: &Palette,
+    icon: IconName,
+    on_click: impl Fn(&mut Window, &mut App) + 'static,
+) -> impl IntoElement {
+    div()
+        .id(id)
+        .size(px(CONTROL_HEIGHT))
+        .flex()
+        .items_center()
+        .justify_center()
+        .cursor_pointer()
+        .rounded(px(RADIUS_MD - 1.0))
+        .border_1()
+        .border_color(palette.border_strong)
+        .bg(palette.raised)
+        .child(Icon::new(icon).small())
+        .on_click(move |_, window, cx| on_click(window, cx))
+}
+
+/// The Editor section's live preview line: a syntax-highlighted JSON snippet in the chosen
+/// monospace font and size (`plans/ui-redesign.md` phase 6 item 5).
+fn render_json_preview(palette: &Palette, mono_font_family: SharedString, size: f32) -> AnyElement {
+    div()
+        .border_1()
+        .border_color(palette.border)
+        .rounded(px(RADIUS_MD))
+        .bg(palette.bg)
+        .px(px(14.0))
+        .py(px(10.0))
+        .child(
+            h_flex()
+                .items_baseline()
+                .font_family(mono_font_family)
+                .text_size(px(size))
+                .line_height(relative(1.6))
+                .child(json_span("{ ", palette.fg_muted))
+                .child(json_span("\"token\"", palette.syn_key))
+                .child(json_span(": ", palette.fg_muted))
+                .child(json_span("\"eyJhbGciOi\u{2026}\"", palette.syn_str))
+                .child(json_span(", ", palette.fg_muted))
+                .child(json_span("\"expiresIn\"", palette.syn_key))
+                .child(json_span(": ", palette.fg_muted))
+                .child(json_span("3600", palette.syn_num))
+                .child(json_span(" }", palette.fg_muted)),
+        )
+        .into_any_element()
+}
+
+/// One colored fragment of [`render_json_preview`]'s single line.
+fn json_span(text: &'static str, color: Hsla) -> impl IntoElement {
+    div().text_color(color).child(text)
+}

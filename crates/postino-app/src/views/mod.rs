@@ -11,6 +11,7 @@ pub mod request_editor;
 pub mod response_view;
 pub mod root;
 pub mod send;
+pub mod settings;
 pub mod sidebar;
 pub mod status_bar;
 pub mod title_bar;

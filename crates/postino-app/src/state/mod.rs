@@ -24,6 +24,8 @@ use std::path::Path;
 use postino_runner::SessionEnv;
 use postino_workspace::{Workspace, WorkspaceError};
 
+use settings::Settings;
+
 /// Everything the app remembers about the current session.
 #[derive(Default)]
 pub struct AppState {
@@ -37,6 +39,10 @@ pub struct AppState {
     /// layer 2). Carried across requests so, for example, a login token a post script sets with
     /// `env.set` is visible to the next request. The MVP never writes this to disk.
     pub session_env: SessionEnv,
+    /// The current appearance settings (`plans/ui-redesign.md` phase 6): theme choice and fonts.
+    /// Loaded once at startup (`main.rs`) and from then on only changed by the Settings view,
+    /// which also persists every change to `settings.toml`.
+    pub settings: Settings,
 }
 
 impl AppState {
