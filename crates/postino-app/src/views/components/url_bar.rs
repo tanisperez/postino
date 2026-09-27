@@ -117,10 +117,9 @@ impl UrlBar {
         self
     }
 
-    /// Sets the handler for clicking a variable chip, called with the variable's name. Left
-    /// unset by `views/request_editor.rs` for now: clicking a chip is inert until phase 7 builds
-    /// the Define dialog (`plans/ui-redesign.md` phase 5, the allowed `TODO(phase 7)`).
-    #[allow(dead_code)] // not called yet, see the doc comment above
+    /// Sets the handler for clicking a variable chip, called with the variable's name.
+    /// `views/request_editor.rs` only wires this for a danger (undefined) chip, opening the
+    /// Define dialog (`plans/ui-redesign.md` phase 5 item 4, phase 7 item 3).
     pub fn on_chip_click(
         mut self,
         handler: impl Fn(String, &mut Window, &mut App) + 'static,

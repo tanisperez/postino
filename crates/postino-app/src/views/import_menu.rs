@@ -17,7 +17,7 @@ use super::root::AppView;
 
 /// Which kind of Postman export a picked file is, chosen by which menu item was clicked.
 #[derive(Debug, Clone, Copy)]
-enum ImportKind {
+pub(crate) enum ImportKind {
     /// A `*.postman_collection.json` export.
     Collection,
     /// A `*.postman_environment.json` export.
@@ -60,8 +60,15 @@ impl AppView {
 
 /// Opens a native file picker for a Postman export, imports the chosen file into the open
 /// workspace, refreshes the sidebar, and shows the import report in an in-app dialog (or a
-/// failure in the usual error banner).
-fn pick_and_import(view: WeakEntity<AppView>, kind: ImportKind, window: &mut Window, cx: &mut App) {
+/// failure in the usual error banner). Also called from the command palette's "Import Postman
+/// collection..."/"Import Postman environment..." actions (`plans/ui-redesign.md` phase 7 item
+/// 1).
+pub(crate) fn pick_and_import(
+    view: WeakEntity<AppView>,
+    kind: ImportKind,
+    window: &mut Window,
+    cx: &mut App,
+) {
     // Captured now, while a `Window` is at hand: the dialog showing the report is opened later,
     // from inside an async block that only has an `AsyncApp` and must look the window back up.
     let window_handle = window.window_handle();

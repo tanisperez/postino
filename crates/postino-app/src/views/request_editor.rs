@@ -593,6 +593,8 @@ impl AppView {
             None
         };
         let app_focus_handle = self.focus_handle.clone();
+        let chip_click_weak = weak.clone();
+        let chip_unknown_names = unknown_names.clone();
         let url_bar = UrlBar::new(
             request.method.clone(),
             request.url.clone(),
@@ -613,9 +615,17 @@ impl AppView {
                     view.edit_active_request(&method_tab_id, cx, |request| request.method = method);
                 }
             });
+        })
+        // Opens the Define dialog for a danger (unknown) chip, per `plans/ui-redesign.md`
+        // phase 5 item 4 and phase 7 item 3. A defined (accent) chip's click is a no-op: only a
+        // chip actually in `unknown_names` (the same set that colors it danger) opens anything.
+        .on_chip_click(move |name, window, cx| {
+            if chip_unknown_names.contains(&name) {
+                let _ = chip_click_weak.update(cx, |view, cx| {
+                    view.open_define_variable_dialog(name, window, cx)
+                });
+            }
         });
-        // TODO(phase 7): wire `UrlBar::on_chip_click` to open the Define dialog for a danger
-        // chip. Left unset, so clicking a chip is inert (`plans/ui-redesign.md` phase 5).
 
         let sending = self.is_sending(tab_id);
         let send_weak = weak.clone();
@@ -664,7 +674,8 @@ impl AppView {
     }
 
     /// Renders the Params/Headers/Body/Pre-request/Post-response/Docs tab bar, with the enabled
-    /// row count next to Params and Headers (`plans/ui-redesign.md` phase 5 item 1).
+    /// row count next to Params and Headers (`plans/ui-redesign.md` phase 5 item 1), and a
+    /// "Code" ghost button at the right that opens the snippet dialog (phase 7 item 2).
     fn render_request_tab_bar(&self, request: &Request, cx: &Context<Self>) -> AnyElement {
         let weak = cx.weak_entity();
         let active = self.active_request_tab;
@@ -692,6 +703,14 @@ impl AppView {
             });
             bar = bar.item(item);
         }
+        let code_weak = weak;
+        bar = bar.suffix(
+            GhostButton::new("request-code-snippet", "Code")
+                .icon(gpui_kit::assets::IconName::Code)
+                .on_click(move |_, window, cx| {
+                    let _ = code_weak.update(cx, |view, cx| view.open_snippet_dialog(window, cx));
+                }),
+        );
         div().px(px(14.0)).child(bar).into_any_element()
     }
 

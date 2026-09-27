@@ -15,13 +15,14 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use postino_core::Body;
+use postino_format::snippet::SnippetLanguage;
 use postino_runner::{RunResult, ScriptEngine, SendOptions};
 use postino_script::QuickJsEngine;
 
 use crate::actions::{
-    OpenSettings, SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3,
-    SelectEnvironment4, SelectEnvironment5, SelectEnvironment6, SelectEnvironment7,
-    SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+    OpenCommandPalette, OpenSettings, SaveActiveTab, SelectEnvironment1, SelectEnvironment2,
+    SelectEnvironment3, SelectEnvironment4, SelectEnvironment5, SelectEnvironment6,
+    SelectEnvironment7, SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
 };
 use crate::state::debug_open::{self, DebugOpenTarget};
 use crate::state::settings::Settings;
@@ -30,6 +31,7 @@ use crate::state::{self, AppState};
 use crate::views::components::{
     DocumentTab, DocumentTabs, IconButton, InlineMessage, InlineMessageKind,
 };
+use crate::views::define_variable::DefineVariableState;
 use crate::views::request_editor::RequestEditorEntities;
 use crate::views::response_view::ResponseEditorEntities;
 use crate::views::send::SendingTask;
@@ -103,6 +105,15 @@ pub struct AppView {
     /// empty to non-empty, so clearing the filter can restore it instead of resetting every
     /// folder to expanded. `None` while the filter is empty.
     pub(crate) sidebar_filter_pre_expansion: Option<HashMap<String, bool>>,
+    /// The Code snippet dialog's currently selected language (`plans/ui-redesign.md` phase 7
+    /// item 2). Kept here (rather than local to the dialog) because it must survive the
+    /// dialog's `content` closure being re-invoked on every repaint: see
+    /// `views/snippet_dialog.rs`'s module doc comment.
+    pub(crate) snippet_language: SnippetLanguage,
+    /// The Define variable dialog's live entities and in-progress choices, `Some` only while
+    /// that dialog is open (`plans/ui-redesign.md` phase 7 item 3). See
+    /// `views/define_variable.rs`.
+    pub(crate) define_variable: Option<DefineVariableState>,
 }
 
 impl AppView {
@@ -155,6 +166,8 @@ impl AppView {
             gallery_url_input: None,
             sidebar_filter_input,
             sidebar_filter_pre_expansion: None,
+            snippet_language: SnippetLanguage::Curl,
+            define_variable: None,
         };
         if let Some(root) = initial_workspace {
             view.open_workspace_at(&root, window, cx);
@@ -199,6 +212,26 @@ impl AppView {
                 let weak = cx.weak_entity();
                 window.defer(cx, move |window, cx| {
                     let _ = weak.update(cx, |view, cx| view.open_settings(window, cx));
+                });
+            }
+            DebugOpenTarget::Palette => {
+                let weak = cx.weak_entity();
+                window.defer(cx, move |window, cx| {
+                    let _ = weak.update(cx, |view, cx| view.open_command_palette(window, cx));
+                });
+            }
+            DebugOpenTarget::Snippet => {
+                let weak = cx.weak_entity();
+                window.defer(cx, move |window, cx| {
+                    let _ = weak.update(cx, |view, cx| view.open_snippet_dialog(window, cx));
+                });
+            }
+            DebugOpenTarget::Define => {
+                let weak = cx.weak_entity();
+                window.defer(cx, move |window, cx| {
+                    let _ = weak.update(cx, |view, cx| {
+                        view.open_define_variable_dialog("exampleVar".to_string(), window, cx)
+                    });
                 });
             }
         }
@@ -479,6 +512,17 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         self.open_settings(window, cx);
+    }
+
+    /// Handles the `Ctrl K` / `Cmd K` key binding (see `main.rs`'s `bind_keys`); the title bar's
+    /// search trigger (`views/title_bar.rs`) calls [`Self::open_command_palette`] directly.
+    fn on_open_command_palette_action(
+        &mut self,
+        _: &OpenCommandPalette,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.open_command_palette(window, cx);
     }
 
     /// Sets the active environment (`None` for "No environment"). Used by the environment
@@ -771,6 +815,7 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_save_action))
             .on_action(cx.listener(Self::on_send_action))
             .on_action(cx.listener(Self::on_open_settings_action))
+            .on_action(cx.listener(Self::on_open_command_palette_action))
             .on_action(cx.listener(Self::on_select_environment_1))
             .on_action(cx.listener(Self::on_select_environment_2))
             .on_action(cx.listener(Self::on_select_environment_3))

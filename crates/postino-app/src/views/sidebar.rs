@@ -480,8 +480,9 @@ pub(crate) fn open_new_request_dialog(
     });
 }
 
-/// Opens an in-app dialog asking for a new folder's name, inside `parent`.
-fn open_new_folder_dialog(
+/// Opens an in-app dialog asking for a new folder's name, inside `parent`. Also called from the
+/// command palette's "New folder" action (`plans/ui-redesign.md` phase 7 item 1).
+pub(crate) fn open_new_folder_dialog(
     view: WeakEntity<AppView>,
     parent: Option<String>,
     window: &mut Window,

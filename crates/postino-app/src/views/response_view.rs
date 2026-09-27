@@ -116,7 +116,7 @@ impl AppView {
         // Each of these reads `self.responses` for as long as it needs to, but no longer: by the
         // time `render_response_tab_content` runs, neither still borrows `self`, so it is free
         // to take `&mut self` for the Body tab's read-only editor entity.
-        let warnings = self.render_warnings_strip(&tab_id);
+        let warnings = self.render_warnings_strip(&tab_id, cx);
         let tab_bar = self.render_response_tab_bar(&tab_id, cx);
         // The Body tab's read-only `Editor` scrolls its own content and needs a real,
         // determinate height to fill (`plans/ui-redesign.md` phase 5, reviewer fix item B): an
@@ -371,24 +371,40 @@ impl AppView {
     /// At that point the real pipeline already ran the pre script for real, so a variable it set
     /// with `vars.set(...)` is correctly resolved here with no heuristic needed
     /// (`plans/ui-redesign.md` phase 5, reviewer fix item 4b).
-    fn render_warnings_strip(&self, tab_id: &str) -> Option<AnyElement> {
+    fn render_warnings_strip(&self, tab_id: &str, cx: &Context<Self>) -> Option<AnyElement> {
         let result = self.responses.get(tab_id)?;
+        let weak = cx.weak_entity();
         let mut messages: Vec<AnyElement> = response_render::group_warnings(&result.warnings)
             .into_iter()
             .map(|group| match group {
                 response_render::WarningGroup::UnknownVariable(name) => {
+                    let define_weak = weak.clone();
                     InlineMessage::new(InlineMessageKind::Warning, "Unknown variable")
-                        .mono_suffix(name)
-                        .action("Define", |_, _| {
-                            // TODO(phase 7): open the Define dialog for this variable.
+                        .mono_suffix(name.clone())
+                        .action("Define", move |window, cx| {
+                            let name = name.clone();
+                            let _ = define_weak.update(cx, |view, cx| {
+                                view.open_define_variable_dialog(name, window, cx)
+                            });
                         })
                         .into_any_element()
                 }
                 response_render::WarningGroup::UnknownVariables(names) => {
+                    let define_weak = weak.clone();
+                    // Only the first name is offered: the dialog defines one variable at a
+                    // time, and the design gives this row a single "Define" action, not one per
+                    // name (`plans/ui-redesign.md` phase 7 item 3 wires "the Define action", not
+                    // a per-name list here). The rest stay listed in the message itself.
+                    let first_name = names.first().cloned();
                     InlineMessage::new(InlineMessageKind::Warning, "Unknown variables")
                         .mono_suffix(names.join(", "))
-                        .action("Define", |_, _| {
-                            // TODO(phase 7): open the Define dialog for these variables.
+                        .action("Define", move |window, cx| {
+                            let Some(name) = first_name.clone() else {
+                                return;
+                            };
+                            let _ = define_weak.update(cx, |view, cx| {
+                                view.open_define_variable_dialog(name, window, cx)
+                            });
                         })
                         .into_any_element()
                 }

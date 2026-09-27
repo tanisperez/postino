@@ -4,7 +4,9 @@
 //! that state and turn user input (clicks, key bindings) into calls back into
 //! [`root::AppView`], the single top-level view that owns the state for this phase.
 
+pub mod command_palette;
 pub mod components;
+pub mod define_variable;
 pub mod env_picker;
 pub mod import_menu;
 pub mod request_editor;
@@ -13,6 +15,7 @@ pub mod root;
 pub mod send;
 pub mod settings;
 pub mod sidebar;
+pub mod snippet_dialog;
 pub mod status_bar;
 pub mod title_bar;
 

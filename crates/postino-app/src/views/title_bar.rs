@@ -2,7 +2,8 @@
 //! workspace switcher, the search trigger, the environment pill, the Import menu, and the
 //! settings gear. The window controls at the far right are drawn automatically by gpui-kit's
 //! `TitleBar` (`plans/ui-redesign-spikes.md` section 9), so nothing here adds them. The search
-//! trigger and the settings gear are inert until phases 7 and 6 build what they open.
+//! trigger opens the command palette (`views/command_palette.rs`); the settings gear opens
+//! Settings (`views/settings.rs`).
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
@@ -46,7 +47,7 @@ impl AppView {
                             .flex_1()
                             .flex()
                             .justify_center()
-                            .child(render_search_trigger(&palette, mono_font)),
+                            .child(render_search_trigger(weak.clone(), &palette, mono_font)),
                     )
                     .child(self.render_env_picker(weak.clone(), cx))
                     .child(self.render_import_menu(cx))
@@ -161,15 +162,21 @@ fn render_logo(palette: &Palette) -> impl IntoElement {
         .child("P")
 }
 
-/// The centered search trigger. Inert until phase 7 builds the command palette.
-fn render_search_trigger(palette: &Palette, mono_font: SharedString) -> impl IntoElement {
-    // TODO(phase 7): open the command palette.
+/// The centered search trigger: opens the command palette (`views/command_palette.rs`,
+/// `plans/ui-redesign.md` phase 7 item 1).
+fn render_search_trigger(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    mono_font: SharedString,
+) -> impl IntoElement {
     h_flex()
+        .id("title-bar-search-trigger")
         .w(px(SEARCH_TRIGGER_WIDTH))
         .h(px(ENV_PILL_HEIGHT))
         .items_center()
         .gap_2()
         .px_2p5()
+        .cursor_pointer()
         .rounded(px(RADIUS_MD - 1.0))
         .bg(palette.raised)
         .border_1()
@@ -187,6 +194,9 @@ fn render_search_trigger(palette: &Palette, mono_font: SharedString) -> impl Int
                 .px(px(4.0))
                 .child(shortcut_hint()),
         )
+        .on_click(move |_, window, cx| {
+            let _ = weak.update(cx, |view, cx| view.open_command_palette(window, cx));
+        })
 }
 
 /// The settings gear: opens the Settings modal (`views/settings.rs`, `plans/ui-redesign.md`

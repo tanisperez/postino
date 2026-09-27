@@ -37,5 +37,7 @@ actions!(
         SelectNoEnvironment,
         /// Opens the Settings modal (`Ctrl ,` / `Cmd ,`), `plans/ui-redesign.md` phase 6 item 1.
         OpenSettings,
+        /// Opens the command palette (`Ctrl K` / `Cmd K`), `plans/ui-redesign.md` phase 7 item 1.
+        OpenCommandPalette,
     ]
 );

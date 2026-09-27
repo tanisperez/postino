@@ -14,9 +14,9 @@ use gpui_kit::component::{Root, TitleBar};
 use gpui_kit::*;
 
 use actions::{
-    OpenSettings, SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3,
-    SelectEnvironment4, SelectEnvironment5, SelectEnvironment6, SelectEnvironment7,
-    SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+    OpenCommandPalette, OpenSettings, SaveActiveTab, SelectEnvironment1, SelectEnvironment2,
+    SelectEnvironment3, SelectEnvironment4, SelectEnvironment5, SelectEnvironment6,
+    SelectEnvironment7, SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
 };
 use state::settings::ThemeChoice;
 use views::AppView;
@@ -153,6 +153,7 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-9", SelectEnvironment9, None),
         KeyBinding::new("cmd-0", SelectNoEnvironment, None),
         KeyBinding::new("cmd-,", OpenSettings, None),
+        KeyBinding::new("cmd-k", OpenCommandPalette, None),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
@@ -169,5 +170,6 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-9", SelectEnvironment9, None),
         KeyBinding::new("ctrl-0", SelectNoEnvironment, None),
         KeyBinding::new("ctrl-,", OpenSettings, None),
+        KeyBinding::new("ctrl-k", OpenCommandPalette, None),
     ]);
 }

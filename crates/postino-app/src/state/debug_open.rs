@@ -3,8 +3,8 @@
 //! orchestrator to screenshot a specific UI state at startup, not a supported feature, not
 //! surfaced in any menu.
 
-/// A UI state `POSTINO_OPEN` can request at startup. `Components` (phase 3) and `Settings`
-/// (phase 6) exist so far; later phases add `Palette`, `LoadTest`, ... to this same enum, per
+/// A UI state `POSTINO_OPEN` can request at startup. `Components` (phase 3), `Settings` (phase
+/// 6) and `Palette`/`Snippet`/`Define` (phase 7) exist so far; a later phase adds `LoadTest`, per
 /// `plans/ui-redesign.md` phase 3's instructions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DebugOpenTarget {
@@ -14,6 +14,15 @@ pub enum DebugOpenTarget {
     /// Opens the Settings modal, mirroring `postino_design_system/Settings.dc.html`
     /// (`plans/ui-redesign.md` phase 6).
     Settings,
+    /// Opens the command palette (`plans/ui-redesign.md` phase 7 item 1).
+    Palette,
+    /// Opens the Code snippet dialog for the active tab's request (`plans/ui-redesign.md` phase
+    /// 7 item 2). A no-op (like every `POSTINO_OPEN` target with nothing to show) when no tab is
+    /// open.
+    Snippet,
+    /// Opens the Define variable dialog, prefilled with the name `"exampleVar"`
+    /// (`plans/ui-redesign.md` phase 7 item 3).
+    Define,
 }
 
 /// Parses `POSTINO_OPEN`'s value into a [`DebugOpenTarget`]. An unrecognized value is `None`
@@ -22,6 +31,9 @@ pub fn parse(value: &str) -> Option<DebugOpenTarget> {
     match value {
         "components" => Some(DebugOpenTarget::Components),
         "settings" => Some(DebugOpenTarget::Settings),
+        "palette" => Some(DebugOpenTarget::Palette),
+        "snippet" => Some(DebugOpenTarget::Snippet),
+        "define" => Some(DebugOpenTarget::Define),
         _ => None,
     }
 }
@@ -42,8 +54,23 @@ mod tests {
     }
 
     #[test]
+    fn parses_palette() {
+        assert_eq!(parse("palette"), Some(DebugOpenTarget::Palette));
+    }
+
+    #[test]
+    fn parses_snippet() {
+        assert_eq!(parse("snippet"), Some(DebugOpenTarget::Snippet));
+    }
+
+    #[test]
+    fn parses_define() {
+        assert_eq!(parse("define"), Some(DebugOpenTarget::Define));
+    }
+
+    #[test]
     fn unrecognized_value_is_none() {
-        assert_eq!(parse("palette"), None);
+        assert_eq!(parse("load-test"), None);
         assert_eq!(parse(""), None);
         assert_eq!(parse("Components"), None);
     }

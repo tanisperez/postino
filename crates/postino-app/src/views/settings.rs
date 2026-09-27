@@ -102,6 +102,20 @@ impl AppView {
         cx.notify();
     }
 
+    /// Toggles between the light and dark theme (the command palette's "Toggle theme" action,
+    /// `plans/ui-redesign.md` phase 7 item 1): picks the opposite of whichever mode is currently
+    /// showing, so it also does the sensible thing from "System" (moving to whichever of Light or
+    /// Dark the OS is not currently showing). Always lands on an explicit choice, like clicking a
+    /// theme card, so "System" stops following the OS once toggled.
+    pub(crate) fn toggle_theme(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let next = if cx.theme().is_dark() {
+            ThemeChoice::Light
+        } else {
+            ThemeChoice::Dark
+        };
+        self.set_theme_choice(next, window, cx);
+    }
+
     /// Picks a theme card (`plans/ui-redesign.md` phase 6 item 3).
     fn set_theme_choice(
         &mut self,

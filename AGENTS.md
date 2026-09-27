@@ -56,7 +56,8 @@ A Cargo workspace of seven small crates, UI kept thin. Dependency direction (arr
 ```
 postino-app ──> postino-runner ──> postino-script ──> postino-core
      │                 └────────> postino-http ────> postino-core
-     └──────> postino-workspace ─> postino-format ─> postino-core
+     ├──────> postino-workspace ─> postino-format ─> postino-core
+     └──────> postino-format (the Code snippet dialog renders `render_snippet` directly)
 ```
 
 - `postino-core`: domain model (`Request`, `Method`, `Body`, ...) and `{{ }}` variable

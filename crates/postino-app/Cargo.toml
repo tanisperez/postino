@@ -22,6 +22,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 toml = { workspace = true }
 postino-core = { path = "../postino-core" }
+postino-format = { path = "../postino-format" }
 postino-workspace = { path = "../postino-workspace" }
 postino-runner = { path = "../postino-runner" }
 postino-script = { path = "../postino-script" }
