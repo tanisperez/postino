@@ -175,6 +175,9 @@ impl RenderOnce for KeyValueTable {
                 .flex()
                 .justify_center()
                 .cursor_pointer()
+                .rounded(px(4.0))
+                .hover(|style| style.bg(palette.hover))
+                .active(|style| style.bg(palette.pressed))
                 .child(
                     Icon::new(IconName::Delete)
                         .small()
@@ -205,6 +208,8 @@ impl RenderOnce for KeyValueTable {
                 .px(side_col)
                 .gap_2()
                 .cursor_pointer()
+                .hover(|style| style.bg(palette.hover))
+                .active(|style| style.bg(palette.pressed))
                 .text_color(palette.fg_subtle)
                 .text_size(px(12.5))
                 .child(Icon::new(IconName::Plus).small())

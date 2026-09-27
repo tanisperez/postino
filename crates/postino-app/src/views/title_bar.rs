@@ -201,6 +201,8 @@ fn render_settings_gear(weak: WeakEntity<AppView>, palette: &Palette) -> impl In
         .cursor_pointer()
         .rounded(px(RADIUS_MD - 2.0))
         .text_color(palette.fg_muted)
+        .hover(|style| style.bg(palette.hover))
+        .active(|style| style.bg(palette.pressed))
         .child(Icon::new(IconName::Settings).small())
         .on_click(move |_, window, cx| {
             let _ = weak.update(cx, |view, cx| view.open_settings(window, cx));

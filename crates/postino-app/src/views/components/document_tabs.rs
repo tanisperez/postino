@@ -156,6 +156,8 @@ impl RenderOnce for DocumentTabs {
                     .border_r_1()
                     .border_color(palette.border)
                     .cursor_pointer()
+                    .hover(|style| style.bg(palette.hover))
+                    .active(|style| style.bg(palette.pressed))
                     .text_size(px(13.0))
                     .text_color(if selected {
                         palette.fg
@@ -189,7 +191,10 @@ impl RenderOnce for DocumentTabs {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .cursor_pointer();
+                    .cursor_pointer()
+                    .rounded(px(4.0))
+                    .hover(|style| style.bg(palette.hover))
+                    .active(|style| style.bg(palette.pressed));
                 if dirty {
                     end = end
                         .child(

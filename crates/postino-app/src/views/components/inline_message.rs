@@ -118,6 +118,8 @@ impl RenderOnce for InlineMessage {
                     .text_size(px(12.0))
                     .font_weight(FontWeight::MEDIUM)
                     .text_color(palette.accent_text)
+                    .hover(|style| style.text_decoration_1())
+                    .active(|style| style.opacity(0.7))
                     .on_click(move |_, window, cx| handler(window, cx))
                     .child(label),
             );

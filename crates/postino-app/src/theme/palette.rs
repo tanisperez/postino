@@ -206,6 +206,23 @@ pub struct Palette {
     pub accent_subtle: Hsla,
     /// Hover background for rows and ghost buttons.
     pub hover: Hsla,
+    /// Pressed/active background for rows, icon buttons and other hand-rolled clickable `div`s
+    /// (GitHub #17). Not one of the design's own tokens (`Components.dc.html` shows no `:active`
+    /// swatch), so it is derived rather than a second hex literal to keep in sync by hand:
+    /// `hover` blended two-thirds of the way toward `border_strong`, the next step up the same
+    /// bg -> surface -> raised -> border -> border_strong progression `hover` already sits in.
+    pub pressed: Hsla,
+    /// `PrimaryButton`'s hover fill (GitHub #17 follow-up): `accent` shifted one [`SHADE_STEP`]
+    /// toward white in the dark theme, toward black in the light theme (see [`shade`]), so hover
+    /// reads as "the same accent, a touch stronger" instead of gpui-component's built-in `Ghost`
+    /// hover formula, which swapped it for an unrelated muted color that looked disabled.
+    pub accent_hover: Hsla,
+    /// `PrimaryButton`'s pressed fill: `accent` shifted two [`SHADE_STEP`]s, see [`Self::accent_hover`].
+    pub accent_pressed: Hsla,
+    /// `DangerButton`'s hover fill: `danger` shifted the same way as [`Self::accent_hover`].
+    pub danger_hover: Hsla,
+    /// `DangerButton`'s pressed fill: `danger` shifted two [`SHADE_STEP`]s, see [`Self::danger_hover`].
+    pub danger_pressed: Hsla,
     /// 2xx status, passing tests, GET.
     pub success: Hsla,
     /// Success status badge background.
@@ -259,15 +276,21 @@ pub struct Palette {
 impl Palette {
     /// The Postino Light palette.
     pub fn light() -> Self {
-        Self::from_tokens(&LIGHT)
+        Self::from_tokens(&LIGHT, false)
     }
 
     /// The Postino Dark palette.
     pub fn dark() -> Self {
-        Self::from_tokens(&DARK)
+        Self::from_tokens(&DARK, true)
     }
 
-    fn from_tokens(tokens: &Tokens) -> Self {
+    /// `dark` picks which way [`Self::accent_hover`]/[`Self::accent_pressed`]/
+    /// [`Self::danger_hover`]/[`Self::danger_pressed`] shade: lighter in the dark theme, darker
+    /// in the light theme (`shade`'s doc comment).
+    fn from_tokens(tokens: &Tokens, dark: bool) -> Self {
+        let sign = if dark { 1.0 } else { -1.0 };
+        let accent = hex(tokens.accent);
+        let danger = hex(tokens.danger);
         Self {
             bg: hex(tokens.bg),
             surface: hex(tokens.surface),
@@ -278,16 +301,21 @@ impl Palette {
             fg: hex(tokens.fg),
             fg_muted: hex(tokens.fg_muted),
             fg_subtle: hex(tokens.fg_subtle),
-            accent: hex(tokens.accent),
             accent_fg: hex(tokens.accent_fg),
             accent_text: hex(tokens.accent_text),
             accent_subtle: hex(tokens.accent_subtle),
             hover: hex(tokens.hover),
+            pressed: hex(tokens.hover).blend(hex(tokens.border_strong).opacity(2.0 / 3.0)),
+            accent_hover: shade(accent, sign * SHADE_STEP),
+            accent_pressed: shade(accent, sign * SHADE_STEP * 2.0),
+            danger_hover: shade(danger, sign * SHADE_STEP),
+            danger_pressed: shade(danger, sign * SHADE_STEP * 2.0),
+            accent,
             success: hex(tokens.success),
             success_subtle: hex(tokens.success_subtle),
             warning: hex(tokens.warning),
             warning_subtle: hex(tokens.warning_subtle),
-            danger: hex(tokens.danger),
+            danger,
             danger_subtle: hex(tokens.danger_subtle),
             info: hex(tokens.info),
             info_subtle: hex(tokens.info_subtle),
@@ -374,6 +402,10 @@ impl PaletteExt for App {
 /// this file's own [`LIGHT`]/[`DARK`] tokens, never a separate literal.
 pub(super) fn theme_colors_and_highlight(dark: bool) -> (serde_json::Value, serde_json::Value) {
     let tokens = if dark { &DARK } else { &LIGHT };
+    // Only `accent_hover`/`accent_pressed`/`danger_hover`/`danger_pressed` are read out of this:
+    // every other JSON color below still comes straight from `tokens`, matching every other key
+    // in this function.
+    let palette = Palette::from_tokens(tokens, dark);
     let colors = serde_json::json!({
         "background": tokens.bg,
         "sidebar.background": tokens.surface,
@@ -402,6 +434,23 @@ pub(super) fn theme_colors_and_highlight(dark: bool) -> (serde_json::Value, serd
         "warning.background": tokens.warning,
         "danger.background": tokens.danger,
         "info.background": tokens.info,
+        // `PrimaryButton`/`SecondaryButton`/`DangerButton` (`views/components/buttons.rs`) use
+        // gpui-component's own `Primary`/`Secondary`/`Danger` button variants (GitHub #17
+        // follow-up) instead of `Ghost` restyled through `Styled`, so their hover/pressed states
+        // come from here rather than `Ghost`'s hardcoded, accent-tinted formula, which looked
+        // like the button had gone disabled on hover.
+        "button.primary.background": tokens.accent,
+        "button.primary.foreground": tokens.accent_fg,
+        "button.primary.hover.background": hex_string(palette.accent_hover),
+        "button.primary.active.background": hex_string(palette.accent_pressed),
+        "button.secondary.background": tokens.raised,
+        "button.secondary.foreground": tokens.fg,
+        "button.secondary.hover.background": tokens.hover,
+        "button.secondary.active.background": hex_string(palette.pressed),
+        "button.danger.background": tokens.danger,
+        "button.danger.foreground": tokens.accent_fg,
+        "button.danger.hover.background": hex_string(palette.danger_hover),
+        "button.danger.active.background": hex_string(palette.danger_pressed),
         // Phase 3's `Switch` wraps gpui-kit's own switch as is: its unchecked-track and thumb
         // colors read these two fields, which otherwise fall back to formulas derived from
         // `secondary`/`background` that do not match the design's `border_strong` track and
@@ -452,6 +501,37 @@ fn rgba(r: u8, g: u8, b: u8, a: f32) -> Hsla {
         a,
     }
     .into()
+}
+
+/// One `shade` step (GitHub #17 follow-up), in HSL lightness. `accent_hover`/`danger_hover` are
+/// one step, `accent_pressed`/`danger_pressed` two.
+const SHADE_STEP: f32 = 0.07;
+
+/// Shifts `color`'s HSL lightness by `delta` (clamped to 0.0..=1.0), keeping hue, saturation and
+/// alpha. There is no design token for a button's hover/pressed fill (`Components.dc.html` shows
+/// no `:hover`/`:active` swatch for the solid buttons), so `Palette::from_tokens` derives one
+/// from `accent`/`danger` themselves instead of a hand-picked literal: a positive `delta`
+/// (`from_tokens`'s dark theme) reads as "a touch lighter", a negative one (light theme) as "a
+/// touch darker", both the ordinary direction a solid UI color shifts on hover.
+fn shade(color: Hsla, delta: f32) -> Hsla {
+    Hsla {
+        l: (color.l + delta).clamp(0.0, 1.0),
+        ..color
+    }
+}
+
+/// Formats an opaque [`Hsla`] as a `#rrggbb` string, for the handful of [`Palette`] colors that
+/// are computed at runtime ([`shade`]) rather than copied from a [`Tokens`] literal, so
+/// [`theme_colors_and_highlight`] can still hand them to the JSON theme family as plain strings
+/// like every other color in it.
+fn hex_string(color: Hsla) -> String {
+    let rgba = Rgba::from(color);
+    format!(
+        "#{:02x}{:02x}{:02x}",
+        (rgba.r * 255.0).round() as u8,
+        (rgba.g * 255.0).round() as u8,
+        (rgba.b * 255.0).round() as u8,
+    )
 }
 
 #[cfg(test)]
@@ -539,5 +619,64 @@ mod tests {
         assert_eq!(palette.env_color(EnvColor::Danger), palette.danger);
         assert_eq!(palette.env_color(EnvColor::Warning), palette.warning);
         assert_eq!(palette.env_color(EnvColor::Success), palette.success);
+    }
+
+    /// `pressed` (GitHub #17) has no design token of its own: it must land strictly between
+    /// `hover` and `border_strong`, the two literals it is derived from, and differ from both so
+    /// a hover-then-press sequence is visibly distinct at every step.
+    #[test]
+    fn pressed_sits_between_hover_and_border_strong() {
+        for palette in [Palette::light(), Palette::dark()] {
+            assert_ne!(palette.pressed, palette.hover);
+            assert_ne!(palette.pressed, palette.border_strong);
+            let hover_rgba = Rgba::from(palette.hover);
+            let strong_rgba = Rgba::from(palette.border_strong);
+            let pressed_rgba = Rgba::from(palette.pressed);
+            let min = hover_rgba.r.min(strong_rgba.r);
+            let max = hover_rgba.r.max(strong_rgba.r);
+            assert!(pressed_rgba.r >= min && pressed_rgba.r <= max);
+        }
+    }
+
+    /// `accent_hover`/`accent_pressed`/`danger_hover`/`danger_pressed` (GitHub #17 follow-up)
+    /// must shade toward white in the dark theme and toward black in the light theme, two full
+    /// steps by the second (`pressed`) state, so a solid button's hover/press reads as "the same
+    /// color, a touch stronger" instead of jumping to an unrelated hue.
+    #[test]
+    fn accent_and_danger_button_shades_lighten_dark_and_darken_light() {
+        let light = Palette::light();
+        assert!(light.accent_hover.l < light.accent.l);
+        assert!(light.accent_pressed.l < light.accent_hover.l);
+        assert!(light.danger_hover.l < light.danger.l);
+        assert!(light.danger_pressed.l < light.danger_hover.l);
+
+        let dark = Palette::dark();
+        assert!(dark.accent_hover.l > dark.accent.l);
+        assert!(dark.accent_pressed.l > dark.accent_hover.l);
+        assert!(dark.danger_hover.l > dark.danger.l);
+        assert!(dark.danger_pressed.l > dark.danger_hover.l);
+    }
+
+    /// The theme JSON's `button.primary.hover.background` (and the other three derived button
+    /// colors) must be the same shade `Palette` itself exposes, in the exact `#rrggbb` form
+    /// `ThemeConfigColors` parses, not a second, drifting computation.
+    #[test]
+    fn theme_json_button_hover_matches_the_palette() {
+        for dark in [false, true] {
+            let (colors, _highlight) = theme_colors_and_highlight(dark);
+            let palette = if dark {
+                Palette::dark()
+            } else {
+                Palette::light()
+            };
+            assert_eq!(
+                colors["button.primary.hover.background"],
+                hex_string(palette.accent_hover)
+            );
+            assert_eq!(
+                colors["button.danger.active.background"],
+                hex_string(palette.danger_pressed)
+            );
+        }
     }
 }

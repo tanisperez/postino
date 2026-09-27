@@ -592,6 +592,7 @@ impl AppView {
         } else {
             None
         };
+        let app_focus_handle = self.focus_handle.clone();
         let url_bar = UrlBar::new(
             request.method.clone(),
             request.url.clone(),
@@ -600,6 +601,7 @@ impl AppView {
             url_input,
         )
         .editing_method(editing_method_input)
+        .on_escape(move |window, cx| app_focus_handle.focus(window, cx))
         .on_method_change(move |method, window, cx| {
             let _ = method_weak.update(cx, |view, cx| {
                 if let Method::Custom(prefill) = method {

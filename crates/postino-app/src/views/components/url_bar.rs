@@ -64,6 +64,8 @@ pub struct UrlBar {
     /// same result. Kept on the builder in case a future caller needs the narrower callback.
     #[allow(dead_code)] // no caller needs the narrower callback; see the comment above
     on_text_change: Option<TextHandler>,
+    /// Called when Escape blurs the field (see [`Self::on_escape`]'s doc comment).
+    on_escape: Option<VoidHandler>,
 }
 
 /// A method change handler, factored out because clippy's `type_complexity` flags the inline
@@ -71,6 +73,8 @@ pub struct UrlBar {
 type MethodHandler = Rc<dyn Fn(Method, &mut Window, &mut App)>;
 /// A text-carrying handler (chip click, text change), see [`MethodHandler`].
 type TextHandler = Rc<dyn Fn(String, &mut Window, &mut App)>;
+/// A handler with no payload (Escape), see [`MethodHandler`].
+type VoidHandler = Rc<dyn Fn(&mut Window, &mut App)>;
 
 impl UrlBar {
     /// A bar showing `method` and `text`, with `spans` (`postino_core::variable_spans(text)`)
@@ -93,6 +97,7 @@ impl UrlBar {
             on_method_change: None,
             on_chip_click: None,
             on_text_change: None,
+            on_escape: None,
         }
     }
 
@@ -132,6 +137,17 @@ impl UrlBar {
         handler: impl Fn(String, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_text_change = Some(Rc::new(handler));
+        self
+    }
+
+    /// Sets the handler run when Escape blurs the field (GitHub #19): the caller is expected to
+    /// move focus somewhere the app's own keyboard shortcuts still reach, since a plain
+    /// `window.blur` leaves nothing focused and `AppView`'s `Ctrl ,`/`Ctrl S`/... `on_action`
+    /// handlers only fire while a descendant of its own tracked focus is focused. Falls back to
+    /// `window.blur` when unset (the components gallery's demo `UrlBar` has no `AppView` focus
+    /// handle to return to).
+    pub fn on_escape(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
+        self.on_escape = Some(Rc::new(handler));
         self
     }
 
@@ -213,17 +229,30 @@ impl UrlBar {
     /// Renders the not-focused URL line: plain text segments and [`VariableChip`]s, each chip
     /// wrapped in its own clickable `div` (see this module's doc comment for why, instead of a
     /// single [`gpui::StyledText`] with highlight runs, which cannot carry a per-range click
-    /// handler on its own).
+    /// handler on its own). Clicking anywhere on the row (including a chip, which keeps its own
+    /// click action too) focuses [`Self::input_state`] and moves the caret to the end, which
+    /// swaps this line for the live `Input` on the next render.
     fn render_line(&self, cx: &mut App) -> AnyElement {
         let mono_font = cx.theme().mono_font_family.clone();
+        let input_state = self.input_state.clone();
         let mut row = h_flex()
+            .id("url-bar-line")
             .flex_1()
+            .h_full()
             .items_center()
             .overflow_hidden()
             .whitespace_nowrap()
+            .cursor_text()
             .font_family(mono_font)
             .text_size(px(12.5))
-            .px_2();
+            .px_2()
+            .on_click(move |_, window, cx| {
+                // `character: u32::MAX` clamps to the line's actual length
+                // (`gpui_kit::base::input::rope_ext`'s `position_to_offset`), so this reaches the
+                // end of the URL without having to compute its UTF-16 length here.
+                let end = gpui_kit::base::input::Position::new(0, u32::MAX);
+                input_state.update(cx, |state, cx| state.set_cursor_position(end, window, cx));
+            });
         let mut cursor = 0;
         for span in &self.spans {
             if span.range.start > cursor {
@@ -254,16 +283,23 @@ impl UrlBar {
 impl RenderOnce for UrlBar {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let palette = cx.palette();
+        let mono_font = cx.theme().mono_font_family.clone();
         let focused = self
             .input_state
             .read(cx)
             .focus_handle(cx)
             .is_focused(window);
 
+        let on_escape = self.on_escape.clone();
         let field: AnyElement = if focused {
+            // Same mono family and size as `render_line` below, so focusing the field does not
+            // change the URL's font (GitHub #16 follow-up): `Input` defaults to the UI sans font.
             Input::new(&self.input_state)
                 .h(px(URL_BAR_HEIGHT))
+                .flex_1()
                 .bordered(false)
+                .font_family(mono_font)
+                .text_size(px(12.5))
                 .into_any_element()
         } else {
             self.render_line(cx)
@@ -274,7 +310,26 @@ impl RenderOnce for UrlBar {
             .items_center()
             .rounded(px(RADIUS_MD))
             .border_1()
-            .border_color(palette.border_strong)
+            // The `Input`'s own `Escape` handling only clears an in-progress selection or IME
+            // composition and otherwise propagates (`gpui-base-0.6.6/src/input/base/state.rs`'s
+            // `escape`); catching the propagated action here is what makes Escape blur the field
+            // and swap back to the chip line, matching a plain click elsewhere. `on_escape`
+            // (GitHub #19) moves focus back to the app's own tracked focus handle instead of a
+            // plain `window.blur`, which left nothing focused and no keyboard shortcut reachable.
+            .on_action::<gpui_kit::base::input::Escape>(move |_, window, cx| match &on_escape {
+                Some(handler) => handler(window, cx),
+                None => window.blur(cx),
+            })
+            .border_color(if focused {
+                palette.accent
+            } else {
+                palette.border_strong
+            })
+            .when(focused, |bar| {
+                bar.shadow(vec![
+                    BoxShadow::new(px(0.0), px(0.0), palette.accent_subtle).spread_radius(px(3.0)),
+                ])
+            })
             .bg(palette.raised)
             .overflow_hidden()
             .child(self.render_method(cx))

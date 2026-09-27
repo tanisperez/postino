@@ -1,18 +1,31 @@
 //! [`PrimaryButton`], [`SecondaryButton`], [`GhostButton`] and [`DangerButton`]: the four button
 //! kinds of `Components.dc.html`'s "Buttons" swatch (`plans/ui-redesign.md` phase 3).
 //!
-//! All four wrap gpui-kit's [`Button`], built on its `ghost` variant (transparent background, no
-//! border edges drawn) with background, text color and (for `SecondaryButton`) border pinned
-//! explicitly to [`crate::theme::Palette`] values through `Styled`. This sidesteps a real gap in
-//! gpui-component's own variants: its built-in `Danger` (and `Custom`) background formula always
-//! mixes the given color 20% toward transparent before painting
-//! (`gpui-component-0.6.6/src/button/button.rs`'s `ButtonVariant::bg_color`,
-//! `Self::Custom(colors) => colors.color.mix_oklab(cx.theme().transparent, 0.2)`), with no public
-//! way to turn that off, so a plain `.danger()`/`.custom(..)` cannot render the flat colors the
-//! design calls for. Starting from `.ghost()` and overriding through `Styled` avoids that formula
-//! entirely and keeps every color traceable to the palette.
+//! `PrimaryButton`/`SecondaryButton`/`DangerButton` wrap gpui-kit's [`Button`] on its matching
+//! built-in variant (`.primary()`/`.secondary()`/`.danger()`, plus `SecondaryButton`'s own
+//! `border_strong`-weight border, drawn by hand since no built-in variant auto-draws one outside
+//! `Default`/outline): their normal, hover and pressed fills all come from the `button.primary.*`
+//! /`button.secondary.*`/`button.danger.*` theme JSON keys
+//! (`theme::palette::theme_colors_and_highlight`), set straight from [`crate::theme::Palette`].
+//! An earlier version of this file started every kind from `.ghost()` instead, restyling through
+//! `Styled`, to dodge `Danger`/`Custom`'s background formula (`ButtonVariant::bg_color`,
+//! `gpui-component-0.6.6/src/button/button.rs`, `Self::Custom(colors) =>
+//! colors.color.mix_oklab(cx.theme().transparent, 0.2)`): that formula only actually applies to
+//! `Custom`, not to `Danger` (`Self::Danger => cx.theme().tokens.button_danger.into()`, no
+//! mixing), so it was never a reason to avoid `Danger` specifically, and it never applied to
+//! `Primary`/`Secondary` either. The real problem it hid (GitHub #17) was that `.ghost()`'s own
+//! hover/pressed are hardcoded to an accent-tinted formula (`ButtonVariant::hovered`/`active`)
+//! regardless of a `Styled` background override, which made a solid-filled `.bg(accent)` button
+//! flip to an unrelated muted color on hover, reading as disabled rather than highlighted.
+//!
+//! `GhostButton` still starts transparent, so `Custom`'s 20%-toward-transparent mix is harmless
+//! there (mixing an already-transparent color further toward transparent is a no-op): it uses
+//! `.custom(ButtonCustomVariant::new(cx).color(transparent).hover(palette.hover)
+//! .active(palette.pressed))` instead, for the same `hover`/`pressed` tokens every hand-rolled
+//! row and icon button in the app already uses (`views/title_bar.rs`'s settings gear, tree rows,
+//! …), rather than `Ghost`'s own accent-tinted hover.
 
-use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::button::{Button, ButtonCustomVariant, ButtonVariants as _};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -52,24 +65,18 @@ impl ButtonSpec {
         }
     }
 
-    /// Renders `self` as a gpui-kit [`Button`] with `bg`/`fg` pinned, and `border` drawn
-    /// (`border_strong`-weight, [`SecondaryButton`]'s look) when given.
-    fn render(self, bg: Hsla, fg: Hsla, border: Option<Hsla>, cx: &mut App) -> Button {
+    /// Renders `self` as a gpui-kit [`Button`] with `apply` picking the variant (and, through it,
+    /// every color: this no longer takes `bg`/`fg` params, see the module doc comment).
+    fn render(self, cx: &mut App, apply: impl FnOnce(Button) -> Button) -> Button {
         let key_hint_font = cx.theme().mono_font_family.clone();
-        let mut button = Button::new(self.id)
-            .ghost()
+        let mut button = apply(Button::new(self.id))
             .h(px(self.height))
             .rounded(px(RADIUS_MD))
-            .bg(bg)
-            .text_color(fg)
             .font_weight(FontWeight::MEDIUM)
             .disabled(self.disabled)
             .when(self.disabled, |button| button.opacity(DISABLED_OPACITY))
             .when_some(self.icon, |button, icon| button.icon(icon))
             .label(self.label);
-        if let Some(border) = border {
-            button = button.border_1().border_color(border);
-        }
         if let Some(hint) = self.key_hint {
             button = button.child(
                 div()
@@ -130,9 +137,7 @@ impl PrimaryButton {
 
 impl RenderOnce for PrimaryButton {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let palette = cx.palette();
-        self.spec
-            .render(palette.accent, palette.accent_fg, None, cx)
+        self.spec.render(cx, |button| button.primary())
     }
 }
 
@@ -179,7 +184,9 @@ impl RenderOnce for SecondaryButton {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let palette = cx.palette();
         self.spec
-            .render(palette.raised, palette.fg, Some(palette.border_strong), cx)
+            .render(cx, |button| button.secondary())
+            .border_1()
+            .border_color(palette.border_strong)
     }
 }
 
@@ -230,8 +237,12 @@ impl GhostButton {
 impl RenderOnce for GhostButton {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let palette = cx.palette();
-        self.spec
-            .render(palette.bg.opacity(0.0), palette.fg_muted, None, cx)
+        let custom = ButtonCustomVariant::new(cx)
+            .color(palette.bg.opacity(0.0))
+            .foreground(palette.fg_muted)
+            .hover(palette.hover)
+            .active(palette.pressed);
+        self.spec.render(cx, move |button| button.custom(custom))
     }
 }
 
@@ -276,11 +287,6 @@ impl DangerButton {
 
 impl RenderOnce for DangerButton {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let palette = cx.palette();
-        // `accent_fg` is opaque white in both themes (`theme::palette::LIGHT`/`DARK`), which is
-        // also the design's literal `color:#fff` for this button, so it is reused here rather
-        // than adding a second, redundant "always white" field to `Palette`.
-        self.spec
-            .render(palette.danger, palette.accent_fg, None, cx)
+        self.spec.render(cx, |button| button.danger())
     }
 }

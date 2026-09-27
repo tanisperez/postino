@@ -133,6 +133,8 @@ impl RenderOnce for UnderlineTabs {
                     .items_center()
                     .gap(px(6.0))
                     .cursor_pointer()
+                    .hover(|style| style.text_color(palette.fg))
+                    .active(|style| style.text_color(palette.accent_text))
                     .text_size(px(13.0))
                     .text_color(if selected {
                         palette.fg

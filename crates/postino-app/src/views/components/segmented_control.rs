@@ -112,6 +112,8 @@ impl RenderOnce for SegmentedControl {
                     .rounded(px(RADIUS_SM - 1.0))
                     .text_size(px(12.0))
                     .cursor_pointer()
+                    .hover(|style| style.bg(palette.hover))
+                    .active(|style| style.bg(palette.pressed))
                     .when(selected, |cell| {
                         cell.bg(palette.raised).text_color(palette.fg).shadow(vec![
                             BoxShadow::new(px(0.0), px(1.0), SHADOW_COLOR).blur_radius(px(2.0)),

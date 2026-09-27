@@ -39,6 +39,14 @@ use super::sidebar;
 /// The main window view: title bar, resizable sidebar, and main area (open tabs plus the
 /// request editor and response viewer).
 pub struct AppView {
+    /// The window-level focus this view tracks (`.track_focus` in [`Render::render`]), focused
+    /// at startup by [`Self::new`] and returned to whenever a field's own Escape blurs it
+    /// (`views/components/url_bar.rs`'s `on_escape`, GitHub #19). `on_action` (`Ctrl ,`, `Ctrl
+    /// S`, `Ctrl 1..9`, ...) only dispatches to a view while one of its own focus handles (or a
+    /// descendant's) is focused, so with nothing tracked here every shortcut went dead the moment
+    /// focus left an `Input` with nowhere else to land, including at a fresh startup where
+    /// nothing is ever focused at all.
+    pub(crate) focus_handle: FocusHandle,
     /// Plain application state: workspace, open tabs, active environment, session environment.
     pub(crate) state: AppState,
     /// The sidebar collection tree's interaction state (selection, expansion, scrolling). This
@@ -122,8 +130,10 @@ impl AppView {
             },
         )
         .detach();
+        let focus_handle = cx.focus_handle();
 
         let mut view = Self {
+            focus_handle: focus_handle.clone(),
             state: AppState {
                 settings,
                 ..AppState::new()
@@ -149,6 +159,11 @@ impl AppView {
         if let Some(root) = initial_workspace {
             view.open_workspace_at(&root, window, cx);
         }
+        // Before `apply_debug_open`: a `POSTINO_OPEN=settings` launch defers opening the dialog
+        // (see that method), and `Root::open_dialog` captures whatever is focused at that later
+        // point as the handle to restore once the dialog closes, so this must already be in
+        // effect for that capture to see it.
+        focus_handle.focus(window, cx);
         view.apply_debug_autosend(cx);
         view.apply_debug_open(window, cx);
         view
@@ -752,6 +767,7 @@ impl Render for AppView {
         v_flex()
             .size_full()
             .bg(background)
+            .track_focus(&self.focus_handle)
             .on_action(cx.listener(Self::on_save_action))
             .on_action(cx.listener(Self::on_send_action))
             .on_action(cx.listener(Self::on_open_settings_action))

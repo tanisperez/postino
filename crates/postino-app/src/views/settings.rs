@@ -41,8 +41,13 @@ const SELECT_WIDTH: f32 = 220.0;
 const STEPPER_VALUE_WIDTH: f32 = 64.0;
 
 impl AppView {
-    /// Opens the Settings modal (`plans/ui-redesign.md` phase 6 item 1).
+    /// Opens the Settings modal (`plans/ui-redesign.md` phase 6 item 1). A no-op when one is
+    /// already open, so the gear and `Ctrl ,` / `Cmd ,` never stack a second modal on top
+    /// (GitHub #18).
     pub(crate) fn open_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if window.has_active_dialog(cx) {
+            return;
+        }
         let weak = cx.weak_entity();
         window.open_dialog(cx, move |dialog, window, cx| {
             let palette = cx.palette();
@@ -429,6 +434,8 @@ fn render_theme_card(
         .flex_1()
         .gap(px(8.0))
         .cursor_pointer()
+        .hover(|style| style.opacity(0.85))
+        .active(|style| style.opacity(0.7))
         .child(
             preview_box
                 .child(
@@ -769,6 +776,8 @@ fn stepper_button(
         .border_1()
         .border_color(palette.border_strong)
         .bg(palette.raised)
+        .hover(|style| style.bg(palette.hover))
+        .active(|style| style.bg(palette.pressed))
         .child(Icon::new(icon).small())
         .on_click(move |_, window, cx| on_click(window, cx))
 }
