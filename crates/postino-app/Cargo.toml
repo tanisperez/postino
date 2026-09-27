@@ -26,6 +26,7 @@ postino-format = { path = "../postino-format" }
 postino-workspace = { path = "../postino-workspace" }
 postino-runner = { path = "../postino-runner" }
 postino-script = { path = "../postino-script" }
+postino-load = { path = "../postino-load" }
 
 [dev-dependencies]
 tempfile = { workspace = true }

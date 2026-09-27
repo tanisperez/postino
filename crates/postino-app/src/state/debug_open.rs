@@ -4,8 +4,7 @@
 //! surfaced in any menu.
 
 /// A UI state `POSTINO_OPEN` can request at startup. `Components` (phase 3), `Settings` (phase
-/// 6) and `Palette`/`Snippet`/`Define` (phase 7) exist so far; a later phase adds `LoadTest`, per
-/// `plans/ui-redesign.md` phase 3's instructions.
+/// 6), `Palette`/`Snippet`/`Define` (phase 7) and `LoadTest` (phase 8) exist so far.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DebugOpenTarget {
     /// Renders the components gallery in the main area, mirroring
@@ -23,6 +22,11 @@ pub enum DebugOpenTarget {
     /// Opens the Define variable dialog, prefilled with the name `"exampleVar"`
     /// (`plans/ui-redesign.md` phase 7 item 3).
     Define,
+    /// Opens a load test tab preselecting the first request found in the workspace tree, for
+    /// screenshotting `postino_design_system/Performance.dc.html`'s config panel
+    /// (`plans/ui-redesign.md` phase 8). A no-op when no workspace is open or it has no
+    /// requests.
+    LoadTest,
 }
 
 /// Parses `POSTINO_OPEN`'s value into a [`DebugOpenTarget`]. An unrecognized value is `None`
@@ -34,6 +38,7 @@ pub fn parse(value: &str) -> Option<DebugOpenTarget> {
         "palette" => Some(DebugOpenTarget::Palette),
         "snippet" => Some(DebugOpenTarget::Snippet),
         "define" => Some(DebugOpenTarget::Define),
+        "loadtest" => Some(DebugOpenTarget::LoadTest),
         _ => None,
     }
 }
@@ -66,6 +71,11 @@ mod tests {
     #[test]
     fn parses_define() {
         assert_eq!(parse("define"), Some(DebugOpenTarget::Define));
+    }
+
+    #[test]
+    fn parses_loadtest() {
+        assert_eq!(parse("loadtest"), Some(DebugOpenTarget::LoadTest));
     }
 
     #[test]

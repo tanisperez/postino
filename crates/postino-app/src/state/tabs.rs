@@ -1,18 +1,68 @@
-//! Open request tabs: which requests are open for editing, in which order, which one is active,
-//! and whether each has unsaved changes. No `gpui` types here, so this is unit-tested directly.
+//! Open tabs: requests being edited and load test tabs (`plans/ui-redesign.md` phase 8 item 1),
+//! in which order, which one is active, and whether each has unsaved changes. No `gpui` types
+//! here, so this is unit-tested directly.
 
 use postino_core::Request;
 
-/// One open request tab.
+use super::load_test::LoadTestTab;
+
+/// What one open tab shows: a request being edited, or a load test in progress or finished.
+/// Dirty state and saving only apply to [`TabKind::Request`] (`plans/ui-redesign.md` phase 8
+/// item 1).
+#[derive(Debug, Clone, PartialEq)]
+pub enum TabKind {
+    /// A request open for editing.
+    Request(Request),
+    /// A load test tab.
+    LoadTest(LoadTestTab),
+}
+
+/// One open tab.
 #[derive(Debug, Clone, PartialEq)]
 pub struct OpenTab {
-    /// The request's id in the workspace: its path relative to the workspace root, matching
-    /// [`postino_workspace::RequestEntry::id`].
+    /// This tab's id: a request's workspace path (matching
+    /// [`postino_workspace::RequestEntry::id`]) for [`TabKind::Request`], or a generated,
+    /// otherwise-unused id for [`TabKind::LoadTest`] (`state::tabs::TabsState::open_load_test`).
     pub id: String,
-    /// The request as currently edited. May differ from what is saved on disk when `dirty`.
-    pub request: Request,
-    /// Whether `request` has unsaved changes.
+    /// What this tab shows.
+    pub kind: TabKind,
+    /// Whether the tab has unsaved changes. Always `false` for a [`TabKind::LoadTest`] tab: it
+    /// has nothing to save.
     pub dirty: bool,
+}
+
+impl OpenTab {
+    /// This tab's request, if it is a [`TabKind::Request`].
+    pub fn request(&self) -> Option<&Request> {
+        match &self.kind {
+            TabKind::Request(request) => Some(request),
+            TabKind::LoadTest(_) => None,
+        }
+    }
+
+    /// This tab's request, mutably, if it is a [`TabKind::Request`].
+    pub fn request_mut(&mut self) -> Option<&mut Request> {
+        match &mut self.kind {
+            TabKind::Request(request) => Some(request),
+            TabKind::LoadTest(_) => None,
+        }
+    }
+
+    /// This tab's load test state, if it is a [`TabKind::LoadTest`].
+    pub fn load_test(&self) -> Option<&LoadTestTab> {
+        match &self.kind {
+            TabKind::LoadTest(load_test) => Some(load_test),
+            TabKind::Request(_) => None,
+        }
+    }
+
+    /// This tab's load test state, mutably, if it is a [`TabKind::LoadTest`].
+    pub fn load_test_mut(&mut self) -> Option<&mut LoadTestTab> {
+        match &mut self.kind {
+            TabKind::LoadTest(load_test) => Some(load_test),
+            TabKind::Request(_) => None,
+        }
+    }
 }
 
 /// The set of open tabs and which one is active, if any.
@@ -20,6 +70,10 @@ pub struct OpenTab {
 pub struct TabsState {
     open: Vec<OpenTab>,
     active: Option<usize>,
+    /// The next id [`Self::open_load_test`] hands out, so every load test tab gets a fresh,
+    /// never-reused id even after earlier ones are closed (unlike a request's id, a load test
+    /// tab's id has nothing to naturally dedupe on).
+    next_load_test_id: u32,
 }
 
 impl TabsState {
@@ -36,6 +90,11 @@ impl TabsState {
     /// The active tab, if any.
     pub fn active(&self) -> Option<&OpenTab> {
         self.active.and_then(|index| self.open.get(index))
+    }
+
+    /// The open tab at `index`. `None` if `index` is out of range.
+    pub fn get(&self, index: usize) -> Option<&OpenTab> {
+        self.open.get(index)
     }
 
     /// The open tab at `index`, mutably. `None` if `index` is out of range.
@@ -57,9 +116,25 @@ impl TabsState {
             self.active = Some(index);
             return index;
         }
+        self.push_and_activate(id, TabKind::Request(request))
+    }
+
+    /// Opens a new load test tab and makes it active (`plans/ui-redesign.md` phase 8 item 2).
+    /// Always a fresh tab, never deduplicated: unlike a request, several load test tabs can
+    /// target the same request or collection at once. Returns the tab's id and index.
+    pub fn open_load_test(&mut self, load_test: LoadTestTab) -> (String, usize) {
+        let id = format!("load-test:{}", self.next_load_test_id);
+        self.next_load_test_id += 1;
+        let index = self.push_and_activate(id.clone(), TabKind::LoadTest(load_test));
+        (id, index)
+    }
+
+    /// Appends a new tab and makes it active. Shared by [`Self::open`] and
+    /// [`Self::open_load_test`].
+    fn push_and_activate(&mut self, id: String, kind: TabKind) -> usize {
         self.open.push(OpenTab {
             id,
-            request,
+            kind,
             dirty: false,
         });
         let index = self.open.len() - 1;
@@ -256,6 +331,17 @@ mod tests {
     }
 
     #[test]
+    fn get_returns_the_tab_at_index() {
+        let mut tabs = TabsState::default();
+        tabs.open("a.postino", request());
+        tabs.open("b.postino", request());
+
+        let tab = tabs.get(1).expect("index 1 is open");
+        assert_eq!(tab.id, "b.postino");
+        assert!(tabs.get(5).is_none());
+    }
+
+    #[test]
     fn get_mut_returns_the_tab_at_index() {
         let mut tabs = TabsState::default();
         tabs.open("a.postino", request());
@@ -308,5 +394,65 @@ mod tests {
 
         assert_eq!(tabs.open_tabs().len(), 1);
         assert_eq!(tabs.open_tabs()[0].id, "other.postino");
+    }
+
+    #[test]
+    fn open_load_test_opens_a_new_tab_and_makes_it_active() {
+        let mut tabs = TabsState::default();
+        let (id, index) = tabs.open_load_test(LoadTestTab::unset());
+        assert_eq!(index, 0);
+        assert_eq!(tabs.active_index(), Some(0));
+        assert_eq!(tabs.open_tabs()[0].id, id);
+        assert!(tabs.open_tabs()[0].load_test().is_some());
+        assert!(!tabs.open_tabs()[0].dirty);
+    }
+
+    #[test]
+    fn open_load_test_never_deduplicates_even_with_the_same_target() {
+        let mut tabs = TabsState::default();
+        let (first_id, _) = tabs.open_load_test(LoadTestTab::unset());
+        let (second_id, _) = tabs.open_load_test(LoadTestTab::unset());
+        assert_ne!(first_id, second_id);
+        assert_eq!(tabs.open_tabs().len(), 2);
+    }
+
+    #[test]
+    fn a_request_tabs_kind_exposes_its_request_but_not_a_load_test() {
+        let mut tabs = TabsState::default();
+        tabs.open("a.postino", request());
+        let tab = tabs.active().expect("just opened");
+        assert!(tab.request().is_some());
+        assert!(tab.load_test().is_none());
+    }
+
+    #[test]
+    fn a_load_test_tabs_kind_exposes_its_load_test_but_not_a_request() {
+        let mut tabs = TabsState::default();
+        tabs.open_load_test(LoadTestTab::unset());
+        let tab = tabs.active().expect("just opened");
+        assert!(tab.load_test().is_some());
+        assert!(tab.request().is_none());
+    }
+
+    #[test]
+    fn rename_prefix_does_not_touch_a_load_test_tab() {
+        let mut tabs = TabsState::default();
+        let (load_test_id, _) = tabs.open_load_test(LoadTestTab::unset());
+
+        tabs.rename_prefix("load-test", "renamed");
+
+        assert_eq!(tabs.open_tabs()[0].id, load_test_id);
+    }
+
+    #[test]
+    fn closing_a_tab_leaves_other_tabs_kind_untouched() {
+        let mut tabs = TabsState::default();
+        tabs.open("a.postino", request());
+        tabs.open_load_test(LoadTestTab::unset());
+
+        tabs.close(0);
+
+        assert_eq!(tabs.open_tabs().len(), 1);
+        assert!(tabs.open_tabs()[0].load_test().is_some());
     }
 }
