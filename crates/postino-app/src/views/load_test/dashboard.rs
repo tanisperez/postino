@@ -34,6 +34,11 @@ const HISTOGRAM_HEIGHT: f32 = 110.0;
 const HISTOGRAM_WARNING_MS: usize = 110;
 /// The histogram bucket width, in milliseconds (`postino_load::LoadSnapshot::histogram`'s docs).
 const HISTOGRAM_BUCKET_MS: usize = 10;
+/// Minimum width of one half of a two-column dashboard row (latency distribution + status
+/// breakdown, per-request table + compare with) before it wraps to a new row. Below this, a
+/// column has no room to stay legible, so `flex_wrap` (not a window-width measurement) stacks the
+/// two vertically instead of squashing them (`plans/ui-redesign.md` phase 8's responsiveness fix).
+const TWO_COLUMN_MIN_WIDTH: f32 = 320.0;
 /// A per-request error rate at or above which its "Errors" cell turns `warning`
 /// (`plans/ui-redesign.md` phase 8 item 4: "Errors (warning when above 1%)").
 const PER_REQUEST_WARNING_ERROR_RATE: f64 = 0.01;
@@ -66,6 +71,7 @@ impl AppView {
         v_flex()
             .id("load-test-dashboard")
             .flex_1()
+            .h_full()
             .min_w_0()
             .min_h_0()
             .overflow_y_scroll()
@@ -79,18 +85,19 @@ impl AppView {
             ))
             .child(
                 h_flex()
+                    .flex_wrap()
                     .gap(px(16.0))
                     .items_start()
                     .child(
                         div()
                             .flex_grow(1.3)
-                            .min_w_0()
+                            .min_w(px(TWO_COLUMN_MIN_WIDTH))
                             .child(render_latency_distribution(&palette, &snapshot)),
                     )
                     .child(
                         div()
                             .flex_grow(1.0)
-                            .min_w_0()
+                            .min_w(px(TWO_COLUMN_MIN_WIDTH))
                             .child(render_status_breakdown(&palette, &mono_font, &snapshot)),
                     ),
             )
@@ -113,6 +120,7 @@ fn render_empty_state(
     let mut column = v_flex()
         .id("load-test-empty-state")
         .flex_1()
+        .h_full()
         .min_w_0()
         .min_h_0()
         .overflow_y_scroll()
@@ -305,8 +313,15 @@ fn format_thousands(value: u64) -> String {
     out.chars().rev().collect()
 }
 
+/// Minimum width of one KPI cell, before [`render_kpi_strip`]'s `flex_wrap` moves the next one
+/// onto a new row (`plans/ui-redesign.md` phase 8 item 4's "responsiveness" fix: no media
+/// queries, so the strip wraps by flex layout alone rather than by measuring the window).
+const KPI_CELL_MIN_WIDTH: f32 = 150.0;
+
 /// The KPI strip: Requests/s, p50, p95, p99, Errors, Total (`plans/ui-redesign.md` phase 8 item
-/// 4).
+/// 4). Wraps into as many rows as the available width needs (typically 3 + 3 at the narrower
+/// sizes this tab must support) via `flex_wrap` and each cell's own minimum width, never by
+/// measuring the window.
 fn render_kpi_strip(palette: &Palette, snapshot: &LoadSnapshot) -> AnyElement {
     let kpis: [(&str, String, &str, bool); 6] = [
         ("Requests/s", format!("{:.0}", snapshot.rps), "", false),
@@ -323,6 +338,7 @@ fn render_kpi_strip(palette: &Palette, snapshot: &LoadSnapshot) -> AnyElement {
     ];
 
     h_flex()
+        .flex_wrap()
         .border_1()
         .border_color(palette.border)
         .rounded(px(RADIUS_LG))
@@ -333,11 +349,15 @@ fn render_kpi_strip(palette: &Palette, snapshot: &LoadSnapshot) -> AnyElement {
                 .map(|(index, (label, value, unit, warn))| {
                     let mut cell = v_flex()
                         .flex_1()
-                        .min_w_0()
+                        .min_w(px(KPI_CELL_MIN_WIDTH))
                         .gap(px(4.0))
                         .px(px(14.0))
                         .py(px(12.0));
-                    if index > 0 {
+                    // A divider only within a group of 3 (never before the 1st or 4th cell): at
+                    // full width that still reads as one continuous strip (no divider hints at
+                    // the 3+3 wrap point that never happens), and once wrapped, the first cell of
+                    // each row never shows a stray leading divider.
+                    if index % 3 != 0 {
                         cell = cell.border_l_1().border_color(palette.border);
                     }
                     cell.child(
@@ -609,15 +629,17 @@ fn render_bottom_row(
         .filter(|header| Some(header.number) != load_test.run_number)
         .collect();
 
-    let per_request = div()
-        .flex_grow(1.3)
-        .min_w_0()
-        .child(render_per_request_table(
-            palette, mono_font, load_test, snapshot,
-        ));
+    let per_request =
+        div()
+            .flex_grow(1.3)
+            .min_w(px(TWO_COLUMN_MIN_WIDTH))
+            .child(render_per_request_table(
+                palette, mono_font, load_test, snapshot,
+            ));
 
     if compare_available.is_empty() {
         return h_flex()
+            .flex_wrap()
             .gap(px(16.0))
             .items_start()
             .child(per_request)
@@ -625,19 +647,33 @@ fn render_bottom_row(
     }
 
     h_flex()
+        .flex_wrap()
         .gap(px(16.0))
         .items_start()
         .child(per_request)
-        .child(div().flex_grow(1.0).min_w_0().child(render_compare_with(
-            weak,
-            tab_id,
-            palette,
-            load_test,
-            snapshot,
-            &compare_available,
-        )))
+        .child(
+            div()
+                .flex_grow(1.0)
+                .min_w(px(TWO_COLUMN_MIN_WIDTH))
+                .child(render_compare_with(
+                    weak,
+                    tab_id,
+                    palette,
+                    load_test,
+                    snapshot,
+                    &compare_available,
+                )),
+        )
         .into_any_element()
 }
+
+/// Fixed width of one of the per-request table's numeric columns (Count, p50, p95, p99, Errors):
+/// wide enough for their widest realistic value ("999 ms") without letting them shrink into each
+/// other at a narrow window, which `flex_grow` alone (with no floor) allowed
+/// (`plans/ui-redesign.md` phase 8's responsiveness fix).
+const PER_REQUEST_NUMERIC_COL_WIDTH: f32 = 64.0;
+/// Horizontal gap between the per-request table's columns.
+const PER_REQUEST_COL_GAP: f32 = 10.0;
 
 /// The per-request table: method, name, Count, p50, p95, p99, Errors.
 fn render_per_request_table(
@@ -649,18 +685,49 @@ fn render_per_request_table(
     let header = h_flex()
         .h(px(34.0))
         .items_center()
+        .gap(px(PER_REQUEST_COL_GAP))
         .px(px(16.0))
         .border_b_1()
         .border_color(palette.border)
         .text_size(px(11.5))
         .text_color(palette.fg_subtle)
         .font_weight(FontWeight::MEDIUM)
-        .child(div().flex_grow(1.6).child("Request"))
-        .child(div().flex_grow(1.0).text_right().child("Count"))
-        .child(div().flex_grow(1.0).text_right().child("p50"))
-        .child(div().flex_grow(1.0).text_right().child("p95"))
-        .child(div().flex_grow(1.0).text_right().child("p99"))
-        .child(div().flex_grow(1.0).text_right().child("Errors"));
+        .child(div().flex_1().min_w(px(60.0)).child("Request"))
+        .child(
+            div()
+                .flex_none()
+                .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
+                .text_right()
+                .child("Count"),
+        )
+        .child(
+            div()
+                .flex_none()
+                .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
+                .text_right()
+                .child("p50"),
+        )
+        .child(
+            div()
+                .flex_none()
+                .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
+                .text_right()
+                .child("p95"),
+        )
+        .child(
+            div()
+                .flex_none()
+                .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
+                .text_right()
+                .child("p99"),
+        )
+        .child(
+            div()
+                .flex_none()
+                .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
+                .text_right()
+                .child("Errors"),
+        );
 
     let rows = snapshot
         .per_target
@@ -676,14 +743,15 @@ fn render_per_request_table(
             h_flex()
                 .h(px(34.0))
                 .items_center()
+                .gap(px(PER_REQUEST_COL_GAP))
                 .px(px(16.0))
                 .border_b_1()
                 .border_color(palette.border)
                 .text_size(px(12.5))
                 .child(
                     h_flex()
-                        .flex_grow(1.6)
-                        .min_w_0()
+                        .flex_1()
+                        .min_w(px(60.0))
                         .items_center()
                         .gap(px(8.0))
                         .children(method.map(MethodBadge::label))
@@ -691,31 +759,36 @@ fn render_per_request_table(
                 )
                 .child(
                     div()
-                        .flex_grow(1.0)
+                        .flex_none()
+                        .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
                         .text_right()
                         .child(stats.count.to_string()),
                 )
                 .child(
                     div()
-                        .flex_grow(1.0)
+                        .flex_none()
+                        .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
                         .text_right()
                         .child(format!("{} ms", stats.p50 / 1000)),
                 )
                 .child(
                     div()
-                        .flex_grow(1.0)
+                        .flex_none()
+                        .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
                         .text_right()
                         .child(format!("{} ms", stats.p95 / 1000)),
                 )
                 .child(
                     div()
-                        .flex_grow(1.0)
+                        .flex_none()
+                        .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
                         .text_right()
                         .child(format!("{} ms", stats.p99 / 1000)),
                 )
                 .child(
                     div()
-                        .flex_grow(1.0)
+                        .flex_none()
+                        .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
                         .text_right()
                         .text_color(error_color)
                         .child(format!("{:.1}%", stats.error_rate * 100.0)),
@@ -737,10 +810,11 @@ fn render_per_request_table(
 
 /// Each target's HTTP method and display name for the per-request table, in the same order as
 /// [`LoadSnapshot::per_target`]. `None` method, `"Target N"` name for an index beyond
-/// [`LoadTestTab::target_rows`]: a saved [`postino_load::history::RunRecord`] does not persist
-/// per-target labels, only their stats, so a history entry viewed from a previous session (or one
-/// whose targets no longer line up, e.g. after editing the collection) degrades to a generic
-/// label instead of a wrong one.
+/// [`LoadTestTab::target_rows`]: a run saved before
+/// [`postino_load::history::RunRecord::target_labels`] existed has no labels to restore (that
+/// field defaults to empty for those older files), and a target list that no longer lines up
+/// (e.g. the collection was edited after the run) degrades the same way, to a generic label
+/// instead of a wrong one.
 fn target_row_label(load_test: &LoadTestTab, index: usize) -> (Option<Method>, String) {
     match load_test.target_rows.get(index) {
         Some((method, name)) => (Some(method.clone()), name.clone()),

@@ -134,83 +134,103 @@ impl AppView {
             .as_ref()
             .map(|workspace| workspace.tree().to_vec());
 
+        // Split in two: a scrollable fields area (`flex_1().min_h_0().overflow_y_scroll()`) and a
+        // `flex_none` footer holding the Start/Stop button and the note below it. Previously
+        // everything (including the button) was one `v_flex` with a `div().flex_1()` spacer
+        // pushing the button down; with no scroll anywhere, a short window simply clipped the
+        // button and note below the visible area instead of keeping them reachable
+        // (`plans/ui-redesign.md` phase 8's responsiveness fix).
         v_flex()
             .flex_none()
             .w(px(PANEL_WIDTH))
             .h_full()
+            .min_h_0()
             .border_r_1()
             .border_color(palette.border)
-            .p(px(16.0))
-            .gap(px(16.0))
-            .child(render_target_section(
-                weak.clone(),
-                tab_id,
-                &palette,
-                &load_test,
-                tree.as_deref(),
-                is_running,
-            ))
-            .child(render_field(
-                &palette,
-                &mono_font,
-                &ui_font,
-                "Virtual users",
-                None,
-                self.load_test_entities.vus.as_ref(),
-                "VUs",
-                is_running,
-            ))
-            .child(render_field(
-                &palette,
-                &mono_font,
-                &ui_font,
-                "Duration",
-                None,
-                self.load_test_entities.duration_secs.as_ref(),
-                "s",
-                is_running,
-            ))
-            .child(render_field(
-                &palette,
-                &mono_font,
-                &ui_font,
-                "Ramp-up",
-                Some(format!("0 \u{2192} {} VUs", load_test.config.vus.trim())),
-                self.load_test_entities.ramp_up_secs.as_ref(),
-                "s",
-                is_running,
-            ))
-            .child(render_field(
-                &palette,
-                &mono_font,
-                &ui_font,
-                "Think time",
-                Some("per iteration".to_string()),
-                self.load_test_entities.think_time_ms.as_ref(),
-                "ms",
-                is_running,
-            ))
-            .child(render_stop_on_error_row(
-                weak.clone(),
-                tab_id,
-                &palette,
-                &load_test,
-                is_running,
-            ))
-            .child(div().flex_1())
-            .child(render_start_stop_button(weak.clone(), tab_id, is_running))
             .child(
-                div()
-                    .text_size(px(12.0))
-                    .text_color(palette.fg_subtle)
-                    .text_center()
+                v_flex()
+                    .id("load-test-config-fields")
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .p(px(16.0))
+                    .gap(px(16.0))
+                    .child(render_target_section(
+                        weak.clone(),
+                        tab_id,
+                        &palette,
+                        &load_test,
+                        tree.as_deref(),
+                        is_running,
+                    ))
+                    .child(render_field(
+                        &palette,
+                        &mono_font,
+                        &ui_font,
+                        "Virtual users",
+                        None,
+                        self.load_test_entities.vus.as_ref(),
+                        "VUs",
+                        is_running,
+                    ))
+                    .child(render_field(
+                        &palette,
+                        &mono_font,
+                        &ui_font,
+                        "Duration",
+                        None,
+                        self.load_test_entities.duration_secs.as_ref(),
+                        "s",
+                        is_running,
+                    ))
+                    .child(render_field(
+                        &palette,
+                        &mono_font,
+                        &ui_font,
+                        "Ramp-up",
+                        Some(format!("0 \u{2192} {} VUs", load_test.config.vus.trim())),
+                        self.load_test_entities.ramp_up_secs.as_ref(),
+                        "s",
+                        is_running,
+                    ))
+                    .child(render_field(
+                        &palette,
+                        &mono_font,
+                        &ui_font,
+                        "Think time",
+                        Some("per iteration".to_string()),
+                        self.load_test_entities.think_time_ms.as_ref(),
+                        "ms",
+                        is_running,
+                    ))
+                    .child(render_stop_on_error_row(
+                        weak.clone(),
+                        tab_id,
+                        &palette,
+                        &load_test,
+                        is_running,
+                    )),
+            )
+            .child(
+                v_flex()
+                    .flex_none()
+                    .px(px(16.0))
+                    .pb(px(16.0))
+                    .gap(px(16.0))
+                    .child(render_start_stop_button(weak.clone(), tab_id, is_running))
                     .child(
-                        h_flex()
-                            .w_full()
-                            .justify_center()
-                            .flex_wrap()
-                            .child("Runs on this machine. Results are saved to ")
-                            .child(div().font_family(mono_font).child(".postino/runs/")),
+                        div()
+                            .text_size(px(12.0))
+                            .text_color(palette.fg_subtle)
+                            .text_center()
+                            .child(
+                                h_flex()
+                                    .w_full()
+                                    .justify_center()
+                                    .flex_wrap()
+                                    .child("Runs on this machine. Results are saved to ")
+                                    .child(div().font_family(mono_font).child(".postino/runs/")),
+                            ),
                     ),
             )
             .into_any_element()

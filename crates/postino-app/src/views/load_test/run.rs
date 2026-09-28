@@ -238,6 +238,7 @@ impl AppView {
             .map(|workspace| workspace.root().to_path_buf());
         let mut target_label = String::new();
         let mut run_number = None;
+        let mut target_labels = Vec::new();
         self.edit_load_test(tab_id, cx, |load_test| {
             load_test.status = if summary.stopped_early {
                 LoadTestStatus::Stopped
@@ -247,6 +248,11 @@ impl AppView {
             load_test.snapshot = Some(summary.snapshot.clone());
             target_label = load_test.target_label.clone();
             run_number = load_test.run_number;
+            target_labels = load_test
+                .target_rows
+                .iter()
+                .map(|(method, name)| (method.to_string(), name.clone()))
+                .collect();
         });
 
         if let (Some(root), Some(number)) = (root.as_ref(), run_number) {
@@ -256,6 +262,8 @@ impl AppView {
                 target_label: target_label.clone(),
                 config: config_summary,
                 snapshot: summary.snapshot,
+                stopped_early: summary.stopped_early,
+                target_labels,
             };
             let _ = postino_load::history::save(root, &record);
         }

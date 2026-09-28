@@ -754,7 +754,18 @@ impl AppView {
         v_flex()
             .size_full()
             .child(tabs_bar)
-            .child(content)
+            // `flex_1().min_h_0()` here, not just on `content` itself: a plain flex child does
+            // not grow to fill remaining space or shrink below its content's natural height on
+            // its own (the same reasoning `render_body`'s own `div().flex_1().min_h_0()` already
+            // documents for `h_resizable`). The non-load-test `content` (`v_resizable`) happens
+            // to manage its own sizing regardless, but the load test tab's dashboard is a plain
+            // `overflow_y_scroll()` `v_flex`, which needs a genuinely bounded parent height for
+            // that scroll to actually clip instead of letting the pane grow past the window and
+            // paint its scrolled content over the title bar. `overflow_hidden()` here too: once
+            // scrolled, the dashboard's own content mask was still letting scrolled-past rows
+            // paint above this pane (verified by screenshot while fixing this same issue), so
+            // this outer clip is the actual backstop that keeps them inside the tab.
+            .child(div().flex_1().min_h_0().overflow_hidden().child(content))
             .into_any_element()
     }
 

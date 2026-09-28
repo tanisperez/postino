@@ -101,6 +101,25 @@ pub struct RunRecord {
     pub config: LoadConfigSummary,
     /// The metrics at the moment the run ended.
     pub snapshot: LoadSnapshot,
+    /// Whether the run ended before its configured duration fully elapsed (stopped by hand, or
+    /// by [`crate::LoadConfig::stop_on_error_rate`]), the same meaning as
+    /// [`crate::LoadSummary::stopped_early`]: the app shows this run as "Stopped" when `true`,
+    /// "Finished" when `false`. `#[serde(default)]` (`false`) for a run file saved before this
+    /// field existed, which falls back to always reading as "Finished", the only status those
+    /// older records could show anyway.
+    #[serde(default)]
+    pub stopped_early: bool,
+    /// Each target's HTTP method (as its plain token, e.g. `"GET"`, `"POST"`, or a custom
+    /// method exactly as written) and display name, in the same order as
+    /// [`crate::LoadSnapshot::per_target`], for the per-request table of a run viewed from
+    /// history. A plain `(String, String)` pair rather than [`postino_core::Method`] directly:
+    /// `postino-core` intentionally has no `serde` dependency (see [`LoadConfigSummary`]'s own
+    /// doc comment), and `Method`'s `Display`/`FromStr` round-trip a token losslessly (`FromStr`
+    /// is infallible, an unrecognized token becomes `Method::Custom`). `#[serde(default)]`
+    /// (empty) for a run file saved before this field existed, which falls back to the generic
+    /// "Target N" label those older records already showed.
+    #[serde(default)]
+    pub target_labels: Vec<(String, String)>,
 }
 
 /// A lightweight preview of a [`RunRecord`], for a run list or a "Compare with" dropdown, without
@@ -271,6 +290,8 @@ mod tests {
             target_label: "login".to_string(),
             config: LoadConfigSummary::from(&config),
             snapshot: sample_snapshot(),
+            stopped_early: false,
+            target_labels: vec![("POST".to_string(), "login".to_string())],
         }
     }
 
@@ -349,5 +370,55 @@ mod tests {
     fn list_of_a_workspace_with_no_runs_folder_is_empty() {
         let dir = tempdir().expect("temp dir");
         assert!(list(dir.path()).is_empty());
+    }
+
+    #[test]
+    fn round_trip_preserves_stopped_early_and_target_labels() {
+        let dir = tempdir().expect("temp dir");
+        let mut record = sample_record(1);
+        record.stopped_early = true;
+        record.target_labels = vec![
+            ("POST".to_string(), "create".to_string()),
+            ("GET".to_string(), "list".to_string()),
+        ];
+
+        save(dir.path(), &record).expect("save should succeed");
+        let loaded = load(dir.path(), 1).expect("load should succeed");
+
+        assert!(loaded.stopped_early);
+        assert_eq!(
+            loaded.target_labels,
+            vec![
+                ("POST".to_string(), "create".to_string()),
+                ("GET".to_string(), "list".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_run_file_saved_before_stopped_early_and_target_labels_existed_still_loads() {
+        let dir = tempdir().expect("temp dir");
+        // The exact shape `save` wrote before this phase's fields existed: everything
+        // `RunRecord` still has, nothing it gained since.
+        let mut value = serde_json::to_value(sample_record(1)).expect("serialize");
+        let object = value
+            .as_object_mut()
+            .expect("record serializes as an object");
+        object.remove("stopped_early");
+        object.remove("target_labels");
+        let old_json = serde_json::to_string_pretty(&value).expect("serialize back to text");
+
+        fs::create_dir_all(dir.path().join(".postino/runs")).expect("create runs dir");
+        fs::write(dir.path().join(".postino/runs/0001.json"), old_json).expect("write old record");
+
+        let loaded = load(dir.path(), 1).expect("an old record without these fields still loads");
+        assert!(
+            !loaded.stopped_early,
+            "should default to false (\"Finished\")"
+        );
+        assert!(
+            loaded.target_labels.is_empty(),
+            "should default to empty (falls back to the generic \"Target N\" label)"
+        );
     }
 }

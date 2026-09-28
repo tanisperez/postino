@@ -66,15 +66,25 @@ pub struct TargetStats {
 /// (`plans/ui-redesign.md`, Phase 1d, point 4).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LoadSnapshot {
-    /// How long the run has been going for.
+    /// How long the run has been going for. On the final snapshot of a finished (not stopped
+    /// early) run, this can exceed [`crate::LoadConfig::duration`] by a little: `stop` does not
+    /// abort a request already in flight (`crate::run`'s module docs), so the run only actually
+    /// ends once every virtual user's current request finishes, bounded by the slowest one still
+    /// in flight at that moment rather than the configured duration itself. Against a fast local
+    /// server this is a handful of milliseconds; against a slower or remote target it tracks that
+    /// target's own latency.
     #[serde(with = "duration_millis")]
     pub elapsed: Duration,
     /// How many virtual users are currently running.
     pub active_vus: u32,
     /// Every sample recorded so far, across every target.
     pub total: u64,
-    /// Requests completed during the last fully elapsed second. `0.0` before the first second
-    /// has elapsed.
+    /// While a run is live ([`Aggregator::snapshot`]): requests completed during the last fully
+    /// elapsed second, `0.0` before the first second has elapsed. Once a run has finished
+    /// ([`Aggregator::final_snapshot`]): the average requests per second over the whole run
+    /// instead, since the last elapsed second is often idle by then (every virtual user has
+    /// already stopped) and would otherwise report a misleading `0.0` for a run that clearly
+    /// wasn't idle (see that method's doc comment).
     pub rps: f64,
     /// The median latency across every sample, in microseconds.
     pub p50: u32,
@@ -237,6 +247,35 @@ impl Aggregator {
             status_counts: self.status_counts.clone(),
             per_target,
         }
+    }
+
+    /// Builds the final [`LoadSnapshot`] of a run that has just ended (`crate::run`'s
+    /// `run_supervisor`, called once every virtual user thread has been joined).
+    ///
+    /// Identical to [`Self::snapshot`] except for `rps`: [`Self::snapshot`]'s "last fully elapsed
+    /// second" is meant to read as a live, current rate while a run is in progress, but by the
+    /// time every virtual user has stopped and been joined, `elapsed` has usually ticked a little
+    /// past the last second any of them actually completed a request in (`postino_load`'s own
+    /// crate docs: `stop` does not abort a request already in flight, so joining waits for it).
+    /// That trailing, now-idle second would otherwise report `0.0`, misrepresenting a run that
+    /// had real, nonzero throughput throughout. The average over the whole run is a truthful
+    /// summary instead.
+    #[must_use]
+    pub(crate) fn final_snapshot(&self, elapsed: Duration) -> LoadSnapshot {
+        let mut snapshot = self.snapshot(elapsed, 0);
+        snapshot.rps = average_rps(self.total, elapsed);
+        snapshot
+    }
+}
+
+/// The average requests per second over `elapsed`, or `0.0` when `elapsed` is (near) zero,
+/// instead of dividing by it.
+fn average_rps(total: u64, elapsed: Duration) -> f64 {
+    let seconds = elapsed.as_secs_f64();
+    if seconds < f64::EPSILON {
+        0.0
+    } else {
+        total as f64 / seconds
     }
 }
 
@@ -410,6 +449,56 @@ mod tests {
         assert_eq!(snapshot.series.len(), 3);
         assert!((snapshot.series[1].rps - 0.0).abs() < f64::EPSILON);
         assert_eq!(snapshot.series[1].p95, 0);
+    }
+
+    /// Reproduces the bug reported after phase 8: every sample landed in second 0 (a run that
+    /// clearly had throughput throughout), but by the time every virtual user thread is joined,
+    /// `elapsed` has ticked into a new, idle second (`crate::run::run_supervisor`'s own join wait,
+    /// since `stop` does not abort a request already in flight). [`Aggregator::snapshot`]'s "last
+    /// fully elapsed second" rule reports that idle second's `0.0`, not the run's real throughput.
+    #[test]
+    fn snapshot_reports_zero_rps_when_elapsed_ticks_past_the_runs_last_active_second() {
+        let mut aggregator = Aggregator::new(1);
+        for _ in 0..10 {
+            aggregator.record(sample(0, 0, 10_000, StatusKey::Code(200)));
+        }
+
+        // Every sample landed in second 0, but `elapsed` (measured after joining every virtual
+        // user) has already ticked into second 1, which has no samples at all.
+        let snapshot = aggregator.snapshot(Duration::from_millis(2_050), 0);
+        assert_eq!(snapshot.total, 10);
+        assert!(
+            (snapshot.rps - 0.0).abs() < f64::EPSILON,
+            "expected the documented (if misleading) live behavior, got {}",
+            snapshot.rps
+        );
+    }
+
+    #[test]
+    fn final_snapshot_reports_the_whole_runs_average_rps_instead_of_a_trailing_idle_second() {
+        let mut aggregator = Aggregator::new(1);
+        for _ in 0..10 {
+            aggregator.record(sample(0, 0, 10_000, StatusKey::Code(200)));
+        }
+
+        // Same trailing-idle-second shape as the live case above: `final_snapshot` must not
+        // report `0.0` here, since 10 requests clearly did complete over this run.
+        let snapshot = aggregator.final_snapshot(Duration::from_millis(2_050));
+        assert!(
+            (snapshot.rps - 10.0 / 2.05).abs() < 1e-9,
+            "expected the whole-run average, got {}",
+            snapshot.rps
+        );
+        // Every other field is unaffected: still built by the ordinary `snapshot`.
+        assert_eq!(snapshot.total, 10);
+        assert_eq!(snapshot.series.len(), 2);
+    }
+
+    #[test]
+    fn final_snapshot_of_an_empty_run_has_zero_rps_not_a_division_by_zero() {
+        let aggregator = Aggregator::new(1);
+        let snapshot = aggregator.final_snapshot(Duration::ZERO);
+        assert!((snapshot.rps - 0.0).abs() < f64::EPSILON);
     }
 
     #[test]

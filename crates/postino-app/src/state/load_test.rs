@@ -214,11 +214,14 @@ pub struct LoadTestTab {
     /// Every previous run recorded for this tab's target, newest first, refreshed after a run
     /// finishes and whenever the target changes (`views/load_test/mod.rs`).
     pub history: Vec<RunRecordHeader>,
-    /// Each target's HTTP method and display name, in the same order as the running (or
-    /// just-finished) run's [`postino_load::LoadSnapshot::per_target`], set when a run starts
-    /// (`views/load_test/run.rs`). Used to label the per-request table's rows; `None` for a
-    /// history entry viewed from a previous session, whose target labels are not persisted (see
-    /// [`crate::views::load_test::dashboard::target_row_label`]).
+    /// Each target's HTTP method and display name, in the same order as the current (running,
+    /// just-finished, or viewed-from-history) run's [`postino_load::LoadSnapshot::per_target`].
+    /// Set when a run starts (`views/load_test/run.rs`) and restored from
+    /// [`postino_load::history::RunRecord::target_labels`] when a past run is viewed
+    /// (`views/load_test/mod.rs`'s `AppView::view_load_test_history`). Used to label the
+    /// per-request table's rows; empty (falling back to a generic "Target N" label, see
+    /// [`crate::views::load_test::dashboard::target_row_label`]) only for a run saved before that
+    /// `RunRecord` field existed.
     pub target_rows: Vec<(Method, String)>,
 }
 

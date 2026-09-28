@@ -324,10 +324,21 @@ impl AppView {
         };
         self.edit_load_test(tab_id, cx, |load_test| {
             load_test.run_number = Some(record.number);
-            // A saved `RunRecord` does not keep whether the run was stopped early (`state
-            // ::load_test`'s field docs): shown as `Finished` regardless, the same simplification
-            // `Self::view_load_test_history`'s own doc points at.
-            load_test.status = load_test::LoadTestStatus::Finished;
+            load_test.status = if record.stopped_early {
+                load_test::LoadTestStatus::Stopped
+            } else {
+                load_test::LoadTestStatus::Finished
+            };
+            // `Method::from_str` is infallible (an unrecognized token becomes `Method::Custom`),
+            // so `unwrap_or_default` never actually falls back; it just avoids an `unwrap()` for
+            // a `Result` that cannot be `Err`. Empty on a run saved before `target_labels`
+            // existed (`postino_load::history::RunRecord`'s own doc comment), which is exactly
+            // the "unknown" shape `target_row_label` already falls back to.
+            load_test.target_rows = record
+                .target_labels
+                .iter()
+                .map(|(method, name)| (method.parse().unwrap_or_default(), name.clone()))
+                .collect();
             load_test.snapshot = Some(record.snapshot);
             load_test.compare_with = load_test
                 .history
