@@ -414,7 +414,10 @@ impl AppView {
         let Some(tab) = self.state.tabs.get_mut(index) else {
             return;
         };
-        f(&mut tab.request);
+        let Some(request) = tab.request_mut() else {
+            return;
+        };
+        f(request);
         self.state.tabs.mark_dirty(index);
         cx.notify();
     }
@@ -519,7 +522,10 @@ impl AppView {
             return placeholder(cx, "Open a request from the sidebar");
         };
         let tab_id = tab.id.clone();
-        let request = tab.request.clone();
+        let Some(request) = tab.request().cloned() else {
+            self.request_editor = RequestEditorEntities::default();
+            return placeholder(cx, "Open a request from the sidebar");
+        };
         if self.request_editor.sync(&tab_id, &request, window, cx) {
             // A fresh `method_input` (built empty) would otherwise show as "being edited" with
             // nothing in it: a rebuild happens on a tab switch or a row/body-kind change, none

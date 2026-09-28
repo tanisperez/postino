@@ -376,14 +376,7 @@ fn execute_action(weak: WeakEntity<AppView>, action: ActionId, window: &mut Wind
         }
         ActionId::OpenWorkspace => sidebar::pick_workspace_folder(weak, window, cx),
         ActionId::NewLoadTest => {
-            // The load test tab is a later phase's feature (`plans/ui-redesign.md` phase 8,
-            // not built yet): this action is still reachable from the palette, per phase 7's
-            // acceptance criteria, but there is nothing to open yet, so it surfaces that
-            // honestly instead of silently doing nothing.
-            let _ = weak.update(cx, |view, cx| {
-                view.workspace_error = Some("Load testing isn't built yet.".to_string());
-                cx.notify();
-            });
+            let _ = weak.update(cx, |view, cx| view.open_new_load_test_tab(cx));
         }
         ActionId::ToggleTheme => {
             let _ = weak.update(cx, |view, cx| view.toggle_theme(window, cx));

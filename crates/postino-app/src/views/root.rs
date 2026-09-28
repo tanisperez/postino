@@ -401,8 +401,14 @@ impl AppView {
     /// `views/load_test/run.rs`) cancels the periodic refresh task and detaches the run's
     /// supervisor thread, which exits shortly after observing the stop signal.
     pub(crate) fn close_tab(&mut self, index: usize, cx: &mut Context<Self>) {
-        if let Some(tab) = self.state.tabs.open_tabs().get(index) {
-            self.stop_load_test(&tab.id);
+        if let Some(tab_id) = self
+            .state
+            .tabs
+            .open_tabs()
+            .get(index)
+            .map(|tab| tab.id.clone())
+        {
+            self.stop_load_test(&tab_id);
         }
         self.state.tabs.close(index);
         cx.notify();
@@ -771,10 +777,10 @@ impl AppView {
                     DocumentTab::new(state::format::tab_label(&tab.id).to_string())
                         .method(request.method.clone())
                 }
-                state::TabKind::LoadTest(load_test) => DocumentTab::new(
-                    crate::views::load_test::tab_label(load_test),
-                )
-                .icon(gpui_kit::assets::IconName::Gauge),
+                state::TabKind::LoadTest(load_test) => {
+                    DocumentTab::new(crate::views::load_test::tab_label(load_test))
+                        .icon(gpui_kit::assets::IconName::Gauge)
+                }
             };
             doc_tab = doc_tab
                 .dirty(tab.dirty)

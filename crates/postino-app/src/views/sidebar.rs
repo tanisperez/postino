@@ -397,6 +397,22 @@ fn build_context_menu(
         menu = menu.separator();
     }
 
+    let load_test_weak = weak.clone();
+    let load_test_id = id.clone();
+    menu = menu.item(
+        PopupMenuItem::new("Load test...").on_click(move |_, _window, cx| {
+            let load_test_id = load_test_id.clone();
+            let _ = load_test_weak.update(cx, |view, cx| {
+                if is_request {
+                    view.open_load_test_for_request(load_test_id, cx);
+                } else {
+                    view.open_load_test_for_collection(load_test_id, cx);
+                }
+            });
+        }),
+    );
+    menu = menu.separator();
+
     let rename_weak = weak.clone();
     let rename_id = id.clone();
     let rename_name = current_name.clone();

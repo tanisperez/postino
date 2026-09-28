@@ -13,8 +13,10 @@ use super::load_test::LoadTestTab;
 pub enum TabKind {
     /// A request open for editing.
     Request(Request),
-    /// A load test tab.
-    LoadTest(LoadTestTab),
+    /// A load test tab. Boxed: `LoadTestTab` is far larger than `Request` (it carries the run
+    /// history and the latest snapshot), and clippy's `large_enum_variant` flags the gap between
+    /// the two otherwise.
+    LoadTest(Box<LoadTestTab>),
 }
 
 /// One open tab.
@@ -51,7 +53,7 @@ impl OpenTab {
     /// This tab's load test state, if it is a [`TabKind::LoadTest`].
     pub fn load_test(&self) -> Option<&LoadTestTab> {
         match &self.kind {
-            TabKind::LoadTest(load_test) => Some(load_test),
+            TabKind::LoadTest(load_test) => Some(load_test.as_ref()),
             TabKind::Request(_) => None,
         }
     }
@@ -59,7 +61,7 @@ impl OpenTab {
     /// This tab's load test state, mutably, if it is a [`TabKind::LoadTest`].
     pub fn load_test_mut(&mut self) -> Option<&mut LoadTestTab> {
         match &mut self.kind {
-            TabKind::LoadTest(load_test) => Some(load_test),
+            TabKind::LoadTest(load_test) => Some(load_test.as_mut()),
             TabKind::Request(_) => None,
         }
     }
@@ -125,7 +127,7 @@ impl TabsState {
     pub fn open_load_test(&mut self, load_test: LoadTestTab) -> (String, usize) {
         let id = format!("load-test:{}", self.next_load_test_id);
         self.next_load_test_id += 1;
-        let index = self.push_and_activate(id.clone(), TabKind::LoadTest(load_test));
+        let index = self.push_and_activate(id.clone(), TabKind::LoadTest(Box::new(load_test)));
         (id, index)
     }
 

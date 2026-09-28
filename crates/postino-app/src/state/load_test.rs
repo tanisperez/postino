@@ -5,6 +5,7 @@
 //! sending a single request (`state/` stays free of `gpui` types and of workspace file IO, so it
 //! is unit-tested directly).
 
+use postino_core::Method;
 use postino_load::LoadSnapshot;
 use postino_load::history::RunRecordHeader;
 use postino_workspace::Node;
@@ -81,17 +82,19 @@ const THINK_TIME_MS_MAX: u64 = 600_000;
 /// Parses `raw` as a `u64`, clamped to `min..=max`; falls back to `default` (itself assumed to
 /// already be in range) when `raw` does not parse as a plain non-negative integer.
 fn parse_clamped(raw: &str, min: u64, max: u64, default: u64) -> u64 {
-    raw.trim()
-        .parse::<u64>()
-        .unwrap_or(default)
-        .clamp(min, max)
+    raw.trim().parse::<u64>().unwrap_or(default).clamp(min, max)
 }
 
 /// Parses and clamps a virtual user count to `1..=500`
 /// (`postino_load::LoadConfig::vus`'s documented range).
 #[must_use]
 pub fn clamp_vus(raw: &str) -> u32 {
-    let value = parse_clamped(raw, u64::from(VUS_MIN), u64::from(VUS_MAX), u64::from(DEFAULT_VUS));
+    let value = parse_clamped(
+        raw,
+        u64::from(VUS_MIN),
+        u64::from(VUS_MAX),
+        u64::from(DEFAULT_VUS),
+    );
     // `value` is already clamped into `VUS_MIN..=VUS_MAX`, both of which fit in a `u32`, so this
     // narrowing never truncates.
     u32::try_from(value).unwrap_or(DEFAULT_VUS)
@@ -202,9 +205,21 @@ pub struct LoadTestTab {
     pub snapshot: Option<LoadSnapshot>,
     /// The run number selected in the "Compare with" dropdown, if any.
     pub compare_with: Option<u32>,
+    /// The full snapshot of [`Self::compare_with`]'s run, loaded once when it is picked (rather
+    /// than from every render) so the "Compare with" panel never re-reads a run file from disk on
+    /// every 250 ms live refresh (`views/load_test/mod.rs`'s
+    /// `AppView::refresh_load_test_compare_snapshot`). `None` while [`Self::compare_with`] is
+    /// `None`, or if that run's file could not be loaded.
+    pub compare_snapshot: Option<LoadSnapshot>,
     /// Every previous run recorded for this tab's target, newest first, refreshed after a run
     /// finishes and whenever the target changes (`views/load_test/mod.rs`).
     pub history: Vec<RunRecordHeader>,
+    /// Each target's HTTP method and display name, in the same order as the running (or
+    /// just-finished) run's [`postino_load::LoadSnapshot::per_target`], set when a run starts
+    /// (`views/load_test/run.rs`). Used to label the per-request table's rows; `None` for a
+    /// history entry viewed from a previous session, whose target labels are not persisted (see
+    /// [`crate::views::load_test::dashboard::target_row_label`]).
+    pub target_rows: Vec<(Method, String)>,
 }
 
 impl LoadTestTab {
@@ -221,7 +236,9 @@ impl LoadTestTab {
             run_number: None,
             snapshot: None,
             compare_with: None,
+            compare_snapshot: None,
             history: Vec::new(),
+            target_rows: Vec::new(),
         }
     }
 
@@ -465,8 +482,10 @@ mod tests {
     #[test]
     fn resolved_config_uses_the_stop_on_error_rate_only_when_the_switch_is_on() {
         let mut inputs = LoadTestConfigInputs::default();
-        inputs.stop_on_error = true;
-        assert_eq!(inputs.resolved().stop_on_error_rate, Some(STOP_ON_ERROR_RATE));
+        assert_eq!(
+            inputs.resolved().stop_on_error_rate,
+            Some(STOP_ON_ERROR_RATE)
+        );
         inputs.stop_on_error = false;
         assert_eq!(inputs.resolved().stop_on_error_rate, None);
     }
@@ -529,10 +548,7 @@ mod tests {
     #[test]
     fn find_folder_returns_name_and_request_count() {
         let tree = sample_tree();
-        assert_eq!(
-            find_folder(&tree, "users"),
-            Some(("users".to_string(), 3))
-        );
+        assert_eq!(find_folder(&tree, "users"), Some(("users".to_string(), 3)));
         assert_eq!(find_folder(&tree, "empty"), Some(("empty".to_string(), 0)));
         assert_eq!(find_folder(&tree, "missing"), None);
     }
@@ -573,7 +589,10 @@ mod tests {
         let tree = sample_tree();
         assert_eq!(
             request_ids_under(&tree, "users"),
-            vec!["users/create.postino".to_string(), "users/list.postino".to_string()]
+            vec![
+                "users/create.postino".to_string(),
+                "users/list.postino".to_string()
+            ]
         );
         assert!(request_ids_under(&tree, "empty").is_empty());
     }

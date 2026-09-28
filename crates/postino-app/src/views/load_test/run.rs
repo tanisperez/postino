@@ -77,7 +77,9 @@ impl AppView {
 
         ids.iter()
             .map(|id| {
-                let request = workspace.load_request(id).map_err(|error| error.to_string())?;
+                let request = workspace
+                    .load_request(id)
+                    .map_err(|error| error.to_string())?;
                 let label = crate::state::format::tab_label(id).to_string();
                 Ok(LoadTarget::new(label, request))
             })
@@ -112,6 +114,10 @@ impl AppView {
             return;
         };
 
+        let target_rows: Vec<(postino_core::Method, String)> = targets
+            .iter()
+            .map(|target| (target.request.method.clone(), target.id.clone()))
+            .collect();
         let config = LoadConfig {
             targets,
             vus: resolved.vus,
@@ -139,6 +145,13 @@ impl AppView {
             load_test.status = LoadTestStatus::Running;
             load_test.run_number = Some(run_number);
             load_test.snapshot = None;
+            // Cleared, not just `compare_snapshot`: leaving a previous run's `compare_with`
+            // around would show its label in the "Compare with" trigger with no rows under it
+            // (since `compare_snapshot` is `None` until this new run finishes and picks its own
+            // default), a stale, confusing display while a run is in progress.
+            load_test.compare_with = None;
+            load_test.compare_snapshot = None;
+            load_test.target_rows = target_rows;
         });
 
         let run = LoadRun::start(config, environment, session_env, runner);
@@ -156,7 +169,8 @@ impl AppView {
                     continue;
                 }
 
-                let Ok(Some(handle)) = weak.update(cx, |view, _cx| view.load_runs.remove(&tick_tab_id))
+                let Ok(Some(handle)) =
+                    weak.update(cx, |view, _cx| view.load_runs.remove(&tick_tab_id))
                 else {
                     return;
                 };
@@ -168,7 +182,13 @@ impl AppView {
                 } = handle;
                 let summary = cx.background_spawn(async move { run.join() }).await;
                 let _ = weak.update(cx, |view, cx| {
-                    view.finish_load_test(&tick_tab_id, summary, started_at_unix, config_summary, cx);
+                    view.finish_load_test(
+                        &tick_tab_id,
+                        summary,
+                        started_at_unix,
+                        config_summary,
+                        cx,
+                    );
                 });
                 return;
             }
@@ -211,7 +231,11 @@ impl AppView {
         config_summary: LoadConfigSummary,
         cx: &mut Context<Self>,
     ) {
-        let root = self.state.workspace.as_ref().map(|workspace| workspace.root().to_path_buf());
+        let root = self
+            .state
+            .workspace
+            .as_ref()
+            .map(|workspace| workspace.root().to_path_buf());
         let mut target_label = String::new();
         let mut run_number = None;
         self.edit_load_test(tab_id, cx, |load_test| {
@@ -221,10 +245,6 @@ impl AppView {
                 LoadTestStatus::Finished
             };
             load_test.snapshot = Some(summary.snapshot.clone());
-            load_test.compare_with = load_test
-                .run_number
-                .and_then(|number| number.checked_sub(1))
-                .filter(|previous| *previous > 0);
             target_label = load_test.target_label.clone();
             run_number = load_test.run_number;
         });
@@ -240,12 +260,36 @@ impl AppView {
             let _ = postino_load::history::save(root, &record);
         }
         self.refresh_load_test_history(tab_id, cx);
+
+        // Defaults "Compare with" to the latest *other* run of the same target
+        // (`plans/ui-redesign.md` phase 8 item 4), not simply `run_number - 1`: run numbers are
+        // shared across every target in the workspace (`postino_load::history::next_number`), so
+        // the previous sequential number might belong to a different target entirely.
+        let previous = self
+            .state
+            .tabs
+            .index_of(tab_id)
+            .and_then(|index| self.state.tabs.get(index))
+            .and_then(|tab| tab.load_test())
+            .and_then(|load_test| {
+                load_test
+                    .history
+                    .iter()
+                    .find(|header| Some(header.number) != run_number)
+                    .map(|header| header.number)
+            });
+        self.edit_load_test(tab_id, cx, |load_test| load_test.compare_with = previous);
+        self.refresh_load_test_compare_snapshot(tab_id, cx);
     }
 
     /// Refreshes `tab_id`'s cached history list (`plans/ui-redesign.md` phase 8 item 4: the
     /// history list and the "Compare with" dropdown), filtered to runs of the same target label.
     pub(crate) fn refresh_load_test_history(&mut self, tab_id: &str, cx: &mut Context<Self>) {
-        let Some(root) = self.state.workspace.as_ref().map(|workspace| workspace.root().to_path_buf())
+        let Some(root) = self
+            .state
+            .workspace
+            .as_ref()
+            .map(|workspace| workspace.root().to_path_buf())
         else {
             return;
         };
@@ -272,8 +316,9 @@ impl AppView {
 }
 
 /// The current time as Unix seconds, saturating at `0` on a clock before the epoch instead of
-/// panicking (never expected on a real machine, but cheaper than an `unwrap`).
-fn unix_now() -> u64 {
+/// panicking (never expected on a real machine, but cheaper than an `unwrap`). `pub(super)`: also
+/// used by `views/load_test/dashboard.rs` for the "Compare with" dropdown's relative day labels.
+pub(super) fn unix_now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs())

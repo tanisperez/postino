@@ -5076,6 +5076,7 @@ dependencies = [
  "gpui-kit",
  "postino-core",
  "postino-format",
+ "postino-load",
  "postino-runner",
  "postino-script",
  "postino-workspace",
