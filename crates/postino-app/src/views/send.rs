@@ -97,6 +97,7 @@ impl AppView {
             let _ = this.update(cx, |view, cx| {
                 view.state.session_env = session_env;
                 view.responses.insert(tab_id.clone(), result);
+                view.response_generations.bump(&tab_id);
                 if view.is_sending(&tab_id) {
                     view.sending = None;
                 }

@@ -5,6 +5,7 @@
 //!
 //! Kept free of `gpui` types so every rule is unit-tested directly.
 
+use std::sync::Arc;
 use std::time::Duration;
 
 use postino_core::TemplateWarning;
@@ -108,6 +109,97 @@ pub fn body_as_text(body: &[u8]) -> String {
     }
 }
 
+/// Counts the responses stored per tab, so a cheap `(tab id, generation)` key identifies "this
+/// exact response" without looking at the body.
+#[derive(Debug, Default)]
+pub struct ResponseGenerations {
+    next: u64,
+    by_tab: std::collections::HashMap<String, u64>,
+}
+
+impl ResponseGenerations {
+    /// Records that a new response was stored for `tab_id`.
+    pub fn bump(&mut self, tab_id: &str) -> u64 {
+        self.next += 1;
+        self.by_tab.insert(tab_id.to_string(), self.next);
+        self.next
+    }
+
+    /// The generation of the response currently stored for `tab_id` (0 if none).
+    pub fn get(&self, tab_id: &str) -> u64 {
+        self.by_tab.get(tab_id).copied().unwrap_or(0)
+    }
+}
+
+/// The text the Body tab shows, computed once per response instead of once per render.
+#[derive(Debug, Clone)]
+pub struct ShownBody {
+    /// The text to display, cheap to clone.
+    pub text: Arc<str>,
+    /// Whether `text` is the raw body (raw was requested, or the body is not valid JSON).
+    pub raw: bool,
+    /// Whether the body is valid JSON, so the Pretty view is available.
+    pub pretty_available: bool,
+}
+
+/// Caches the pretty and raw texts of the last response shown in the Body tab.
+#[derive(Debug, Default)]
+pub struct BodyTextCache {
+    key: Option<(String, u64)>,
+    /// `None` until computed; the inner `None` means "not valid JSON".
+    pretty: Option<Option<Arc<str>>>,
+    raw: Option<Arc<str>>,
+    /// How many times a text was computed, for tests.
+    computations: usize,
+}
+
+impl BodyTextCache {
+    /// Returns the text to show for the response identified by `(tab_id, generation)`.
+    /// `body` is only read when that key differs from the last call, or the raw text is first
+    /// requested.
+    pub fn shown(
+        &mut self,
+        tab_id: &str,
+        generation: u64,
+        body: &[u8],
+        want_raw: bool,
+    ) -> ShownBody {
+        let same = self
+            .key
+            .as_ref()
+            .is_some_and(|(tab, gen_)| tab == tab_id && *gen_ == generation);
+        if !same {
+            self.key = Some((tab_id.to_string(), generation));
+            self.pretty = None;
+            self.raw = None;
+        }
+        if self.pretty.is_none() {
+            self.computations += 1;
+            self.pretty = Some(pretty_print_json(body).map(Arc::from));
+        }
+        let pretty = self.pretty.clone().flatten();
+        let pretty_available = pretty.is_some();
+        match pretty {
+            Some(text) if !want_raw => ShownBody {
+                text,
+                raw: false,
+                pretty_available,
+            },
+            _ => {
+                if self.raw.is_none() {
+                    self.computations += 1;
+                    self.raw = Some(Arc::from(body_as_text(body)));
+                }
+                ShownBody {
+                    text: self.raw.clone().unwrap_or_else(|| Arc::from("")),
+                    raw: true,
+                    pretty_available,
+                }
+            }
+        }
+    }
+}
+
 /// Formats a byte count for display: bytes under 1000 as is, otherwise kilobytes or megabytes
 /// with one decimal place.
 pub fn format_size(bytes: usize) -> String {
@@ -137,6 +229,50 @@ pub fn format_duration(duration: Duration) -> String {
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn body_cache_computes_once_per_response_and_mode() {
+        let mut cache = BodyTextCache::default();
+        let body = br#"{"a":1}"#;
+        let first = cache.shown("t", 1, body, false);
+        assert!(!first.raw && first.pretty_available);
+        let before = cache.computations;
+        let again = cache.shown("t", 1, body, false);
+        assert!(Arc::ptr_eq(&first.text, &again.text));
+        assert_eq!(cache.computations, before);
+        let raw = cache.shown("t", 1, body, true);
+        assert!(raw.raw);
+        assert_eq!(&*raw.text, r#"{"a":1}"#);
+        let after_raw = cache.computations;
+        cache.shown("t", 1, body, true);
+        assert_eq!(cache.computations, after_raw);
+    }
+
+    #[test]
+    fn body_cache_recomputes_for_new_response_or_tab() {
+        let mut cache = BodyTextCache::default();
+        assert_eq!(&*cache.shown("t", 1, b"[1]", false).text, "[\n  1\n]");
+        assert_eq!(&*cache.shown("t", 2, b"[2]", false).text, "[\n  2\n]");
+        assert_eq!(&*cache.shown("u", 2, b"[3]", false).text, "[\n  3\n]");
+    }
+
+    #[test]
+    fn body_cache_falls_back_to_raw_for_non_json() {
+        let mut cache = BodyTextCache::default();
+        let shown = cache.shown("t", 1, b"hello", false);
+        assert!(shown.raw && !shown.pretty_available);
+        assert_eq!(&*shown.text, "hello");
+    }
+
+    #[test]
+    fn generations_change_on_every_store() {
+        let mut gens = ResponseGenerations::default();
+        assert_eq!(gens.get("a"), 0);
+        let first = gens.bump("a");
+        let second = gens.bump("a");
+        assert_ne!(first, second);
+        assert_eq!(gens.get("a"), second);
+    }
 
     #[test]
     fn pretty_print_json_formats_valid_json() {

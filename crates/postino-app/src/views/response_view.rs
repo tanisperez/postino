@@ -7,6 +7,8 @@
 //! find bar; every other field is read-only, rendered straight from the
 //! [`postino_runner::RunResult`] of the last send.
 
+use std::sync::Arc;
+
 use gpui_kit::component::input::{Editor, EditorState};
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::component::*;
@@ -45,21 +47,27 @@ const SEND_KEY_HINT: &str = "Ctrl+\u{21b5}";
 pub(crate) struct ResponseEditorEntities {
     built_for: Option<(String, bool)>,
     json: bool,
+    /// The `(tab id, response generation, raw)` whose text the editor currently holds, so a
+    /// resync is decided by comparing this cheap key and never the (possibly huge) text.
+    synced: Option<(String, u64, bool)>,
     editor: Option<Entity<EditorState>>,
+    texts: response_render::BodyTextCache,
 }
 
 impl ResponseEditorEntities {
     /// Rebuilds the editor if `tab_id`, `raw` or `json` differ from what it was last built for,
-    /// then unconditionally resyncs its text to `text`.
+    /// then resyncs its text to `text` when the `(tab_id, generation, raw)` key changed.
     fn sync(
         &mut self,
         tab_id: &str,
-        text: &str,
-        json: bool,
+        generation: u64,
+        text: &Arc<str>,
         raw: bool,
         window: &mut Window,
         cx: &mut Context<AppView>,
     ) {
+        // Raw bodies are never highlighted; only the pretty view is JSON.
+        let json = !raw;
         let key = (tab_id.to_string(), raw);
         if self.built_for.as_ref() != Some(&key) || self.json != json {
             let editor = cx.new(|cx| {
@@ -70,13 +78,15 @@ impl ResponseEditorEntities {
             self.editor = Some(editor);
             self.built_for = Some(key);
             self.json = json;
+            self.synced = None;
         }
-        if let Some(editor) = &self.editor {
-            let current = editor.read(cx).value();
-            if current.as_ref() != text {
-                let new_value = text.to_string();
-                editor.update(cx, |state, cx| state.set_value(new_value, window, cx));
-            }
+        let synced = (tab_id.to_string(), generation, raw);
+        if self.synced.as_ref() != Some(&synced)
+            && let Some(editor) = &self.editor
+        {
+            let new_value = SharedString::from(text.clone());
+            editor.update(cx, |state, cx| state.set_value(new_value, window, cx));
+            self.synced = Some(synced);
         }
     }
 }
@@ -258,9 +268,10 @@ impl AppView {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let palette = cx.palette();
+        let generation = self.response_generations.get(tab_id);
         // Scoped so the borrow of `self.responses` ends before `self.response_editor` (below)
-        // needs a mutable one: `text`/`pretty` are owned by the time this block ends.
-        let (text, pretty) = {
+        // needs a mutable one: `shown` is owned by the time this block ends.
+        let shown = {
             let Some(result) = self.responses.get(tab_id) else {
                 return div().into_any_element();
             };
@@ -271,23 +282,18 @@ impl AppView {
                     .child("No response body.")
                     .into_any_element();
             };
-            let pretty = response_render::pretty_print_json(&response.body);
-            let show_raw = self.response_raw || pretty.is_none();
-            let text = if show_raw {
-                response_render::body_as_text(&response.body)
-            } else {
-                // `pretty` is `Some` here since `show_raw` is only `false` when it is.
-                pretty.clone().unwrap_or_default()
-            };
-            (text, pretty)
+            self.response_editor
+                .texts
+                .shown(tab_id, generation, &response.body, self.response_raw)
         };
-        let show_raw = self.response_raw || pretty.is_none();
+        let show_raw = shown.raw;
+        let text = shown.text;
 
         self.response_editor
-            .sync(tab_id, &text, !show_raw, show_raw, window, cx);
+            .sync(tab_id, generation, &text, show_raw, window, cx);
 
         let weak = cx.weak_entity();
-        let pretty_available = pretty.is_some();
+        let pretty_available = shown.pretty_available;
         let mut toggle = SegmentedControl::new("body-raw-toggle").item(
             SegmentedItem::new("Pretty").selected(!show_raw).on_click({
                 let weak = weak.clone();
@@ -315,7 +321,7 @@ impl AppView {
         let copy_button = IconButton::new("response-copy", IconName::Copy)
             .tooltip("Copy")
             .on_click(move |_, _, cx| {
-                cx.write_to_clipboard(ClipboardItem::new_string(copy_text.clone()));
+                cx.write_to_clipboard(ClipboardItem::new_string(copy_text.to_string()));
             });
 
         let search_editor = self.response_editor.editor.clone();

@@ -85,6 +85,8 @@ pub struct AppView {
     pub(crate) sending: Option<SendingTask>,
     /// The last [`RunResult`] for each tab id that has been sent at least once.
     pub(crate) responses: HashMap<String, RunResult>,
+    /// Which response is stored per tab, so the Body tab can tell a new response from a re-render.
+    pub(crate) response_generations: crate::state::response_render::ResponseGenerations,
     /// The script engine every send uses. `Arc` so it is cheap to clone into each background
     /// send task; `QuickJsEngine` needs no per-run state, a fresh QuickJS runtime is created for
     /// every script run (see `postino-script`).
@@ -177,6 +179,7 @@ impl AppView {
             response_raw: false,
             sending: None,
             responses: HashMap::new(),
+            response_generations: Default::default(),
             script_engine: Arc::new(QuickJsEngine),
             send_options,
             settings_category: SettingsCategory::default(),
