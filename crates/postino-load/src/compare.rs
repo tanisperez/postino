@@ -38,13 +38,14 @@ pub struct Delta {
 ///
 /// "Requests/s" compares [`LoadSnapshot::rps`] (the last fully elapsed second of each run, the
 /// steadiest single reading available); "p95" and "p99" compare the run-wide percentiles, not a
-/// single second's.
+/// single second's. Both are rounded to whole milliseconds first, the precision the dashboard
+/// shows them in, so a row never reads "3 ms, 3 ms, +5.1%".
 #[must_use]
 pub fn compare(previous: &LoadSnapshot, current: &LoadSnapshot) -> Vec<Delta> {
     vec![
         higher_is_better("Requests/s", previous.rps, current.rps),
-        lower_is_better("p95", f64::from(previous.p95), f64::from(current.p95)),
-        lower_is_better("p99", f64::from(previous.p99), f64::from(current.p99)),
+        lower_is_better("p95", whole_ms(previous.p95), whole_ms(current.p95)),
+        lower_is_better("p99", whole_ms(previous.p99), whole_ms(current.p99)),
         error_rate_delta(previous.error_rate, current.error_rate),
     ]
 }
@@ -85,6 +86,11 @@ fn error_rate_delta(previous: f64, current: f64) -> Delta {
         unit: DeltaUnit::PercentagePoints,
         is_improvement: current < previous,
     }
+}
+
+/// `micros` rounded to the nearest whole millisecond, still in microseconds.
+fn whole_ms(micros: u32) -> f64 {
+    (f64::from(micros) / 1000.0).round() * 1000.0
 }
 
 /// `(current - previous) / previous * 100`, or `0.0` when `previous` is (near) zero, instead of
@@ -153,5 +159,17 @@ mod tests {
 
         let deltas = compare(&previous, &current);
         assert!((deltas[0].change - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn latencies_that_display_the_same_whole_ms_have_no_change() {
+        let previous = snapshot(0.0, 3_000, 3_020, 0.0);
+        let current = snapshot(0.0, 3_150, 3_400, 0.0);
+
+        let deltas = compare(&previous, &current);
+        assert!((deltas[1].change - 0.0).abs() < f64::EPSILON);
+        assert!(!deltas[1].is_improvement);
+        assert!((deltas[2].change - 0.0).abs() < f64::EPSILON);
+        assert!((deltas[1].current - 3_000.0).abs() < f64::EPSILON);
     }
 }

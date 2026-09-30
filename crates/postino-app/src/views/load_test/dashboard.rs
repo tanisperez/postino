@@ -35,10 +35,11 @@ const HISTOGRAM_HEIGHT: f32 = 110.0;
 const HISTOGRAM_WARNING_MS: usize = 110;
 /// The histogram bucket width, in milliseconds (`postino_load::LoadSnapshot::histogram`'s docs).
 const HISTOGRAM_BUCKET_MS: usize = 10;
-/// Minimum width of one half of a two-column dashboard row (latency distribution + status
-/// breakdown, per-request table + compare with) before it wraps to a new row. Below this, a
-/// column has no room to stay legible, so `flex_wrap` (not a window-width measurement) stacks the
-/// two vertically instead of squashing them (`plans/ui-redesign.md` phase 8's responsiveness fix).
+/// Base width (flex basis) of one half of a two-column dashboard row (latency distribution +
+/// status breakdown, per-request table + compare with): when two do not fit side by side,
+/// `flex_wrap` (not a window-width measurement) stacks them vertically instead of squashing them,
+/// and each then grows to the row's width. A basis rather than a minimum width, so a pane
+/// narrower than this still shrinks the column instead of overflowing (`plans/ui-redesign.md` phase 8's responsiveness fix).
 const TWO_COLUMN_MIN_WIDTH: f32 = 320.0;
 /// A per-request error rate at or above which its "Errors" cell turns `warning`
 /// (`plans/ui-redesign.md` phase 8 item 4: "Errors (warning when above 1%)").
@@ -86,19 +87,22 @@ impl AppView {
             ))
             .child(
                 h_flex()
+                    .min_w_0()
                     .flex_wrap()
                     .gap(px(16.0))
                     .items_start()
                     .child(
                         div()
                             .flex_grow(1.3)
-                            .min_w(px(TWO_COLUMN_MIN_WIDTH))
+                            .flex_basis(px(TWO_COLUMN_MIN_WIDTH))
+                            .min_w_0()
                             .child(render_latency_distribution(&palette, &snapshot)),
                     )
                     .child(
                         div()
                             .flex_grow(1.0)
-                            .min_w(px(TWO_COLUMN_MIN_WIDTH))
+                            .flex_basis(px(TWO_COLUMN_MIN_WIDTH))
+                            .min_w_0()
                             .child(render_status_breakdown(&palette, &mono_font, &snapshot)),
                     ),
             )
@@ -195,6 +199,9 @@ fn render_history_list(
         .into_any_element()
 }
 
+/// Minimum width of the header's progress bar, see [`render_header`].
+const PROGRESS_MIN_WIDTH: f32 = 160.0;
+
 /// The run header: "Run #N", the status badge, the progress bar, and `mm:ss / mm:ss` elapsed.
 fn render_header(
     palette: &Palette,
@@ -216,8 +223,10 @@ fn render_header(
     };
 
     h_flex()
+        .flex_wrap()
         .items_center()
-        .gap(px(12.0))
+        .gap_x(px(12.0))
+        .gap_y(px(8.0))
         .child(
             div()
                 .flex_none()
@@ -241,8 +250,11 @@ fn render_header(
                 .child(badge_label),
         )
         .child(
+            // With a minimum width, a narrow dashboard wraps the bar and the elapsed time onto
+            // a second line instead of squeezing the bar to a stub.
             div()
                 .flex_1()
+                .min_w(px(PROGRESS_MIN_WIDTH))
                 .h(px(6.0))
                 .rounded(px(3.0))
                 .bg(palette.surface)
@@ -645,16 +657,19 @@ fn render_bottom_row(
         .filter(|header| Some(header.number) != load_test.run_number)
         .collect();
 
-    let per_request =
-        div()
-            .flex_grow(1.3)
-            .min_w(px(TWO_COLUMN_MIN_WIDTH))
-            .child(render_per_request_table(
-                palette, mono_font, load_test, snapshot,
-            ));
+    // The table's own minimum width as its basis, so the row wraps before the table has to
+    // scroll sideways, which it only does when the pane itself is narrower than the table.
+    let per_request = div()
+        .flex_grow(1.3)
+        .flex_basis(px(PER_REQUEST_TABLE_MIN_WIDTH))
+        .min_w_0()
+        .child(render_per_request_table(
+            palette, mono_font, load_test, snapshot,
+        ));
 
     if compare_available.is_empty() {
         return h_flex()
+            .min_w_0()
             .flex_wrap()
             .gap(px(16.0))
             .items_start()
@@ -663,6 +678,7 @@ fn render_bottom_row(
     }
 
     h_flex()
+        .min_w_0()
         .flex_wrap()
         .gap(px(16.0))
         .items_start()
@@ -670,7 +686,8 @@ fn render_bottom_row(
         .child(
             div()
                 .flex_grow(1.0)
-                .min_w(px(TWO_COLUMN_MIN_WIDTH))
+                .flex_basis(px(TWO_COLUMN_MIN_WIDTH))
+                .min_w_0()
                 .child(render_compare_with(
                     weak,
                     tab_id,
@@ -690,6 +707,10 @@ fn render_bottom_row(
 const PER_REQUEST_NUMERIC_COL_WIDTH: f32 = 64.0;
 /// Horizontal gap between the per-request table's columns.
 const PER_REQUEST_COL_GAP: f32 = 10.0;
+/// Minimum width of the per-request table: its 16 px side padding, the 60 px name column and five
+/// numeric columns with their gaps.
+const PER_REQUEST_TABLE_MIN_WIDTH: f32 =
+    2.0 * 16.0 + 60.0 + 5.0 * (PER_REQUEST_NUMERIC_COL_WIDTH + PER_REQUEST_COL_GAP);
 
 /// The per-request table: method, name, Count, p50, p95, p99, Errors.
 fn render_per_request_table(
@@ -811,16 +832,29 @@ fn render_per_request_table(
                 )
         });
 
+    // Below its minimum width the table scrolls sideways inside its card rather than pushing
+    // the whole dashboard wider than its pane. Restricted to the x axis, so the wheel keeps
+    // scrolling the dashboard vertically.
     v_flex()
-        .id("load-test-per-request-table")
         .border_1()
         .border_color(palette.border)
         .rounded(px(RADIUS_LG))
         .bg(palette.raised)
         .overflow_hidden()
         .font_family(mono_font.clone())
-        .child(header)
-        .children(rows)
+        .child(
+            div()
+                .id("load-test-per-request-table")
+                .w_full()
+                .restrict_scroll_to_axis()
+                .overflow_x_scrollbar()
+                .child(
+                    v_flex()
+                        .min_w(px(PER_REQUEST_TABLE_MIN_WIDTH))
+                        .child(header)
+                        .children(rows),
+                ),
+        )
         .into_any_element()
 }
 
