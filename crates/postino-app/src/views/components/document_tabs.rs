@@ -57,7 +57,7 @@ impl DocumentTab {
         self
     }
 
-    /// Shows `method`'s [`MethodBadge`] `label` variant before the tab's name (a request tab;
+    /// Shows `method`'s [`MethodBadge`] `inline` variant before the tab's name (a request tab;
     /// omitted for a load test tab).
     pub fn method(mut self, method: Method) -> Self {
         self.method = Some(method);
@@ -145,13 +145,14 @@ impl RenderOnce for DocumentTabs {
                 let dirty = item.dirty;
                 let click_handler = item.on_click;
                 let close_handler = item.on_close;
+                let middle_click_close = close_handler.clone();
 
                 let mut tab = h_flex()
                     .id(("doc-tab", index))
                     .group(group.clone())
                     .h_full()
                     .items_center()
-                    .gap(px(8.0))
+                    .gap(px(6.0))
                     .px_3()
                     .border_r_1()
                     .border_color(palette.border)
@@ -173,7 +174,7 @@ impl RenderOnce for DocumentTabs {
                     tab = tab.child(Icon::new(icon).small().text_color(palette.fg_subtle));
                 }
                 if let Some(method) = item.method {
-                    tab = tab.child(MethodBadge::label(method));
+                    tab = tab.child(MethodBadge::inline(method));
                 }
                 tab = tab.child(item.label);
                 if let Some(tooltip) = item.tooltip {

@@ -18,8 +18,11 @@ use crate::theme::metrics::{METHOD_LABEL_WIDTH, RADIUS_SM};
 /// Which of the two design variants a [`MethodBadge`] renders as.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MethodBadgeVariant {
-    /// Mono 10/600 colored text, fixed width [`METHOD_LABEL_WIDTH`] (sidebar tree, open tabs).
+    /// Mono 10/600 colored text, right aligned in a [`METHOD_LABEL_WIDTH`]-wide column so the
+    /// names next to it line up while the badge stays close to its name (sidebar tree).
     Label,
+    /// The same text at its natural width, for a spot with no column to align (open tabs).
+    Inline,
     /// The same text on a 14%-alpha background pill (Components "Methods").
     Pill,
 }
@@ -39,6 +42,15 @@ impl MethodBadge {
         Self {
             method,
             variant: MethodBadgeVariant::Label,
+        }
+    }
+
+    /// An `inline` badge for `method`: like [`Self::label`] but at its natural width. Used in the
+    /// open-tabs bar, where there is no name column to line up.
+    pub fn inline(method: Method) -> Self {
+        Self {
+            method,
+            variant: MethodBadgeVariant::Inline,
         }
     }
 
@@ -71,9 +83,11 @@ impl RenderOnce for MethodBadge {
         match self.variant {
             MethodBadgeVariant::Label => div()
                 .flex_none()
-                .w(px(METHOD_LABEL_WIDTH))
-                .overflow_hidden()
+                .min_w(px(METHOD_LABEL_WIDTH))
+                .flex()
+                .justify_end()
                 .child(text),
+            MethodBadgeVariant::Inline => div().flex_none().child(text),
             MethodBadgeVariant::Pill => div()
                 .flex_none()
                 .rounded(px(RADIUS_SM))
