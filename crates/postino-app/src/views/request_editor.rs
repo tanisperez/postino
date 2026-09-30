@@ -35,9 +35,9 @@ use super::root::AppView;
 /// `main.rs`'s key bindings (same local-constant pattern as `views/env_picker.rs`'s
 /// `MODIFIER_KEY`).
 #[cfg(target_os = "macos")]
-const SEND_KEY_HINT: &str = "Cmd \u{21b5}";
+const SEND_KEY_HINT: &str = "Cmd+\u{21b5}";
 #[cfg(not(target_os = "macos"))]
-const SEND_KEY_HINT: &str = "Ctrl \u{21b5}";
+const SEND_KEY_HINT: &str = "Ctrl+\u{21b5}";
 
 /// Which key-value table a row belongs to: routes an edit to the right field of the active tab's
 /// [`Request`], and, only for [`RowKind::Query`], triggers the Params/URL sync afterward (see

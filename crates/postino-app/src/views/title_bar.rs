@@ -225,11 +225,11 @@ fn render_settings_gear(weak: WeakEntity<AppView>, palette: &Palette) -> impl In
         })
 }
 
-/// `"Ctrl K"` (`"Cmd K"` on macOS): the search trigger's key hint.
+/// `"Ctrl+K"` (`"Cmd+K"` on macOS): the search trigger's key hint.
 fn shortcut_hint() -> &'static str {
     if cfg!(target_os = "macos") {
-        "Cmd K"
+        "Cmd+K"
     } else {
-        "Ctrl K"
+        "Ctrl+K"
     }
 }

@@ -45,7 +45,7 @@ impl AppView {
         let mut items = vec![
             EnvMenuItem::none()
                 .active(active.is_none())
-                .shortcut(format!("{MODIFIER_KEY} 0"))
+                .shortcut(format!("{MODIFIER_KEY}+0"))
                 .on_click({
                     let weak = weak.clone();
                     move |_, cx| {
@@ -57,7 +57,7 @@ impl AppView {
             let is_active = active.as_deref() == Some(name.as_str());
             let mut item = EnvMenuItem::named(name.clone()).active(is_active);
             if index < SHORTCUT_COUNT {
-                item = item.shortcut(format!("{MODIFIER_KEY} {}", index + 1));
+                item = item.shortcut(format!("{MODIFIER_KEY}+{}", index + 1));
             }
             let weak = weak.clone();
             item = item.on_click(move |_, cx| {

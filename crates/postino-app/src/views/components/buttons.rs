@@ -107,7 +107,7 @@ impl PrimaryButton {
         }
     }
 
-    /// Sets a trailing mono key hint (for example `"Ctrl \u{21b5}"`).
+    /// Sets a trailing mono key hint (for example `"Ctrl+\u{21b5}"`).
     pub fn key_hint(mut self, hint: impl Into<SharedString>) -> Self {
         self.spec.key_hint = Some(hint.into());
         self

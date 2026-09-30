@@ -110,14 +110,14 @@ pub fn environment_items(environments: &[String]) -> Vec<PaletteItem> {
         kind: PaletteItemKind::Environment(None),
         label: "No environment".to_string(),
         detail: None,
-        shortcut: Some(format!("{MODIFIER_KEY} 0")),
+        shortcut: Some(format!("{MODIFIER_KEY}+0")),
     }];
     for (index, name) in environments.iter().enumerate() {
         items.push(PaletteItem {
             kind: PaletteItemKind::Environment(Some(name.clone())),
             label: name.clone(),
             detail: None,
-            shortcut: (index < SHORTCUT_COUNT).then(|| format!("{MODIFIER_KEY} {}", index + 1)),
+            shortcut: (index < SHORTCUT_COUNT).then(|| format!("{MODIFIER_KEY}+{}", index + 1)),
         });
     }
     items
@@ -128,7 +128,7 @@ pub fn environment_items(environments: &[String]) -> Vec<PaletteItem> {
 pub fn action_items() -> Vec<PaletteItem> {
     vec![
         action_item(ActionId::Send, "Send request", Some(send_shortcut())),
-        action_item(ActionId::Save, "Save", Some(format!("{MODIFIER_KEY} S"))),
+        action_item(ActionId::Save, "Save", Some(format!("{MODIFIER_KEY}+S"))),
         action_item(ActionId::NewRequest, "New request", None),
         action_item(ActionId::NewFolder, "New folder", None),
         action_item(
@@ -144,7 +144,7 @@ pub fn action_items() -> Vec<PaletteItem> {
         action_item(
             ActionId::OpenSettings,
             "Open Settings",
-            Some(format!("{MODIFIER_KEY} ,")),
+            Some(format!("{MODIFIER_KEY}+,")),
         ),
         action_item(ActionId::OpenWorkspace, "Open folder...", None),
         action_item(ActionId::NewLoadTest, "New load test", None),
@@ -161,9 +161,9 @@ fn action_item(action: ActionId, label: &str, shortcut: Option<String>) -> Palet
     }
 }
 
-/// `"Ctrl \u{21b5}"` (`"Cmd \u{21b5}"` on macOS), matching `main.rs`'s `SendActiveTab` binding.
+/// `"Ctrl+\u{21b5}"` (`"Cmd+\u{21b5}"` on macOS), matching `main.rs`'s `SendActiveTab` binding.
 fn send_shortcut() -> String {
-    format!("{MODIFIER_KEY} \u{21b5}")
+    format!("{MODIFIER_KEY}+\u{21b5}")
 }
 
 /// Bonus added once per matched character that starts a word: the first character of a label, or

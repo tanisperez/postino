@@ -96,7 +96,7 @@ fn render_buttons() -> impl IntoElement {
         .flex_wrap()
         .gap_2()
         .items_center()
-        .child(PrimaryButton::new("gallery-primary", "Send").key_hint("Ctrl \u{21b5}"))
+        .child(PrimaryButton::new("gallery-primary", "Send").key_hint("Ctrl+\u{21b5}"))
         .child(SecondaryButton::new("gallery-secondary", "Secondary"))
         .child(
             GhostButton::new("gallery-ghost", "Ghost").icon(gpui_kit::assets::IconName::Download),
@@ -330,7 +330,7 @@ fn render_menu(palette: &crate::theme::Palette) -> impl IntoElement {
                     div()
                         .text_size(px(11.0))
                         .text_color(palette.fg_subtle)
-                        .child("Ctrl 3"),
+                        .child("Ctrl+3"),
                 ),
         )
 }
@@ -377,7 +377,7 @@ fn render_env_pill() -> impl IntoElement {
         vec![
             EnvMenuItem::none(),
             EnvMenuItem::named("local").active(true),
-            EnvMenuItem::named("production").shortcut("Ctrl 3"),
+            EnvMenuItem::named("production").shortcut("Ctrl+3"),
         ],
     ))
 }

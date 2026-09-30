@@ -30,9 +30,9 @@ use super::root::AppView;
 /// macOS, `Ctrl \u{21b5}` elsewhere (same local-constant pattern as `views/request_editor.rs`'s
 /// `SEND_KEY_HINT`, matching `main.rs`'s key bindings).
 #[cfg(target_os = "macos")]
-const SEND_KEY_HINT: &str = "Cmd \u{21b5}";
+const SEND_KEY_HINT: &str = "Cmd+\u{21b5}";
 #[cfg(not(target_os = "macos"))]
-const SEND_KEY_HINT: &str = "Ctrl \u{21b5}";
+const SEND_KEY_HINT: &str = "Ctrl+\u{21b5}";
 
 /// The live, read-only `EditorState` behind the response body view (`plans/ui-redesign.md`
 /// phase 5 item 3): a code editor, not a plain block of text, so it gets the design's line
