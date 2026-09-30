@@ -172,6 +172,24 @@ impl TabsState {
         }
     }
 
+    /// Activates the tab after the active one, wrapping from the last to the first. Does nothing
+    /// when no tab is open.
+    pub fn activate_next(&mut self) {
+        let count = self.open.len();
+        if let Some(active) = self.active {
+            self.active = Some((active + 1) % count);
+        }
+    }
+
+    /// Activates the tab before the active one, wrapping from the first to the last. Does
+    /// nothing when no tab is open.
+    pub fn activate_previous(&mut self) {
+        let count = self.open.len();
+        if let Some(active) = self.active {
+            self.active = Some((active + count - 1) % count);
+        }
+    }
+
     /// Marks the tab at `index` as saved (no unsaved changes). Does nothing if out of range.
     pub fn mark_saved(&mut self, index: usize) {
         if let Some(tab) = self.open.get_mut(index) {
@@ -299,6 +317,50 @@ mod tests {
         tabs.close(5);
 
         assert_eq!(tabs.open_tabs().len(), 1);
+    }
+
+    #[test]
+    fn activate_next_moves_right_and_wraps_to_the_first_tab() {
+        let mut tabs = TabsState::default();
+        tabs.open("a.postino", request());
+        tabs.open("b.postino", request());
+        tabs.open("c.postino", request());
+        tabs.set_active(0);
+
+        tabs.activate_next();
+        assert_eq!(tabs.active_index(), Some(1));
+        tabs.activate_next();
+        assert_eq!(tabs.active_index(), Some(2));
+        tabs.activate_next();
+        assert_eq!(tabs.active_index(), Some(0));
+    }
+
+    #[test]
+    fn activate_previous_moves_left_and_wraps_to_the_last_tab() {
+        let mut tabs = TabsState::default();
+        tabs.open("a.postino", request());
+        tabs.open("b.postino", request());
+        tabs.open("c.postino", request());
+        tabs.set_active(1);
+
+        tabs.activate_previous();
+        assert_eq!(tabs.active_index(), Some(0));
+        tabs.activate_previous();
+        assert_eq!(tabs.active_index(), Some(2));
+    }
+
+    #[test]
+    fn cycling_tabs_with_none_open_or_a_single_tab_is_harmless() {
+        let mut tabs = TabsState::default();
+        tabs.activate_next();
+        tabs.activate_previous();
+        assert_eq!(tabs.active_index(), None);
+
+        tabs.open("a.postino", request());
+        tabs.activate_next();
+        assert_eq!(tabs.active_index(), Some(0));
+        tabs.activate_previous();
+        assert_eq!(tabs.active_index(), Some(0));
     }
 
     #[test]

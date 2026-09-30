@@ -20,9 +20,10 @@ use postino_runner::{RunResult, ScriptEngine, SendOptions};
 use postino_script::QuickJsEngine;
 
 use crate::actions::{
-    OpenCommandPalette, OpenSettings, SaveActiveTab, SelectEnvironment1, SelectEnvironment2,
-    SelectEnvironment3, SelectEnvironment4, SelectEnvironment5, SelectEnvironment6,
-    SelectEnvironment7, SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+    NextTab, OpenCommandPalette, OpenSettings, PreviousTab, SaveActiveTab, SelectEnvironment1,
+    SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
+    SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
+    SelectNoEnvironment, SendActiveTab,
 };
 use crate::state::debug_open::{self, DebugOpenTarget};
 use crate::state::settings::Settings;
@@ -557,6 +558,31 @@ impl AppView {
         self.open_command_palette(window, cx);
     }
 
+    /// Handles the `Ctrl+Tab` key binding (see `main.rs`'s `bind_keys`).
+    fn on_next_tab_action(&mut self, _: &NextTab, window: &mut Window, cx: &mut Context<Self>) {
+        self.state.tabs.activate_next();
+        self.refocus_after_tab_switch(window, cx);
+    }
+
+    /// Handles the `Ctrl+Shift+Tab` key binding (see `main.rs`'s `bind_keys`).
+    fn on_previous_tab_action(
+        &mut self,
+        _: &PreviousTab,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.state.tabs.activate_previous();
+        self.refocus_after_tab_switch(window, cx);
+    }
+
+    /// The tab switch replaces the editor's inputs, so a focused one would vanish and leave
+    /// nothing focused, which kills every window-level shortcut (including the next `Ctrl+Tab`)
+    /// until the next click. Focusing the view itself keeps them alive.
+    fn refocus_after_tab_switch(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.focus_handle.focus(window, cx);
+        cx.notify();
+    }
+
     /// Sets the active environment (`None` for "No environment"). Used by the environment
     /// picker's clicks and by [`Self::select_environment_by_shortcut`].
     pub(crate) fn select_environment(&mut self, name: Option<String>, cx: &mut Context<Self>) {
@@ -878,6 +904,8 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_send_action))
             .on_action(cx.listener(Self::on_open_settings_action))
             .on_action(cx.listener(Self::on_open_command_palette_action))
+            .on_action(cx.listener(Self::on_next_tab_action))
+            .on_action(cx.listener(Self::on_previous_tab_action))
             .on_action(cx.listener(Self::on_select_environment_1))
             .on_action(cx.listener(Self::on_select_environment_2))
             .on_action(cx.listener(Self::on_select_environment_3))

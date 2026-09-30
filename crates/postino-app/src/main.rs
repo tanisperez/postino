@@ -17,9 +17,10 @@ use gpui_kit::component::{Root, TitleBar};
 use gpui_kit::*;
 
 use actions::{
-    OpenCommandPalette, OpenSettings, SaveActiveTab, SelectEnvironment1, SelectEnvironment2,
-    SelectEnvironment3, SelectEnvironment4, SelectEnvironment5, SelectEnvironment6,
-    SelectEnvironment7, SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+    NextTab, OpenCommandPalette, OpenSettings, PreviousTab, SaveActiveTab, SelectEnvironment1,
+    SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
+    SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
+    SelectNoEnvironment, SendActiveTab,
 };
 use state::settings::ThemeChoice;
 use views::AppView;
@@ -174,5 +175,11 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-0", SelectNoEnvironment, None),
         KeyBinding::new("ctrl-,", OpenSettings, None),
         KeyBinding::new("ctrl-k", OpenCommandPalette, None),
+    ]);
+    // Ctrl+Tab is the tab switcher on every platform, macOS included. The text inputs only bind
+    // plain `tab` / `shift-tab` (indent and outdent), so this still fires while one has focus.
+    cx.bind_keys([
+        KeyBinding::new("ctrl-tab", NextTab, None),
+        KeyBinding::new("ctrl-shift-tab", PreviousTab, None),
     ]);
 }
