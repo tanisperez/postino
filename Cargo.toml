@@ -35,7 +35,10 @@ expect_used = "warn"
 [workspace.lints.rust]
 unsafe_code = "forbid"
 
+# Measured on 2026-09-30 (#34): fat LTO gives an 8% smaller binary and slightly lower RSS than
+# thin, with no measurable runtime difference, for about 25% more release build time. Panics stay
+# as unwind: with abort, a panic in a load test worker thread would close the whole app.
 [profile.release]
-lto = "thin"
+lto = "fat"
 codegen-units = 1
 strip = true

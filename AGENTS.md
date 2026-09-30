@@ -89,6 +89,37 @@ any other icon silently renders empty. On Linux, the window is opened with `Wind
   `postino-app/src/state`, not in `gpui` views, specifically so it can be unit tested without a
   window or a GPU.
 
+## Performance
+
+Found in the 2026-09-30 investigation (#32, #33, #34). Keep these rules in every change.
+
+- An idle window does no work. gpui re-renders the whole window whenever any entity calls
+  `cx.notify()`, so never add timers, polling or animations that notify while nothing changes.
+  Check it: with the app idle for 10 s, the main thread CPU ticks (fields 14 and 15 of
+  `/proc/<pid>/task/<pid>/stat`) must barely move and the GPU counters (`drm-engine-render` in
+  `/proc/<pid>/fdinfo/*`) must not move at all.
+- `render` runs on every frame: every hover, keystroke and cursor blink. Nothing in a render path
+  may cost in proportion to the data size. No parsing, pretty printing, syntax work or full text
+  comparison of request or response bodies, and no file IO. Compute derived data once when its
+  source changes (a new response, a toggle), cache it under a cheap key (a tab id plus a
+  generation counter, see `state/response_render.rs`) and share big texts as `Arc<str>` or
+  `SharedString`, so clones are O(1).
+- Resync an editor (`set_value`) only when that cheap key changes, never by reading its whole
+  value and comparing it with the new text on every render.
+- Test with big data, not only `examples/sample-workspace`: a 5 MB JSON response (below the
+  10 MB response body limit), measuring main thread CPU while idle and while typing, and RSS.
+- Expected memory on Linux: about 115 MB RSS at startup in release, of which only about 22 MB is
+  the app's own heap; the rest is shared libraries (Mesa, LLVM) and the binary itself. gpui also
+  allocates GPU memory that is not in RSS but lives in system RAM on integrated GPUs: the
+  swapchain plus two window-sized path textures (one with 4x MSAA), about five framebuffers.
+  That part is gpui's design and grows with the window size.
+- After upgrading `gpui-kit`, re-check the idle rule above. gpui-base 0.6.6 had a bug where an
+  input whose text was set while unfocused kept blinking its cursor forever, re-rendering the
+  window twice per second.
+- Release profile: fat LTO, one codegen unit, stripped (see the comment in `Cargo.toml`). Put
+  alternate builds (another profile, a dependency upgrade) under a subdirectory of `target/`:
+  a full gpui build takes several GB.
+
 ## Working rules
 
 - Git is enabled (local repository, no remote yet). Commits are fine; never `git push` unless
