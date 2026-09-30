@@ -50,8 +50,9 @@ impl AppView {
     /// interpolates `{{ }}` markers, it never runs a script or opens a socket.
     pub(crate) fn current_preview(&self) -> Option<Preview> {
         let tab = self.state.tabs.active()?;
+        let request = tab.request()?;
         let environment = self.active_environment();
-        Some(preview(&tab.request, &environment, &self.state.session_env))
+        Some(preview(request, &environment, &self.state.session_env))
     }
 
     /// Whether `tab_id` currently has a request in flight.
@@ -68,8 +69,10 @@ impl AppView {
         let Some(tab) = self.state.tabs.active() else {
             return;
         };
+        let Some(request) = tab.request().cloned() else {
+            return;
+        };
         let tab_id = tab.id.clone();
-        let request = tab.request.clone();
         let environment = self.active_environment();
         let engine = self.script_engine.clone();
         let options = self.send_options.clone();

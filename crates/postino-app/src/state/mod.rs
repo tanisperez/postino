@@ -9,6 +9,7 @@ pub mod define_variable;
 pub mod env_color;
 pub mod format;
 pub mod import;
+pub mod load_test;
 pub mod palette;
 pub mod request_edit;
 pub mod response_render;
@@ -18,7 +19,7 @@ pub mod sidebar_filter;
 mod tabs;
 pub mod ui_tabs;
 
-pub use tabs::TabsState;
+pub use tabs::{TabKind, TabsState};
 
 use std::path::Path;
 

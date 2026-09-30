@@ -114,6 +114,16 @@ pub struct AppView {
     /// that dialog is open (`plans/ui-redesign.md` phase 7 item 3). See
     /// `views/define_variable.rs`.
     pub(crate) define_variable: Option<DefineVariableState>,
+    /// The `gpui` entities behind whichever load test tab is active (`plans/ui-redesign.md`
+    /// phase 8): its config panel's numeric inputs and target picker. See
+    /// `views/load_test/config_panel.rs`.
+    pub(crate) load_test_entities: crate::views::load_test::LoadTestEntities,
+    /// The running (or just-finished) `postino_load::LoadRun` behind every load test tab that has
+    /// been started at least once, keyed by tab id. Unlike [`Self::request_editor`]/
+    /// [`Self::response_editor`] (only ever built for the active tab), a load test keeps running
+    /// in the background while another tab is active, so this is a map, not a single slot. See
+    /// `views/load_test/run.rs`.
+    pub(crate) load_runs: HashMap<String, crate::views::load_test::run::LoadRunHandle>,
 }
 
 impl AppView {
@@ -168,6 +178,8 @@ impl AppView {
             sidebar_filter_pre_expansion: None,
             snippet_language: SnippetLanguage::Curl,
             define_variable: None,
+            load_test_entities: crate::views::load_test::LoadTestEntities::default(),
+            load_runs: HashMap::new(),
         };
         if let Some(root) = initial_workspace {
             view.open_workspace_at(&root, window, cx);
@@ -233,6 +245,9 @@ impl AppView {
                         view.open_define_variable_dialog("exampleVar".to_string(), window, cx)
                     });
                 });
+            }
+            DebugOpenTarget::LoadTest => {
+                self.open_load_test_tab_for_first_request(cx);
             }
         }
         cx.notify();
@@ -381,14 +396,28 @@ impl AppView {
         cx.notify();
     }
 
-    /// Closes the tab at `index`.
+    /// Closes the tab at `index`. Stops any load test still running in it first
+    /// (`plans/ui-redesign.md` phase 8 item 6): dropping its `LoadRunHandle` (see
+    /// `views/load_test/run.rs`) cancels the periodic refresh task and detaches the run's
+    /// supervisor thread, which exits shortly after observing the stop signal.
     pub(crate) fn close_tab(&mut self, index: usize, cx: &mut Context<Self>) {
+        if let Some(tab_id) = self
+            .state
+            .tabs
+            .open_tabs()
+            .get(index)
+            .map(|tab| tab.id.clone())
+        {
+            self.stop_load_test(&tab_id);
+        }
         self.state.tabs.close(index);
         cx.notify();
     }
 
     /// Saves the active tab's request to disk with `postino-format`'s canonical serialization,
-    /// via [`postino_workspace::Workspace::save_request`]. Bound to `Ctrl+S` / `Cmd+S`.
+    /// via [`postino_workspace::Workspace::save_request`]. Bound to `Ctrl+S` / `Cmd+S`. A no-op
+    /// when the active tab is a load test: dirty state and saving only apply to requests
+    /// (`plans/ui-redesign.md` phase 8 item 1), so `Ctrl+S` on that tab does nothing harmful.
     pub(crate) fn save_active_tab(&mut self, cx: &mut Context<Self>) {
         let Some(active_index) = self.state.tabs.active_index() else {
             return;
@@ -397,7 +426,9 @@ impl AppView {
             return;
         };
         let id = tab.id.clone();
-        let request = tab.request.clone();
+        let Some(request) = tab.request().cloned() else {
+            return;
+        };
 
         let Some(workspace) = self.state.workspace.as_mut() else {
             return;
@@ -696,24 +727,45 @@ impl AppView {
         }
 
         let tabs_bar = self.render_tabs_bar(weak, cx);
+        let is_load_test = self
+            .state
+            .tabs
+            .active()
+            .is_some_and(|tab| tab.load_test().is_some());
+
+        let content = if is_load_test {
+            self.render_load_test_tab(window, cx)
+        } else {
+            v_resizable("postino-main")
+                .child(
+                    resizable_panel()
+                        // 1.1 : 1 initial split (`plans/ui-redesign.md` phase 5 item 1).
+                        .size(px(462.0))
+                        .child(self.render_request_editor(window, cx)),
+                )
+                .child(
+                    resizable_panel()
+                        .size(px(420.0))
+                        .child(self.render_response_view(window, cx)),
+                )
+                .into_any_element()
+        };
 
         v_flex()
             .size_full()
             .child(tabs_bar)
-            .child(
-                v_resizable("postino-main")
-                    .child(
-                        resizable_panel()
-                            // 1.1 : 1 initial split (`plans/ui-redesign.md` phase 5 item 1).
-                            .size(px(462.0))
-                            .child(self.render_request_editor(window, cx)),
-                    )
-                    .child(
-                        resizable_panel()
-                            .size(px(420.0))
-                            .child(self.render_response_view(window, cx)),
-                    ),
-            )
+            // `flex_1().min_h_0()` here, not just on `content` itself: a plain flex child does
+            // not grow to fill remaining space or shrink below its content's natural height on
+            // its own (the same reasoning `render_body`'s own `div().flex_1().min_h_0()` already
+            // documents for `h_resizable`). The non-load-test `content` (`v_resizable`) happens
+            // to manage its own sizing regardless, but the load test tab's dashboard is a plain
+            // `overflow_y_scroll()` `v_flex`, which needs a genuinely bounded parent height for
+            // that scroll to actually clip instead of letting the pane grow past the window and
+            // paint its scrolled content over the title bar. `overflow_hidden()` here too: once
+            // scrolled, the dashboard's own content mask was still letting scrolled-past rows
+            // paint above this pane (verified by screenshot while fixing this same issue), so
+            // this outer clip is the actual backstop that keeps them inside the tab.
+            .child(div().flex_1().min_h_0().overflow_hidden().child(content))
             .into_any_element()
     }
 
@@ -731,8 +783,17 @@ impl AppView {
             let select_weak = weak.clone();
             let close_weak = weak.clone();
             let full_id = tab.id.clone();
-            let doc_tab = DocumentTab::new(state::format::tab_label(&tab.id).to_string())
-                .method(tab.request.method.clone())
+            let mut doc_tab = match &tab.kind {
+                state::TabKind::Request(request) => {
+                    DocumentTab::new(state::format::tab_label(&tab.id).to_string())
+                        .method(request.method.clone())
+                }
+                state::TabKind::LoadTest(load_test) => {
+                    DocumentTab::new(crate::views::load_test::tab_label(load_test))
+                        .icon(gpui_kit::assets::IconName::Gauge)
+                }
+            };
+            doc_tab = doc_tab
                 .dirty(tab.dirty)
                 .selected(active_index == Some(index))
                 .tooltip(full_id)

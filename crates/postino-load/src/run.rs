@@ -195,7 +195,7 @@ fn run_supervisor(
         let _ = handle.join();
     }
 
-    let snapshot = lock_metrics(&shared.metrics).snapshot(shared.start.elapsed(), 0);
+    let snapshot = lock_metrics(&shared.metrics).final_snapshot(shared.start.elapsed());
     LoadSummary {
         snapshot,
         stopped_early,
