@@ -184,6 +184,12 @@ impl RenderOnce for DocumentTabs {
                 if let Some(handler) = click_handler {
                     tab = tab.on_click(move |_, window, cx| handler(window, cx));
                 }
+                // A middle click closes the tab, the same as its close button.
+                if let Some(handler) = middle_click_close {
+                    tab = tab.on_mouse_up(MouseButton::Middle, move |_, window, cx| {
+                        handler(window, cx)
+                    });
+                }
 
                 let mut end = div()
                     .id(("doc-tab-end", index))
