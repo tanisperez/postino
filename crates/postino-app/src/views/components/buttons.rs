@@ -45,6 +45,7 @@ struct ButtonSpec {
     key_hint: Option<SharedString>,
     icon: Option<Icon>,
     height: f32,
+    min_width: Option<f32>,
     disabled: bool,
     on_click: Option<ClickHandler>,
 }
@@ -60,6 +61,7 @@ impl ButtonSpec {
             key_hint: None,
             icon: None,
             height: CONTROL_HEIGHT,
+            min_width: None,
             disabled: false,
             on_click: None,
         }
@@ -71,6 +73,7 @@ impl ButtonSpec {
         let key_hint_font = cx.theme().mono_font_family.clone();
         let mut button = apply(Button::new(self.id))
             .h(px(self.height))
+            .when_some(self.min_width, |button, width| button.min_w(px(width)))
             .rounded(px(RADIUS_MD))
             .font_weight(FontWeight::MEDIUM)
             .disabled(self.disabled)
@@ -80,6 +83,10 @@ impl ButtonSpec {
         if let Some(hint) = self.key_hint {
             button = button.child(
                 div()
+                    // The mono hint is smaller than the label, so centering their boxes leaves
+                    // its baseline about a pixel above the label's; nudge it down to match.
+                    .relative()
+                    .top(px(1.0))
                     .font_family(key_hint_font)
                     .text_size(px(10.5))
                     .opacity(0.75)
@@ -116,6 +123,12 @@ impl PrimaryButton {
     /// Sets the button's height (defaults to [`CONTROL_HEIGHT`]).
     pub fn height(mut self, height: f32) -> Self {
         self.spec.height = height;
+        self
+    }
+
+    /// Sets the button's minimum width in px.
+    pub fn min_width(mut self, width: f32) -> Self {
+        self.spec.min_width = Some(width);
         self
     }
 

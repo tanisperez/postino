@@ -23,7 +23,7 @@ use crate::state::request_edit::{self, BodyKind};
 use crate::state::script_heuristics;
 use crate::state::ui_tabs::RequestTab;
 use crate::theme::PaletteExt;
-use crate::theme::metrics::{RADIUS_MD, SEND_BUTTON_HEIGHT};
+use crate::theme::metrics::{RADIUS_MD, SEND_BUTTON_HEIGHT, SEND_BUTTON_MIN_WIDTH};
 use crate::views::components::{
     GhostButton, KeyValueRow, KeyValueTable, PrimaryButton, SegmentedControl, SegmentedItem,
     UnderlineTabItem, UnderlineTabs, UrlBar,
@@ -661,6 +661,7 @@ impl AppView {
             h_flex().child(
                 PrimaryButton::new("send", "Send")
                     .height(SEND_BUTTON_HEIGHT)
+                    .min_width(SEND_BUTTON_MIN_WIDTH)
                     .key_hint(SEND_KEY_HINT)
                     .on_click(move |_, _, cx| {
                         let _ = send_weak.update(cx, |view, cx| view.send_active_tab(cx));

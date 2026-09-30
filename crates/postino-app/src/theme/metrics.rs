@@ -20,6 +20,9 @@ pub const URL_BAR_HEIGHT: f32 = 32.0;
 /// Height of the primary Send button. Equal to [`URL_BAR_HEIGHT`], named separately because the
 /// two are independent design decisions that happen to share a value.
 pub const SEND_BUTTON_HEIGHT: f32 = 32.0;
+/// Minimum width of the primary Send button (label plus key hint), a few px wider than its
+/// natural width so it does not look cramped.
+pub const SEND_BUTTON_MIN_WIDTH: f32 = 100.0;
 /// Height of ordinary controls (inputs, buttons other than Send).
 pub const CONTROL_HEIGHT: f32 = 30.0;
 /// Height of a sidebar tree row.
