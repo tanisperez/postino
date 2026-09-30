@@ -1,0 +1,4 @@
+// Windows resources for postino.exe. gpui loads the window and taskbar icon from the icon
+// resource with ID 1 (`load_icon` in gpui-pre-windows), and Explorer shows it as the file icon.
+// postino.ico is the title bar logo (accent square, "P" in Geist Bold) at 16 to 256 px.
+1 ICON "postino.ico"

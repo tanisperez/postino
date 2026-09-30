@@ -28,6 +28,9 @@ postino-runner = { path = "../postino-runner" }
 postino-script = { path = "../postino-script" }
 postino-load = { path = "../postino-load" }
 
+[target.'cfg(windows)'.build-dependencies]
+embed-resource = "3"
+
 [dev-dependencies]
 tempfile = { workspace = true }
 pretty_assertions = { workspace = true }
