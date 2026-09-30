@@ -14,13 +14,45 @@ use crate::options::SendOptions;
 /// only failures that prevent us from getting any response at all (an invalid request, a
 /// timeout, too many redirects, a connection failure, ...) are errors. The returned response's
 /// `time` is the total time spent sending the request and reading the whole response body.
+///
+/// When `options.verify_tls` is on and the server's certificate is rejected (self-signed, expired,
+/// wrong host, ...), the request is sent once more with verification disabled, and the returned
+/// response carries a [`Response::tls_warning`]. This is safe for any method: a certificate
+/// error aborts the TLS handshake, before any request byte is written.
 pub fn send(request: &ResolvedRequest, options: &SendOptions) -> Result<Response, HttpError> {
-    let agent = build_agent(options);
     let http_request = build_http_request(request)?;
-
     let started = Instant::now();
-    let mut response = agent.run(http_request).map_err(map_ureq_error)?;
 
+    let (response, tls_warning) =
+        match run(&build_agent(options, options.verify_tls), &http_request) {
+            Err(error) if options.verify_tls && is_certificate_error(&error) => {
+                let warning = format!(
+                    "TLS certificate not verified: {}",
+                    certificate_reason(&error)
+                );
+                let retry =
+                    run(&build_agent(options, false), &http_request).map_err(map_ureq_error)?;
+                (retry, Some(warning))
+            }
+            other => (other.map_err(map_ureq_error)?, None),
+        };
+    finish(response, started, tls_warning)
+}
+
+/// Runs one request on `agent`.
+fn run(
+    agent: &ureq::Agent,
+    request: &ureq::http::Request<Vec<u8>>,
+) -> Result<ureq::http::Response<ureq::Body>, ureq::Error> {
+    agent.run(request.clone())
+}
+
+/// Reads the whole response body and turns it into a [`Response`].
+fn finish(
+    mut response: ureq::http::Response<ureq::Body>,
+    started: Instant,
+    tls_warning: Option<String>,
+) -> Result<Response, HttpError> {
     let status = response.status().as_u16();
     let headers = collect_headers(response.headers());
     let body = response.body_mut().read_to_vec().map_err(map_ureq_error)?;
@@ -33,7 +65,49 @@ pub fn send(request: &ResolvedRequest, options: &SendOptions) -> Result<Response
         body,
         time,
         size,
+        tls_warning,
     })
+}
+
+/// The `rustls` error inside a `ureq` error, if any. `ureq` reports handshake failures either
+/// as [`ureq::Error::Rustls`] or as an I/O error wrapping the `rustls` one.
+fn rustls_error(error: &ureq::Error) -> Option<&rustls::Error> {
+    match error {
+        ureq::Error::Rustls(inner) => Some(inner),
+        ureq::Error::Io(io) => io.get_ref()?.downcast_ref::<rustls::Error>(),
+        _ => None,
+    }
+}
+
+/// Whether `error` means the server's certificate was rejected (as opposed to any other TLS or
+/// network failure).
+fn is_certificate_error(error: &ureq::Error) -> bool {
+    matches!(
+        rustls_error(error),
+        Some(rustls::Error::InvalidCertificate(_))
+    )
+}
+
+/// A short description of why the certificate was rejected.
+fn certificate_reason(error: &ureq::Error) -> String {
+    match rustls_error(error) {
+        Some(rustls::Error::InvalidCertificate(reason)) => match reason {
+            rustls::CertificateError::UnknownIssuer => "unknown issuer (self-signed?)".to_string(),
+            rustls::CertificateError::Expired | rustls::CertificateError::ExpiredContext { .. } => {
+                "certificate expired".to_string()
+            }
+            rustls::CertificateError::NotValidYet
+            | rustls::CertificateError::NotValidYetContext { .. } => {
+                "certificate not valid yet".to_string()
+            }
+            rustls::CertificateError::NotValidForName
+            | rustls::CertificateError::NotValidForNameContext { .. } => {
+                "certificate does not match the host name".to_string()
+            }
+            other => format!("{other:?}"),
+        },
+        _ => error.to_string(),
+    }
 }
 
 /// Builds a `ureq` agent configured from `options`.
@@ -41,9 +115,9 @@ pub fn send(request: &ResolvedRequest, options: &SendOptions) -> Result<Response
 /// This disables `ureq`'s default behavior of treating 4xx/5xx as errors, allows the
 /// non-standard HTTP methods a `.postino` file may use, and applies the timeout, redirect and
 /// TLS verification settings.
-fn build_agent(options: &SendOptions) -> ureq::Agent {
+fn build_agent(options: &SendOptions, verify_tls: bool) -> ureq::Agent {
     let tls_config = ureq::tls::TlsConfig::builder()
-        .disable_verification(!options.verify_tls)
+        .disable_verification(!verify_tls)
         .build();
 
     let max_redirects = if options.follow_redirects {

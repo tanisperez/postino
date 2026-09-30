@@ -414,6 +414,17 @@ impl AppView {
             })
             .collect();
 
+        if let Some(warning) = result
+            .response
+            .as_ref()
+            .and_then(|response| response.tls_warning.clone())
+        {
+            messages.insert(
+                0,
+                InlineMessage::new(InlineMessageKind::Warning, warning).into_any_element(),
+            );
+        }
+
         if let Some(stage) = &result.failed_stage {
             messages.push(
                 InlineMessage::new(InlineMessageKind::Danger, stage_message(stage))

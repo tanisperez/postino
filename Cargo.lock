@@ -5118,6 +5118,7 @@ dependencies = [
  "postino-core",
  "postino-http",
  "pretty_assertions",
+ "rustls",
  "thiserror 2.0.21",
  "tiny_http",
  "ureq",

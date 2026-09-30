@@ -314,3 +314,102 @@ fn times_out_when_the_server_is_too_slow() {
         other => panic!("expected a timeout error, got {other:?}"),
     }
 }
+
+/// A one-shot HTTPS server with a self-signed certificate for `127.0.0.1`, built on `rustls`
+/// directly since `tiny_http` would need an extra TLS stack. Answers every connection with a 200
+/// and the body `secure`, and records the request line of each request it actually reads.
+fn start_tls_server() -> (String, mpsc::Receiver<String>, std::thread::JoinHandle<()>) {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    use rustls::pki_types::pem::PemObject;
+    use rustls::pki_types::{CertificateDer, PrivateKeyDer};
+
+    let certs = CertificateDer::pem_slice_iter(include_bytes!("fixtures/self_signed.cert.pem"))
+        .collect::<Result<Vec<_>, _>>()
+        .expect("fixture certificate parses");
+    let key = PrivateKeyDer::from_pem_slice(include_bytes!("fixtures/self_signed.key.pem"))
+        .expect("fixture key parses");
+    let provider = Arc::new(rustls::crypto::ring::default_provider());
+    let config = Arc::new(
+        rustls::ServerConfig::builder_with_provider(provider)
+            .with_safe_default_protocol_versions()
+            .expect("protocol versions")
+            .with_no_client_auth()
+            .with_single_cert(certs, key)
+            .expect("certificate and key match"),
+    );
+
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
+    let url = format!("https://{}", listener.local_addr().expect("local addr"));
+    let (tx, rx) = mpsc::channel();
+    let handle = std::thread::spawn(move || {
+        // Two connections at most: the rejected handshake and the retry.
+        for _ in 0..2 {
+            let Ok((tcp, _)) = listener.accept() else {
+                return;
+            };
+            let Ok(connection) = rustls::ServerConnection::new(Arc::clone(&config)) else {
+                return;
+            };
+            let mut stream = rustls::StreamOwned::new(connection, tcp);
+            let mut buffer = [0_u8; 4096];
+            // Fails for the client that rejects the certificate, which is expected.
+            let Ok(read) = stream.read(&mut buffer) else {
+                continue;
+            };
+            let text = String::from_utf8_lossy(&buffer[..read]);
+            let _ = tx.send(text.lines().next().unwrap_or_default().to_string());
+            let _ = stream.write_all(
+                b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\nConnection: close\r\n\r\nsecure",
+            );
+            stream.conn.send_close_notify();
+            let _ = stream.flush();
+            return;
+        }
+    });
+    (url, rx, handle)
+}
+
+#[test]
+fn untrusted_certificate_is_sent_anyway_with_a_warning() {
+    let (url, requests, handle) = start_tls_server();
+    let request = ResolvedRequest {
+        method: Method::Post,
+        body: ResolvedBody::Bytes(b"payload".to_vec()),
+        ..request_to(Method::Post, format!("{url}/secure"))
+    };
+
+    let response = postino_http::send(&request, &SendOptions::default()).expect("fallback works");
+
+    assert_eq!(response.status, 200);
+    assert_eq!(response.body, b"secure");
+    let warning = response.tls_warning.expect("a warning is set");
+    assert!(
+        warning.starts_with("TLS certificate not verified: "),
+        "{warning}"
+    );
+    assert!(warning.contains("unknown issuer"), "{warning}");
+    // The server saw the request exactly once: the rejected handshake sent nothing.
+    assert_eq!(
+        requests.recv().expect("one request"),
+        "POST /secure HTTP/1.1"
+    );
+    handle.join().expect("server thread");
+}
+
+#[test]
+fn no_warning_when_verification_is_disabled() {
+    // With verification already off the request goes through and no warning is set.
+    let (url, _requests, handle) = start_tls_server();
+    let options = SendOptions {
+        verify_tls: false,
+        ..SendOptions::default()
+    };
+
+    let response =
+        postino_http::send(&request_to(Method::Get, format!("{url}/")), &options).expect("ok");
+
+    assert_eq!(response.tls_warning, None);
+    handle.join().expect("server thread");
+}

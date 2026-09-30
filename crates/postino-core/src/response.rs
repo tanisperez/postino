@@ -53,6 +53,9 @@ pub struct Response {
     pub time: Duration,
     /// The response body size in bytes, equal to `body.len()`.
     pub size: usize,
+    /// Set when the server's TLS certificate could not be verified and the request was sent
+    /// anyway without verification. Holds a human readable message with the reason.
+    pub tls_warning: Option<String>,
 }
 
 /// The outcome of a single `test(name, fn)` call in a `::: post` script.

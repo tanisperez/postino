@@ -8,11 +8,13 @@ license.workspace = true
 [dependencies]
 postino-core = { path = "../postino-core" }
 ureq = { workspace = true }
+rustls = { version = "0.23", default-features = false, features = ["std"] }
 thiserror = { workspace = true }
 tiny_http = { workspace = true, optional = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
+rustls = { version = "0.23", default-features = false, features = ["std", "ring"] }
 # Enables the test server helper for this crate's own tests, without shipping it in release builds.
 postino-http = { path = ".", features = ["test-support"] }
 
