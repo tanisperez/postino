@@ -68,13 +68,14 @@ fn read_recent_workspaces(base: &Path) -> Vec<PathBuf> {
 }
 
 /// Parses the content of a recent-workspaces file: one absolute path per line, blank lines
-/// ignored.
+/// ignored. Older versions saved Windows paths in their verbatim `\\?\C:\...` form; those are
+/// read back as plain `C:\...` paths.
 fn parse_recent_workspaces(content: &str) -> Vec<PathBuf> {
     content
         .lines()
         .map(str::trim)
         .filter(|line| !line.is_empty())
-        .map(PathBuf::from)
+        .map(|line| dunce::simplified(Path::new(line)).to_path_buf())
         .collect()
 }
 
@@ -229,5 +230,14 @@ mod tests {
             Some(real)
         );
         assert_eq!(first_existing(vec![missing]), None);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn verbatim_windows_paths_read_as_plain_paths() {
+        assert_eq!(
+            parse_recent_workspaces("\\\\?\\C:\\dev\\http\n"),
+            vec![PathBuf::from("C:\\dev\\http")]
+        );
     }
 }

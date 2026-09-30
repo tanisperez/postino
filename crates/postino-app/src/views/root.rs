@@ -290,8 +290,9 @@ impl AppView {
                 self.workspace_error = None;
                 // Remember an absolute path: a relative one (as given on the command line, for
                 // example) would resolve against whatever directory the app happens to be
-                // launched from next time, not necessarily the same folder.
-                let absolute = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+                // launched from next time, not necessarily the same folder. `dunce` avoids the
+                // verbatim `\\?\C:\...` form `std` returns on Windows.
+                let absolute = dunce::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
                 state::config::record_workspace(&absolute);
             }
             Err(error) => {

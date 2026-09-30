@@ -65,7 +65,7 @@ impl AppView {
             .map(|workspace| workspace.root().to_path_buf());
         let current_canonical = current_root
             .as_ref()
-            .and_then(|root| root.canonicalize().ok());
+            .and_then(|root| dunce::canonicalize(root).ok());
         let label = current_root
             .as_ref()
             .and_then(|root| root.file_name())
