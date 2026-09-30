@@ -8,6 +8,7 @@ use std::time::Duration;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::chart::LineChart;
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
+use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -17,7 +18,7 @@ use postino_load::history::RunRecordHeader;
 use postino_load::{LoadSnapshot, StatusKey};
 
 use crate::state::format;
-use crate::state::load_test::{LoadTestStatus, LoadTestTab};
+use crate::state::load_test::{DeltaTone, LoadTestStatus, LoadTestTab, delta_tone, format_delta};
 use crate::theme::metrics::RADIUS_LG;
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{Card, InlineMessage, InlineMessageKind, MethodBadge};
@@ -74,7 +75,7 @@ impl AppView {
             .h_full()
             .min_w_0()
             .min_h_0()
-            .overflow_y_scroll()
+            .overflow_y_scrollbar()
             .px(px(20.0))
             .py(px(16.0))
             .gap(px(16.0))
@@ -123,7 +124,7 @@ fn render_empty_state(
         .h_full()
         .min_w_0()
         .min_h_0()
-        .overflow_y_scroll()
+        .overflow_y_scrollbar()
         .px(px(20.0))
         .py(px(16.0))
         .gap(px(16.0));
@@ -313,15 +314,15 @@ fn format_thousands(value: u64) -> String {
     out.chars().rev().collect()
 }
 
-/// Minimum width of one KPI cell, before [`render_kpi_strip`]'s `flex_wrap` moves the next one
-/// onto a new row (`plans/ui-redesign.md` phase 8 item 4's "responsiveness" fix: no media
-/// queries, so the strip wraps by flex layout alone rather than by measuring the window).
-const KPI_CELL_MIN_WIDTH: f32 = 150.0;
+/// Minimum width of one KPI cell. A group of three needs three of them, so the two groups of
+/// [`render_kpi_strip`] wrap as whole groups (3 + 3, never 4 + 2) by flex layout alone, rather
+/// than by measuring the window.
+const KPI_CELL_MIN_WIDTH: f32 = 96.0;
 
 /// The KPI strip: Requests/s, p50, p95, p99, Errors, Total (`plans/ui-redesign.md` phase 8 item
-/// 4). Wraps into as many rows as the available width needs (typically 3 + 3 at the narrower
-/// sizes this tab must support) via `flex_wrap` and each cell's own minimum width, never by
-/// measuring the window.
+/// 4). Two groups of three cells: side by side in a single row when wide, stacked as 3 + 3 when
+/// narrow. The container paints the `border` color through a 1 px gap between the groups (and
+/// its own 1 px border), so the separator is right in both layouts.
 fn render_kpi_strip(palette: &Palette, snapshot: &LoadSnapshot) -> AnyElement {
     let kpis: [(&str, String, &str, bool); 6] = [
         ("Requests/s", format!("{:.0}", snapshot.rps), "", false),
@@ -337,57 +338,64 @@ fn render_kpi_strip(palette: &Palette, snapshot: &LoadSnapshot) -> AnyElement {
         ("Total", format_thousands(snapshot.total), "", false),
     ];
 
+    let mut cells = kpis.into_iter().enumerate();
+    let mut groups: Vec<AnyElement> = Vec::new();
+    for _ in 0..2 {
+        let mut group = h_flex()
+            .flex_1()
+            .min_w(px(KPI_CELL_MIN_WIDTH * 3.0))
+            .bg(palette.raised);
+        for (index, (label, value, unit, warn)) in cells.by_ref().take(3) {
+            let mut cell = v_flex()
+                .flex_1()
+                .min_w(px(KPI_CELL_MIN_WIDTH))
+                .gap(px(4.0))
+                .px(px(14.0))
+                .py(px(12.0));
+            if index % 3 != 0 {
+                cell = cell.border_l_1().border_color(palette.border);
+            }
+            group = group.child(
+                cell.child(
+                    div()
+                        .text_size(px(12.0))
+                        .text_color(palette.fg_muted)
+                        .child(label),
+                )
+                .child(
+                    h_flex()
+                        .items_baseline()
+                        .gap(px(4.0))
+                        .child(
+                            div()
+                                .text_size(px(22.0))
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(if warn { palette.warning } else { palette.fg })
+                                .child(value),
+                        )
+                        .when(!unit.is_empty(), |row| {
+                            row.child(
+                                div()
+                                    .text_size(px(12.0))
+                                    .text_color(palette.fg_subtle)
+                                    .child(unit),
+                            )
+                        }),
+                ),
+            );
+        }
+        groups.push(group.into_any_element());
+    }
+
     h_flex()
         .flex_wrap()
+        .gap(px(1.0))
         .border_1()
         .border_color(palette.border)
+        .bg(palette.border)
         .rounded(px(RADIUS_LG))
-        .bg(palette.raised)
-        .children(
-            kpis.into_iter()
-                .enumerate()
-                .map(|(index, (label, value, unit, warn))| {
-                    let mut cell = v_flex()
-                        .flex_1()
-                        .min_w(px(KPI_CELL_MIN_WIDTH))
-                        .gap(px(4.0))
-                        .px(px(14.0))
-                        .py(px(12.0));
-                    // A divider only within a group of 3 (never before the 1st or 4th cell): at
-                    // full width that still reads as one continuous strip (no divider hints at
-                    // the 3+3 wrap point that never happens), and once wrapped, the first cell of
-                    // each row never shows a stray leading divider.
-                    if index % 3 != 0 {
-                        cell = cell.border_l_1().border_color(palette.border);
-                    }
-                    cell.child(
-                        div()
-                            .text_size(px(12.0))
-                            .text_color(palette.fg_muted)
-                            .child(label),
-                    )
-                    .child(
-                        h_flex()
-                            .items_baseline()
-                            .gap(px(4.0))
-                            .child(
-                                div()
-                                    .text_size(px(22.0))
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_color(if warn { palette.warning } else { palette.fg })
-                                    .child(value),
-                            )
-                            .when(!unit.is_empty(), |row| {
-                                row.child(
-                                    div()
-                                        .text_size(px(12.0))
-                                        .text_color(palette.fg_subtle)
-                                        .child(unit),
-                                )
-                            }),
-                    )
-                }),
-        )
+        .overflow_hidden()
+        .children(groups)
         .into_any_element()
 }
 
@@ -453,18 +461,26 @@ fn render_throughput_card(
     Card::new()
         .child(
             h_flex()
+                .flex_wrap()
                 .items_center()
-                .gap(px(16.0))
+                .gap_x(px(16.0))
+                .gap_y(px(4.0))
                 .text_size(px(12.0))
                 .child(
                     div()
                         .flex_1()
+                        .min_w(px(170.0))
                         .font_weight(FontWeight::MEDIUM)
                         .text_size(px(13.0))
                         .child("Throughput and latency"),
                 )
-                .child(legend_item(palette, palette.accent_text, "Requests/s"))
-                .child(legend_item(palette, palette.warning, "p95 ms")),
+                .child(
+                    h_flex()
+                        .flex_none()
+                        .gap(px(16.0))
+                        .child(legend_item(palette, palette.accent_text, "Requests/s"))
+                        .child(legend_item(palette, palette.warning, "p95 ms")),
+                ),
         )
         .child(div().h(px(CHART_HEIGHT)).w_full().child(chart))
         .child(
@@ -900,10 +916,10 @@ fn render_compare_with(
 
     if let Some(previous) = &load_test.compare_snapshot {
         for delta in postino_load::compare(previous, snapshot) {
-            let delta_color = if delta.is_improvement {
-                palette.success
-            } else {
-                palette.danger
+            let delta_color = match delta_tone(delta.change, delta.label == "Requests/s") {
+                DeltaTone::Better => palette.success,
+                DeltaTone::Worse => palette.danger,
+                DeltaTone::Neutral => palette.fg_muted,
             };
             let unit = match delta.unit {
                 postino_load::DeltaUnit::Percent => "%",
@@ -943,7 +959,7 @@ fn render_compare_with(
                             .text_size(px(12.0))
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(delta_color)
-                            .child(format!("{:+.1}{unit}", delta.change)),
+                            .child(format_delta(delta.change, unit)),
                     ),
             );
         }

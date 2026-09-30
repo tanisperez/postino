@@ -406,6 +406,40 @@ pub fn request_ids_under(nodes: &[Node], id: &str) -> Vec<String> {
         .collect()
 }
 
+/// How a "Compare with" delta reads: better, worse, or no visible change.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeltaTone {
+    /// The metric moved in the good direction (success color).
+    Better,
+    /// The metric moved in the bad direction (danger color).
+    Worse,
+    /// The change rounds to zero at one decimal (muted color, no sign).
+    Neutral,
+}
+
+/// Classifies `change` (displayed with one decimal, see [`format_delta`]) for a metric where
+/// `higher_is_better` says which direction is the good one. A change that rounds to `0.0` is
+/// [`DeltaTone::Neutral`] whichever direction the metric prefers.
+pub fn delta_tone(change: f64, higher_is_better: bool) -> DeltaTone {
+    if (change * 10.0).round() == 0.0 {
+        DeltaTone::Neutral
+    } else if (change > 0.0) == higher_is_better {
+        DeltaTone::Better
+    } else {
+        DeltaTone::Worse
+    }
+}
+
+/// Formats `change` with one decimal and `unit` appended (for example `"%"` or `" pt"`): signed
+/// for any non-zero change, and plain `0.0` (never `+0.0` or `-0.0`) when it rounds to zero.
+pub fn format_delta(change: f64, unit: &str) -> String {
+    if (change * 10.0).round() == 0.0 {
+        format!("0.0{unit}")
+    } else {
+        format!("{change:+.1}{unit}")
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::expect_used)]
 mod tests {
@@ -598,5 +632,32 @@ mod tests {
             ]
         );
         assert!(request_ids_under(&tree, "empty").is_empty());
+    }
+
+    #[test]
+    fn delta_tone_higher_is_better() {
+        assert_eq!(delta_tone(5.0, true), DeltaTone::Better);
+        assert_eq!(delta_tone(-5.0, true), DeltaTone::Worse);
+        assert_eq!(delta_tone(0.0, true), DeltaTone::Neutral);
+        assert_eq!(delta_tone(0.04, true), DeltaTone::Neutral);
+        assert_eq!(delta_tone(-0.04, true), DeltaTone::Neutral);
+    }
+
+    #[test]
+    fn delta_tone_lower_is_better() {
+        assert_eq!(delta_tone(-5.0, false), DeltaTone::Better);
+        assert_eq!(delta_tone(5.0, false), DeltaTone::Worse);
+        assert_eq!(delta_tone(0.0, false), DeltaTone::Neutral);
+        assert_eq!(delta_tone(0.04, false), DeltaTone::Neutral);
+        assert_eq!(delta_tone(-0.04, false), DeltaTone::Neutral);
+    }
+
+    #[test]
+    fn format_delta_signs_only_non_zero_changes() {
+        assert_eq!(format_delta(2.34, "%"), "+2.3%");
+        assert_eq!(format_delta(-2.34, " pt"), "-2.3 pt");
+        assert_eq!(format_delta(0.0, " pt"), "0.0 pt");
+        assert_eq!(format_delta(0.04, "%"), "0.0%");
+        assert_eq!(format_delta(-0.04, "%"), "0.0%");
     }
 }

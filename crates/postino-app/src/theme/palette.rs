@@ -418,6 +418,11 @@ pub(super) fn theme_colors_and_highlight(dark: bool) -> (serde_json::Value, serd
         // reading `cx.theme().overlay`), not the modal/popover surface fill.
         "overlay": tokens.scrim,
         "border": tokens.border,
+        // The design defines no scrollbar, so the thumb is a neutral border tone that darkens
+        // to the muted text color on hover; the track stays on the page background.
+        "scrollbar.background": tokens.bg,
+        "scrollbar.thumb.background": tokens.border_strong,
+        "scrollbar.thumb.hover.background": tokens.fg_subtle,
         "input.border": tokens.border_strong,
         "foreground": tokens.fg,
         "muted.foreground": tokens.fg_muted,
