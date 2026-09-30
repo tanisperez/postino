@@ -2,6 +2,9 @@
 //! window, and opens the workspace given on the command line or remembered from the last run
 //! (`plans/mvp.md`, phase 8).
 
+// A GUI application on Windows: never open a console window behind the main window.
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 mod actions;
 mod state;
 mod theme;
