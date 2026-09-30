@@ -896,15 +896,6 @@ impl Render for AppView {
         });
         let body = self.render_body(weak, window, cx);
         let status_bar = self.render_status_bar(cx);
-        // gpui-kit's `Root` (`main.rs` wraps this view in one) does not render the dialog layer
-        // on its own: `Root::render_dialog_layer` is a method the *consuming* view must call
-        // itself (its own doc comment: "A dialog that opens into a root which never renders this
-        // layer looks exactly like one that does not open", confirmed the hard way while
-        // screenshotting the Settings modal for this phase, `has_active_dialog` was `true` but
-        // nothing painted until this was added). Settings (`views/settings.rs`) is the first
-        // dialog user; later phases (command palette, snippet dialog, define variable) need no
-        // further wiring here, they reuse the same layer.
-        let dialog_layer = Root::render_dialog_layer(window, cx);
 
         v_flex()
             .size_full()
@@ -930,6 +921,5 @@ impl Render for AppView {
             .children(error_banner)
             .child(body)
             .child(status_bar)
-            .children(dialog_layer)
     }
 }

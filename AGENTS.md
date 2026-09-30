@@ -27,8 +27,10 @@ Expo/React Native conventions here.
   (`postino-script`). Two levels share the same Rust built-ins: template functions inline in
   `{{ }}` markers (`util.*`-equivalent, no script needed), and full `::: pre`/`::: post` scripts
   for anything more involved. See `docs/scripting.md`.
-- Widgets: [`gpui-kit`](https://crates.io/crates/gpui-kit) 0.6.6, which bundles `gpui-component`
-  and `gpui-base` and pins `gpui-pre` 0.3.6 (`cargo tree -d | grep gpui` must stay empty).
+- Widgets: [`gpui-kit`](https://crates.io/crates/gpui-kit) 0.7.0, which bundles `gpui-component`
+  and `gpui-base` and pins `gpui-pre` 0.3.7 (`cargo tree -d --depth 0 | grep gpui` must stay
+  empty). Since 0.7.0 `Root` renders the dialog, sheet and notification layers itself; views
+  must not render them again.
 - MVP scope: HTTP methods (standard or custom), URL, query params, headers, body (json/text/
   xml/form), environments and variables, pre/post JavaScript scripts with `test()`/`expect()`,
   a response viewer, Postman collection import. See `plans/mvp.md` section 1 for the full table.

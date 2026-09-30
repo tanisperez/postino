@@ -10,7 +10,7 @@ publish = false
 license = "Apache-2.0"
 
 [workspace.dependencies]
-gpui-kit = "0.6.6"
+gpui-kit = "0.7.0"
 rquickjs = "0.14"
 ureq = "3.4"
 serde = "1"
