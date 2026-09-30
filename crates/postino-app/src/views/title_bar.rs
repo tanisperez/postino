@@ -41,17 +41,15 @@ impl AppView {
                     .child(render_logo(&palette))
                     .child(div().font_weight(FontWeight::SEMIBOLD).child("Postino"))
                     .child(div().w(px(1.0)).h(px(16.0)).mx(px(4.0)).bg(palette.border))
-                    .child(self.render_workspace_switcher(weak.clone(), &palette))
-                    .child(
-                        div()
-                            .flex_1()
-                            .flex()
-                            .justify_center()
-                            .child(render_search_trigger(weak.clone(), &palette, mono_font)),
-                    )
-                    .child(self.render_env_picker(weak.clone(), cx))
-                    .child(self.render_import_menu(cx))
-                    .child(render_settings_gear(weak, &palette)),
+                    .child(no_drag(
+                        self.render_workspace_switcher(weak.clone(), &palette),
+                    ))
+                    .child(div().flex_1().flex().justify_center().child(no_drag(
+                        render_search_trigger(weak.clone(), &palette, mono_font),
+                    )))
+                    .child(no_drag(self.render_env_picker(weak.clone(), cx)))
+                    .child(no_drag(self.render_import_menu(cx)))
+                    .child(no_drag(render_settings_gear(weak, &palette))),
             )
             .into_any_element()
     }
@@ -145,6 +143,14 @@ impl AppView {
             })
             .into_any_element()
     }
+}
+
+/// Wraps an interactive title bar control so the mouse reaches it. `TitleBar` marks the whole bar
+/// as a window drag area, and on Windows gpui answers `WM_NCHITTEST` with `HTCAPTION` for any
+/// point whose hit test includes that area, so the system eats the clicks and hovers of every
+/// control inside it. Occluding the control keeps the bar's area out of the hit test there.
+fn no_drag(control: impl IntoElement) -> impl IntoElement {
+    div().occlude().child(control)
 }
 
 /// The "P" logo square: 18px, radius 5, `accent` background, `accent_fg` text.
