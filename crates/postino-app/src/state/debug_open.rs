@@ -13,6 +13,8 @@ pub enum DebugOpenTarget {
     /// Opens the Settings modal, mirroring `postino_design_system/Settings.dc.html`
     /// (`plans/ui-redesign.md` phase 6).
     Settings,
+    /// Opens the Settings modal on its "Requests" pane.
+    SettingsRequests,
     /// Opens the command palette (`plans/ui-redesign.md` phase 7 item 1).
     Palette,
     /// Opens the Code snippet dialog for the active tab's request (`plans/ui-redesign.md` phase
@@ -35,6 +37,7 @@ pub fn parse(value: &str) -> Option<DebugOpenTarget> {
     match value {
         "components" => Some(DebugOpenTarget::Components),
         "settings" => Some(DebugOpenTarget::Settings),
+        "settings-requests" => Some(DebugOpenTarget::SettingsRequests),
         "palette" => Some(DebugOpenTarget::Palette),
         "snippet" => Some(DebugOpenTarget::Snippet),
         "define" => Some(DebugOpenTarget::Define),
@@ -56,6 +59,14 @@ mod tests {
     #[test]
     fn parses_settings() {
         assert_eq!(parse("settings"), Some(DebugOpenTarget::Settings));
+    }
+
+    #[test]
+    fn parses_settings_requests() {
+        assert_eq!(
+            parse("settings-requests"),
+            Some(DebugOpenTarget::SettingsRequests)
+        );
     }
 
     #[test]

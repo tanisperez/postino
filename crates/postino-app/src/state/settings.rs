@@ -7,6 +7,7 @@ use std::fs;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 
+use postino_runner::InvalidCertificates;
 use serde::Serialize;
 
 /// The path, relative to the OS config directory, of the settings file.
@@ -51,8 +52,84 @@ impl ThemeChoice {
     }
 }
 
-/// User-configurable appearance settings: the theme mode and the two fonts (UI and editor), with
-/// their sizes.
+/// A category of the Settings view's left nav.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SettingsCategory {
+    /// Theme, fonts and sizes.
+    #[default]
+    Appearance,
+    /// How requests are sent (TLS certificates).
+    Requests,
+}
+
+impl SettingsCategory {
+    /// Every category, in the order the nav lists them.
+    pub const ALL: [SettingsCategory; 2] =
+        [SettingsCategory::Appearance, SettingsCategory::Requests];
+
+    /// The nav item label, also the pane's title.
+    pub fn label(self) -> &'static str {
+        match self {
+            SettingsCategory::Appearance => "Appearance",
+            SettingsCategory::Requests => "Requests",
+        }
+    }
+}
+
+/// What to do when a server's TLS certificate is invalid, chosen in Settings, "Requests". Stored
+/// in `settings.toml` as `invalid_tls_certificates = "warn" | "reject" | "accept"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum InvalidTlsCertificates {
+    /// Send the request anyway and show a warning in the response.
+    #[default]
+    Warn,
+    /// Fail the request with an error.
+    Reject,
+    /// Accept any certificate without a warning.
+    Accept,
+}
+
+impl InvalidTlsCertificates {
+    /// Every choice, in the order the Settings view lists them.
+    pub const ALL: [InvalidTlsCertificates; 3] = [
+        InvalidTlsCertificates::Warn,
+        InvalidTlsCertificates::Reject,
+        InvalidTlsCertificates::Accept,
+    ];
+
+    /// Parses a value as read from the settings file, case-insensitive. Returns `None` for
+    /// anything else, so the caller can fall back to the default.
+    fn parse(text: &str) -> Option<Self> {
+        match text.to_ascii_lowercase().as_str() {
+            "warn" => Some(InvalidTlsCertificates::Warn),
+            "reject" => Some(InvalidTlsCertificates::Reject),
+            "accept" => Some(InvalidTlsCertificates::Accept),
+            _ => None,
+        }
+    }
+
+    /// The label shown in the Settings view.
+    pub fn label(self) -> &'static str {
+        match self {
+            InvalidTlsCertificates::Warn => "Send with warning",
+            InvalidTlsCertificates::Reject => "Reject",
+            InvalidTlsCertificates::Accept => "Don't verify",
+        }
+    }
+
+    /// The matching `postino-http` mode.
+    pub fn to_http(self) -> InvalidCertificates {
+        match self {
+            InvalidTlsCertificates::Warn => InvalidCertificates::SendWithWarning,
+            InvalidTlsCertificates::Reject => InvalidCertificates::Reject,
+            InvalidTlsCertificates::Accept => InvalidCertificates::Accept,
+        }
+    }
+}
+
+/// User-configurable settings: the theme mode, the two fonts (UI and editor) with their sizes,
+/// and how requests treat invalid TLS certificates.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Settings {
     /// The theme mode: system, light or dark.
@@ -65,6 +142,8 @@ pub struct Settings {
     pub mono_font: String,
     /// The monospace font size, in points, clamped to [`MONO_FONT_SIZE_RANGE`].
     pub mono_font_size: f32,
+    /// What to do with an invalid TLS certificate.
+    pub invalid_tls_certificates: InvalidTlsCertificates,
 }
 
 impl Default for Settings {
@@ -75,6 +154,7 @@ impl Default for Settings {
             ui_font_size: 13.0,
             mono_font: "Geist Mono".to_string(),
             mono_font_size: 12.5,
+            invalid_tls_certificates: InvalidTlsCertificates::default(),
         }
     }
 }
@@ -173,6 +253,11 @@ fn parse_settings(content: &str) -> Settings {
         .and_then(as_f32)
         .map(|size| size.clamp(*MONO_FONT_SIZE_RANGE.start(), *MONO_FONT_SIZE_RANGE.end()))
         .unwrap_or(defaults.mono_font_size);
+    let invalid_tls_certificates = table
+        .and_then(|table| table.get("invalid_tls_certificates"))
+        .and_then(toml::Value::as_str)
+        .and_then(InvalidTlsCertificates::parse)
+        .unwrap_or(defaults.invalid_tls_certificates);
 
     Settings {
         theme,
@@ -180,6 +265,7 @@ fn parse_settings(content: &str) -> Settings {
         ui_font_size,
         mono_font,
         mono_font_size,
+        invalid_tls_certificates,
     }
 }
 
@@ -221,6 +307,10 @@ mod tests {
         assert_eq!(settings.ui_font_size, 13.0);
         assert_eq!(settings.mono_font, "Geist Mono");
         assert_eq!(settings.mono_font_size, 12.5);
+        assert_eq!(
+            settings.invalid_tls_certificates,
+            InvalidTlsCertificates::Warn
+        );
     }
 
     #[test]
@@ -238,6 +328,7 @@ mod tests {
             ui_font_size: 14.0,
             mono_font: "Fira Code".to_string(),
             mono_font_size: 13.5,
+            invalid_tls_certificates: InvalidTlsCertificates::Reject,
         };
 
         write_settings(dir.path(), &settings);
@@ -287,6 +378,72 @@ mod tests {
         assert_eq!(ThemeChoice::parse("DARK"), Some(ThemeChoice::Dark));
         assert_eq!(ThemeChoice::parse("Light"), Some(ThemeChoice::Light));
         assert_eq!(ThemeChoice::parse("nonsense"), None);
+    }
+
+    #[test]
+    fn invalid_tls_certificates_parses_every_value() {
+        let parse = |text: &str| parse_settings(text).invalid_tls_certificates;
+        assert_eq!(
+            parse("invalid_tls_certificates = \"warn\"\n"),
+            InvalidTlsCertificates::Warn
+        );
+        assert_eq!(
+            parse("invalid_tls_certificates = \"reject\"\n"),
+            InvalidTlsCertificates::Reject
+        );
+        assert_eq!(
+            parse("invalid_tls_certificates = \"ACCEPT\"\n"),
+            InvalidTlsCertificates::Accept
+        );
+    }
+
+    #[test]
+    fn invalid_tls_certificates_falls_back_to_warn() {
+        let parse = |text: &str| parse_settings(text).invalid_tls_certificates;
+        assert_eq!(parse(""), InvalidTlsCertificates::Warn);
+        assert_eq!(
+            parse("invalid_tls_certificates = \"nonsense\"\n"),
+            InvalidTlsCertificates::Warn
+        );
+        assert_eq!(
+            parse("invalid_tls_certificates = 3\n"),
+            InvalidTlsCertificates::Warn
+        );
+    }
+
+    #[test]
+    fn invalid_tls_certificates_serializes_as_its_toml_value() {
+        let settings = Settings {
+            invalid_tls_certificates: InvalidTlsCertificates::Accept,
+            ..Settings::default()
+        };
+        let text = toml::to_string_pretty(&settings).expect("serialize");
+        assert!(
+            text.contains("invalid_tls_certificates = \"accept\""),
+            "{text}"
+        );
+    }
+
+    #[test]
+    fn invalid_tls_certificates_maps_to_the_http_modes() {
+        assert_eq!(
+            InvalidTlsCertificates::Warn.to_http(),
+            InvalidCertificates::SendWithWarning
+        );
+        assert_eq!(
+            InvalidTlsCertificates::Reject.to_http(),
+            InvalidCertificates::Reject
+        );
+        assert_eq!(
+            InvalidTlsCertificates::Accept.to_http(),
+            InvalidCertificates::Accept
+        );
+    }
+
+    #[test]
+    fn categories_start_on_appearance() {
+        assert_eq!(SettingsCategory::default(), SettingsCategory::Appearance);
+        assert_eq!(SettingsCategory::Requests.label(), "Requests");
     }
 
     #[test]

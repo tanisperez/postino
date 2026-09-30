@@ -13,7 +13,7 @@ use std::time::Duration;
 
 use postino_core::{Method, ResolvedBody, ResolvedField, ResolvedRequest};
 use postino_http::test_support::{CapturedRequest, StubResponse, TestServer};
-use postino_http::{HttpError, SendOptions};
+use postino_http::{HttpError, InvalidCertificates, SendOptions};
 
 /// A bare request for `method` against `url`, no headers, no body.
 fn request_to(method: Method, url: impl Into<String>) -> ResolvedRequest {
@@ -399,11 +399,11 @@ fn untrusted_certificate_is_sent_anyway_with_a_warning() {
 }
 
 #[test]
-fn no_warning_when_verification_is_disabled() {
-    // With verification already off the request goes through and no warning is set.
+fn accept_sends_without_a_warning() {
+    // `Accept` never verifies, so the request goes through and no warning is set.
     let (url, _requests, handle) = start_tls_server();
     let options = SendOptions {
-        verify_tls: false,
+        invalid_certificates: InvalidCertificates::Accept,
         ..SendOptions::default()
     };
 
@@ -411,5 +411,28 @@ fn no_warning_when_verification_is_disabled() {
         postino_http::send(&request_to(Method::Get, format!("{url}/")), &options).expect("ok");
 
     assert_eq!(response.tls_warning, None);
+    handle.join().expect("server thread");
+}
+
+#[test]
+fn reject_fails_on_an_untrusted_certificate() {
+    let (url, _requests, handle) = start_tls_server();
+    let options = SendOptions {
+        invalid_certificates: InvalidCertificates::Reject,
+        ..SendOptions::default()
+    };
+
+    let result = postino_http::send(&request_to(Method::Get, format!("{url}/")), &options);
+
+    match result {
+        Err(HttpError::Certificate(reason)) => {
+            assert!(reason.contains("unknown issuer"), "{reason}");
+        }
+        other => panic!("expected a certificate error, got {other:?}"),
+    }
+    let message = HttpError::Certificate("unknown issuer".to_string()).to_string();
+    assert_eq!(message, "invalid TLS certificate: unknown issuer");
+    // Nothing connected after the rejected handshake: stop the server thread's second accept.
+    let _ = std::net::TcpStream::connect(url.trim_start_matches("https://"));
     handle.join().expect("server thread");
 }

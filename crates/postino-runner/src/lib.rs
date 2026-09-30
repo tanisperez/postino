@@ -13,7 +13,7 @@ mod runner;
 mod script_bridge;
 mod session_env;
 
-pub use postino_http::SendOptions;
+pub use postino_http::{InvalidCertificates, SendOptions};
 pub use postino_script::ScriptEngine;
 pub use preview::{Preview, UnknownVariable, VariableLocation, preview};
 pub use result::{FailedStage, RunResult};

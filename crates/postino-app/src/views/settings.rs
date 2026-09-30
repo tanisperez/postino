@@ -18,7 +18,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::state;
-use crate::state::settings::{Settings, ThemeChoice};
+use crate::state::settings::{InvalidTlsCertificates, Settings, SettingsCategory, ThemeChoice};
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_LG, RADIUS_MD};
 use crate::theme::{self, Palette, PaletteExt};
 
@@ -98,8 +98,28 @@ impl AppView {
             ThemeChoice::Light => Theme::change(ThemeMode::Light, Some(window), cx),
             ThemeChoice::Dark => Theme::change(ThemeMode::Dark, Some(window), cx),
         }
+        // The next request, normal or load test, reads these options.
+        self.send_options.invalid_certificates =
+            self.state.settings.invalid_tls_certificates.to_http();
         state::settings::save_settings(&self.state.settings);
         cx.notify();
+    }
+
+    /// Picks the Settings category shown in the right column.
+    fn set_settings_category(&mut self, category: SettingsCategory, cx: &mut Context<Self>) {
+        self.settings_category = category;
+        cx.notify();
+    }
+
+    /// Picks what to do with an invalid TLS certificate.
+    fn set_invalid_tls_certificates(
+        &mut self,
+        choice: InvalidTlsCertificates,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.state.settings.invalid_tls_certificates = choice;
+        self.apply_settings_live(window, cx);
     }
 
     /// Toggles between the light and dark theme (the command palette's "Toggle theme" action,
@@ -177,15 +197,22 @@ fn render_settings_body(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
         return div().into_any_element();
     };
     let settings = view.read(cx).state.settings.clone();
+    let category = view.read(cx).settings_category;
     let palette = cx.palette();
     let mono_font_family = cx.theme().mono_font_family.clone();
     let installed = cx.text_system().all_font_names();
 
     h_flex()
         .size_full()
-        .child(render_nav(&palette, &mono_font_family))
+        .child(render_nav(
+            weak.clone(),
+            &palette,
+            &mono_font_family,
+            category,
+        ))
         .child(render_right_column(
             weak,
+            category,
             &palette,
             &settings,
             &installed,
@@ -194,8 +221,13 @@ fn render_settings_body(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
         .into_any_element()
 }
 
-/// The left nav: "Settings" title, the single "Appearance" item, and the "Saved to" footer.
-fn render_nav(palette: &Palette, mono_font_family: &SharedString) -> AnyElement {
+/// The left nav: "Settings" title, one item per category, and the "Saved to" footer.
+fn render_nav(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    mono_font_family: &SharedString,
+    current: SettingsCategory,
+) -> AnyElement {
     let path_label = state::settings::settings_path()
         .map(|path| state::format::shorten_path(&path, dirs::home_dir().as_deref()))
         .unwrap_or_else(|| "unknown".to_string());
@@ -219,18 +251,10 @@ fn render_nav(palette: &Palette, mono_font_family: &SharedString) -> AnyElement 
                 .text_size(px(14.0))
                 .child("Settings"),
         )
-        .child(
-            h_flex()
-                .h(px(28.0))
-                .items_center()
-                .gap_2()
-                .px(px(8.0))
-                .rounded(px(RADIUS_MD - 1.0))
-                .bg(palette.accent_subtle)
-                .text_color(palette.accent_text)
-                .font_weight(FontWeight::MEDIUM)
-                .child(Icon::new(IconName::Palette).small())
-                .child("Appearance"),
+        .children(
+            SettingsCategory::ALL.into_iter().map(|category| {
+                render_nav_item(weak.clone(), palette, category, category == current)
+            }),
         )
         .child(div().flex_1())
         .child(
@@ -249,9 +273,46 @@ fn render_nav(palette: &Palette, mono_font_family: &SharedString) -> AnyElement 
         .into_any_element()
 }
 
-/// The right column: header, scrollable body (theme, interface, editor) and footer.
+/// One nav item: highlighted when `selected`, hover and pressed backgrounds otherwise.
+fn render_nav_item(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    category: SettingsCategory,
+    selected: bool,
+) -> AnyElement {
+    let (id, icon) = match category {
+        SettingsCategory::Appearance => ("settings-nav-appearance", IconName::Palette),
+        SettingsCategory::Requests => ("settings-nav-requests", IconName::Globe),
+    };
+    let item = h_flex()
+        .id(id)
+        .h(px(28.0))
+        .items_center()
+        .gap_2()
+        .px(px(8.0))
+        .rounded(px(RADIUS_MD - 1.0))
+        .cursor_pointer();
+    let item = if selected {
+        item.bg(palette.accent_subtle)
+            .text_color(palette.accent_text)
+            .font_weight(FontWeight::MEDIUM)
+    } else {
+        let (hover, pressed) = (palette.hover, palette.pressed);
+        item.hover(move |style| style.bg(hover))
+            .active(move |style| style.bg(pressed))
+    };
+    item.child(Icon::new(icon).small())
+        .child(category.label())
+        .on_click(move |_, _, cx| {
+            let _ = weak.update(cx, |view, cx| view.set_settings_category(category, cx));
+        })
+        .into_any_element()
+}
+
+/// The right column: header, scrollable body (the selected category's sections) and footer.
 fn render_right_column(
     weak: WeakEntity<AppView>,
+    category: SettingsCategory,
     palette: &Palette,
     settings: &Settings,
     installed: &[String],
@@ -261,7 +322,7 @@ fn render_right_column(
         .flex_1()
         .min_w_0()
         .h_full()
-        .child(render_header(palette))
+        .child(render_header(palette, category))
         .child(
             v_flex()
                 .id("settings-body")
@@ -270,23 +331,32 @@ fn render_right_column(
                 .overflow_y_scroll()
                 .p(px(20.0))
                 .gap(px(22.0))
-                .child(render_theme_section(weak.clone(), palette, settings.theme))
-                .child(divider(palette))
-                .child(render_interface_section(
-                    weak.clone(),
-                    palette,
-                    settings,
-                    installed,
-                    mono_font_family,
-                ))
-                .child(divider(palette))
-                .child(render_editor_section(
-                    weak.clone(),
-                    palette,
-                    settings,
-                    installed,
-                    mono_font_family,
-                )),
+                .children(match category {
+                    SettingsCategory::Appearance => vec![
+                        render_theme_section(weak.clone(), palette, settings.theme),
+                        divider(palette),
+                        render_interface_section(
+                            weak.clone(),
+                            palette,
+                            settings,
+                            installed,
+                            mono_font_family,
+                        ),
+                        divider(palette),
+                        render_editor_section(
+                            weak.clone(),
+                            palette,
+                            settings,
+                            installed,
+                            mono_font_family,
+                        ),
+                    ],
+                    SettingsCategory::Requests => vec![render_tls_section(
+                        weak.clone(),
+                        palette,
+                        settings.invalid_tls_certificates,
+                    )],
+                }),
         )
         .child(render_footer(weak, palette))
         .into_any_element()
@@ -297,8 +367,8 @@ fn divider(palette: &Palette) -> AnyElement {
     div().h(px(1.0)).bg(palette.border).into_any_element()
 }
 
-/// The right column's header: "Appearance" title and the close button.
-fn render_header(palette: &Palette) -> AnyElement {
+/// The right column's header: the category title and the close button.
+fn render_header(palette: &Palette, category: SettingsCategory) -> AnyElement {
     h_flex()
         .h(px(HEADER_FOOTER_HEIGHT))
         .flex_none()
@@ -311,7 +381,7 @@ fn render_header(palette: &Palette) -> AnyElement {
             div()
                 .text_size(px(15.0))
                 .font_weight(FontWeight::SEMIBOLD)
-                .child("Appearance"),
+                .child(category.label()),
         )
         .child(
             IconButton::new("settings-close", IconName::Close)
@@ -596,6 +666,64 @@ fn render_editor_section(
             palette,
             mono_font_family.clone(),
             settings.mono_font_size,
+        ))
+        .into_any_element()
+}
+
+/// The "TLS" section of the Requests pane: what to do with an invalid certificate.
+fn render_tls_section(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    current: InvalidTlsCertificates,
+) -> AnyElement {
+    let trigger = Button::new("settings-invalid-certificates")
+        .ghost()
+        .w(px(SELECT_WIDTH))
+        .h(px(CONTROL_HEIGHT))
+        .px(px(10.0))
+        .rounded(px(RADIUS_MD - 1.0))
+        .border_1()
+        .border_color(palette.border_strong)
+        .bg(palette.raised)
+        .text_color(palette.fg)
+        .child(
+            h_flex()
+                .w_full()
+                .items_center()
+                .justify_between()
+                .child(div().child(current.label()))
+                .child(
+                    Icon::new(IconName::ChevronsUpDown)
+                        .small()
+                        .text_color(palette.fg_subtle),
+                ),
+        );
+    let control = trigger
+        .dropdown_menu(move |mut menu, _, _| {
+            for choice in InvalidTlsCertificates::ALL {
+                let target = weak.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(choice.label())
+                        .checked(choice == current)
+                        .on_click(move |_, window, cx| {
+                            let _ = target.update(cx, |view, cx| {
+                                view.set_invalid_tls_certificates(choice, window, cx)
+                            });
+                        }),
+                );
+            }
+            menu
+        })
+        .into_any_element();
+
+    v_flex()
+        .gap(px(14.0))
+        .child(div().font_weight(FontWeight::MEDIUM).child("TLS"))
+        .child(labeled_row(
+            palette,
+            "Invalid certificates",
+            Some("Self-signed, expired or mismatched server certificates."),
+            control,
         ))
         .into_any_element()
 }

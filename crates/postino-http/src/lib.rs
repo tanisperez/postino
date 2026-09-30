@@ -15,5 +15,5 @@ mod send;
 pub mod test_support;
 
 pub use error::HttpError;
-pub use options::SendOptions;
+pub use options::{InvalidCertificates, SendOptions};
 pub use send::send;

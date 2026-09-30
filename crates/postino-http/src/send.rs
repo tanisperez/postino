@@ -6,7 +6,7 @@ use std::time::Instant;
 use postino_core::{ResolvedBody, ResolvedField, ResolvedRequest, Response};
 
 use crate::error::HttpError;
-use crate::options::SendOptions;
+use crate::options::{InvalidCertificates, SendOptions};
 
 /// Sends a fully resolved request over HTTP and returns the response.
 ///
@@ -15,27 +15,27 @@ use crate::options::SendOptions;
 /// timeout, too many redirects, a connection failure, ...) are errors. The returned response's
 /// `time` is the total time spent sending the request and reading the whole response body.
 ///
-/// When `options.verify_tls` is on and the server's certificate is rejected (self-signed, expired,
-/// wrong host, ...), the request is sent once more with verification disabled, and the returned
-/// response carries a [`Response::tls_warning`]. This is safe for any method: a certificate
-/// error aborts the TLS handshake, before any request byte is written.
+/// With [`InvalidCertificates::SendWithWarning`] and a server certificate that is rejected
+/// (self-signed, expired, wrong host, ...), the request is sent once more with verification
+/// disabled, and the returned response carries a [`Response::tls_warning`]. This is safe for
+/// any method: a certificate error aborts the TLS handshake, before any request byte is written.
 pub fn send(request: &ResolvedRequest, options: &SendOptions) -> Result<Response, HttpError> {
     let http_request = build_http_request(request)?;
     let started = Instant::now();
 
-    let (response, tls_warning) =
-        match run(&build_agent(options, options.verify_tls), &http_request) {
-            Err(error) if options.verify_tls && is_certificate_error(&error) => {
-                let warning = format!(
-                    "TLS certificate not verified: {}",
-                    certificate_reason(&error)
-                );
-                let retry =
-                    run(&build_agent(options, false), &http_request).map_err(map_ureq_error)?;
-                (retry, Some(warning))
-            }
-            other => (other.map_err(map_ureq_error)?, None),
-        };
+    let verify = options.invalid_certificates != InvalidCertificates::Accept;
+    let fallback = options.invalid_certificates == InvalidCertificates::SendWithWarning;
+    let (response, tls_warning) = match run(&build_agent(options, verify), &http_request) {
+        Err(error) if fallback && is_certificate_error(&error) => {
+            let warning = format!(
+                "TLS certificate not verified: {}",
+                certificate_reason(&error)
+            );
+            let retry = run(&build_agent(options, false), &http_request).map_err(map_ureq_error)?;
+            (retry, Some(warning))
+        }
+        other => (other.map_err(map_ureq_error)?, None),
+    };
     finish(response, started, tls_warning)
 }
 
@@ -181,6 +181,7 @@ fn map_ureq_error(error: ureq::Error) -> HttpError {
     match error {
         ureq::Error::Timeout(_) => HttpError::Timeout,
         ureq::Error::TooManyRedirects => HttpError::TooManyRedirects,
+        other if is_certificate_error(&other) => HttpError::Certificate(certificate_reason(&other)),
         other => HttpError::Network(other),
     }
 }

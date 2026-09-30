@@ -26,7 +26,7 @@ use crate::actions::{
     SelectNoEnvironment, SendActiveTab,
 };
 use crate::state::debug_open::{self, DebugOpenTarget};
-use crate::state::settings::Settings;
+use crate::state::settings::{Settings, SettingsCategory};
 use crate::state::ui_tabs::{self, RequestTab, ResponseTab};
 use crate::state::{self, AppState};
 use crate::views::components::{
@@ -89,9 +89,11 @@ pub struct AppView {
     /// send task; `QuickJsEngine` needs no per-run state, a fresh QuickJS runtime is created for
     /// every script run (see `postino-script`).
     pub(crate) script_engine: Arc<dyn ScriptEngine>,
-    /// The options every send uses (timeout, redirects, TLS verification). Defaults are fine for
-    /// the MVP; there is no UI to change them yet.
+    /// The options every send and load test run uses (timeout, redirects, TLS verification). The
+    /// invalid TLS certificate mode comes from Settings, "Requests"; the rest are the defaults.
     pub(crate) send_options: SendOptions,
+    /// The category the Settings modal shows (`views/settings.rs`).
+    pub(crate) settings_category: SettingsCategory,
     /// The UI state `POSTINO_OPEN` requested at startup, if any (`state::debug_open`). `None` on
     /// a normal launch.
     pub(crate) debug_open: Option<DebugOpenTarget>,
@@ -154,6 +156,10 @@ impl AppView {
         .detach();
         let focus_handle = cx.focus_handle();
 
+        let send_options = SendOptions {
+            invalid_certificates: settings.invalid_tls_certificates.to_http(),
+            ..SendOptions::default()
+        };
         let mut view = Self {
             focus_handle: focus_handle.clone(),
             state: AppState {
@@ -172,7 +178,8 @@ impl AppView {
             sending: None,
             responses: HashMap::new(),
             script_engine: Arc::new(QuickJsEngine),
-            send_options: SendOptions::default(),
+            send_options,
+            settings_category: SettingsCategory::default(),
             debug_open: None,
             gallery_url_input: None,
             sidebar_filter_input,
@@ -214,7 +221,10 @@ impl AppView {
                     InputState::new(window, cx).default_value("{{baseUrl}}/users/{{missing}}")
                 }));
             }
-            DebugOpenTarget::Settings => {
+            DebugOpenTarget::Settings | DebugOpenTarget::SettingsRequests => {
+                if target == DebugOpenTarget::SettingsRequests {
+                    self.settings_category = SettingsCategory::Requests;
+                }
                 // Opening a dialog needs the window's `Root` (`WindowExt::open_dialog` panics
                 // otherwise, "window first layer should be a gpui_component::Root"), which does
                 // not exist yet this early: `AppView::new` (this hook's caller) still runs inside

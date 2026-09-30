@@ -28,23 +28,35 @@ pub struct SendOptions {
     /// Defaults to 10.
     pub max_redirects: u32,
 
-    /// Whether to verify the server's TLS certificate for `https://` requests.
+    /// What to do when an `https://` server presents an invalid TLS certificate (self-signed,
+    /// expired, for another host, ...). See [`InvalidCertificates`].
     ///
-    /// Turning this off accepts any certificate, including self-signed or expired ones. It
-    /// should only be used for testing against a known server.
-    ///
-    /// Defaults to `true`.
-    pub verify_tls: bool,
+    /// Defaults to [`InvalidCertificates::SendWithWarning`].
+    pub invalid_certificates: InvalidCertificates,
+}
+
+/// What [`crate::send`] does when the server's TLS certificate is invalid.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum InvalidCertificates {
+    /// Verify the certificate. When it is rejected, send the request once more without
+    /// verification and set [`postino_core::Response::tls_warning`] on the response.
+    #[default]
+    SendWithWarning,
+    /// Verify the certificate. When it is rejected, fail with an error and do not retry.
+    Reject,
+    /// Never verify the certificate: any certificate is accepted, with no warning.
+    Accept,
 }
 
 impl Default for SendOptions {
-    /// Thirty second timeout, redirects followed up to 10 times, TLS certificates verified.
+    /// Thirty second timeout, redirects followed up to 10 times, and requests to servers with an
+    /// invalid TLS certificate sent anyway with a warning.
     fn default() -> Self {
         Self {
             timeout: Duration::from_secs(30),
             follow_redirects: true,
             max_redirects: 10,
-            verify_tls: true,
+            invalid_certificates: InvalidCertificates::SendWithWarning,
         }
     }
 }
@@ -60,6 +72,9 @@ mod tests {
         assert_eq!(options.timeout, Duration::from_secs(30));
         assert!(options.follow_redirects);
         assert_eq!(options.max_redirects, 10);
-        assert!(options.verify_tls);
+        assert_eq!(
+            options.invalid_certificates,
+            InvalidCertificates::SendWithWarning
+        );
     }
 }

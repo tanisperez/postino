@@ -20,6 +20,11 @@ pub enum HttpError {
     #[error("too many redirects")]
     TooManyRedirects,
 
+    /// The server's TLS certificate was rejected and [`crate::InvalidCertificates::Reject`] is
+    /// in effect. Holds a short reason, such as "unknown issuer (self-signed?)".
+    #[error("invalid TLS certificate: {0}")]
+    Certificate(String),
+
     /// Any other failure while talking to the server: DNS resolution, connecting, TLS,
     /// reading or writing the socket, or a malformed HTTP response.
     #[error("network error: {0}")]
