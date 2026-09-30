@@ -430,7 +430,10 @@ pub(super) fn theme_colors_and_highlight(dark: bool) -> (serde_json::Value, serd
         "primary.foreground": tokens.accent_fg,
         "link": tokens.accent_text,
         "accent.background": tokens.accent_subtle,
-        "selection.background": tokens.accent_subtle,
+        // Text selection in every input: the accent at the most alpha gpui-component allows a
+        // selection (0.3, `Theme::apply_config`'s `clamp_alpha`). `accent_subtle`, used before,
+        // is almost the input's own background, so a selection showed no highlight at all.
+        "selection.background": format!("{}{SELECTION_ALPHA_HEX}", tokens.accent),
         "list.active.background": tokens.accent_subtle,
         "list.hover.background": tokens.hover,
         "button.hover.background": tokens.hover,
@@ -507,6 +510,10 @@ fn rgba(r: u8, g: u8, b: u8, a: f32) -> Hsla {
     }
     .into()
 }
+
+/// The alpha byte appended to the accent's `#rrggbb` for the text selection highlight: `4d` is
+/// 0.3, the cap gpui-component applies to `selection.background`.
+const SELECTION_ALPHA_HEX: &str = "4d";
 
 /// One `shade` step (GitHub #17 follow-up), in HSL lightness. `accent_hover`/`danger_hover` are
 /// one step, `accent_pressed`/`danger_pressed` two.
