@@ -89,6 +89,7 @@ pub(crate) fn pick_and_import(
         let json = match std::fs::read_to_string(&path) {
             Ok(json) => json,
             Err(error) => {
+                log::warn!("import: could not read {}: {error}", path.display());
                 let _ = view.update(cx, |view, cx| {
                     view.workspace_error =
                         Some(format!("could not read {}: {error}", path.display()));
@@ -117,11 +118,28 @@ pub(crate) fn pick_and_import(
 
         match outcome {
             Some(Ok(report)) => {
+                log::info!(
+                    "imported {} as a Postman {}: {} files created, {} warnings",
+                    path.display(),
+                    match kind {
+                        ImportKind::Collection => "collection",
+                        ImportKind::Environment => "environment",
+                    },
+                    report.created_files.len(),
+                    report.warnings.len(),
+                );
+                for warning in &report.warnings {
+                    log::debug!("import warning: {warning}");
+                }
                 let _ = cx.update_window(window_handle, move |_, window, cx| {
                     show_import_report_dialog(kind, report, window, cx);
                 });
             }
             Some(Err(error)) => {
+                crate::state::workspace_log::log_workspace_error(
+                    &format!("import {}", path.display()),
+                    &error,
+                );
                 let _ = view.update(cx, |view, cx| {
                     view.workspace_error = Some(error.to_string());
                     cx.notify();

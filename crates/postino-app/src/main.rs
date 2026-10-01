@@ -6,11 +6,12 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 mod actions;
+mod logging;
 mod state;
 mod theme;
 mod views;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use gpui_kit::component::theme::{Theme, ThemeMode};
 use gpui_kit::component::{Root, TitleBar};
@@ -26,6 +27,21 @@ use state::settings::ThemeChoice;
 use views::AppView;
 
 fn main() {
+    // Settings first, for the log level: the logger is installed before anything else runs, so
+    // every later message (gpui's own included) reaches the log file.
+    let settings = state::settings::load_settings();
+    let env_level = std::env::var(logging::ENV_VAR).ok();
+    let log_level = logging::startup_level(settings.log_level, env_level.as_deref());
+    let log_path = logging::init(log_level.to_filter());
+    let from_env = env_level
+        .as_deref()
+        .and_then(state::settings::LogLevel::parse)
+        .is_some();
+    log_startup(log_level, from_env, log_path.as_deref());
+    if let Some(value) = env_level.filter(|_| !from_env) {
+        log::warn!("ignoring {}={value:?}: not a log level", logging::ENV_VAR);
+    }
+
     // The workspace folder to open on startup: the first CLI argument if given (handy for
     // testing), otherwise the folder remembered from the previous run.
     let initial_workspace: Option<PathBuf> = std::env::args()
@@ -33,9 +49,6 @@ fn main() {
         .map(PathBuf::from)
         .or_else(state::config::load_last_workspace);
 
-    // Settings are not wired to a UI yet (Phase 6), but startup already honors whatever is on
-    // disk (or the documented defaults: System theme, Geist 13px, Geist Mono 12.5px).
-    let settings = state::settings::load_settings();
     let theme_choice = settings.theme;
 
     // `with_assets` registers the bundled icon SVGs. Without it every `Icon` (tree chevrons,
@@ -137,6 +150,37 @@ fn main() {
             })
             .detach();
         });
+}
+
+/// Logs where and how Postino runs: the first lines of every session, and the ones a bug report
+/// needs first.
+fn log_startup(level: state::settings::LogLevel, from_env: bool, log_path: Option<&Path>) {
+    log::info!(
+        "Postino {} starting ({} build) on {} {}",
+        env!("CARGO_PKG_VERSION"),
+        if cfg!(debug_assertions) {
+            "debug"
+        } else {
+            "release"
+        },
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+    );
+    log::info!(
+        "log level {}{}, log file {}",
+        level.label(),
+        if from_env {
+            format!(" (from {})", logging::ENV_VAR)
+        } else {
+            String::new()
+        },
+        log_path.map_or_else(|| "none".to_string(), |path| path.display().to_string()),
+    );
+    log::info!(
+        "settings file {}",
+        state::settings::settings_path()
+            .map_or_else(|| "unknown".to_string(), |path| path.display().to_string()),
+    );
 }
 
 /// Registers the app's key bindings. `None` as the context means the binding applies anywhere in

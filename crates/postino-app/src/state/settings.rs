@@ -60,18 +60,24 @@ pub enum SettingsCategory {
     Appearance,
     /// How requests are sent (TLS certificates).
     Requests,
+    /// Diagnostics: the log level and the log file.
+    Advanced,
 }
 
 impl SettingsCategory {
     /// Every category, in the order the nav lists them.
-    pub const ALL: [SettingsCategory; 2] =
-        [SettingsCategory::Appearance, SettingsCategory::Requests];
+    pub const ALL: [SettingsCategory; 3] = [
+        SettingsCategory::Appearance,
+        SettingsCategory::Requests,
+        SettingsCategory::Advanced,
+    ];
 
     /// The nav item label, also the pane's title.
     pub fn label(self) -> &'static str {
         match self {
             SettingsCategory::Appearance => "Appearance",
             SettingsCategory::Requests => "Requests",
+            SettingsCategory::Advanced => "Advanced",
         }
     }
 }
@@ -128,8 +134,80 @@ impl InvalidTlsCertificates {
     }
 }
 
+/// How much Postino writes to its log file (`crate::logging`), chosen in Settings, "Advanced".
+/// Stored in `settings.toml` as `log_level = "off" | "error" | "warn" | "info" | "debug" |
+/// "trace"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LogLevel {
+    /// Nothing is logged.
+    Off,
+    /// Only errors.
+    Error,
+    /// Errors and warnings.
+    Warn,
+    /// Startup, workspace and request summaries, plus warnings and errors.
+    #[default]
+    Info,
+    /// Also timings and state changes useful to diagnose a problem.
+    Debug,
+    /// Everything Postino and gpui log, including every render, plus third party crates' Info
+    /// messages. Verbose.
+    Trace,
+}
+
+impl LogLevel {
+    /// Every level, in the order the Settings view lists them.
+    pub const ALL: [LogLevel; 6] = [
+        LogLevel::Off,
+        LogLevel::Error,
+        LogLevel::Warn,
+        LogLevel::Info,
+        LogLevel::Debug,
+        LogLevel::Trace,
+    ];
+
+    /// Parses a level as read from the settings file or the `POSTINO_LOG` environment variable,
+    /// case-insensitive. Returns `None` for anything else, so the caller can fall back.
+    pub fn parse(text: &str) -> Option<Self> {
+        match text.trim().to_ascii_lowercase().as_str() {
+            "off" => Some(LogLevel::Off),
+            "error" => Some(LogLevel::Error),
+            "warn" | "warning" => Some(LogLevel::Warn),
+            "info" => Some(LogLevel::Info),
+            "debug" => Some(LogLevel::Debug),
+            "trace" => Some(LogLevel::Trace),
+            _ => None,
+        }
+    }
+
+    /// The label shown in the Settings view.
+    pub fn label(self) -> &'static str {
+        match self {
+            LogLevel::Off => "Off",
+            LogLevel::Error => "Error",
+            LogLevel::Warn => "Warn",
+            LogLevel::Info => "Info",
+            LogLevel::Debug => "Debug",
+            LogLevel::Trace => "Trace",
+        }
+    }
+
+    /// The matching `log` crate filter.
+    pub fn to_filter(self) -> log::LevelFilter {
+        match self {
+            LogLevel::Off => log::LevelFilter::Off,
+            LogLevel::Error => log::LevelFilter::Error,
+            LogLevel::Warn => log::LevelFilter::Warn,
+            LogLevel::Info => log::LevelFilter::Info,
+            LogLevel::Debug => log::LevelFilter::Debug,
+            LogLevel::Trace => log::LevelFilter::Trace,
+        }
+    }
+}
+
 /// User-configurable settings: the theme mode, the two fonts (UI and editor) with their sizes,
-/// and how requests treat invalid TLS certificates.
+/// how requests treat invalid TLS certificates, and the log level.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Settings {
     /// The theme mode: system, light or dark.
@@ -144,6 +222,8 @@ pub struct Settings {
     pub mono_font_size: f32,
     /// What to do with an invalid TLS certificate.
     pub invalid_tls_certificates: InvalidTlsCertificates,
+    /// How much is written to the log file.
+    pub log_level: LogLevel,
 }
 
 impl Default for Settings {
@@ -155,6 +235,7 @@ impl Default for Settings {
             mono_font: "Geist Mono".to_string(),
             mono_font_size: 12.5,
             invalid_tls_certificates: InvalidTlsCertificates::default(),
+            log_level: LogLevel::default(),
         }
     }
 }
@@ -170,7 +251,7 @@ pub fn load_settings() -> Settings {
 
 /// Saves `settings` to `<config dir>/postino/settings.toml`, creating the folder if needed.
 /// Failing to persist this is not worth interrupting the user over, so any error (a missing
-/// config directory, a read-only filesystem, ...) is silently ignored.
+/// config directory, a read-only filesystem, ...) is only logged.
 pub fn save_settings(settings: &Settings) {
     if let Some(base) = dirs::config_dir() {
         write_settings(&base, settings);
@@ -258,6 +339,11 @@ fn parse_settings(content: &str) -> Settings {
         .and_then(toml::Value::as_str)
         .and_then(InvalidTlsCertificates::parse)
         .unwrap_or(defaults.invalid_tls_certificates);
+    let log_level = table
+        .and_then(|table| table.get("log_level"))
+        .and_then(toml::Value::as_str)
+        .and_then(LogLevel::parse)
+        .unwrap_or(defaults.log_level);
 
     Settings {
         theme,
@@ -266,6 +352,7 @@ fn parse_settings(content: &str) -> Settings {
         mono_font,
         mono_font_size,
         invalid_tls_certificates,
+        log_level,
     }
 }
 
@@ -284,13 +371,20 @@ fn write_settings(base: &Path, settings: &Settings) {
     let Some(parent) = path.parent() else {
         return;
     };
-    if fs::create_dir_all(parent).is_err() {
+    if let Err(error) = fs::create_dir_all(parent) {
+        log::warn!("could not create {}: {error}", parent.display());
         return;
     }
-    let Ok(text) = toml::to_string_pretty(settings) else {
-        return;
+    let text = match toml::to_string_pretty(settings) {
+        Ok(text) => text,
+        Err(error) => {
+            log::warn!("could not serialize the settings: {error}");
+            return;
+        }
     };
-    let _ = fs::write(path, text);
+    if let Err(error) = fs::write(&path, text) {
+        log::warn!("could not save {}: {error}", path.display());
+    }
 }
 
 #[cfg(test)]
@@ -311,6 +405,7 @@ mod tests {
             settings.invalid_tls_certificates,
             InvalidTlsCertificates::Warn
         );
+        assert_eq!(settings.log_level, LogLevel::Info);
     }
 
     #[test]
@@ -329,6 +424,7 @@ mod tests {
             mono_font: "Fira Code".to_string(),
             mono_font_size: 13.5,
             invalid_tls_certificates: InvalidTlsCertificates::Reject,
+            log_level: LogLevel::Trace,
         };
 
         write_settings(dir.path(), &settings);
@@ -438,6 +534,35 @@ mod tests {
             InvalidTlsCertificates::Accept.to_http(),
             InvalidCertificates::Accept
         );
+    }
+
+    #[test]
+    fn log_level_parses_every_value_and_falls_back_to_info() {
+        let parse = |text: &str| parse_settings(text).log_level;
+        for level in LogLevel::ALL {
+            let text = format!("log_level = \"{}\"\n", level.label().to_uppercase());
+            assert_eq!(parse(&text), level);
+        }
+        assert_eq!(parse(""), LogLevel::Info);
+        assert_eq!(parse("log_level = \"loud\"\n"), LogLevel::Info);
+        assert_eq!(LogLevel::parse(" warning "), Some(LogLevel::Warn));
+    }
+
+    #[test]
+    fn log_level_serializes_as_its_toml_value() {
+        let settings = Settings {
+            log_level: LogLevel::Debug,
+            ..Settings::default()
+        };
+        let text = toml::to_string_pretty(&settings).expect("serialize");
+        assert!(text.contains("log_level = \"debug\""), "{text}");
+    }
+
+    #[test]
+    fn log_level_maps_to_the_log_filters() {
+        assert_eq!(LogLevel::Off.to_filter(), log::LevelFilter::Off);
+        assert_eq!(LogLevel::Info.to_filter(), log::LevelFilter::Info);
+        assert_eq!(LogLevel::Trace.to_filter(), log::LevelFilter::Trace);
     }
 
     #[test]

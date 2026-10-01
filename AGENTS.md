@@ -120,6 +120,28 @@ Found in the 2026-09-30 investigation (#32, #33, #34). Keep these rules in every
   alternate builds (another profile, a dependency upgrade) under a subdirectory of `target/`:
   a full gpui build takes several GB.
 
+## Logging
+
+Added in #36. `postino-app/src/logging.rs` installs a small logger behind the `log` facade, so
+gpui, wgpu, ureq and rustls messages reach it too. Library crates only depend on `log`.
+
+- File: `~/.local/state/postino/postino.log` on Linux (`$XDG_STATE_HOME`),
+  `~/Library/Logs/Postino/` on macOS, `%LOCALAPPDATA%\Postino\logs\` on Windows. Rotated at
+  5 MB, 10 files at most.
+- Level: Settings, "Advanced" (`log_level` in `settings.toml`, Info by default). `POSTINO_LOG`
+  overrides it at startup. Crates other than `postino*` and `gpui*` are capped at Warn, or Info
+  at Trace (`naga` alone writes about 20 MB at Debug on every startup).
+- What goes where: Info for startup, workspace opened, one line per request sent from a tab,
+  imports, load test start and end, settings changes. Warn for failed operations. Debug for
+  tabs, environments, saves and response render cache rebuilds. Trace for runner stage timings,
+  request headers, and one line per `AppView` render: a render count that grows while the app is
+  idle breaks the idle rule below.
+- Privacy: never log a body, a variable value, a query string or a sensitive header value. Use
+  `postino_core::log_safe` (`url_for_log`, `header_value_for_log`) and
+  `state::workspace_log::log_workspace_error`, since parse errors quote file lines.
+- Load tests run `Runner::run` thousands of times: nothing per request in the runner or
+  `postino-http` above Trace.
+
 ## Working rules
 
 - Git is enabled (local repository, no remote yet). Commits are fine; never `git push` unless

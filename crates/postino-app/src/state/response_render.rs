@@ -6,7 +6,7 @@
 //! Kept free of `gpui` types so every rule is unit-tested directly.
 
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use postino_core::TemplateWarning;
 
@@ -175,7 +175,13 @@ impl BodyTextCache {
         }
         if self.pretty.is_none() {
             self.computations += 1;
+            let started = Instant::now();
             self.pretty = Some(pretty_print_json(body).map(Arc::from));
+            log::debug!(
+                "response body of {tab_id}: pretty print of {} bytes took {} us",
+                body.len(),
+                started.elapsed().as_micros()
+            );
         }
         let pretty = self.pretty.clone().flatten();
         let pretty_available = pretty.is_some();
@@ -188,7 +194,13 @@ impl BodyTextCache {
             _ => {
                 if self.raw.is_none() {
                     self.computations += 1;
+                    let started = Instant::now();
                     self.raw = Some(Arc::from(body_as_text(body)));
+                    log::debug!(
+                        "response body of {tab_id}: raw text of {} bytes took {} us",
+                        body.len(),
+                        started.elapsed().as_micros()
+                    );
                 }
                 ShownBody {
                     text: self.raw.clone().unwrap_or_else(|| Arc::from("")),

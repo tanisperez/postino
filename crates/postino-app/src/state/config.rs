@@ -102,7 +102,8 @@ fn write_recent_workspaces(base: &Path, recents: &[PathBuf]) {
     let Some(parent) = path.parent() else {
         return;
     };
-    if fs::create_dir_all(parent).is_err() {
+    if let Err(error) = fs::create_dir_all(parent) {
+        log::warn!("could not create {}: {error}", parent.display());
         return;
     }
     let mut content = recents
@@ -113,7 +114,9 @@ fn write_recent_workspaces(base: &Path, recents: &[PathBuf]) {
     if !content.is_empty() {
         content.push('\n');
     }
-    let _ = fs::write(path, content);
+    if let Err(error) = fs::write(&path, content) {
+        log::warn!("could not save {}: {error}", path.display());
+    }
 }
 
 #[cfg(test)]

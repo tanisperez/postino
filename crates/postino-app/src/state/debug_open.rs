@@ -15,6 +15,8 @@ pub enum DebugOpenTarget {
     Settings,
     /// Opens the Settings modal on its "Requests" pane.
     SettingsRequests,
+    /// Opens the Settings modal on its "Advanced" pane.
+    SettingsAdvanced,
     /// Opens the command palette (`plans/ui-redesign.md` phase 7 item 1).
     Palette,
     /// Opens the Code snippet dialog for the active tab's request (`plans/ui-redesign.md` phase
@@ -38,6 +40,7 @@ pub fn parse(value: &str) -> Option<DebugOpenTarget> {
         "components" => Some(DebugOpenTarget::Components),
         "settings" => Some(DebugOpenTarget::Settings),
         "settings-requests" => Some(DebugOpenTarget::SettingsRequests),
+        "settings-advanced" => Some(DebugOpenTarget::SettingsAdvanced),
         "palette" => Some(DebugOpenTarget::Palette),
         "snippet" => Some(DebugOpenTarget::Snippet),
         "define" => Some(DebugOpenTarget::Define),
@@ -66,6 +69,14 @@ mod tests {
         assert_eq!(
             parse("settings-requests"),
             Some(DebugOpenTarget::SettingsRequests)
+        );
+    }
+
+    #[test]
+    fn parses_settings_advanced() {
+        assert_eq!(
+            parse("settings-advanced"),
+            Some(DebugOpenTarget::SettingsAdvanced)
         );
     }
 

@@ -84,8 +84,14 @@ impl ResponseEditorEntities {
         if self.synced.as_ref() != Some(&synced)
             && let Some(editor) = &self.editor
         {
+            let started = std::time::Instant::now();
             let new_value = SharedString::from(text.clone());
             editor.update(cx, |state, cx| state.set_value(new_value, window, cx));
+            log::debug!(
+                "response editor of {tab_id} resynced with {} bytes in {} us",
+                text.len(),
+                started.elapsed().as_micros()
+            );
             self.synced = Some(synced);
         }
     }

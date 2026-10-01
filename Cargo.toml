@@ -26,6 +26,9 @@ tiny_http = "0.12"
 dirs = "7"
 dunce = "1"
 toml = "0.8"
+log = "0.4"
+# Already built by gpui-base with its default features; only the local clock is used here.
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 [workspace.lints.clippy]
 all = "warn"

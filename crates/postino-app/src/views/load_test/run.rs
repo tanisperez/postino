@@ -97,6 +97,7 @@ impl AppView {
         let targets = match self.build_load_targets(&tab_id) {
             Ok(targets) => targets,
             Err(message) => {
+                log::warn!("load test not started: {message}");
                 self.edit_load_test(&tab_id, cx, |load_test| {
                     load_test.status = LoadTestStatus::Failed(message);
                 });
@@ -127,6 +128,14 @@ impl AppView {
             stop_on_error_rate: resolved.stop_on_error_rate,
         };
         let config_summary = LoadConfigSummary::from(&config);
+        log::info!(
+            "load test started: {} targets, {} virtual users for {} s (ramp up {} s, think time {} ms)",
+            config.targets.len(),
+            config.vus,
+            config.duration.as_secs(),
+            config.ramp_up.as_secs(),
+            config.think_time.as_millis(),
+        );
         let started_at_unix = unix_now();
 
         let environment = self.active_environment();
@@ -231,6 +240,23 @@ impl AppView {
         config_summary: LoadConfigSummary,
         cx: &mut Context<Self>,
     ) {
+        let snapshot = &summary.snapshot;
+        log::info!(
+            "load test {}: {} requests in {} ms, {:.1} req/s, p50 {} us, p95 {} us, p99 {} us, \
+             {:.1}% errors",
+            if summary.stopped_early {
+                "stopped early"
+            } else {
+                "finished"
+            },
+            snapshot.total,
+            snapshot.elapsed.as_millis(),
+            snapshot.rps,
+            snapshot.p50,
+            snapshot.p95,
+            snapshot.p99,
+            snapshot.error_rate * 100.0,
+        );
         let root = self
             .state
             .workspace
@@ -265,7 +291,9 @@ impl AppView {
                 stopped_early: summary.stopped_early,
                 target_labels,
             };
-            let _ = postino_load::history::save(root, &record);
+            if let Err(error) = postino_load::history::save(root, &record) {
+                log::warn!("could not save load test run {number}: {error}");
+            }
         }
         self.refresh_load_test_history(tab_id, cx);
 

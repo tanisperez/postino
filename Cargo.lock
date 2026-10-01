@@ -5075,10 +5075,12 @@ name = "postino-app"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "dirs 7.0.0",
  "dunce",
  "embed-resource",
  "gpui-kit",
+ "log",
  "postino-core",
  "postino-format",
  "postino-load",
@@ -5118,6 +5120,7 @@ dependencies = [
 name = "postino-http"
 version = "0.1.0"
 dependencies = [
+ "log",
  "postino-core",
  "postino-http",
  "pretty_assertions",
@@ -5146,6 +5149,7 @@ dependencies = [
 name = "postino-runner"
 version = "0.1.0"
 dependencies = [
+ "log",
  "postino-core",
  "postino-http",
  "postino-script",
