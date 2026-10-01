@@ -109,7 +109,7 @@ fn collect_request_items(nodes: &[Node], items: &mut Vec<PaletteItem>) {
 pub fn environment_items(environments: &[String]) -> Vec<PaletteItem> {
     let mut items = vec![PaletteItem {
         kind: PaletteItemKind::Environment(None),
-        label: t!("shell.palette.no_environment").into_owned(),
+        label: t!("common.no_environment").into_owned(),
         detail: None,
         shortcut: Some(format!("{MODIFIER_KEY}+0")),
     }];
@@ -135,11 +135,11 @@ pub fn action_items() -> Vec<PaletteItem> {
         ),
         action_item(
             ActionId::Save,
-            t!("shell.palette.save"),
+            t!("common.save"),
             Some(format!("{MODIFIER_KEY}+S")),
         ),
-        action_item(ActionId::NewRequest, t!("shell.new_request"), None),
-        action_item(ActionId::NewFolder, t!("shell.new_folder"), None),
+        action_item(ActionId::NewRequest, t!("common.new_request"), None),
+        action_item(ActionId::NewFolder, t!("common.new_folder"), None),
         action_item(
             ActionId::ImportCollection,
             t!("shell.palette.import_collection"),
@@ -155,11 +155,7 @@ pub fn action_items() -> Vec<PaletteItem> {
             t!("shell.palette.open_settings"),
             Some(format!("{MODIFIER_KEY}+,")),
         ),
-        action_item(
-            ActionId::OpenWorkspace,
-            t!("shell.palette.open_folder"),
-            None,
-        ),
+        action_item(ActionId::OpenWorkspace, t!("common.open_folder"), None),
         action_item(
             ActionId::NewLoadTest,
             t!("shell.palette.new_load_test"),

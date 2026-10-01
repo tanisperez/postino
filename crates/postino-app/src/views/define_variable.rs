@@ -71,9 +71,7 @@ impl AppView {
         name_input.update(cx, |state, cx| {
             state.set_value(name.clone(), window, cx);
         });
-        let value_input = cx.new(|cx| {
-            InputState::new(window, cx).placeholder(t!("request.define_variable.value_placeholder"))
-        });
+        let value_input = cx.new(|cx| InputState::new(window, cx).placeholder(t!("common.value")));
         let new_environment_input = cx.new(|cx| {
             InputState::new(window, cx)
                 .placeholder(t!("request.define_variable.environment_name_placeholder"))
@@ -101,7 +99,7 @@ impl AppView {
             dialog
                 .title(t!("request.define_variable.title"))
                 .w(px(DIALOG_WIDTH))
-                .button_props(DialogButtonProps::default().ok_text(t!("request.save")))
+                .button_props(DialogButtonProps::default().ok_text(t!("common.save")))
                 .content(move |content, window, cx| {
                     content.min_h_0().child(render_define_variable_body(
                         content_weak.clone(),
@@ -129,7 +127,7 @@ impl AppView {
             return;
         };
         state.value_input.update(cx, |input, cx| {
-            input.set_placeholder(t!("request.define_variable.value_placeholder"), window, cx);
+            input.set_placeholder(t!("common.value"), window, cx);
         });
         state.new_environment_input.update(cx, |input, cx| {
             input.set_placeholder(
@@ -232,7 +230,7 @@ fn render_define_variable_body(
             Input::new(&name_input).w_full(),
         ))
         .child(labeled_field(
-            t!("request.define_variable.value"),
+            t!("common.value"),
             Input::new(&value_input).w_full(),
         ))
         .child(labeled_field(

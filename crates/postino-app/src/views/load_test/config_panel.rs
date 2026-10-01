@@ -226,14 +226,9 @@ impl AppView {
                             .text_size(px(12.0))
                             .text_color(palette.fg_subtle)
                             .text_center()
-                            .child(
-                                h_flex()
-                                    .w_full()
-                                    .justify_center()
-                                    .flex_wrap()
-                                    .child(t!("load_test.config.footer"))
-                                    .child(div().font_family(mono_font).child(".postino/runs/")),
-                            ),
+                            .w_full()
+                            .child(div().w_full().child(t!("load_test.config.footer")))
+                            .child(div().font_family(mono_font).child(".postino/runs/")),
                     ),
             )
             .into_any_element()
@@ -266,7 +261,7 @@ fn render_target_section(
         .child(
             SegmentedControl::new("load-test-target-kind")
                 .item(
-                    SegmentedItem::new(t!("load_test.config.kind_request"))
+                    SegmentedItem::new(t!("common.request"))
                         .selected(load_test.target_kind == TargetKind::Request)
                         .on_click(move |_, cx| {
                             let _ = request_weak.update(cx, |view, cx| {

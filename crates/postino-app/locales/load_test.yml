@@ -22,9 +22,9 @@ _version: 2
   it: "Incremento graduale"
 "load_test.config.think_time":
   en: "Think time"
-  es: "Tiempo de espera"
-  gl: "Tempo de espera"
-  it: "Tempo di attesa"
+  es: "Tiempo de pausa"
+  gl: "Tempo de pausa"
+  it: "Tempo di pausa"
 "load_test.config.per_iteration":
   en: "per iteration"
   es: "por iteración"
@@ -40,11 +40,6 @@ _version: 2
   es: "Destino"
   gl: "Destino"
   it: "Destinazione"
-"load_test.config.kind_request":
-  en: "Request"
-  es: "Petición"
-  gl: "Petición"
-  it: "Richiesta"
 "load_test.config.kind_collection":
   en: "Collection"
   es: "Colección"
@@ -72,9 +67,9 @@ _version: 2
   it: "%{count} richieste"
 "load_test.config.stop_on_errors":
   en: "Stop on errors"
-  es: "Parar si hay errores"
-  gl: "Parar se hai erros"
-  it: "Ferma in caso di errori"
+  es: "Detener si hay errores"
+  gl: "Deter se hai erros"
+  it: "Interrompi in caso di errori"
 "load_test.config.stop_on_errors_hint":
   en: "When error rate > 5%"
   es: "Si los errores superan el 5%"
@@ -125,21 +120,6 @@ _version: 2
   es: "Ejecución"
   gl: "Execución"
   it: "Esecuzione"
-"load_test.run.today":
-  en: "today"
-  es: "hoy"
-  gl: "hoxe"
-  it: "oggi"
-"load_test.run.yesterday":
-  en: "yesterday"
-  es: "ayer"
-  gl: "onte"
-  it: "ieri"
-"load_test.run.days_ago":
-  en: "%{count} days ago"
-  es: "hace %{count} días"
-  gl: "hai %{count} días"
-  it: "%{count} giorni fa"
 "load_test.dashboard.empty":
   en: "Configure the run and press Start"
   es: "Configura la prueba y pulsa Iniciar"
@@ -215,11 +195,6 @@ _version: 2
   es: "Respuestas por estado"
   gl: "Respostas por estado"
   it: "Risposte per stato"
-"load_test.table.request":
-  en: "Request"
-  es: "Petición"
-  gl: "Petición"
-  it: "Richiesta"
 "load_test.table.count":
   en: "Count"
   es: "Cantidad"

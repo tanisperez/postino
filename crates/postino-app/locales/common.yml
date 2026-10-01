@@ -10,3 +10,98 @@ _version: 2
   es: "desconocido"
   gl: "descoñecido"
   it: "sconosciuto"
+"common.requests":
+  en: "Requests"
+  es: "Peticiones"
+  gl: "Peticións"
+  it: "Richieste"
+"common.request":
+  en: "Request"
+  es: "Petición"
+  gl: "Petición"
+  it: "Richiesta"
+"common.save":
+  en: "Save"
+  es: "Guardar"
+  gl: "Gardar"
+  it: "Salva"
+"common.cancel":
+  en: "Cancel"
+  es: "Cancelar"
+  gl: "Cancelar"
+  it: "Annulla"
+"common.copy":
+  en: "Copy"
+  es: "Copiar"
+  gl: "Copiar"
+  it: "Copia"
+"common.code":
+  en: "Code"
+  es: "Código"
+  gl: "Código"
+  it: "Codice"
+"common.value":
+  en: "Value"
+  es: "Valor"
+  gl: "Valor"
+  it: "Valore"
+"common.no_environment":
+  en: "No environment"
+  es: "Sin entorno"
+  gl: "Sen contorno"
+  it: "Nessun ambiente"
+"common.sending":
+  en: "Sending..."
+  es: "Enviando..."
+  gl: "Enviando..."
+  it: "Invio in corso..."
+"common.body":
+  en: "Body"
+  es: "Cuerpo"
+  gl: "Corpo"
+  it: "Corpo"
+"common.headers":
+  en: "Headers"
+  es: "Cabeceras"
+  gl: "Cabeceiras"
+  it: "Intestazioni"
+"common.search":
+  en: "Search"
+  es: "Buscar"
+  gl: "Buscar"
+  it: "Cerca"
+"common.define":
+  en: "Define"
+  es: "Definir"
+  gl: "Definir"
+  it: "Definisci"
+"common.open_folder":
+  en: "Open folder..."
+  es: "Abrir carpeta..."
+  gl: "Abrir cartafol..."
+  it: "Apri cartella..."
+"common.new_request":
+  en: "New request"
+  es: "Nueva petición"
+  gl: "Nova petición"
+  it: "Nuova richiesta"
+"common.new_folder":
+  en: "New folder"
+  es: "Nueva carpeta"
+  gl: "Novo cartafol"
+  it: "Nuova cartella"
+"common.dismiss":
+  en: "Dismiss"
+  es: "Descartar"
+  gl: "Descartar"
+  it: "Ignora"
+"common.rename":
+  en: "Rename"
+  es: "Renombrar"
+  gl: "Renomear"
+  it: "Rinomina"
+"common.delete":
+  en: "Delete"
+  es: "Eliminar"
+  gl: "Eliminar"
+  it: "Elimina"

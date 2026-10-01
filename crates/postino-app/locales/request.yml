@@ -1,30 +1,10 @@
 # Request editor, Define variable and Code snippet dialogs, environment picker. Glossary and rules: plans/i18n.md
 _version: 2
-"request.save":
-  en: "Save"
-  es: "Guardar"
-  gl: "Gardar"
-  it: "Salva"
-"request.cancel":
-  en: "Cancel"
-  es: "Cancelar"
-  gl: "Cancelar"
-  it: "Annulla"
-"request.copy":
-  en: "Copy"
-  es: "Copiar"
-  gl: "Copiar"
-  it: "Copia"
 "request.send":
   en: "Send"
   es: "Enviar"
   gl: "Enviar"
   it: "Invia"
-"request.code":
-  en: "Code"
-  es: "Código"
-  gl: "Código"
-  it: "Codice"
 "request.empty.open_request":
   en: "Open a request from the sidebar"
   es: "Abre una petición desde la barra lateral"
@@ -40,11 +20,6 @@ _version: 2
   es: "Clave"
   gl: "Chave"
   it: "Chiave"
-"request.kv.value":
-  en: "Value"
-  es: "Valor"
-  gl: "Valor"
-  it: "Valore"
 "request.body.none":
   en: "None"
   es: "Ninguno"
@@ -80,21 +55,11 @@ _version: 2
   es: "Personalizado..."
   gl: "Personalizado..."
   it: "Personalizzato..."
-"request.env.none":
-  en: "No environment"
-  es: "Sin entorno"
-  gl: "Sen contorno"
-  it: "Nessun ambiente"
 "request.env.no_workspace":
   en: "No workspace"
   es: "Sin espacio de trabajo"
   gl: "Sen espazo de traballo"
   it: "Nessuno spazio di lavoro"
-"request.snippet.title":
-  en: "Code"
-  es: "Código"
-  gl: "Código"
-  it: "Codice"
 "request.define_variable.title":
   en: "Define variable"
   es: "Definir variable"
@@ -105,16 +70,6 @@ _version: 2
   es: "Variable"
   gl: "Variable"
   it: "Variabile"
-"request.define_variable.value":
-  en: "Value"
-  es: "Valor"
-  gl: "Valor"
-  it: "Valore"
-"request.define_variable.value_placeholder":
-  en: "Value"
-  es: "Valor"
-  gl: "Valor"
-  it: "Valore"
 "request.define_variable.environment":
   en: "Environment"
   es: "Entorno"

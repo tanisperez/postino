@@ -186,7 +186,7 @@ fn render_header(weak: WeakEntity<AppView>, has_workspace: bool) -> impl IntoEle
                 .gap(px(2.0))
                 .child(
                     IconButton::new("new-request-root", IconName::Plus)
-                        .tooltip(t!("shell.new_request"))
+                        .tooltip(t!("common.new_request"))
                         .disabled(!has_workspace)
                         .on_click({
                             let weak = weak.clone();
@@ -197,7 +197,7 @@ fn render_header(weak: WeakEntity<AppView>, has_workspace: bool) -> impl IntoEle
                 )
                 .child(
                     IconButton::new("new-folder-root", gpui_kit::assets::IconName::FolderPlus)
-                        .tooltip(t!("shell.new_folder"))
+                        .tooltip(t!("common.new_folder"))
                         .disabled(!has_workspace)
                         .on_click({
                             let weak = weak.clone();
@@ -380,7 +380,7 @@ fn build_context_menu(
     if !is_request {
         let new_request_weak = weak.clone();
         let parent_for_request = id.clone();
-        menu = menu.item(PopupMenuItem::new(t!("shell.new_request")).on_click(
+        menu = menu.item(PopupMenuItem::new(t!("common.new_request")).on_click(
             move |_, window, cx| {
                 open_new_request_dialog(
                     new_request_weak.clone(),
@@ -393,7 +393,7 @@ fn build_context_menu(
 
         let new_folder_weak = weak.clone();
         let parent_for_folder = id.clone();
-        menu = menu.item(PopupMenuItem::new(t!("shell.new_folder")).on_click(
+        menu = menu.item(PopupMenuItem::new(t!("common.new_folder")).on_click(
             move |_, window, cx| {
                 open_new_folder_dialog(
                     new_folder_weak.clone(),
@@ -425,8 +425,8 @@ fn build_context_menu(
     let rename_weak = weak.clone();
     let rename_id = id.clone();
     let rename_name = current_name.clone();
-    menu = menu.item(PopupMenuItem::new(t!("shell.sidebar.rename")).on_click(
-        move |_, window, cx| {
+    menu = menu.item(
+        PopupMenuItem::new(t!("common.rename")).on_click(move |_, window, cx| {
             open_rename_dialog(
                 rename_weak.clone(),
                 rename_id.clone(),
@@ -434,14 +434,14 @@ fn build_context_menu(
                 window,
                 cx,
             );
-        },
-    ));
+        }),
+    );
 
     let delete_weak = weak.clone();
     let delete_id = id.clone();
     let delete_name = current_name;
-    menu = menu.item(PopupMenuItem::new(t!("shell.sidebar.delete")).on_click(
-        move |_, window, cx| {
+    menu = menu.item(
+        PopupMenuItem::new(t!("common.delete")).on_click(move |_, window, cx| {
             open_delete_confirmation(
                 delete_weak.clone(),
                 delete_id.clone(),
@@ -449,8 +449,8 @@ fn build_context_menu(
                 window,
                 cx,
             );
-        },
-    ));
+        }),
+    );
 
     menu
 }
@@ -497,7 +497,7 @@ pub(crate) fn open_new_request_dialog(
         let view = view.clone();
         let parent = parent.clone();
         dialog
-            .title(t!("shell.new_request"))
+            .title(t!("common.new_request"))
             .content(move |content, _, _| content.child(Input::new(&input_for_content)))
             .on_ok(move |_, _, cx| {
                 let name = input_for_ok.read(cx).value().trim().to_string();
@@ -526,7 +526,7 @@ pub(crate) fn open_new_folder_dialog(
         let view = view.clone();
         let parent = parent.clone();
         dialog
-            .title(t!("shell.new_folder"))
+            .title(t!("common.new_folder"))
             .content(move |content, _, _| content.child(Input::new(&input_for_content)))
             .on_ok(move |_, _, cx| {
                 let name = input_for_ok.read(cx).value().trim().to_string();
@@ -557,7 +557,7 @@ fn open_rename_dialog(
         let view = view.clone();
         let id = id.clone();
         dialog
-            .title(t!("shell.sidebar.rename"))
+            .title(t!("common.rename"))
             .content(move |content, _, _| content.child(Input::new(&input_for_content)))
             .on_ok(move |_, _, cx| {
                 let name = input_for_ok.read(cx).value().trim().to_string();
@@ -585,9 +585,9 @@ fn open_delete_confirmation(
             .description(t!("shell.sidebar.delete_text", name = name.as_str()))
             .button_props(
                 DialogButtonProps::default()
-                    .ok_text(t!("shell.sidebar.delete"))
+                    .ok_text(t!("common.delete"))
                     .ok_variant(ButtonVariant::Danger)
-                    .cancel_text(t!("shell.sidebar.cancel"))
+                    .cancel_text(t!("common.cancel"))
                     .show_cancel(true),
             )
             .on_ok(move |_, _, cx| {

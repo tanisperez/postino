@@ -38,8 +38,8 @@ impl RequestTab {
     pub fn label(self) -> String {
         match self {
             RequestTab::Params => t!("shell.tab.params"),
-            RequestTab::Headers => t!("shell.tab.headers"),
-            RequestTab::Body => t!("shell.tab.body"),
+            RequestTab::Headers => t!("common.headers"),
+            RequestTab::Body => t!("common.body"),
             RequestTab::Pre => t!("shell.tab.pre"),
             RequestTab::Post => t!("shell.tab.post"),
             RequestTab::Docs => t!("shell.tab.docs"),
@@ -91,8 +91,8 @@ impl ResponseTab {
     /// The label shown on the tab.
     pub fn label(self) -> String {
         match self {
-            ResponseTab::Body => t!("response.tab.body"),
-            ResponseTab::Headers => t!("response.tab.headers"),
+            ResponseTab::Body => t!("common.body"),
+            ResponseTab::Headers => t!("common.headers"),
             ResponseTab::Tests => t!("response.tab.tests"),
             ResponseTab::Console => t!("response.tab.console"),
         }

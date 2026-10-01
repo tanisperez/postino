@@ -135,13 +135,11 @@ impl AppView {
                     menu = menu.separator();
                 }
                 let open_weak = weak.clone();
-                menu = menu.item(
-                    PopupMenuItem::new(t!("shell.title_bar.open_folder")).on_click(
-                        move |_, window, cx| {
-                            sidebar::pick_workspace_folder(open_weak.clone(), window, cx);
-                        },
-                    ),
-                );
+                menu = menu.item(PopupMenuItem::new(t!("common.open_folder")).on_click(
+                    move |_, window, cx| {
+                        sidebar::pick_workspace_folder(open_weak.clone(), window, cx);
+                    },
+                ));
                 menu
             })
             .into_any_element()

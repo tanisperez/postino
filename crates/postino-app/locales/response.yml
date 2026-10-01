@@ -5,26 +5,11 @@ _version: 2
   es: "Envía la petición para ver la respuesta"
   gl: "Envía a petición para ver a resposta"
   it: "Invia la richiesta per vedere la risposta"
-"response.sending":
-  en: "Sending..."
-  es: "Enviando..."
-  gl: "Enviando..."
-  it: "Invio in corso..."
 "response.status.not_sent":
   en: "Not sent"
   es: "No enviada"
   gl: "Non enviada"
   it: "Non inviata"
-"response.tab.body":
-  en: "Body"
-  es: "Cuerpo"
-  gl: "Corpo"
-  it: "Corpo"
-"response.tab.headers":
-  en: "Headers"
-  es: "Cabeceras"
-  gl: "Cabeceiras"
-  it: "Intestazioni"
 "response.tab.tests":
   en: "Tests"
   es: "Pruebas"
@@ -50,16 +35,6 @@ _version: 2
   es: "Sin procesar"
   gl: "Sen procesar"
   it: "Grezzo"
-"response.body.copy":
-  en: "Copy"
-  es: "Copiar"
-  gl: "Copiar"
-  it: "Copia"
-"response.body.search":
-  en: "Search"
-  es: "Buscar"
-  gl: "Buscar"
-  it: "Cerca"
 "response.body.not_utf8.one":
   en: "<%{count} byte, not valid UTF-8>"
   es: "<%{count} byte, no es UTF-8 válido>"
@@ -120,11 +95,6 @@ _version: 2
   es: "Variables desconocidas"
   gl: "Variables descoñecidas"
   it: "Variabili sconosciute"
-"response.warning.define":
-  en: "Define"
-  es: "Definir"
-  gl: "Definir"
-  it: "Definisci"
 "response.stage.pre_failed":
   en: "Pre-request script failed: %{error}"
   es: "Falló el script previo: %{error}"

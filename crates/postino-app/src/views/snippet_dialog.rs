@@ -53,7 +53,7 @@ impl AppView {
             let weak = weak.clone();
             let resolved = resolved.clone();
             dialog
-                .title(t!("request.snippet.title"))
+                .title(t!("common.code"))
                 .w(px(DIALOG_WIDTH))
                 .content(move |content, window, cx| {
                     content.min_h_0().child(render_snippet_body(
@@ -132,7 +132,7 @@ fn render_snippet_footer(weak: WeakEntity<AppView>, resolved: ResolvedRequest) -
         .justify_end()
         .child(
             IconButton::new("snippet-copy", IconName::Copy)
-                .tooltip(t!("request.copy"))
+                .tooltip(t!("common.copy"))
                 .on_click(move |_, _, cx| {
                     let Some(view) = weak.upgrade() else {
                         return;

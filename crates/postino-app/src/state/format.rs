@@ -63,7 +63,6 @@ pub fn tab_label(id: &str) -> &str {
 /// A relative label for a day, comparing UTC day boundaries: `"today"`, `"yesterday"`, or `"N
 /// days ago"` for anything older. A `then` on the same UTC day as `now`, or in the future, is
 /// also `"today"`.
-#[allow(dead_code)] // wired by the load test run history of phase 8
 pub fn relative_day(then_unix_seconds: i64, now_unix_seconds: i64) -> String {
     relative_day_in(then_unix_seconds, now_unix_seconds, &rust_i18n::locale())
 }

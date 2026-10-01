@@ -18,6 +18,7 @@ use postino_core::Method;
 use postino_load::history::RunRecordHeader;
 use postino_load::{LoadSnapshot, StatusKey};
 
+use crate::state::format::relative_day;
 use crate::state::load_test::{
     DeltaTone, LoadTestFailure, LoadTestStatus, LoadTestTab, delta_tone, format_delta,
 };
@@ -180,21 +181,6 @@ fn run_with_day(number: u32, started_at_unix: u64, now: i64) -> String {
         run_title(number),
         relative_day(started_at_unix as i64, now)
     )
-}
-
-/// How long ago `then_unix_seconds` was, by UTC day, in the current language: "today",
-/// "yesterday" or "N days ago". A `then` in the future is "today".
-fn relative_day(then_unix_seconds: i64, now_unix_seconds: i64) -> String {
-    const SECONDS_PER_DAY: i64 = 86_400;
-    let days = now_unix_seconds.div_euclid(SECONDS_PER_DAY)
-        - then_unix_seconds.div_euclid(SECONDS_PER_DAY);
-    if days <= 0 {
-        t!("load_test.run.today").into_owned()
-    } else if days == 1 {
-        t!("load_test.run.yesterday").into_owned()
-    } else {
-        t!("load_test.run.days_ago", count = days).into_owned()
-    }
 }
 
 /// The history list of previous runs for this tab's target, click to view
@@ -821,12 +807,7 @@ fn render_per_request_table(
         .text_size(px(11.5))
         .text_color(palette.fg_subtle)
         .font_weight(FontWeight::MEDIUM)
-        .child(
-            div()
-                .flex_1()
-                .min_w(px(60.0))
-                .child(t!("load_test.table.request")),
-        )
+        .child(div().flex_1().min_w(px(60.0)).child(t!("common.request")))
         .child(
             div()
                 .flex_none()

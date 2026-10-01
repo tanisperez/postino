@@ -50,7 +50,7 @@ impl StatusBadge {
         match &self.state {
             StatusState::Code(code) => code.to_string().into(),
             StatusState::NotSent => t!("response.status.not_sent").into_owned().into(),
-            StatusState::Sending => t!("response.sending").into_owned().into(),
+            StatusState::Sending => t!("common.sending").into_owned().into(),
         }
     }
 }

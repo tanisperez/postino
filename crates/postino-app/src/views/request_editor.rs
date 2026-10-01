@@ -146,7 +146,7 @@ fn build_row(
         .detach();
     }
 
-    let value = cx.new(|cx| InputState::new(window, cx).placeholder(t!("request.kv.value")));
+    let value = cx.new(|cx| InputState::new(window, cx).placeholder(t!("common.value")));
     value.update(cx, |state, cx| {
         state.set_value(row.value.clone(), window, cx)
     });
@@ -526,7 +526,7 @@ impl AppView {
                     input.set_placeholder(t!("request.kv.key"), window, cx);
                 });
                 row.value.update(cx, |input, cx| {
-                    input.set_placeholder(t!("request.kv.value"), window, cx);
+                    input.set_placeholder(t!("common.value"), window, cx);
                 });
             }
         }
@@ -674,7 +674,7 @@ impl AppView {
                     Button::new("cancel-send")
                         .ghost()
                         .small()
-                        .label(t!("request.cancel"))
+                        .label(t!("common.cancel"))
                         .on_click(move |_, _, cx| {
                             let _ = cancel_weak.update(cx, |view, cx| view.cancel_send(cx));
                         }),
@@ -734,7 +734,7 @@ impl AppView {
         }
         let code_weak = weak;
         bar = bar.suffix(
-            GhostButton::new("request-code-snippet", t!("request.code"))
+            GhostButton::new("request-code-snippet", t!("common.code"))
                 .icon(gpui_kit::assets::IconName::Code)
                 .on_click(move |_, window, cx| {
                     let _ = code_weak.update(cx, |view, cx| view.open_snippet_dialog(window, cx));

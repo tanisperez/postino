@@ -123,7 +123,7 @@ impl AppView {
                 .child(
                     div()
                         .text_color(palette.fg_muted)
-                        .child(t!("response.sending")),
+                        .child(t!("common.sending")),
                 )
                 .into_any_element();
         }
@@ -337,14 +337,14 @@ impl AppView {
 
         let copy_text = text.clone();
         let copy_button = IconButton::new("response-copy", IconName::Copy)
-            .tooltip(t!("response.body.copy"))
+            .tooltip(t!("common.copy"))
             .on_click(move |_, _, cx| {
                 cx.write_to_clipboard(ClipboardItem::new_string(copy_text.to_string()));
             });
 
         let search_editor = self.response_editor.editor.clone();
         let search_button = IconButton::new("response-search", IconName::Search)
-            .tooltip(t!("response.body.search"))
+            .tooltip(t!("common.search"))
             .on_click(move |_, _, cx| {
                 if let Some(editor) = &search_editor {
                     editor.update(cx, |state, cx| state.open_search(false, cx));
@@ -408,7 +408,7 @@ impl AppView {
                         t!("response.warning.unknown_variable"),
                     )
                     .mono_suffix(name.clone())
-                    .action(t!("response.warning.define"), move |window, cx| {
+                    .action(t!("common.define"), move |window, cx| {
                         let name = name.clone();
                         let _ = define_weak.update(cx, |view, cx| {
                             view.open_define_variable_dialog(name, window, cx)
@@ -428,7 +428,7 @@ impl AppView {
                         t!("response.warning.unknown_variables"),
                     )
                     .mono_suffix(names.join(", "))
-                    .action(t!("response.warning.define"), move |window, cx| {
+                    .action(t!("common.define"), move |window, cx| {
                         let Some(name) = first_name.clone() else {
                             return;
                         };

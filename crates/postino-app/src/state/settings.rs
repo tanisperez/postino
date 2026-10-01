@@ -79,7 +79,7 @@ impl SettingsCategory {
     pub fn label(self) -> String {
         match self {
             SettingsCategory::Appearance => t!("settings.category.appearance"),
-            SettingsCategory::Requests => t!("settings.category.requests"),
+            SettingsCategory::Requests => t!("common.requests"),
             SettingsCategory::Advanced => t!("settings.category.advanced"),
         }
         .into_owned()
@@ -611,10 +611,7 @@ mod tests {
 
     #[test]
     fn labels_are_translated_with_the_requested_locale() {
-        assert_eq!(
-            t!("settings.category.requests", locale = "es"),
-            "Peticiones"
-        );
+        assert_eq!(t!("common.requests", locale = "es"), "Peticiones");
         assert_eq!(t!("settings.tls.reject", locale = "gl"), "Rexeitar");
         assert_eq!(t!("settings.log_level.off", locale = "it"), "Disattivato");
     }

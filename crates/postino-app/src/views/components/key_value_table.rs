@@ -147,7 +147,7 @@ impl RenderOnce for KeyValueTable {
             .text_color(palette.fg_subtle)
             .child(div().flex_none().w(side_col))
             .child(div().flex_grow(1.0).child(t!("request.kv.key")))
-            .child(div().flex_grow(1.4).child(t!("request.kv.value")))
+            .child(div().flex_grow(1.4).child(t!("common.value")))
             .child(div().flex_none().w(side_col));
 
         let rows = self.rows.into_iter().enumerate().map(|(index, row)| {

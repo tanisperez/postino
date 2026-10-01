@@ -926,7 +926,7 @@ impl AppView {
 
         tabs = tabs.suffix(
             IconButton::new("open-tabs-new-request", IconName::Plus)
-                .tooltip(t!("shell.new_request"))
+                .tooltip(t!("common.new_request"))
                 .on_click(move |_, window, cx| {
                     sidebar::open_new_request_dialog(weak.clone(), None, window, cx);
                 }),
@@ -965,7 +965,7 @@ impl Render for AppView {
             let dismiss_weak = weak.clone();
             div().px_3().pt_2().child(
                 InlineMessage::new(InlineMessageKind::Danger, message).action(
-                    t!("shell.dismiss"),
+                    t!("common.dismiss"),
                     move |_, cx| {
                         let _ = dismiss_weak.update(cx, |view, cx| {
                             view.workspace_error = None;

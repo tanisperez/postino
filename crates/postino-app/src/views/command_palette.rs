@@ -43,7 +43,7 @@ const PALETTE_BOTTOM_PADDING: f32 = 8.0;
 /// repaint, so they follow the current language.
 fn group_labels() -> [String; 3] {
     [
-        t!("shell.palette.requests").into_owned(),
+        t!("common.requests").into_owned(),
         t!("shell.palette.environments").into_owned(),
         t!("shell.palette.actions").into_owned(),
     ]

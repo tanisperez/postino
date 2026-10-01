@@ -15,11 +15,6 @@ _version: 2
   es: "Apariencia"
   gl: "Aparencia"
   it: "Aspetto"
-"settings.category.requests":
-  en: "Requests"
-  es: "Peticiones"
-  gl: "Peticións"
-  it: "Richieste"
 "settings.category.advanced":
   en: "Advanced"
   es: "Avanzado"
@@ -88,8 +83,8 @@ _version: 2
 "settings.interface.font_description":
   en: "Geist is bundled, so every platform looks the same."
   es: "Geist está incluida, así que todas las plataformas se ven igual."
-  gl: "Geist vai incluída, así que todas as plataformas se ven igual."
-  it: "Geist è inclusa, quindi tutte le piattaforme appaiono uguali."
+  gl: "Geist está incluída, así que todas as plataformas se ven igual."
+  it: "Geist è incluso, quindi tutte le piattaforme appaiono uguali."
 "settings.font":
   en: "Font"
   es: "Fuente"
@@ -97,13 +92,13 @@ _version: 2
   it: "Carattere"
 "settings.font_size":
   en: "Font size"
-  es: "Tamaño de letra"
+  es: "Tamaño de fuente"
   gl: "Tamaño da letra"
   it: "Dimensione carattere"
 "settings.font_bundled":
   en: "%{name} (bundled)"
   es: "%{name} (incluida)"
-  gl: "%{name} (incluído)"
+  gl: "%{name} (incluída)"
   it: "%{name} (incluso)"
 "settings.editor.title":
   en: "Editor"
@@ -149,7 +144,7 @@ _version: 2
   en: "Logging"
   es: "Registro"
   gl: "Rexistro"
-  it: "Registro"
+  it: "Log"
 "settings.logging.level":
   en: "Log level"
   es: "Nivel de registro"
