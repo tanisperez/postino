@@ -5,6 +5,8 @@
 use std::path::Path;
 use std::time::Duration;
 
+use rust_i18n::t;
+
 /// Number of seconds in a day, used by [`relative_day`] to compare UTC day boundaries.
 const SECONDS_PER_DAY: i64 = 24 * 60 * 60;
 
@@ -63,14 +65,24 @@ pub fn tab_label(id: &str) -> &str {
 /// also `"today"`.
 #[allow(dead_code)] // wired by the load test run history of phase 8
 pub fn relative_day(then_unix_seconds: i64, now_unix_seconds: i64) -> String {
+    relative_day_in(then_unix_seconds, now_unix_seconds, &rust_i18n::locale())
+}
+
+/// [`relative_day`] in an explicit `locale`, so tests need not touch the process wide one.
+fn relative_day_in(then_unix_seconds: i64, now_unix_seconds: i64, locale: &str) -> String {
     let day_difference = now_unix_seconds.div_euclid(SECONDS_PER_DAY)
         - then_unix_seconds.div_euclid(SECONDS_PER_DAY);
     if day_difference <= 0 {
-        "today".to_string()
+        t!("request.format.today", locale = locale).into_owned()
     } else if day_difference == 1 {
-        "yesterday".to_string()
+        t!("request.format.yesterday", locale = locale).into_owned()
     } else {
-        format!("{day_difference} days ago")
+        t!(
+            "request.format.days_ago",
+            locale = locale,
+            count = day_difference
+        )
+        .into_owned()
     }
 }
 
@@ -137,9 +149,17 @@ mod tests {
     fn relative_day_labels() {
         let now = 1_000_000i64;
         let day = SECONDS_PER_DAY;
-        assert_eq!(relative_day(now, now), "today");
-        assert_eq!(relative_day(now - day, now), "yesterday");
-        assert_eq!(relative_day(now - 3 * day, now), "3 days ago");
-        assert_eq!(relative_day(now + day, now), "today");
+        assert_eq!(relative_day_in(now, now, "en"), "today");
+        assert_eq!(relative_day_in(now - day, now, "en"), "yesterday");
+        assert_eq!(relative_day_in(now - 3 * day, now, "en"), "3 days ago");
+        assert_eq!(relative_day_in(now + day, now, "en"), "today");
+    }
+
+    #[test]
+    fn relative_day_is_translated() {
+        let now = 1_000_000i64;
+        let day = SECONDS_PER_DAY;
+        assert_eq!(relative_day_in(now - day, now, "es"), "ayer");
+        assert_eq!(relative_day_in(now - 3 * day, now, "it"), "3 giorni fa");
     }
 }

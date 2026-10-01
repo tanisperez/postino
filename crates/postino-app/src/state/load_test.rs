@@ -49,7 +49,23 @@ pub enum LoadTestStatus {
     /// The run could not be started at all, for example because its target resolved to no
     /// requests. `postino_load::LoadRun` itself never fails once started; this only covers setup
     /// failures before a run exists.
-    Failed(String),
+    Failed(LoadTestFailure),
+}
+
+/// Why a run could not be started. Kept as a value, not as text, so the message is translated
+/// when it is shown and follows a language change.
+#[derive(Debug, Clone, PartialEq)]
+pub enum LoadTestFailure {
+    /// No workspace is open.
+    NoWorkspace,
+    /// The tab was closed while the run was being set up.
+    TabClosed,
+    /// No request or folder was picked yet.
+    NoTarget,
+    /// The picked folder has no requests.
+    EmptyFolder,
+    /// A request failed to load; carries the workspace error text, shown verbatim.
+    Load(String),
 }
 
 /// The default number of virtual users, matching `Performance.dc.html`'s own mock data.

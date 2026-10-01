@@ -1,10 +1,11 @@
 //! The status bar at the bottom of the main window (`plans/ui-redesign.md` section 2.3 point 6):
-//! "Local only" with a lock icon, the active tab's id, a spacer, "Unsaved changes" when the
+//! "Local only" (translated) with a lock icon, the active tab's id, a spacer, "Unsaved changes" when the
 //! active tab is dirty, and "UTF-8".
 
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use crate::theme::PaletteExt;
 use crate::theme::metrics::STATUS_BAR_HEIGHT;
@@ -33,14 +34,14 @@ impl AppView {
                     .items_center()
                     .gap(px(6.0))
                     .child(Icon::new(gpui_kit::assets::IconName::Lock).small())
-                    .child("Local only"),
+                    .child(t!("shell.status_bar.local_only")),
             )
             .children(active_tab.map(|tab| div().child(tab.id.clone())))
             .child(div().flex_1())
             .children(
                 active_tab
                     .filter(|tab| tab.dirty)
-                    .map(|_| div().child("Unsaved changes")),
+                    .map(|_| div().child(t!("shell.status_bar.unsaved"))),
             )
             .child(div().child("UTF-8"))
             .into_any_element()

@@ -16,7 +16,7 @@ use postino_load::history::{LoadConfigSummary, RunRecord};
 use postino_load::{LoadConfig, LoadRun, LoadSummary, LoadTarget};
 use postino_runner::Runner;
 
-use crate::state::load_test::{self, LoadTestStatus, LoadTestTarget};
+use crate::state::load_test::{self, LoadTestFailure, LoadTestStatus, LoadTestTarget};
 use crate::views::root::AppView;
 
 /// How often the dashboard refreshes while a run is in progress
@@ -44,26 +44,23 @@ pub(crate) struct LoadRunHandle {
 impl AppView {
     /// Resolves `tab_id`'s target against the open workspace into `postino_load::LoadTarget`s,
     /// one per request in tree order (a single request is one target; a collection is every
-    /// request under the chosen folder). `Err` with a user-facing message when there is no
+    /// request under the chosen folder). `Err` with the reason when there is no
     /// workspace, no target picked yet, the target resolves to no requests, or a request fails
     /// to load.
-    fn build_load_targets(&self, tab_id: &str) -> Result<Vec<LoadTarget>, String> {
+    fn build_load_targets(&self, tab_id: &str) -> Result<Vec<LoadTarget>, LoadTestFailure> {
         let workspace = self
             .state
             .workspace
             .as_ref()
-            .ok_or_else(|| "No workspace is open.".to_string())?;
+            .ok_or(LoadTestFailure::NoWorkspace)?;
         let load_test = self
             .state
             .tabs
             .index_of(tab_id)
             .and_then(|index| self.state.tabs.get(index))
             .and_then(|tab| tab.load_test())
-            .ok_or_else(|| "This tab is no longer open.".to_string())?;
-        let target = load_test
-            .target
-            .as_ref()
-            .ok_or_else(|| "Pick a request or a folder first.".to_string())?;
+            .ok_or(LoadTestFailure::TabClosed)?;
+        let target = load_test.target.as_ref().ok_or(LoadTestFailure::NoTarget)?;
 
         let ids = match target {
             LoadTestTarget::Request(id) => vec![id.clone()],
@@ -72,14 +69,14 @@ impl AppView {
             }
         };
         if ids.is_empty() {
-            return Err("This folder has no requests.".to_string());
+            return Err(LoadTestFailure::EmptyFolder);
         }
 
         ids.iter()
             .map(|id| {
                 let request = workspace
                     .load_request(id)
-                    .map_err(|error| error.to_string())?;
+                    .map_err(|error| LoadTestFailure::Load(error.to_string()))?;
                 let label = crate::state::format::tab_label(id).to_string();
                 Ok(LoadTarget::new(label, request))
             })
@@ -96,10 +93,10 @@ impl AppView {
         }
         let targets = match self.build_load_targets(&tab_id) {
             Ok(targets) => targets,
-            Err(message) => {
-                log::warn!("load test not started: {message}");
+            Err(failure) => {
+                log::warn!("load test not started: {failure:?}");
                 self.edit_load_test(&tab_id, cx, |load_test| {
-                    load_test.status = LoadTestStatus::Failed(message);
+                    load_test.status = LoadTestStatus::Failed(failure);
                 });
                 return;
             }

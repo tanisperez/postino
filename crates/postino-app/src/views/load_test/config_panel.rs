@@ -10,8 +10,10 @@ use gpui_kit::component::switch::Switch;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use crate::state::load_test::{LoadTestConfigInputs, LoadTestTab, LoadTestTarget, TargetKind};
+use crate::state::locale;
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{DangerButton, PrimaryButton, SegmentedControl, SegmentedItem};
@@ -168,7 +170,7 @@ impl AppView {
                         &palette,
                         &mono_font,
                         &ui_font,
-                        "Virtual users",
+                        t!("load_test.config.vus").into_owned(),
                         None,
                         self.load_test_entities.vus.as_ref(),
                         "VUs",
@@ -178,7 +180,7 @@ impl AppView {
                         &palette,
                         &mono_font,
                         &ui_font,
-                        "Duration",
+                        t!("load_test.config.duration").into_owned(),
                         None,
                         self.load_test_entities.duration_secs.as_ref(),
                         "s",
@@ -188,7 +190,7 @@ impl AppView {
                         &palette,
                         &mono_font,
                         &ui_font,
-                        "Ramp-up",
+                        t!("load_test.config.ramp_up").into_owned(),
                         Some(format!("0 \u{2192} {} VUs", load_test.config.vus.trim())),
                         self.load_test_entities.ramp_up_secs.as_ref(),
                         "s",
@@ -198,8 +200,8 @@ impl AppView {
                         &palette,
                         &mono_font,
                         &ui_font,
-                        "Think time",
-                        Some("per iteration".to_string()),
+                        t!("load_test.config.think_time").into_owned(),
+                        Some(t!("load_test.config.per_iteration").into_owned()),
                         self.load_test_entities.think_time_ms.as_ref(),
                         "ms",
                         is_running,
@@ -229,7 +231,7 @@ impl AppView {
                                     .w_full()
                                     .justify_center()
                                     .flex_wrap()
-                                    .child("Runs on this machine. Results are saved to ")
+                                    .child(t!("load_test.config.footer"))
                                     .child(div().font_family(mono_font).child(".postino/runs/")),
                             ),
                     ),
@@ -259,12 +261,12 @@ fn render_target_section(
                 .text_size(px(12.0))
                 .font_weight(FontWeight::MEDIUM)
                 .text_color(palette.fg_muted)
-                .child("Target"),
+                .child(t!("load_test.config.target")),
         )
         .child(
             SegmentedControl::new("load-test-target-kind")
                 .item(
-                    SegmentedItem::new("Request")
+                    SegmentedItem::new(t!("load_test.config.kind_request"))
                         .selected(load_test.target_kind == TargetKind::Request)
                         .on_click(move |_, cx| {
                             let _ = request_weak.update(cx, |view, cx| {
@@ -277,7 +279,7 @@ fn render_target_section(
                         }),
                 )
                 .item(
-                    SegmentedItem::new("Collection")
+                    SegmentedItem::new(t!("load_test.config.kind_collection"))
                         .selected(load_test.target_kind == TargetKind::Collection)
                         .on_click(move |_, cx| {
                             let _ = collection_weak.update(cx, |view, cx| {
@@ -316,9 +318,9 @@ fn render_target_picker(
     };
     let label = if load_test.target_label.is_empty() {
         if is_collection {
-            "Choose a folder".to_string()
+            t!("load_test.config.choose_folder").into_owned()
         } else {
-            "Choose a request".to_string()
+            t!("load_test.config.choose_request").into_owned()
         }
     } else {
         load_test.target_label.clone()
@@ -431,13 +433,9 @@ fn render_target_picker(
     }
 }
 
-/// `"1 request"` or `"N requests"`.
+/// `"1 request"` or `"N requests"`, in the current language.
 fn request_count_label(count: usize) -> String {
-    if count == 1 {
-        "1 request".to_string()
-    } else {
-        format!("{count} requests")
-    }
+    locale::plural("load_test.config.requests", count)
 }
 
 /// One numeric field row: a label (with an optional muted hint on the right), and a bordered pill
@@ -447,7 +445,7 @@ fn render_field(
     palette: &Palette,
     mono_font: &SharedString,
     ui_font: &SharedString,
-    label: &'static str,
+    label: String,
     hint: Option<String>,
     entity: Option<&Entity<InputState>>,
     unit: &'static str,
@@ -522,13 +520,13 @@ fn render_stop_on_error_row(
                     div()
                         .text_size(px(12.0))
                         .font_weight(FontWeight::MEDIUM)
-                        .child("Stop on errors"),
+                        .child(t!("load_test.config.stop_on_errors")),
                 )
                 .child(
                     div()
                         .text_size(px(12.0))
                         .text_color(palette.fg_subtle)
-                        .child("When error rate > 5%"),
+                        .child(t!("load_test.config.stop_on_errors_hint")),
                 ),
         )
         .child(
@@ -555,7 +553,7 @@ fn render_start_stop_button(
     let tab_id = tab_id.to_string();
     if is_running {
         let stop_id = tab_id.clone();
-        return DangerButton::new("load-test-stop", "Stop run")
+        return DangerButton::new("load-test-stop", t!("load_test.config.stop_run"))
             .on_click(move |_, _, cx| {
                 let stop_id = stop_id.clone();
                 let _ = weak.update(cx, |view, cx| {
@@ -565,7 +563,7 @@ fn render_start_stop_button(
             })
             .into_any_element();
     }
-    PrimaryButton::new("load-test-start", "Start run")
+    PrimaryButton::new("load-test-start", t!("load_test.config.start_run"))
         .on_click(move |_, _, cx| {
             let tab_id = tab_id.clone();
             let _ = weak.update(cx, |view, cx| view.start_load_test(tab_id, cx));

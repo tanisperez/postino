@@ -3,6 +3,8 @@
 //! These are plain, `Copy` enums so the currently selected tab can be stored directly on
 //! [`crate::views::AppView`] without any `gpui` type.
 
+use rust_i18n::t;
+
 /// The request editor's tabs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RequestTab {
@@ -33,15 +35,16 @@ impl RequestTab {
     ];
 
     /// The label shown on the tab.
-    pub fn label(self) -> &'static str {
+    pub fn label(self) -> String {
         match self {
-            RequestTab::Params => "Params",
-            RequestTab::Headers => "Headers",
-            RequestTab::Body => "Body",
-            RequestTab::Pre => "Pre-request",
-            RequestTab::Post => "Post-response",
-            RequestTab::Docs => "Docs",
+            RequestTab::Params => t!("shell.tab.params"),
+            RequestTab::Headers => t!("shell.tab.headers"),
+            RequestTab::Body => t!("shell.tab.body"),
+            RequestTab::Pre => t!("shell.tab.pre"),
+            RequestTab::Post => t!("shell.tab.post"),
+            RequestTab::Docs => t!("shell.tab.docs"),
         }
+        .into_owned()
     }
 }
 
@@ -86,13 +89,14 @@ impl ResponseTab {
     ];
 
     /// The label shown on the tab.
-    pub fn label(self) -> &'static str {
+    pub fn label(self) -> String {
         match self {
-            ResponseTab::Body => "Body",
-            ResponseTab::Headers => "Headers",
-            ResponseTab::Tests => "Tests",
-            ResponseTab::Console => "Console",
+            ResponseTab::Body => t!("response.tab.body"),
+            ResponseTab::Headers => t!("response.tab.headers"),
+            ResponseTab::Tests => t!("response.tab.tests"),
+            ResponseTab::Console => t!("response.tab.console"),
         }
+        .into_owned()
     }
 }
 

@@ -12,13 +12,15 @@ use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use postino_core::Method;
 use postino_load::history::RunRecordHeader;
 use postino_load::{LoadSnapshot, StatusKey};
 
-use crate::state::format;
-use crate::state::load_test::{DeltaTone, LoadTestStatus, LoadTestTab, delta_tone, format_delta};
+use crate::state::load_test::{
+    DeltaTone, LoadTestFailure, LoadTestStatus, LoadTestTab, delta_tone, format_delta,
+};
 use crate::theme::metrics::RADIUS_LG;
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{Card, InlineMessage, InlineMessageKind, MethodBadge};
@@ -133,10 +135,10 @@ fn render_empty_state(
         .py(px(16.0))
         .gap(px(16.0));
 
-    if let LoadTestStatus::Failed(message) = &load_test.status {
+    if let LoadTestStatus::Failed(failure) = &load_test.status {
         column = column.child(InlineMessage::new(
             InlineMessageKind::Danger,
-            message.clone(),
+            failure_message(failure),
         ));
     }
 
@@ -145,7 +147,7 @@ fn render_empty_state(
             .py(px(40.0))
             .text_center()
             .text_color(palette.fg_subtle)
-            .child("Configure the run and press Start"),
+            .child(t!("load_test.dashboard.empty")),
     );
 
     if !load_test.history.is_empty() {
@@ -153,6 +155,46 @@ fn render_empty_state(
     }
 
     column.into_any_element()
+}
+
+/// The text shown for a run that could not be started, in the current language.
+fn failure_message(failure: &LoadTestFailure) -> String {
+    match failure {
+        LoadTestFailure::NoWorkspace => t!("load_test.failure.no_workspace").into_owned(),
+        LoadTestFailure::TabClosed => t!("load_test.failure.tab_closed").into_owned(),
+        LoadTestFailure::NoTarget => t!("load_test.failure.no_target").into_owned(),
+        LoadTestFailure::EmptyFolder => t!("load_test.failure.empty_folder").into_owned(),
+        LoadTestFailure::Load(error) => t!("load_test.failure.load", error = error).into_owned(),
+    }
+}
+
+/// `"Run #N"`, the number only.
+fn run_title(number: u32) -> String {
+    t!("load_test.run.numbered", number = number).into_owned()
+}
+
+/// `"Run #N \u{b7} today"`, for the history list and the "Compare with" dropdown.
+fn run_with_day(number: u32, started_at_unix: u64, now: i64) -> String {
+    format!(
+        "{} \u{b7} {}",
+        run_title(number),
+        relative_day(started_at_unix as i64, now)
+    )
+}
+
+/// How long ago `then_unix_seconds` was, by UTC day, in the current language: "today",
+/// "yesterday" or "N days ago". A `then` in the future is "today".
+fn relative_day(then_unix_seconds: i64, now_unix_seconds: i64) -> String {
+    const SECONDS_PER_DAY: i64 = 86_400;
+    let days = now_unix_seconds.div_euclid(SECONDS_PER_DAY)
+        - then_unix_seconds.div_euclid(SECONDS_PER_DAY);
+    if days <= 0 {
+        t!("load_test.run.today").into_owned()
+    } else if days == 1 {
+        t!("load_test.run.yesterday").into_owned()
+    } else {
+        t!("load_test.run.days_ago", count = days).into_owned()
+    }
 }
 
 /// The history list of previous runs for this tab's target, click to view
@@ -166,7 +208,11 @@ fn render_history_list(
     let now = unix_now() as i64;
 
     Card::new()
-        .child(div().font_weight(FontWeight::MEDIUM).child("Previous runs"))
+        .child(
+            div()
+                .font_weight(FontWeight::MEDIUM)
+                .child(t!("load_test.history.title")),
+        )
         .children(load_test.history.iter().map(|header| {
             let number = header.number;
             let tab_id = tab_id.to_string();
@@ -180,9 +226,10 @@ fn render_history_list(
                 .rounded(px(6.0))
                 .px(px(6.0))
                 .hover(|style| style.bg(palette.hover))
-                .child(div().flex_1().min_w_0().child(format!(
-                    "Run #{number} \u{b7} {}",
-                    format::relative_day(header.started_at_unix as i64, now)
+                .child(div().flex_1().min_w_0().child(run_with_day(
+                    number,
+                    header.started_at_unix,
+                    now,
                 )))
                 .child(
                     div()
@@ -211,8 +258,8 @@ fn render_header(
 ) -> AnyElement {
     let run_label = load_test
         .run_number
-        .map(|number| format!("Run #{number}"))
-        .unwrap_or_else(|| "Run".to_string());
+        .map(run_title)
+        .unwrap_or_else(|| t!("load_test.run.plain").into_owned());
     let (badge_label, badge_fg, badge_bg) = status_badge_colors(palette, &load_test.status);
     let duration_secs = load_test.config.resolved().duration_secs;
     let total = Duration::from_secs(duration_secs);
@@ -285,20 +332,51 @@ fn render_header(
 
 /// The status badge's label and colors, per `plans/ui-redesign.md` phase 8 item 4: "Running in
 /// accent, Finished in success, Stopped in warning, Failed in danger".
-fn status_badge_colors(palette: &Palette, status: &LoadTestStatus) -> (&'static str, Hsla, Hsla) {
-    match status {
-        LoadTestStatus::NotStarted => ("Not started", palette.fg_muted, palette.hover),
-        LoadTestStatus::Running => ("Running", palette.accent_text, palette.accent_subtle),
-        LoadTestStatus::Finished => ("Finished", palette.success, palette.success_subtle),
-        LoadTestStatus::Stopped => ("Stopped", palette.warning, palette.warning_subtle),
-        LoadTestStatus::Failed(_) => ("Failed", palette.danger, palette.danger_subtle),
-    }
+fn status_badge_colors(palette: &Palette, status: &LoadTestStatus) -> (String, Hsla, Hsla) {
+    let (label, fg, bg) = match status {
+        LoadTestStatus::NotStarted => (
+            t!("load_test.status.not_started"),
+            palette.fg_muted,
+            palette.hover,
+        ),
+        LoadTestStatus::Running => (
+            t!("load_test.status.running"),
+            palette.accent_text,
+            palette.accent_subtle,
+        ),
+        LoadTestStatus::Finished => (
+            t!("load_test.status.finished"),
+            palette.success,
+            palette.success_subtle,
+        ),
+        LoadTestStatus::Stopped => (
+            t!("load_test.status.stopped"),
+            palette.warning,
+            palette.warning_subtle,
+        ),
+        LoadTestStatus::Failed(_) => (
+            t!("load_test.status.failed"),
+            palette.danger,
+            palette.danger_subtle,
+        ),
+    };
+    (label.into_owned(), fg, bg)
 }
 
 /// `"mm:ss"`.
 fn format_mmss(duration: Duration) -> String {
     let secs = duration.as_secs();
     format!("{:02}:{:02}", secs / 60, secs % 60)
+}
+
+/// The display name of a "Compare with" row, given the engine's English label
+/// ([`postino_load::Delta::label`]), which stays the key for the formatting below.
+fn compare_label(label: &str) -> String {
+    match label {
+        "Requests/s" => t!("load_test.kpi.rps").into_owned(),
+        "Errors" => t!("load_test.kpi.errors").into_owned(),
+        other => other.to_string(),
+    }
 }
 
 /// Formats one "Compare with" cell's raw value per its [`postino_load::Delta::label`]: latency
@@ -336,18 +414,28 @@ const KPI_CELL_MIN_WIDTH: f32 = 96.0;
 /// narrow. The container paints the `border` color through a 1 px gap between the groups (and
 /// its own 1 px border), so the separator is right in both layouts.
 fn render_kpi_strip(palette: &Palette, snapshot: &LoadSnapshot) -> AnyElement {
-    let kpis: [(&str, String, &str, bool); 6] = [
-        ("Requests/s", format!("{:.0}", snapshot.rps), "", false),
-        ("p50", (snapshot.p50 / 1000).to_string(), "ms", false),
-        ("p95", (snapshot.p95 / 1000).to_string(), "ms", false),
-        ("p99", (snapshot.p99 / 1000).to_string(), "ms", false),
+    let kpis: [(String, String, &str, bool); 6] = [
         (
-            "Errors",
+            t!("load_test.kpi.rps").into_owned(),
+            format!("{:.0}", snapshot.rps),
+            "",
+            false,
+        ),
+        ("p50".into(), (snapshot.p50 / 1000).to_string(), "ms", false),
+        ("p95".into(), (snapshot.p95 / 1000).to_string(), "ms", false),
+        ("p99".into(), (snapshot.p99 / 1000).to_string(), "ms", false),
+        (
+            t!("load_test.kpi.errors").into_owned(),
             format!("{:.1}", snapshot.error_rate * 100.0),
             "%",
             snapshot.error_rate > 0.0,
         ),
-        ("Total", format_thousands(snapshot.total), "", false),
+        (
+            t!("load_test.kpi.total").into_owned(),
+            format_thousands(snapshot.total),
+            "",
+            false,
+        ),
     ];
 
     let mut cells = kpis.into_iter().enumerate();
@@ -484,14 +572,18 @@ fn render_throughput_card(
                         .min_w(px(170.0))
                         .font_weight(FontWeight::MEDIUM)
                         .text_size(px(13.0))
-                        .child("Throughput and latency"),
+                        .child(t!("load_test.chart.title")),
                 )
                 .child(
                     h_flex()
                         .flex_none()
                         .gap(px(16.0))
-                        .child(legend_item(palette, palette.accent_text, "Requests/s"))
-                        .child(legend_item(palette, palette.warning, "p95 ms")),
+                        .child(legend_item(
+                            palette,
+                            palette.accent_text,
+                            t!("load_test.kpi.rps").into_owned(),
+                        ))
+                        .child(legend_item(palette, palette.warning, "p95 ms".to_string())),
                 ),
         )
         .child(div().h(px(CHART_HEIGHT)).w_full().child(chart))
@@ -510,7 +602,7 @@ fn render_throughput_card(
 }
 
 /// One legend entry: a short colored line and a muted label.
-fn legend_item(palette: &Palette, color: Hsla, label: &'static str) -> AnyElement {
+fn legend_item(palette: &Palette, color: Hsla, label: String) -> AnyElement {
     h_flex()
         .items_center()
         .gap(px(6.0))
@@ -529,7 +621,7 @@ fn render_latency_distribution(palette: &Palette, snapshot: &LoadSnapshot) -> An
         .child(
             div()
                 .font_weight(FontWeight::MEDIUM)
-                .child("Latency distribution"),
+                .child(t!("load_test.distribution.title")),
         )
         .child(
             h_flex()
@@ -581,8 +673,8 @@ fn status_key_color(palette: &Palette, status: &StatusKey) -> Hsla {
 fn status_key_label(status: &StatusKey) -> String {
     match status {
         StatusKey::Code(code) => code.to_string(),
-        StatusKey::Timeout => "Timeout".to_string(),
-        StatusKey::Failed => "Failed".to_string(),
+        StatusKey::Timeout => t!("load_test.status_key.timeout").into_owned(),
+        StatusKey::Failed => t!("load_test.status_key.failed").into_owned(),
     }
 }
 
@@ -598,7 +690,7 @@ fn render_status_breakdown(
         .child(
             div()
                 .font_weight(FontWeight::MEDIUM)
-                .child("Responses by status"),
+                .child(t!("load_test.status_breakdown.title")),
         )
         .children(snapshot.status_counts.iter().map(|(status, count)| {
             let color = status_key_color(palette, status);
@@ -729,13 +821,18 @@ fn render_per_request_table(
         .text_size(px(11.5))
         .text_color(palette.fg_subtle)
         .font_weight(FontWeight::MEDIUM)
-        .child(div().flex_1().min_w(px(60.0)).child("Request"))
+        .child(
+            div()
+                .flex_1()
+                .min_w(px(60.0))
+                .child(t!("load_test.table.request")),
+        )
         .child(
             div()
                 .flex_none()
                 .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
                 .text_right()
-                .child("Count"),
+                .child(t!("load_test.table.count")),
         )
         .child(
             div()
@@ -763,7 +860,7 @@ fn render_per_request_table(
                 .flex_none()
                 .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
                 .text_right()
-                .child("Errors"),
+                .child(t!("load_test.kpi.errors")),
         );
 
     let rows = snapshot
@@ -868,7 +965,10 @@ fn render_per_request_table(
 fn target_row_label(load_test: &LoadTestTab, index: usize) -> (Option<Method>, String) {
     match load_test.target_rows.get(index) {
         Some((method, name)) => (Some(method.clone()), name.clone()),
-        None => (None, format!("Target {}", index + 1)),
+        None => (
+            None,
+            t!("load_test.table.target_n", number = index + 1).into_owned(),
+        ),
     }
 }
 
@@ -888,14 +988,8 @@ fn render_compare_with(
         .compare_with
         .and_then(|number| available.iter().find(|header| header.number == number));
     let trigger_label = selected
-        .map(|header| {
-            format!(
-                "Run #{} \u{b7} {}",
-                header.number,
-                format::relative_day(header.started_at_unix as i64, now)
-            )
-        })
-        .unwrap_or_else(|| "Select a run".to_string());
+        .map(|header| run_with_day(header.number, header.started_at_unix, now))
+        .unwrap_or_else(|| t!("load_test.compare.select").into_owned());
 
     let header_row = h_flex()
         .h(px(34.0))
@@ -904,7 +998,11 @@ fn render_compare_with(
         .px(px(16.0))
         .border_b_1()
         .border_color(palette.border)
-        .child(div().font_weight(FontWeight::MEDIUM).child("Compare with"))
+        .child(
+            div()
+                .font_weight(FontWeight::MEDIUM)
+                .child(t!("load_test.compare.title")),
+        )
         .child({
             let tab_id = tab_id.to_string();
             let available: Vec<RunRecordHeader> =
@@ -925,11 +1023,7 @@ fn render_compare_with(
                         let target_weak = weak.clone();
                         let tab_id = tab_id.clone();
                         let number = header.number;
-                        let label = format!(
-                            "Run #{} \u{b7} {}",
-                            number,
-                            format::relative_day(header.started_at_unix as i64, now)
-                        );
+                        let label = run_with_day(number, header.started_at_unix, now);
                         menu = menu.item(PopupMenuItem::new(label).on_click(move |_, _, cx| {
                             let _ = target_weak.update(cx, |view, cx| {
                                 view.set_load_test_compare_with(&tab_id, Some(number), cx);
@@ -971,7 +1065,7 @@ fn render_compare_with(
                         div()
                             .flex_1()
                             .text_color(palette.fg_muted)
-                            .child(delta.label),
+                            .child(compare_label(delta.label)),
                     )
                     .child(
                         div()

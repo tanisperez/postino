@@ -14,6 +14,7 @@ use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use crate::state::env_color::env_color;
 use crate::theme::PaletteExt;
@@ -73,7 +74,9 @@ impl EnvMenuItem {
     }
 
     fn label(&self) -> SharedString {
-        self.name.clone().unwrap_or_else(|| "No environment".into())
+        self.name
+            .clone()
+            .unwrap_or_else(|| t!("request.env.none").into_owned().into())
     }
 }
 
@@ -102,7 +105,7 @@ impl RenderOnce for EnvPill {
         let active = self.items.iter().find(|item| item.active);
         let trigger_label = active
             .map(EnvMenuItem::label)
-            .unwrap_or_else(|| "No environment".into());
+            .unwrap_or_else(|| t!("request.env.none").into_owned().into());
         let trigger_dot = active
             .and_then(|item| item.name.as_deref())
             .map(|name| palette.env_color(env_color(name)));

@@ -8,6 +8,7 @@
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use postino_core::ResolvedRequest;
 use postino_format::snippet::{SnippetLanguage, render_snippet};
@@ -52,7 +53,7 @@ impl AppView {
             let weak = weak.clone();
             let resolved = resolved.clone();
             dialog
-                .title("Code")
+                .title(t!("request.snippet.title"))
                 .w(px(DIALOG_WIDTH))
                 .content(move |content, window, cx| {
                     content.min_h_0().child(render_snippet_body(
@@ -131,7 +132,7 @@ fn render_snippet_footer(weak: WeakEntity<AppView>, resolved: ResolvedRequest) -
         .justify_end()
         .child(
             IconButton::new("snippet-copy", IconName::Copy)
-                .tooltip("Copy")
+                .tooltip(t!("request.copy"))
                 .on_click(move |_, _, cx| {
                     let Some(view) = weak.upgrade() else {
                         return;

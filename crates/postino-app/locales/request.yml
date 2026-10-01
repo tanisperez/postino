@@ -1,0 +1,157 @@
+# Request editor, Define variable and Code snippet dialogs, environment picker. Glossary and rules: plans/i18n.md
+_version: 2
+"request.save":
+  en: "Save"
+  es: "Guardar"
+  gl: "Gardar"
+  it: "Salva"
+"request.cancel":
+  en: "Cancel"
+  es: "Cancelar"
+  gl: "Cancelar"
+  it: "Annulla"
+"request.copy":
+  en: "Copy"
+  es: "Copiar"
+  gl: "Copiar"
+  it: "Copia"
+"request.send":
+  en: "Send"
+  es: "Enviar"
+  gl: "Enviar"
+  it: "Invia"
+"request.code":
+  en: "Code"
+  es: "Código"
+  gl: "Código"
+  it: "Codice"
+"request.empty.open_request":
+  en: "Open a request from the sidebar"
+  es: "Abre una petición desde la barra lateral"
+  gl: "Abre unha petición desde a barra lateral"
+  it: "Apri una richiesta dalla barra laterale"
+"request.kv.add":
+  en: "Add"
+  es: "Añadir"
+  gl: "Engadir"
+  it: "Aggiungi"
+"request.kv.key":
+  en: "Key"
+  es: "Clave"
+  gl: "Chave"
+  it: "Chiave"
+"request.kv.value":
+  en: "Value"
+  es: "Valor"
+  gl: "Valor"
+  it: "Valore"
+"request.body.none":
+  en: "None"
+  es: "Ninguno"
+  gl: "Ningún"
+  it: "Nessuno"
+"request.body.text":
+  en: "Text"
+  es: "Texto"
+  gl: "Texto"
+  it: "Testo"
+"request.body.form_urlencoded":
+  en: "Form (urlencoded)"
+  es: "Formulario (urlencoded)"
+  gl: "Formulario (urlencoded)"
+  it: "Modulo (urlencoded)"
+"request.body.form":
+  en: "Form"
+  es: "Formulario"
+  gl: "Formulario"
+  it: "Modulo"
+"request.body.format":
+  en: "Format"
+  es: "Formatear"
+  gl: "Formatar"
+  it: "Formatta"
+"request.body.empty":
+  en: "This request has no body."
+  es: "Esta petición no tiene cuerpo."
+  gl: "Esta petición non ten corpo."
+  it: "Questa richiesta non ha un corpo."
+"request.url_bar.custom_method":
+  en: "Custom..."
+  es: "Personalizado..."
+  gl: "Personalizado..."
+  it: "Personalizzato..."
+"request.env.none":
+  en: "No environment"
+  es: "Sin entorno"
+  gl: "Sen contorno"
+  it: "Nessun ambiente"
+"request.env.no_workspace":
+  en: "No workspace"
+  es: "Sin espacio de trabajo"
+  gl: "Sen espazo de traballo"
+  it: "Nessuno spazio di lavoro"
+"request.snippet.title":
+  en: "Code"
+  es: "Código"
+  gl: "Código"
+  it: "Codice"
+"request.define_variable.title":
+  en: "Define variable"
+  es: "Definir variable"
+  gl: "Definir variable"
+  it: "Definisci variabile"
+"request.define_variable.variable":
+  en: "Variable"
+  es: "Variable"
+  gl: "Variable"
+  it: "Variabile"
+"request.define_variable.value":
+  en: "Value"
+  es: "Valor"
+  gl: "Valor"
+  it: "Valore"
+"request.define_variable.value_placeholder":
+  en: "Value"
+  es: "Valor"
+  gl: "Valor"
+  it: "Valore"
+"request.define_variable.environment":
+  en: "Environment"
+  es: "Entorno"
+  gl: "Contorno"
+  it: "Ambiente"
+"request.define_variable.environment_name_placeholder":
+  en: "Environment name"
+  es: "Nombre del entorno"
+  gl: "Nome do contorno"
+  it: "Nome dell'ambiente"
+"request.define_variable.new_environment_name":
+  en: "New environment name"
+  es: "Nombre del nuevo entorno"
+  gl: "Nome do novo contorno"
+  it: "Nome del nuovo ambiente"
+"request.define_variable.new_environment":
+  en: "New environment..."
+  es: "Nuevo entorno..."
+  gl: "Novo contorno..."
+  it: "Nuovo ambiente..."
+"request.define_variable.store_local":
+  en: "Store in .local.env (not versioned)"
+  es: "Guardar en .local.env (sin versionar)"
+  gl: "Gardar en .local.env (sen versionar)"
+  it: "Salva in .local.env (non versionato)"
+"request.format.today":
+  en: "today"
+  es: "hoy"
+  gl: "hoxe"
+  it: "oggi"
+"request.format.yesterday":
+  en: "yesterday"
+  es: "ayer"
+  gl: "onte"
+  it: "ieri"
+"request.format.days_ago":
+  en: "%{count} days ago"
+  es: "hace %{count} días"
+  gl: "hai %{count} días"
+  it: "%{count} giorni fa"

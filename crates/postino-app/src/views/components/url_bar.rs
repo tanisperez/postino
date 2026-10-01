@@ -19,6 +19,7 @@ use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use postino_core::{Method, VariableSpan};
 
@@ -214,11 +215,13 @@ impl UrlBar {
                 let handler = handler.clone();
                 let current_custom = current_custom.clone();
                 menu = menu.item(
-                    PopupMenuItem::new("Custom...").on_click(move |_, window, cx| {
-                        if let Some(handler) = &handler {
-                            handler(Method::Custom(current_custom.clone()), window, cx);
-                        }
-                    }),
+                    PopupMenuItem::new(t!("request.url_bar.custom_method")).on_click(
+                        move |_, window, cx| {
+                            if let Some(handler) = &handler {
+                                handler(Method::Custom(current_custom.clone()), window, cx);
+                            }
+                        },
+                    ),
                 );
                 menu
             })

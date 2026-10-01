@@ -7,10 +7,12 @@ use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use postino_workspace::{ImportReport, WorkspaceError};
 
 use crate::state::import;
+use crate::state::locale;
 use crate::theme::metrics::ENV_PILL_HEIGHT;
 
 use super::root::AppView;
@@ -36,22 +38,26 @@ impl AppView {
             .ghost()
             .h(px(ENV_PILL_HEIGHT))
             .icon(Icon::new(gpui_kit::assets::IconName::Download).small())
-            .label("Import")
+            .label(t!("shell.import.button"))
             .disabled(!has_workspace)
             .dropdown_caret(true)
             .dropdown_menu(move |mut menu, _, _| {
                 let weak = collection_weak.clone();
-                menu = menu.item(PopupMenuItem::new("Postman collection...").on_click(
-                    move |_, window, cx| {
-                        pick_and_import(weak.clone(), ImportKind::Collection, window, cx);
-                    },
-                ));
+                menu = menu.item(
+                    PopupMenuItem::new(t!("shell.import.menu_collection")).on_click(
+                        move |_, window, cx| {
+                            pick_and_import(weak.clone(), ImportKind::Collection, window, cx);
+                        },
+                    ),
+                );
                 let weak = environment_weak.clone();
-                menu = menu.item(PopupMenuItem::new("Postman environment...").on_click(
-                    move |_, window, cx| {
-                        pick_and_import(weak.clone(), ImportKind::Environment, window, cx);
-                    },
-                ));
+                menu = menu.item(
+                    PopupMenuItem::new(t!("shell.import.menu_environment")).on_click(
+                        move |_, window, cx| {
+                            pick_and_import(weak.clone(), ImportKind::Environment, window, cx);
+                        },
+                    ),
+                );
                 menu
             })
             .into_any_element()
@@ -91,8 +97,14 @@ pub(crate) fn pick_and_import(
             Err(error) => {
                 log::warn!("import: could not read {}: {error}", path.display());
                 let _ = view.update(cx, |view, cx| {
-                    view.workspace_error =
-                        Some(format!("could not read {}: {error}", path.display()));
+                    view.workspace_error = Some(
+                        t!(
+                            "shell.import.read_failed",
+                            path = path.display().to_string(),
+                            error = error.to_string()
+                        )
+                        .into_owned(),
+                    );
                     cx.notify();
                 });
                 return;
@@ -160,18 +172,20 @@ fn show_import_report_dialog(
     cx: &mut App,
 ) {
     let title = match kind {
-        ImportKind::Collection => "Postman collection imported",
-        ImportKind::Environment => "Postman environment imported",
-    };
-    let mut description = format!("{} file(s) created.", report.created_files.len());
+        ImportKind::Collection => t!("shell.import.collection_done"),
+        ImportKind::Environment => t!("shell.import.environment_done"),
+    }
+    .into_owned();
+    let mut description = locale::plural("shell.import.files_created", report.created_files.len());
     if !report.warnings.is_empty() {
-        description.push_str("\n\nWarnings:");
+        description.push_str("\n\n");
+        description.push_str(&t!("shell.import.warnings"));
         for warning in &report.warnings {
             description.push_str("\n- ");
             description.push_str(warning);
         }
     }
     window.open_alert_dialog(cx, move |alert, _, _| {
-        alert.title(title).description(description.clone())
+        alert.title(title.clone()).description(description.clone())
     });
 }

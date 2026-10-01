@@ -10,6 +10,8 @@ use std::time::{Duration, Instant};
 
 use postino_core::TemplateWarning;
 
+use super::locale;
+
 /// The standard reason phrase for a status code (`"OK"` for 200, `"Not Found"` for 404, ...),
 /// for the response status badge label ("200 OK", "404 Not Found", `plans/ui-redesign.md` phase
 /// 5, reviewer fix item 2). `postino_core::Response` carries no reason phrase from the wire
@@ -105,7 +107,7 @@ pub fn pretty_print_json(body: &[u8]) -> Option<String> {
 pub fn body_as_text(body: &[u8]) -> String {
     match std::str::from_utf8(body) {
         Ok(text) => text.to_string(),
-        Err(_) => format!("<{} bytes, not valid UTF-8>", body.len()),
+        Err(_) => locale::plural("response.body.not_utf8", body.len()),
     }
 }
 

@@ -1,0 +1,242 @@
+# Load test tab. Glossary and rules: plans/i18n.md
+_version: 2
+"load_test.tab.title":
+  en: "Load test"
+  es: "Prueba de carga"
+  gl: "Proba de carga"
+  it: "Test di carico"
+"load_test.config.vus":
+  en: "Virtual users"
+  es: "Usuarios virtuales"
+  gl: "Usuarios virtuais"
+  it: "Utenti virtuali"
+"load_test.config.duration":
+  en: "Duration"
+  es: "Duración"
+  gl: "Duración"
+  it: "Durata"
+"load_test.config.ramp_up":
+  en: "Ramp-up"
+  es: "Subida gradual"
+  gl: "Subida gradual"
+  it: "Incremento graduale"
+"load_test.config.think_time":
+  en: "Think time"
+  es: "Tiempo de espera"
+  gl: "Tempo de espera"
+  it: "Tempo di attesa"
+"load_test.config.per_iteration":
+  en: "per iteration"
+  es: "por iteración"
+  gl: "por iteración"
+  it: "per iterazione"
+"load_test.config.footer":
+  en: "Runs on this machine. Results are saved to "
+  es: "Se ejecuta en esta máquina. Los resultados se guardan en "
+  gl: "Execútase nesta máquina. Os resultados gárdanse en "
+  it: "Viene eseguito su questa macchina. I risultati sono salvati in "
+"load_test.config.target":
+  en: "Target"
+  es: "Destino"
+  gl: "Destino"
+  it: "Destinazione"
+"load_test.config.kind_request":
+  en: "Request"
+  es: "Petición"
+  gl: "Petición"
+  it: "Richiesta"
+"load_test.config.kind_collection":
+  en: "Collection"
+  es: "Colección"
+  gl: "Colección"
+  it: "Raccolta"
+"load_test.config.choose_folder":
+  en: "Choose a folder"
+  es: "Elegir carpeta"
+  gl: "Escoller cartafol"
+  it: "Scegli una cartella"
+"load_test.config.choose_request":
+  en: "Choose a request"
+  es: "Elegir petición"
+  gl: "Escoller petición"
+  it: "Scegli una richiesta"
+"load_test.config.requests.one":
+  en: "%{count} request"
+  es: "%{count} petición"
+  gl: "%{count} petición"
+  it: "%{count} richiesta"
+"load_test.config.requests.other":
+  en: "%{count} requests"
+  es: "%{count} peticiones"
+  gl: "%{count} peticións"
+  it: "%{count} richieste"
+"load_test.config.stop_on_errors":
+  en: "Stop on errors"
+  es: "Parar si hay errores"
+  gl: "Parar se hai erros"
+  it: "Ferma in caso di errori"
+"load_test.config.stop_on_errors_hint":
+  en: "When error rate > 5%"
+  es: "Si los errores superan el 5%"
+  gl: "Se os erros superan o 5%"
+  it: "Se gli errori superano il 5%"
+"load_test.config.stop_run":
+  en: "Stop run"
+  es: "Detener"
+  gl: "Deter"
+  it: "Interrompi"
+"load_test.config.start_run":
+  en: "Start run"
+  es: "Iniciar"
+  gl: "Iniciar"
+  it: "Avvia"
+"load_test.failure.no_workspace":
+  en: "No workspace is open."
+  es: "No hay ningún espacio de trabajo abierto."
+  gl: "Non hai ningún espazo de traballo aberto."
+  it: "Nessuno spazio di lavoro aperto."
+"load_test.failure.tab_closed":
+  en: "This tab is no longer open."
+  es: "Esta pestaña ya no está abierta."
+  gl: "Esta lapela xa non está aberta."
+  it: "Questa scheda non è più aperta."
+"load_test.failure.no_target":
+  en: "Pick a request or a folder first."
+  es: "Elige antes una petición o una carpeta."
+  gl: "Escolle antes unha petición ou un cartafol."
+  it: "Scegli prima una richiesta o una cartella."
+"load_test.failure.empty_folder":
+  en: "This folder has no requests."
+  es: "Esta carpeta no tiene peticiones."
+  gl: "Este cartafol non ten peticións."
+  it: "Questa cartella non contiene richieste."
+"load_test.failure.load":
+  en: "Could not load a request: %{error}"
+  es: "No se pudo cargar una petición: %{error}"
+  gl: "Non se puido cargar unha petición: %{error}"
+  it: "Impossibile caricare una richiesta: %{error}"
+"load_test.run.numbered":
+  en: "Run #%{number}"
+  es: "Ejecución #%{number}"
+  gl: "Execución #%{number}"
+  it: "Esecuzione #%{number}"
+"load_test.run.plain":
+  en: "Run"
+  es: "Ejecución"
+  gl: "Execución"
+  it: "Esecuzione"
+"load_test.run.today":
+  en: "today"
+  es: "hoy"
+  gl: "hoxe"
+  it: "oggi"
+"load_test.run.yesterday":
+  en: "yesterday"
+  es: "ayer"
+  gl: "onte"
+  it: "ieri"
+"load_test.run.days_ago":
+  en: "%{count} days ago"
+  es: "hace %{count} días"
+  gl: "hai %{count} días"
+  it: "%{count} giorni fa"
+"load_test.dashboard.empty":
+  en: "Configure the run and press Start"
+  es: "Configura la prueba y pulsa Iniciar"
+  gl: "Configura a proba e preme Iniciar"
+  it: "Configura il test e premi Avvia"
+"load_test.history.title":
+  en: "Previous runs"
+  es: "Ejecuciones anteriores"
+  gl: "Execucións anteriores"
+  it: "Esecuzioni precedenti"
+"load_test.status.not_started":
+  en: "Not started"
+  es: "Sin iniciar"
+  gl: "Sen iniciar"
+  it: "Non avviato"
+"load_test.status.running":
+  en: "Running"
+  es: "En curso"
+  gl: "En curso"
+  it: "In corso"
+"load_test.status.finished":
+  en: "Finished"
+  es: "Terminada"
+  gl: "Rematada"
+  it: "Completato"
+"load_test.status.stopped":
+  en: "Stopped"
+  es: "Detenida"
+  gl: "Detida"
+  it: "Interrotto"
+"load_test.status.failed":
+  en: "Failed"
+  es: "Fallida"
+  gl: "Fallida"
+  it: "Fallito"
+"load_test.kpi.rps":
+  en: "Requests/s"
+  es: "Peticiones/s"
+  gl: "Peticións/s"
+  it: "Richieste/s"
+"load_test.kpi.errors":
+  en: "Errors"
+  es: "Errores"
+  gl: "Erros"
+  it: "Errori"
+"load_test.kpi.total":
+  en: "Total"
+  es: "Total"
+  gl: "Total"
+  it: "Totale"
+"load_test.chart.title":
+  en: "Throughput and latency"
+  es: "Rendimiento y latencia"
+  gl: "Rendemento e latencia"
+  it: "Throughput e latenza"
+"load_test.distribution.title":
+  en: "Latency distribution"
+  es: "Distribución de latencia"
+  gl: "Distribución da latencia"
+  it: "Distribuzione della latenza"
+"load_test.status_key.timeout":
+  en: "Timeout"
+  es: "Timeout"
+  gl: "Timeout"
+  it: "Timeout"
+"load_test.status_key.failed":
+  en: "Failed"
+  es: "Fallida"
+  gl: "Fallida"
+  it: "Fallita"
+"load_test.status_breakdown.title":
+  en: "Responses by status"
+  es: "Respuestas por estado"
+  gl: "Respostas por estado"
+  it: "Risposte per stato"
+"load_test.table.request":
+  en: "Request"
+  es: "Petición"
+  gl: "Petición"
+  it: "Richiesta"
+"load_test.table.count":
+  en: "Count"
+  es: "Cantidad"
+  gl: "Cantidade"
+  it: "Conteggio"
+"load_test.table.target_n":
+  en: "Target %{number}"
+  es: "Destino %{number}"
+  gl: "Destino %{number}"
+  it: "Destinazione %{number}"
+"load_test.compare.select":
+  en: "Select a run"
+  es: "Elegir ejecución"
+  gl: "Escoller execución"
+  it: "Scegli esecuzione"
+"load_test.compare.title":
+  en: "Compare with"
+  es: "Comparar con"
+  gl: "Comparar con"
+  it: "Confronta con"

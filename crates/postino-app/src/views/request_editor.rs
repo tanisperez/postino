@@ -16,6 +16,7 @@ use gpui_kit::component::input::{
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use postino_core::{Body, KeyValue, Method, Request, variable_spans};
 
@@ -131,7 +132,7 @@ fn build_row(
     window: &mut Window,
     cx: &mut Context<AppView>,
 ) -> RowEntities {
-    let key = cx.new(|cx| InputState::new(window, cx).placeholder("Key"));
+    let key = cx.new(|cx| InputState::new(window, cx).placeholder(t!("request.kv.key")));
     key.update(cx, |state, cx| state.set_value(row.key.clone(), window, cx));
     {
         let tab_id = tab_id.to_string();
@@ -145,7 +146,7 @@ fn build_row(
         .detach();
     }
 
-    let value = cx.new(|cx| InputState::new(window, cx).placeholder("Value"));
+    let value = cx.new(|cx| InputState::new(window, cx).placeholder(t!("request.kv.value")));
     value.update(cx, |state, cx| {
         state.set_value(row.value.clone(), window, cx)
     });
@@ -511,6 +512,27 @@ impl AppView {
         });
     }
 
+    /// Applies the current language to every input placeholder the request editor (and the open
+    /// Define variable dialog) cached when it built its inputs. Call it after a language change.
+    pub(crate) fn relocalize_request_editor(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let editor = &self.request_editor;
+        for table in [&editor.headers, &editor.query, &editor.form] {
+            for row in &table.rows {
+                row.key.update(cx, |input, cx| {
+                    input.set_placeholder(t!("request.kv.key"), window, cx);
+                });
+                row.value.update(cx, |input, cx| {
+                    input.set_placeholder(t!("request.kv.value"), window, cx);
+                });
+            }
+        }
+        self.relocalize_define_variable(window, cx);
+    }
+
     /// Renders the active tab's request editor, or a placeholder when no tab is open.
     pub(crate) fn render_request_editor(
         &mut self,
@@ -519,12 +541,12 @@ impl AppView {
     ) -> AnyElement {
         let Some(tab) = self.state.tabs.active() else {
             self.request_editor = RequestEditorEntities::default();
-            return placeholder(cx, "Open a request from the sidebar");
+            return placeholder(cx, t!("request.empty.open_request"));
         };
         let tab_id = tab.id.clone();
         let Some(request) = tab.request().cloned() else {
             self.request_editor = RequestEditorEntities::default();
-            return placeholder(cx, "Open a request from the sidebar");
+            return placeholder(cx, t!("request.empty.open_request"));
         };
         if self.request_editor.sync(&tab_id, &request, window, cx) {
             // A fresh `method_input` (built empty) would otherwise show as "being edited" with
@@ -644,7 +666,7 @@ impl AppView {
                     Button::new("send")
                         .primary()
                         .small()
-                        .label("Send")
+                        .label(t!("request.send"))
                         .loading(true)
                         .disabled(true),
                 )
@@ -652,14 +674,14 @@ impl AppView {
                     Button::new("cancel-send")
                         .ghost()
                         .small()
-                        .label("Cancel")
+                        .label(t!("request.cancel"))
                         .on_click(move |_, _, cx| {
                             let _ = cancel_weak.update(cx, |view, cx| view.cancel_send(cx));
                         }),
                 )
         } else {
             h_flex().child(
-                PrimaryButton::new("send", "Send")
+                PrimaryButton::new("send", t!("request.send"))
                     .height(SEND_BUTTON_HEIGHT)
                     .min_width(SEND_BUTTON_MIN_WIDTH)
                     .key_hint(SEND_KEY_HINT)
@@ -712,7 +734,7 @@ impl AppView {
         }
         let code_weak = weak;
         bar = bar.suffix(
-            GhostButton::new("request-code-snippet", "Code")
+            GhostButton::new("request-code-snippet", t!("request.code"))
                 .icon(gpui_kit::assets::IconName::Code)
                 .on_click(move |_, window, cx| {
                     let _ = code_weak.update(cx, |view, cx| view.open_snippet_dialog(window, cx));
@@ -792,7 +814,7 @@ impl AppView {
         let format_weak = weak;
         let format_tab_id = tab_id.to_string();
         let is_json = matches!(request.body, Body::Json(_));
-        let format_button = GhostButton::new("format-body", "Format")
+        let format_button = GhostButton::new("format-body", t!("request.body.format"))
             .icon(gpui_kit::assets::IconName::WandSparkles)
             .disabled(!is_json)
             .on_click(move |_, _, cx| {
@@ -813,7 +835,7 @@ impl AppView {
                 div()
                     .p_2()
                     .text_color(palette.fg_muted)
-                    .child("This request has no body.")
+                    .child(t!("request.body.empty"))
                     .into_any_element()
             }
             Body::Form(rows) => self.render_key_value_table(
@@ -895,9 +917,9 @@ impl AppView {
 /// `BodyKind::label()`'s fuller `"Form (urlencoded)"` (used elsewhere, for example the old body
 /// type menu this phase replaced). A display-only override, not a change to `BodyKind::label()`
 /// itself (`plans/ui-redesign.md` phase 5, reviewer fix item 7).
-fn body_type_display_label(kind: BodyKind) -> &'static str {
+fn body_type_display_label(kind: BodyKind) -> String {
     match kind {
-        BodyKind::Form => "Form",
+        BodyKind::Form => t!("request.body.form").into_owned(),
         other => other.label(),
     }
 }
@@ -941,16 +963,12 @@ fn render_editor_or_placeholder(
 
 /// Renders a centered, muted placeholder message filling the panel (`plans/ui-redesign.md`
 /// phase 5 item 5, 13/400 `fg_muted`).
-fn placeholder(cx: &Context<AppView>, message: &str) -> AnyElement {
+fn placeholder(cx: &Context<AppView>, message: impl Into<SharedString>) -> AnyElement {
     let palette = cx.palette();
     v_flex()
         .size_full()
         .items_center()
         .justify_center()
-        .child(
-            div()
-                .text_color(palette.fg_muted)
-                .child(message.to_string()),
-        )
+        .child(div().text_color(palette.fg_muted).child(message.into()))
         .into_any_element()
 }

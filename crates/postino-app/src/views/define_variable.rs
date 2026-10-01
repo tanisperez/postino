@@ -14,6 +14,7 @@ use gpui_kit::component::switch::Switch;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use crate::state::define_variable;
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
@@ -70,9 +71,13 @@ impl AppView {
         name_input.update(cx, |state, cx| {
             state.set_value(name.clone(), window, cx);
         });
-        let value_input = cx.new(|cx| InputState::new(window, cx).placeholder("Value"));
-        let new_environment_input =
-            cx.new(|cx| InputState::new(window, cx).placeholder("Environment name"));
+        let value_input = cx.new(|cx| {
+            InputState::new(window, cx).placeholder(t!("request.define_variable.value_placeholder"))
+        });
+        let new_environment_input = cx.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder(t!("request.define_variable.environment_name_placeholder"))
+        });
 
         self.define_variable = Some(DefineVariableState {
             name_input,
@@ -94,9 +99,9 @@ impl AppView {
             let ok_weak = weak.clone();
             let close_weak = weak.clone();
             dialog
-                .title("Define variable")
+                .title(t!("request.define_variable.title"))
                 .w(px(DIALOG_WIDTH))
-                .button_props(DialogButtonProps::default().ok_text("Save"))
+                .button_props(DialogButtonProps::default().ok_text(t!("request.save")))
                 .content(move |content, window, cx| {
                     content.min_h_0().child(render_define_variable_body(
                         content_weak.clone(),
@@ -111,6 +116,27 @@ impl AppView {
                 .on_close(move |_, _, cx| {
                     let _ = close_weak.update(cx, |view, _cx| view.define_variable = None);
                 })
+        });
+    }
+
+    /// Applies the current language to the open dialog's input placeholders, if it is open.
+    pub(crate) fn relocalize_define_variable(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(state) = &self.define_variable else {
+            return;
+        };
+        state.value_input.update(cx, |input, cx| {
+            input.set_placeholder(t!("request.define_variable.value_placeholder"), window, cx);
+        });
+        state.new_environment_input.update(cx, |input, cx| {
+            input.set_placeholder(
+                t!("request.define_variable.environment_name_placeholder"),
+                window,
+                cx,
+            );
         });
     }
 
@@ -201,10 +227,16 @@ fn render_define_variable_body(
 
     v_flex()
         .gap(px(14.0))
-        .child(labeled_field("Variable", Input::new(&name_input).w_full()))
-        .child(labeled_field("Value", Input::new(&value_input).w_full()))
         .child(labeled_field(
-            "Environment",
+            t!("request.define_variable.variable"),
+            Input::new(&name_input).w_full(),
+        ))
+        .child(labeled_field(
+            t!("request.define_variable.value"),
+            Input::new(&value_input).w_full(),
+        ))
+        .child(labeled_field(
+            t!("request.define_variable.environment"),
             render_environment_select(
                 weak.clone(),
                 &environments,
@@ -215,7 +247,7 @@ fn render_define_variable_body(
         ))
         .children(creating_environment.then(|| {
             labeled_field(
-                "New environment name",
+                t!("request.define_variable.new_environment_name"),
                 Input::new(&new_environment_input)
                     .w_full()
                     .into_any_element(),
@@ -224,7 +256,7 @@ fn render_define_variable_body(
         .child(
             Switch::new("define-variable-store-local")
                 .checked(store_local)
-                .label("Store in .local.env (not versioned)")
+                .label(t!("request.define_variable.store_local").into_owned())
                 .on_click(move |checked, _, cx| {
                     let checked = *checked;
                     let _ = switch_weak.update(cx, |view, cx| {
@@ -240,10 +272,10 @@ fn render_define_variable_body(
 }
 
 /// A label above an arbitrary control, matching `views/settings.rs`'s field layout.
-fn labeled_field(label: &'static str, control: impl IntoElement) -> AnyElement {
+fn labeled_field(label: impl Into<SharedString>, control: impl IntoElement) -> AnyElement {
     v_flex()
         .gap(px(6.0))
-        .child(div().text_size(px(12.0)).child(label))
+        .child(div().text_size(px(12.0)).child(label.into()))
         .child(control)
         .into_any_element()
 }
@@ -259,7 +291,7 @@ fn render_environment_select(
     palette: &Palette,
 ) -> AnyElement {
     let label = if creating_environment {
-        "New environment...".to_string()
+        t!("request.define_variable.new_environment").into_owned()
     } else {
         environment.clone().unwrap_or_default()
     };
@@ -311,7 +343,7 @@ fn render_environment_select(
             menu = menu.separator();
             let select_weak = weak.clone();
             menu = menu.item(
-                PopupMenuItem::new("New environment...")
+                PopupMenuItem::new(t!("request.define_variable.new_environment"))
                     .checked(creating_environment)
                     .on_click(move |_, _, cx| {
                         let _ = select_weak.update(cx, |view, cx| {

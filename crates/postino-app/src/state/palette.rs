@@ -5,6 +5,7 @@
 
 use postino_core::Method;
 use postino_workspace::Node;
+use rust_i18n::t;
 
 /// The modifier key label shortcut hints show, matching `main.rs`'s key bindings: `Cmd` on
 /// macOS, `Ctrl` elsewhere (same local-constant convention as `views/env_picker.rs`'s
@@ -108,7 +109,7 @@ fn collect_request_items(nodes: &[Node], items: &mut Vec<PaletteItem>) {
 pub fn environment_items(environments: &[String]) -> Vec<PaletteItem> {
     let mut items = vec![PaletteItem {
         kind: PaletteItemKind::Environment(None),
-        label: "No environment".to_string(),
+        label: t!("shell.palette.no_environment").into_owned(),
         detail: None,
         shortcut: Some(format!("{MODIFIER_KEY}+0")),
     }];
@@ -127,35 +128,59 @@ pub fn environment_items(environments: &[String]) -> Vec<PaletteItem> {
 /// with the shortcut hint of the ones that have a real key binding (`main.rs`'s `bind_keys`).
 pub fn action_items() -> Vec<PaletteItem> {
     vec![
-        action_item(ActionId::Send, "Send request", Some(send_shortcut())),
-        action_item(ActionId::Save, "Save", Some(format!("{MODIFIER_KEY}+S"))),
-        action_item(ActionId::NewRequest, "New request", None),
-        action_item(ActionId::NewFolder, "New folder", None),
+        action_item(
+            ActionId::Send,
+            t!("shell.palette.send"),
+            Some(send_shortcut()),
+        ),
+        action_item(
+            ActionId::Save,
+            t!("shell.palette.save"),
+            Some(format!("{MODIFIER_KEY}+S")),
+        ),
+        action_item(ActionId::NewRequest, t!("shell.new_request"), None),
+        action_item(ActionId::NewFolder, t!("shell.new_folder"), None),
         action_item(
             ActionId::ImportCollection,
-            "Import Postman collection...",
+            t!("shell.palette.import_collection"),
             None,
         ),
         action_item(
             ActionId::ImportEnvironment,
-            "Import Postman environment...",
+            t!("shell.palette.import_environment"),
             None,
         ),
         action_item(
             ActionId::OpenSettings,
-            "Open Settings",
+            t!("shell.palette.open_settings"),
             Some(format!("{MODIFIER_KEY}+,")),
         ),
-        action_item(ActionId::OpenWorkspace, "Open folder...", None),
-        action_item(ActionId::NewLoadTest, "New load test", None),
-        action_item(ActionId::ToggleTheme, "Toggle theme", None),
+        action_item(
+            ActionId::OpenWorkspace,
+            t!("shell.palette.open_folder"),
+            None,
+        ),
+        action_item(
+            ActionId::NewLoadTest,
+            t!("shell.palette.new_load_test"),
+            None,
+        ),
+        action_item(
+            ActionId::ToggleTheme,
+            t!("shell.palette.toggle_theme"),
+            None,
+        ),
     ]
 }
 
-fn action_item(action: ActionId, label: &str, shortcut: Option<String>) -> PaletteItem {
+fn action_item(
+    action: ActionId,
+    label: impl Into<String>,
+    shortcut: Option<String>,
+) -> PaletteItem {
     PaletteItem {
         kind: PaletteItemKind::Action(action),
-        label: label.to_string(),
+        label: label.into(),
         detail: None,
         shortcut,
     }
@@ -195,6 +220,12 @@ pub fn fuzzy_filter(query: &str, items: &[PaletteItem]) -> Vec<(usize, i32, Vec<
     matches
 }
 
+/// The lowercase of `character`, one char for one char so matched indices stay valid. Unlike
+/// `to_ascii_lowercase` it also folds accented capitals (`Ó`), which the translated labels have.
+fn lower_char(character: char) -> char {
+    character.to_lowercase().next().unwrap_or(character)
+}
+
 /// Tries to match `query` as a case-insensitive subsequence of `text`, greedily picking the
 /// earliest occurrence of each character. Returns the score and the matched char indices, or
 /// `None` if some character of `query` does not appear, in order, in `text`.
@@ -202,14 +233,8 @@ fn fuzzy_match(query: &str, text: &str) -> Option<(i32, Vec<usize>)> {
     if query.is_empty() {
         return Some((0, Vec::new()));
     }
-    let lower_text: Vec<char> = text
-        .chars()
-        .map(|character| character.to_ascii_lowercase())
-        .collect();
-    let lower_query: Vec<char> = query
-        .chars()
-        .map(|character| character.to_ascii_lowercase())
-        .collect();
+    let lower_text: Vec<char> = text.chars().map(lower_char).collect();
+    let lower_query: Vec<char> = query.chars().map(lower_char).collect();
 
     let mut matched_indices = Vec::with_capacity(lower_query.len());
     let mut score = 0i32;
@@ -358,6 +383,19 @@ mod tests {
         let items = vec![item("Auth/Login")];
         let matches = fuzzy_filter("LOGIN", &items);
         assert_eq!(matches.len(), 1);
+    }
+
+    #[test]
+    fn matching_folds_accented_capitals() {
+        let items = vec![item("\u{d3}rdenes")];
+        assert_eq!(fuzzy_filter("\u{f3}r", &items).len(), 1);
+    }
+
+    #[test]
+    fn action_labels_follow_the_language() {
+        let spanish = t!("shell.palette.send", locale = "es");
+        assert_eq!(spanish, "Enviar petici\u{f3}n");
+        assert_eq!(t!("shell.palette.send", locale = "en"), "Send request");
     }
 
     #[test]
