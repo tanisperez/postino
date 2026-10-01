@@ -10,6 +10,8 @@ use postino_load::LoadSnapshot;
 use postino_load::history::RunRecordHeader;
 use postino_workspace::Node;
 
+use super::number::{format_decimal, format_signed_decimal};
+
 /// What a load test tab targets (`plans/ui-redesign.md` phase 1d point 1): a single request, or
 /// every request of a folder ("collection"), in tree order. Both variants carry the target's
 /// workspace id.
@@ -450,9 +452,9 @@ pub fn delta_tone(change: f64, higher_is_better: bool) -> DeltaTone {
 /// for any non-zero change, and plain `0.0` (never `+0.0` or `-0.0`) when it rounds to zero.
 pub fn format_delta(change: f64, unit: &str) -> String {
     if (change * 10.0).round() == 0.0 {
-        format!("0.0{unit}")
+        format!("{}{unit}", format_decimal(0.0, 1))
     } else {
-        format!("{change:+.1}{unit}")
+        format!("{}{unit}", format_signed_decimal(change, 1))
     }
 }
 

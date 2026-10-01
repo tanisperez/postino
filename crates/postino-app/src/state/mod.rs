@@ -11,6 +11,7 @@ pub mod format;
 pub mod import;
 pub mod load_test;
 pub mod locale;
+pub mod number;
 pub mod palette;
 pub mod request_edit;
 pub mod response_render;

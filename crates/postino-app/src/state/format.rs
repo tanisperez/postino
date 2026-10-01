@@ -7,6 +7,8 @@ use std::time::Duration;
 
 use rust_i18n::t;
 
+use super::number::{format_decimal, format_integer};
+
 /// Number of seconds in a day, used by [`relative_day`] to compare UTC day boundaries.
 const SECONDS_PER_DAY: i64 = 24 * 60 * 60;
 
@@ -19,13 +21,13 @@ pub fn human_size(bytes: u64) -> String {
     const GB: f64 = MB * 1024.0;
     let bytes_f = bytes as f64;
     if bytes < 1024 {
-        format!("{bytes} B")
+        format!("{} B", format_integer(bytes))
     } else if bytes_f < MB {
-        format!("{:.1} KB", bytes_f / KB)
+        format!("{} KB", format_decimal(bytes_f / KB, 1))
     } else if bytes_f < GB {
-        format!("{:.1} MB", bytes_f / MB)
+        format!("{} MB", format_decimal(bytes_f / MB, 1))
     } else {
-        format!("{:.1} GB", bytes_f / GB)
+        format!("{} GB", format_decimal(bytes_f / GB, 1))
     }
 }
 
@@ -35,9 +37,9 @@ pub fn human_size(bytes: u64) -> String {
 pub fn human_duration(duration: Duration) -> String {
     let millis = duration.as_millis();
     if millis < 1000 {
-        format!("{millis} ms")
+        format!("{} ms", format_integer(millis as u64))
     } else {
-        format!("{:.1} s", duration.as_secs_f64())
+        format!("{} s", format_decimal(duration.as_secs_f64(), 1))
     }
 }
 

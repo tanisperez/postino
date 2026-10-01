@@ -108,6 +108,9 @@ Galician, Italian.
 - Not translated: log messages, errors produced by the library crates (shown verbatim inside a
   translated frame), HTTP literals (methods, header names, MIME types), keyboard shortcut labels
   and the `POSTINO_OPEN=components` gallery.
+- Numbers shown to the user go through `state::number` (`format_integer`, `format_decimal`,
+  `format_signed_decimal`, `icu_decimal` with CLDR data, formatter cached per language). Never in
+  logs, snippets, run history JSON or the number inputs the user types in.
 - Tests never call `rust_i18n::set_locale`, the locale is process wide and tests run in parallel.
   Use `t!("key", locale = "es")`. `state/locale.rs` tests check that every key exists in the four
   languages with the same `%{}` placeholders, that no text has an em dash, and that every

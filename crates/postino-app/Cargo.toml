@@ -25,6 +25,8 @@ toml = { workspace = true }
 log = { workspace = true }
 rust-i18n = { workspace = true }
 sys-locale = { workspace = true }
+icu_decimal = { workspace = true }
+icu_locale_core = { workspace = true }
 chrono = { workspace = true }
 postino-core = { path = "../postino-core" }
 postino-format = { path = "../postino-format" }

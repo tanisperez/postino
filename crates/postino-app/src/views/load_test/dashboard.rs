@@ -22,6 +22,7 @@ use crate::state::format::relative_day;
 use crate::state::load_test::{
     DeltaTone, LoadTestFailure, LoadTestStatus, LoadTestTab, delta_tone, format_delta,
 };
+use crate::state::number::{format_decimal, format_integer};
 use crate::theme::metrics::RADIUS_LG;
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{Card, InlineMessage, InlineMessageKind, MethodBadge};
@@ -221,7 +222,7 @@ fn render_history_list(
                     div()
                         .text_size(px(12.0))
                         .text_color(palette.fg_subtle)
-                        .child(format!("{:.0} req/s", header.rps)),
+                        .child(format!("{} req/s", format_decimal(header.rps, 0))),
                 )
                 .on_click(move |_, _window, cx| {
                     let _ = row_weak.update(cx, |view, cx| {
@@ -371,23 +372,10 @@ fn compare_label(label: &str) -> String {
 /// given.
 fn format_compare_value(label: &str, value: f64) -> String {
     match label {
-        "p95" | "p99" => format!("{:.0} ms", value / 1000.0),
-        "Errors" => format!("{:.1}%", value * 100.0),
-        _ => format!("{value:.0}"),
+        "p95" | "p99" => format!("{} ms", format_decimal(value / 1000.0, 0)),
+        "Errors" => format!("{}%", format_decimal(value * 100.0, 1)),
+        _ => format_decimal(value, 0),
     }
-}
-
-/// `"17,304"`: groups `value` with thousands separators.
-fn format_thousands(value: u64) -> String {
-    let digits = value.to_string();
-    let mut out = String::new();
-    for (index, digit) in digits.chars().rev().enumerate() {
-        if index > 0 && index % 3 == 0 {
-            out.push(',');
-        }
-        out.push(digit);
-    }
-    out.chars().rev().collect()
 }
 
 /// Minimum width of one KPI cell. A group of three needs three of them, so the two groups of
@@ -403,22 +391,37 @@ fn render_kpi_strip(palette: &Palette, snapshot: &LoadSnapshot) -> AnyElement {
     let kpis: [(String, String, &str, bool); 6] = [
         (
             t!("load_test.kpi.rps").into_owned(),
-            format!("{:.0}", snapshot.rps),
+            format_decimal(snapshot.rps, 0),
             "",
             false,
         ),
-        ("p50".into(), (snapshot.p50 / 1000).to_string(), "ms", false),
-        ("p95".into(), (snapshot.p95 / 1000).to_string(), "ms", false),
-        ("p99".into(), (snapshot.p99 / 1000).to_string(), "ms", false),
+        (
+            "p50".into(),
+            format_integer(snapshot.p50 / 1000),
+            "ms",
+            false,
+        ),
+        (
+            "p95".into(),
+            format_integer(snapshot.p95 / 1000),
+            "ms",
+            false,
+        ),
+        (
+            "p99".into(),
+            format_integer(snapshot.p99 / 1000),
+            "ms",
+            false,
+        ),
         (
             t!("load_test.kpi.errors").into_owned(),
-            format!("{:.1}", snapshot.error_rate * 100.0),
+            format_decimal(snapshot.error_rate * 100.0, 1),
             "%",
             snapshot.error_rate > 0.0,
         ),
         (
             t!("load_test.kpi.total").into_owned(),
-            format_thousands(snapshot.total),
+            format_integer(snapshot.total),
             "",
             false,
         ),
@@ -580,9 +583,9 @@ fn render_throughput_card(
                 .font_family(mono_font.clone())
                 .text_size(px(11.0))
                 .text_color(palette.fg_subtle)
-                .children(
-                    (0..=4).map(|step| div().child(format!("{}s", duration_secs * step / 4))),
-                ),
+                .children((0..=4).map(|step| {
+                    div().child(format!("{}s", format_integer(duration_secs * step / 4)))
+                })),
         )
         .into_any_element()
 }
@@ -713,7 +716,7 @@ fn render_status_breakdown(
                         .w(px(56.0))
                         .text_right()
                         .text_color(palette.fg_muted)
-                        .child(format!("{:.1}%", fraction * 100.0)),
+                        .child(format!("{}%", format_decimal(fraction * 100.0, 1))),
                 )
         }))
         .into_any_element()
@@ -877,28 +880,28 @@ fn render_per_request_table(
                         .flex_none()
                         .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
                         .text_right()
-                        .child(stats.count.to_string()),
+                        .child(format_integer(stats.count)),
                 )
                 .child(
                     div()
                         .flex_none()
                         .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
                         .text_right()
-                        .child(format!("{} ms", stats.p50 / 1000)),
+                        .child(format!("{} ms", format_integer(stats.p50 / 1000))),
                 )
                 .child(
                     div()
                         .flex_none()
                         .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
                         .text_right()
-                        .child(format!("{} ms", stats.p95 / 1000)),
+                        .child(format!("{} ms", format_integer(stats.p95 / 1000))),
                 )
                 .child(
                     div()
                         .flex_none()
                         .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
                         .text_right()
-                        .child(format!("{} ms", stats.p99 / 1000)),
+                        .child(format!("{} ms", format_integer(stats.p99 / 1000))),
                 )
                 .child(
                     div()
@@ -906,7 +909,7 @@ fn render_per_request_table(
                         .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
                         .text_right()
                         .text_color(error_color)
-                        .child(format!("{:.1}%", stats.error_rate * 100.0)),
+                        .child(format!("{}%", format_decimal(stats.error_rate * 100.0, 1))),
                 )
         });
 

@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 use postino_core::TemplateWarning;
 
 use super::locale;
+use super::number::{format_decimal, format_integer};
 
 /// The standard reason phrase for a status code (`"OK"` for 200, `"Not Found"` for 404, ...),
 /// for the response status badge label ("200 OK", "404 Not Found", `plans/ui-redesign.md` phase
@@ -219,11 +220,11 @@ impl BodyTextCache {
 pub fn format_size(bytes: usize) -> String {
     let bytes = bytes as f64;
     if bytes < 1000.0 {
-        format!("{} B", bytes as u64)
+        format!("{} B", format_integer(bytes as u64))
     } else if bytes < 1_000_000.0 {
-        format!("{:.1} KB", bytes / 1000.0)
+        format!("{} KB", format_decimal(bytes / 1000.0, 1))
     } else {
-        format!("{:.1} MB", bytes / 1_000_000.0)
+        format!("{} MB", format_decimal(bytes / 1_000_000.0, 1))
     }
 }
 
@@ -232,9 +233,9 @@ pub fn format_size(bytes: usize) -> String {
 pub fn format_duration(duration: Duration) -> String {
     let millis = duration.as_millis();
     if millis < 1000 {
-        format!("{millis} ms")
+        format!("{} ms", format_integer(millis as u64))
     } else {
-        format!("{:.2} s", duration.as_secs_f64())
+        format!("{} s", format_decimal(duration.as_secs_f64(), 2))
     }
 }
 

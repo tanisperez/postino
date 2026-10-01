@@ -21,6 +21,7 @@ use rust_i18n::t;
 use crate::logging;
 use crate::state;
 use crate::state::locale::{self, LanguageChoice};
+use crate::state::number::format_decimal;
 use crate::state::settings::{
     InvalidTlsCertificates, LogLevel, Settings, SettingsCategory, ThemeChoice,
 };
@@ -1145,7 +1146,10 @@ fn render_size_stepper(
                 .w(px(STEPPER_VALUE_WIDTH))
                 .text_center()
                 .font_family(mono_font_family)
-                .child(format!("{value} px")),
+                .child(format!(
+                    "{} px",
+                    format_decimal(f64::from(value), usize::from(value.fract() != 0.0))
+                )),
         )
         .child(stepper_button(
             format!("{id_prefix}-plus"),
