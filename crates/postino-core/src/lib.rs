@@ -11,6 +11,7 @@ mod environment;
 pub mod functions;
 mod interpolate;
 mod key_value;
+pub mod log_safe;
 mod method;
 mod request;
 mod response;

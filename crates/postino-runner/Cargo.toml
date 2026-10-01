@@ -10,6 +10,7 @@ postino-core = { path = "../postino-core" }
 postino-script = { path = "../postino-script" }
 postino-http = { path = "../postino-http" }
 thiserror = { workspace = true }
+log = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

@@ -3,6 +3,7 @@
 //! complete [`RunResult`] for the UI.
 
 use std::sync::Arc;
+use std::time::Instant;
 
 use postino_core::{Environment, KeyValue, Request, VarScope};
 use postino_http::SendOptions;
@@ -58,7 +59,13 @@ impl Runner {
                 vars: Vec::new(),
                 env: session_env.merged_with(environment),
             };
-            match self.engine.run_pre(&request.pre_script, ctx) {
+            let started = Instant::now();
+            let outcome = self.engine.run_pre(&request.pre_script, ctx);
+            log::trace!(
+                "pre-request script ran in {} us",
+                started.elapsed().as_micros()
+            );
+            match outcome {
                 Err(error) => {
                     // An uncaught exception in a pre script aborts the run: nothing is sent.
                     return RunResult {
@@ -86,7 +93,13 @@ impl Runner {
             session_env: session_env.as_slice(),
             environment: &environment.variables,
         };
+        let started = Instant::now();
         let (resolved, warnings) = resolve(&working_request, &scope);
+        log::trace!(
+            "interpolated in {} us, {} warnings",
+            started.elapsed().as_micros(),
+            warnings.len()
+        );
 
         // 3. Send.
         let response = match postino_http::send(&resolved, &self.options) {
@@ -111,7 +124,13 @@ impl Runner {
                 vars: request_vars,
                 env: session_env.merged_with(environment),
             };
-            match self.engine.run_post(&request.post_script, ctx) {
+            let started = Instant::now();
+            let outcome = self.engine.run_post(&request.post_script, ctx);
+            log::trace!(
+                "post-response script ran in {} us",
+                started.elapsed().as_micros()
+            );
+            match outcome {
                 Err(error) => {
                     // An engine-level failure (timeout, memory limit, ...): unlike a plain
                     // script exception, there is no PostOutcome to read console lines or tests

@@ -17,8 +17,11 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::logging;
 use crate::state;
-use crate::state::settings::{InvalidTlsCertificates, Settings, SettingsCategory, ThemeChoice};
+use crate::state::settings::{
+    InvalidTlsCertificates, LogLevel, Settings, SettingsCategory, ThemeChoice,
+};
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_LG, RADIUS_MD};
 use crate::theme::{self, Palette, PaletteExt};
 
@@ -101,6 +104,7 @@ impl AppView {
         // The next request, normal or load test, reads these options.
         self.send_options.invalid_certificates =
             self.state.settings.invalid_tls_certificates.to_http();
+        log::info!("settings changed: {:?}", self.state.settings);
         state::settings::save_settings(&self.state.settings);
         cx.notify();
     }
@@ -119,6 +123,13 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         self.state.settings.invalid_tls_certificates = choice;
+        self.apply_settings_live(window, cx);
+    }
+
+    /// Picks the log level, applied to the logger at once.
+    fn set_log_level(&mut self, level: LogLevel, window: &mut Window, cx: &mut Context<Self>) {
+        self.state.settings.log_level = level;
+        logging::set_level(level.to_filter());
         self.apply_settings_live(window, cx);
     }
 
@@ -183,6 +194,7 @@ impl AppView {
     /// defaults").
     fn reset_settings_to_defaults(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.state.settings = Settings::default();
+        logging::set_level(self.state.settings.log_level.to_filter());
         self.apply_settings_live(window, cx);
     }
 }
@@ -281,8 +293,12 @@ fn render_nav_item(
     selected: bool,
 ) -> AnyElement {
     let (id, icon) = match category {
-        SettingsCategory::Appearance => ("settings-nav-appearance", IconName::Palette),
-        SettingsCategory::Requests => ("settings-nav-requests", IconName::Globe),
+        SettingsCategory::Appearance => ("settings-nav-appearance", Icon::new(IconName::Palette)),
+        SettingsCategory::Requests => ("settings-nav-requests", Icon::new(IconName::Globe)),
+        SettingsCategory::Advanced => (
+            "settings-nav-advanced",
+            Icon::new(gpui_kit::assets::IconName::Wrench),
+        ),
     };
     let item = h_flex()
         .id(id)
@@ -301,7 +317,7 @@ fn render_nav_item(
         item.hover(move |style| style.bg(hover))
             .active(move |style| style.bg(pressed))
     };
-    item.child(Icon::new(icon).small())
+    item.child(icon.small())
         .child(category.label())
         .on_click(move |_, _, cx| {
             let _ = weak.update(cx, |view, cx| view.set_settings_category(category, cx));
@@ -355,6 +371,12 @@ fn render_right_column(
                         weak.clone(),
                         palette,
                         settings.invalid_tls_certificates,
+                    )],
+                    SettingsCategory::Advanced => vec![render_logging_section(
+                        weak.clone(),
+                        palette,
+                        settings.log_level,
+                        mono_font_family,
                     )],
                 }),
         )
@@ -725,6 +747,109 @@ fn render_tls_section(
             Some("Self-signed, expired or mismatched server certificates."),
             control,
         ))
+        .into_any_element()
+}
+
+/// The "Logging" section of the Advanced pane: the log level and where the log file is.
+fn render_logging_section(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    current: LogLevel,
+    mono_font_family: &SharedString,
+) -> AnyElement {
+    let trigger = Button::new("settings-log-level")
+        .ghost()
+        .w(px(SELECT_WIDTH))
+        .h(px(CONTROL_HEIGHT))
+        .px(px(10.0))
+        .rounded(px(RADIUS_MD - 1.0))
+        .border_1()
+        .border_color(palette.border_strong)
+        .bg(palette.raised)
+        .text_color(palette.fg)
+        .child(
+            h_flex()
+                .w_full()
+                .items_center()
+                .justify_between()
+                .child(div().child(current.label()))
+                .child(
+                    Icon::new(IconName::ChevronsUpDown)
+                        .small()
+                        .text_color(palette.fg_subtle),
+                ),
+        );
+    let control = trigger
+        .dropdown_menu(move |mut menu, _, _| {
+            for level in LogLevel::ALL {
+                let target = weak.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(level.label())
+                        .checked(level == current)
+                        .on_click(move |_, window, cx| {
+                            let _ =
+                                target.update(cx, |view, cx| view.set_log_level(level, window, cx));
+                        }),
+                );
+            }
+            menu
+        })
+        .into_any_element();
+
+    let log_dir = logging::log_dir();
+    let path_label = logging::log_path()
+        .map(|path| state::format::shorten_path(&path, dirs::home_dir().as_deref()))
+        .unwrap_or_else(|| "unknown".to_string());
+    let open_folder = GhostButton::new("settings-open-log-folder", "Open folder")
+        .icon(Icon::new(gpui_kit::assets::IconName::FolderOpen))
+        .disabled(log_dir.is_none())
+        .on_click(move |_, _, cx| {
+            if let Some(dir) = &log_dir {
+                cx.open_with_system(dir);
+            }
+        });
+
+    v_flex()
+        .gap(px(14.0))
+        .child(div().font_weight(FontWeight::MEDIUM).child("Logging"))
+        .child(labeled_row(
+            palette,
+            "Log level",
+            Some("Debug and Trace add detail to diagnose problems."),
+            control,
+        ))
+        .child(
+            h_flex()
+                .items_center()
+                .justify_between()
+                .gap(px(16.0))
+                .child(
+                    v_flex()
+                        .min_w_0()
+                        .gap(px(2.0))
+                        .child(div().child("Log file"))
+                        .child(
+                            div()
+                                .text_color(palette.fg_muted)
+                                .text_size(px(12.0))
+                                .font_family(mono_font_family.clone())
+                                .child(path_label),
+                        ),
+                )
+                .child(open_folder),
+        )
+        .child(
+            div()
+                .text_color(palette.fg_subtle)
+                .text_size(px(12.0))
+                .child(format!(
+                    "Rotated every {} MB, keeping the last {} files. The {} environment \
+                     variable overrides the level at startup.",
+                    logging::MAX_FILE_SIZE / (1024 * 1024),
+                    logging::MAX_FILES,
+                    logging::ENV_VAR,
+                )),
+        )
         .into_any_element()
 }
 

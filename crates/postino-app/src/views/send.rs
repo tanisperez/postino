@@ -5,9 +5,13 @@
 //! [`postino_runner::Runner::run`]; this module's only job is to run it off the main thread so
 //! the UI stays responsive, show a spinner while it is in flight, and allow cancelling it.
 
+use std::time::Instant;
+
 use gpui_kit::*;
 use postino_core::Environment;
 use postino_runner::{Preview, Runner, preview};
+
+use crate::state::run_log;
 
 use super::root::AppView;
 
@@ -84,8 +88,11 @@ impl AppView {
             // up to 5 seconds, neither of which should stall the UI thread.
             let (result, session_env) = cx
                 .background_spawn(async move {
+                    let started = Instant::now();
                     let runner = Runner::new(engine, options);
                     let result = runner.run(&request, &environment, &mut session_env);
+                    log::info!("{}", run_log::summary(&result, started.elapsed()));
+                    log::debug!("{}", run_log::details(&result));
                     (result, session_env)
                 })
                 .await;
@@ -114,7 +121,9 @@ impl AppView {
 
     /// Cancels the request currently in flight, if any, by dropping its `Task`.
     pub(crate) fn cancel_send(&mut self, cx: &mut Context<Self>) {
-        self.sending = None;
+        if self.sending.take().is_some() {
+            log::info!("request cancelled");
+        }
         cx.notify();
     }
 }

@@ -13,11 +13,13 @@ pub mod load_test;
 pub mod palette;
 pub mod request_edit;
 pub mod response_render;
+pub mod run_log;
 pub mod script_heuristics;
 pub mod settings;
 pub mod sidebar_filter;
 mod tabs;
 pub mod ui_tabs;
+pub mod workspace_log;
 
 pub use tabs::{TabKind, TabsState};
 

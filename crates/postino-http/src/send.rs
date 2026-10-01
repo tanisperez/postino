@@ -3,7 +3,7 @@
 
 use std::time::Instant;
 
-use postino_core::{ResolvedBody, ResolvedField, ResolvedRequest, Response};
+use postino_core::{ResolvedBody, ResolvedField, ResolvedRequest, Response, log_safe};
 
 use crate::error::HttpError;
 use crate::options::{InvalidCertificates, SendOptions};
@@ -20,6 +20,9 @@ use crate::options::{InvalidCertificates, SendOptions};
 /// disabled, and the returned response carries a [`Response::tls_warning`]. This is safe for
 /// any method: a certificate error aborts the TLS handshake, before any request byte is written.
 pub fn send(request: &ResolvedRequest, options: &SendOptions) -> Result<Response, HttpError> {
+    if log::log_enabled!(log::Level::Trace) {
+        log_request(request);
+    }
     let http_request = build_http_request(request)?;
     let started = Instant::now();
 
@@ -31,12 +34,30 @@ pub fn send(request: &ResolvedRequest, options: &SendOptions) -> Result<Response
                 "TLS certificate not verified: {}",
                 certificate_reason(&error)
             );
+            log::debug!("{warning}, sending again without verification");
             let retry = run(&build_agent(options, false), &http_request).map_err(map_ureq_error)?;
             (retry, Some(warning))
         }
         other => (other.map_err(map_ureq_error)?, None),
     };
     finish(response, started, tls_warning)
+}
+
+/// Logs the request line and headers at Trace, with sensitive header values redacted and the
+/// query string left out.
+fn log_request(request: &ResolvedRequest) {
+    log::trace!(
+        "sending {} {}",
+        request.method,
+        log_safe::url_for_log(&request.url)
+    );
+    for header in &request.headers {
+        log::trace!(
+            "  {}: {}",
+            header.name,
+            log_safe::header_value_for_log(&header.name, &header.value)
+        );
+    }
 }
 
 /// Runs one request on `agent`.

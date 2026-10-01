@@ -7,6 +7,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Instant;
 
 use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::component::tree::TreeState;
@@ -28,6 +29,7 @@ use crate::actions::{
 use crate::state::debug_open::{self, DebugOpenTarget};
 use crate::state::settings::{Settings, SettingsCategory};
 use crate::state::ui_tabs::{self, RequestTab, ResponseTab};
+use crate::state::workspace_log::{log_workspace_error, tree_counts};
 use crate::state::{self, AppState};
 use crate::views::components::{
     DocumentTab, DocumentTabs, IconButton, InlineMessage, InlineMessageKind,
@@ -129,6 +131,9 @@ pub struct AppView {
     /// in the background while another tab is active, so this is a map, not a single slot. See
     /// `views/load_test/run.rs`.
     pub(crate) load_runs: HashMap<String, crate::views::load_test::run::LoadRunHandle>,
+    /// How many times [`Render::render`] ran, logged at Trace. A count that keeps growing while
+    /// nobody touches the app means something keeps calling `cx.notify()`.
+    render_count: u64,
 }
 
 impl AppView {
@@ -191,6 +196,7 @@ impl AppView {
             define_variable: None,
             load_test_entities: crate::views::load_test::LoadTestEntities::default(),
             load_runs: HashMap::new(),
+            render_count: 0,
         };
         if let Some(root) = initial_workspace {
             view.open_workspace_at(&root, window, cx);
@@ -224,9 +230,14 @@ impl AppView {
                     InputState::new(window, cx).default_value("{{baseUrl}}/users/{{missing}}")
                 }));
             }
-            DebugOpenTarget::Settings | DebugOpenTarget::SettingsRequests => {
+            DebugOpenTarget::Settings
+            | DebugOpenTarget::SettingsRequests
+            | DebugOpenTarget::SettingsAdvanced => {
                 if target == DebugOpenTarget::SettingsRequests {
                     self.settings_category = SettingsCategory::Requests;
+                }
+                if target == DebugOpenTarget::SettingsAdvanced {
+                    self.settings_category = SettingsCategory::Advanced;
                 }
                 // Opening a dialog needs the window's `Root` (`WindowExt::open_dialog` panics
                 // otherwise, "window first layer should be a gpui_component::Root"), which does
@@ -299,8 +310,10 @@ impl AppView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let started = Instant::now();
         match self.state.open_workspace(root) {
             Ok(()) => {
+                self.log_opened_workspace(root, started);
                 self.workspace_error = None;
                 // Remember an absolute path: a relative one (as given on the command line, for
                 // example) would resolve against whatever directory the app happens to be
@@ -310,6 +323,7 @@ impl AppView {
                 state::config::record_workspace(&absolute);
             }
             Err(error) => {
+                log_workspace_error(&format!("open workspace {}", root.display()), &error);
                 self.workspace_error = Some(error.to_string());
             }
         }
@@ -320,6 +334,27 @@ impl AppView {
         });
         self.refresh_tree(cx);
         cx.notify();
+    }
+
+    /// Logs a successfully opened workspace: where it is, what it holds, how long the scan took,
+    /// and which request files do not parse.
+    fn log_opened_workspace(&self, root: &Path, started: Instant) {
+        let Some(workspace) = self.state.workspace.as_ref() else {
+            return;
+        };
+        let counts = tree_counts(workspace.tree());
+        let environments = workspace.list_environments().map_or(0, |names| names.len());
+        log::info!(
+            "opened workspace {} in {} ms: {} requests, {} folders, {} environments",
+            root.display(),
+            started.elapsed().as_millis(),
+            counts.requests,
+            counts.folders,
+            environments,
+        );
+        for id in counts.broken {
+            log::warn!("{id} does not parse, it cannot be opened until fixed");
+        }
     }
 
     /// Rebuilds the sidebar tree from the workspace's current on-disk state, respecting the
@@ -397,6 +432,9 @@ impl AppView {
                 let is_new_tab = self.state.tabs.index_of(&id).is_none();
                 let query_len = request.query.len();
                 let has_body = !matches!(request.body, Body::None);
+                if is_new_tab {
+                    log::debug!("opened tab {id}");
+                }
                 self.state.tabs.open(id, request);
                 self.workspace_error = None;
                 if is_new_tab {
@@ -405,6 +443,7 @@ impl AppView {
                 }
             }
             Err(error) => {
+                log_workspace_error(&format!("open {id}"), &error);
                 self.workspace_error = Some(error.to_string());
             }
         }
@@ -423,6 +462,7 @@ impl AppView {
             .get(index)
             .map(|tab| tab.id.clone())
         {
+            log::debug!("closed tab {tab_id}");
             self.stop_load_test(&tab_id);
         }
         self.state.tabs.close(index);
@@ -450,11 +490,13 @@ impl AppView {
         };
         match workspace.save_request(&id, &request) {
             Ok(()) => {
+                log::debug!("saved {id}");
                 self.state.tabs.mark_saved(active_index);
                 self.workspace_error = None;
                 self.refresh_tree(cx);
             }
             Err(error) => {
+                log_workspace_error(&format!("save {id}"), &error);
                 self.workspace_error = Some(error.to_string());
             }
         }
@@ -474,12 +516,16 @@ impl AppView {
         };
         match workspace.create_request(parent.as_deref(), &name) {
             Ok(id) => {
+                log::debug!("created request {id}");
                 self.workspace_error = None;
                 self.refresh_tree(cx);
                 self.open_request(id, cx);
                 return;
             }
-            Err(error) => self.workspace_error = Some(error.to_string()),
+            Err(error) => {
+                log_workspace_error(&format!("create request {name:?}"), &error);
+                self.workspace_error = Some(error.to_string());
+            }
         }
         cx.notify();
     }
@@ -496,11 +542,15 @@ impl AppView {
             return;
         };
         match workspace.create_folder(parent.as_deref(), &name) {
-            Ok(_) => {
+            Ok(id) => {
+                log::debug!("created folder {id}");
                 self.workspace_error = None;
                 self.refresh_tree(cx);
             }
-            Err(error) => self.workspace_error = Some(error.to_string()),
+            Err(error) => {
+                log_workspace_error(&format!("create folder {name:?}"), &error);
+                self.workspace_error = Some(error.to_string());
+            }
         }
         cx.notify();
     }
@@ -513,11 +563,15 @@ impl AppView {
         };
         match workspace.rename(&id, &new_name) {
             Ok(new_id) => {
+                log::debug!("renamed {id} to {new_id}");
                 self.state.tabs.rename_prefix(&id, &new_id);
                 self.workspace_error = None;
                 self.refresh_tree(cx);
             }
-            Err(error) => self.workspace_error = Some(error.to_string()),
+            Err(error) => {
+                log_workspace_error(&format!("rename {id}"), &error);
+                self.workspace_error = Some(error.to_string());
+            }
         }
         cx.notify();
     }
@@ -529,11 +583,15 @@ impl AppView {
         };
         match workspace.delete(&id) {
             Ok(()) => {
+                log::debug!("deleted {id}");
                 self.state.tabs.close_prefix(&id);
                 self.workspace_error = None;
                 self.refresh_tree(cx);
             }
-            Err(error) => self.workspace_error = Some(error.to_string()),
+            Err(error) => {
+                log_workspace_error(&format!("delete {id}"), &error);
+                self.workspace_error = Some(error.to_string());
+            }
         }
         cx.notify();
     }
@@ -599,6 +657,7 @@ impl AppView {
     /// Sets the active environment (`None` for "No environment"). Used by the environment
     /// picker's clicks and by [`Self::select_environment_by_shortcut`].
     pub(crate) fn select_environment(&mut self, name: Option<String>, cx: &mut Context<Self>) {
+        log::debug!("active environment: {}", name.as_deref().unwrap_or("none"));
         self.state.active_environment = name;
         cx.notify();
     }
@@ -862,6 +921,9 @@ impl AppView {
 
 impl Render for AppView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.render_count += 1;
+        log::trace!("render #{}", self.render_count);
+
         // Follow the sidebar's selection: opening a request tab happens here, once per actual
         // selection change, rather than from a click handler on every tree row. Guarding on
         // `last_selected_request` keeps a re-render from reloading the file (and discarding
