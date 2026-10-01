@@ -1,0 +1,12 @@
+# Strings shared by several areas. Glossary and rules: plans/i18n.md
+_version: 2
+"common.close":
+  en: "Close"
+  es: "Cerrar"
+  gl: "Pechar"
+  it: "Chiudi"
+"common.unknown":
+  en: "unknown"
+  es: "desconocido"
+  gl: "descoñecido"
+  it: "sconosciuto"

@@ -27,6 +27,9 @@ dirs = "7"
 dunce = "1"
 toml = "0.8"
 log = "0.4"
+# Already built by gpui-component (translations) and cosmic-text (OS language); same versions.
+rust-i18n = "4.2"
+sys-locale = "0.3"
 # Already built by gpui-base with its default features; only the local clock is used here.
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 

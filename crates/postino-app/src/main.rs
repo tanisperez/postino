@@ -11,6 +11,8 @@ mod state;
 mod theme;
 mod views;
 
+rust_i18n::i18n!("locales", fallback = "en");
+
 use std::path::{Path, PathBuf};
 
 use gpui_kit::component::theme::{Theme, ThemeMode};
@@ -41,6 +43,19 @@ fn main() {
     if let Some(value) = env_level.filter(|_| !from_env) {
         log::warn!("ignoring {}={value:?}: not a log level", logging::ENV_VAR);
     }
+
+    // Before the window opens, so its first frame is already in the right language.
+    let language = state::locale::resolve(settings.language);
+    state::locale::apply(language);
+    log::info!(
+        "language: {} ({}, system locales: {})",
+        language.code(),
+        match settings.language.language() {
+            Some(_) => "fixed",
+            None => "auto",
+        },
+        state::locale::system_locales().join(", "),
+    );
 
     // The workspace folder to open on startup: the first CLI argument if given (handy for
     // testing), otherwise the folder remembered from the previous run.
@@ -167,8 +182,7 @@ fn log_startup(level: state::settings::LogLevel, from_env: bool, log_path: Optio
         std::env::consts::ARCH,
     );
     log::info!(
-        "log level {}{}, log file {}",
-        level.label(),
+        "log level {level:?}{}, log file {}",
         if from_env {
             format!(" (from {})", logging::ENV_VAR)
         } else {

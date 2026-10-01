@@ -601,6 +601,14 @@ impl AppView {
         self.save_active_tab(cx);
     }
 
+    /// Re-applies every translated string that is cached outside `render` after the UI language
+    /// changed (`plans/i18n.md`, section 3.3). Today that means `InputState` placeholders, set
+    /// once at construction: each view that owns inputs exposes a
+    /// `relocalize(&mut self, window, cx)` that calls `InputState::set_placeholder` again, and
+    /// this method forwards to them. Called by the Settings view before it refreshes the windows,
+    /// with the new locale already applied. No view owns such a string yet.
+    pub(crate) fn relocalize(&mut self, _window: &mut Window, _cx: &mut Context<Self>) {}
+
     /// Handles the `Ctrl+Enter` / `Cmd+Enter` key binding (see `main.rs`'s `bind_keys`).
     fn on_send_action(&mut self, _: &SendActiveTab, _window: &mut Window, cx: &mut Context<Self>) {
         self.send_active_tab(cx);

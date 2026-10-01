@@ -5088,8 +5088,10 @@ dependencies = [
  "postino-script",
  "postino-workspace",
  "pretty_assertions",
+ "rust-i18n",
  "serde",
  "serde_json",
+ "sys-locale",
  "tempfile",
  "toml 0.8.23",
 ]

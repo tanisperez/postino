@@ -89,6 +89,30 @@ any other icon silently renders empty. On Linux, the window is opened with `Wind
   `postino-app/src/state`, not in `gpui` views, specifically so it can be unit tested without a
   window or a GPU.
 
+## Translations
+
+Plan, glossary and phases in `plans/i18n.md`. Languages: English (source and fallback), Spanish,
+Galician, Italian.
+
+- Library: `rust-i18n` 4, `i18n!("locales", fallback = "en")` in `main.rs`, strings read with
+  `t!("area.key")`. The OS language comes from `sys-locale`; `state/locale.rs` maps it to a
+  `Language` and applies the `language` setting (`auto` by default).
+- Files: `crates/postino-app/locales/*.yml`, `_version: 2`, one entry per key with `en`, `es`,
+  `gl` and `it` together. One file per area (`common`, `settings`, `request`, `response`,
+  `shell`, `load_test`) so parallel work never edits the same file.
+- Keys: dotted, area first, lowercase snake case (`settings.tls.title`). Strings shared by
+  several areas live under `common.`. Plurals are two keys, `<key>.one` and `<key>.other`, read
+  with `state::locale::plural`.
+- Strings cached outside `render` (input placeholders) are re-applied by `AppView::relocalize`
+  when the language changes.
+- Not translated: log messages, errors produced by the library crates (shown verbatim inside a
+  translated frame), HTTP literals (methods, header names, MIME types), keyboard shortcut labels
+  and the `POSTINO_OPEN=components` gallery.
+- Tests never call `rust_i18n::set_locale`, the locale is process wide and tests run in parallel.
+  Use `t!("key", locale = "es")`. `state/locale.rs` tests check that every key exists in the four
+  languages with the same `%{}` placeholders, that no text has an em dash, and that every
+  literal `t!` key used under `src/` exists.
+
 ## Performance
 
 Found in the 2026-09-30 investigation (#32, #33, #34). Keep these rules in every change.

@@ -1,0 +1,207 @@
+# Settings modal. Glossary and rules: plans/i18n.md
+_version: 2
+"settings.title":
+  en: "Settings"
+  es: "Ajustes"
+  gl: "Axustes"
+  it: "Impostazioni"
+"settings.saved_to":
+  en: "Saved to"
+  es: "Guardado en"
+  gl: "Gardado en"
+  it: "Salvato in"
+"settings.category.appearance":
+  en: "Appearance"
+  es: "Apariencia"
+  gl: "Aparencia"
+  it: "Aspetto"
+"settings.category.requests":
+  en: "Requests"
+  es: "Peticiones"
+  gl: "Peticións"
+  it: "Richieste"
+"settings.category.advanced":
+  en: "Advanced"
+  es: "Avanzado"
+  gl: "Avanzado"
+  it: "Avanzate"
+"settings.footer.applied":
+  en: "Changes apply immediately."
+  es: "Los cambios se aplican al instante."
+  gl: "Os cambios aplícanse ao instante."
+  it: "Le modifiche vengono applicate subito."
+"settings.footer.reset":
+  en: "Reset to defaults"
+  es: "Restablecer valores predeterminados"
+  gl: "Restablecer os valores predeterminados"
+  it: "Ripristina i valori predefiniti"
+"settings.language.title":
+  en: "Language"
+  es: "Idioma"
+  gl: "Idioma"
+  it: "Lingua"
+"settings.language.label":
+  en: "Display language"
+  es: "Idioma de la interfaz"
+  gl: "Idioma da interface"
+  it: "Lingua dell'interfaccia"
+"settings.language.description":
+  en: "Automatic follows your system language."
+  es: "Automático sigue el idioma del sistema."
+  gl: "Automático segue o idioma do sistema."
+  it: "Automatica segue la lingua del sistema."
+"settings.language.auto":
+  en: "Automatic (%{language})"
+  es: "Automático (%{language})"
+  gl: "Automático (%{language})"
+  it: "Automatica (%{language})"
+"settings.theme.title":
+  en: "Theme"
+  es: "Tema"
+  gl: "Tema"
+  it: "Tema"
+"settings.theme.description":
+  en: "System follows your OS light/dark setting and switches live."
+  es: "Sistema sigue el modo claro/oscuro del sistema operativo y cambia al instante."
+  gl: "Sistema segue o modo claro/escuro do sistema operativo e cambia ao instante."
+  it: "Sistema segue l'impostazione chiaro/scuro del sistema operativo e cambia subito."
+"settings.theme.system":
+  en: "System"
+  es: "Sistema"
+  gl: "Sistema"
+  it: "Sistema"
+"settings.theme.light":
+  en: "Light"
+  es: "Claro"
+  gl: "Claro"
+  it: "Chiaro"
+"settings.theme.dark":
+  en: "Dark"
+  es: "Oscuro"
+  gl: "Escuro"
+  it: "Scuro"
+"settings.interface.title":
+  en: "Interface"
+  es: "Interfaz"
+  gl: "Interface"
+  it: "Interfaccia"
+"settings.interface.font_description":
+  en: "Geist is bundled, so every platform looks the same."
+  es: "Geist está incluida, así que todas las plataformas se ven igual."
+  gl: "Geist vai incluída, así que todas as plataformas se ven igual."
+  it: "Geist è inclusa, quindi tutte le piattaforme appaiono uguali."
+"settings.font":
+  en: "Font"
+  es: "Fuente"
+  gl: "Tipo de letra"
+  it: "Carattere"
+"settings.font_size":
+  en: "Font size"
+  es: "Tamaño de letra"
+  gl: "Tamaño da letra"
+  it: "Dimensione carattere"
+"settings.font_bundled":
+  en: "%{name} (bundled)"
+  es: "%{name} (incluida)"
+  gl: "%{name} (incluído)"
+  it: "%{name} (incluso)"
+"settings.editor.title":
+  en: "Editor"
+  es: "Editor"
+  gl: "Editor"
+  it: "Editor"
+"settings.editor.mono_font":
+  en: "Monospace font"
+  es: "Fuente monoespaciada"
+  gl: "Tipo de letra monoespazada"
+  it: "Carattere a spaziatura fissa"
+"settings.tls.title":
+  en: "TLS"
+  es: "TLS"
+  gl: "TLS"
+  it: "TLS"
+"settings.tls.invalid_certificates":
+  en: "Invalid certificates"
+  es: "Certificados no válidos"
+  gl: "Certificados non válidos"
+  it: "Certificati non validi"
+"settings.tls.invalid_certificates_description":
+  en: "Self-signed, expired or mismatched server certificates."
+  es: "Certificados del servidor autofirmados, caducados o que no coinciden."
+  gl: "Certificados do servidor autoasinados, caducados ou que non coinciden."
+  it: "Certificati del server autofirmati, scaduti o non corrispondenti."
+"settings.tls.warn":
+  en: "Send with warning"
+  es: "Enviar con aviso"
+  gl: "Enviar con aviso"
+  it: "Invia con avviso"
+"settings.tls.reject":
+  en: "Reject"
+  es: "Rechazar"
+  gl: "Rexeitar"
+  it: "Rifiuta"
+"settings.tls.accept":
+  en: "Don't verify"
+  es: "No verificar"
+  gl: "Non verificar"
+  it: "Non verificare"
+"settings.logging.title":
+  en: "Logging"
+  es: "Registro"
+  gl: "Rexistro"
+  it: "Registro"
+"settings.logging.level":
+  en: "Log level"
+  es: "Nivel de registro"
+  gl: "Nivel de rexistro"
+  it: "Livello di log"
+"settings.logging.level_description":
+  en: "Debug and Trace add detail to diagnose problems."
+  es: "Debug y Trace añaden detalle para diagnosticar problemas."
+  gl: "Debug e Trace engaden detalle para diagnosticar problemas."
+  it: "Debug e Trace aggiungono dettagli per diagnosticare i problemi."
+"settings.logging.file":
+  en: "Log file"
+  es: "Archivo de registro"
+  gl: "Ficheiro de rexistro"
+  it: "File di log"
+"settings.logging.open_folder":
+  en: "Open folder"
+  es: "Abrir carpeta"
+  gl: "Abrir cartafol"
+  it: "Apri cartella"
+"settings.logging.rotation":
+  en: "Rotated every %{size} MB, keeping the last %{files} files. The %{variable} environment variable overrides the level at startup."
+  es: "Se rota cada %{size} MB y se conservan los últimos %{files} archivos. La variable de entorno %{variable} sustituye el nivel al iniciar."
+  gl: "Rótase cada %{size} MB e consérvanse os últimos %{files} ficheiros. A variable de contorno %{variable} substitúe o nivel ao iniciar."
+  it: "Ruotato ogni %{size} MB, conservando gli ultimi %{files} file. La variabile d'ambiente %{variable} sostituisce il livello all'avvio."
+"settings.log_level.off":
+  en: "Off"
+  es: "Desactivado"
+  gl: "Desactivado"
+  it: "Disattivato"
+"settings.log_level.error":
+  en: "Error"
+  es: "Error"
+  gl: "Erro"
+  it: "Errore"
+"settings.log_level.warn":
+  en: "Warn"
+  es: "Aviso"
+  gl: "Aviso"
+  it: "Avviso"
+"settings.log_level.info":
+  en: "Info"
+  es: "Info"
+  gl: "Info"
+  it: "Info"
+"settings.log_level.debug":
+  en: "Debug"
+  es: "Debug"
+  gl: "Debug"
+  it: "Debug"
+"settings.log_level.trace":
+  en: "Trace"
+  es: "Trace"
+  gl: "Trace"
+  it: "Trace"
