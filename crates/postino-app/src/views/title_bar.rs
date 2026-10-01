@@ -10,6 +10,7 @@ use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use crate::state;
 use crate::theme::Palette;
@@ -70,7 +71,7 @@ impl AppView {
             .as_ref()
             .and_then(|root| root.file_name())
             .map(|name| name.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "Open a folder".to_string());
+            .unwrap_or_else(|| t!("shell.title_bar.no_workspace").into_owned());
         let recent = state::config::recent_workspaces();
         let home = dirs::home_dir();
         let fg_subtle = palette.fg_subtle;
@@ -134,7 +135,7 @@ impl AppView {
                     menu = menu.separator();
                 }
                 let open_weak = weak.clone();
-                menu = menu.item(PopupMenuItem::new("Open folder...").on_click(
+                menu = menu.item(PopupMenuItem::new(t!("common.open_folder")).on_click(
                     move |_, window, cx| {
                         sidebar::pick_workspace_folder(open_weak.clone(), window, cx);
                     },
@@ -189,7 +190,7 @@ fn render_search_trigger(
         .border_color(palette.border)
         .text_color(palette.fg_subtle)
         .child(Icon::new(IconName::Search).small())
-        .child(div().flex_1().child("Search requests and actions"))
+        .child(div().flex_1().child(t!("shell.title_bar.search_hint")))
         .child(
             div()
                 .font_family(mono_font)

@@ -18,6 +18,7 @@ use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{KEY_VALUE_SIDE_COL_WIDTH, RADIUS_MD};
@@ -105,7 +106,7 @@ impl KeyValueTable {
         Self {
             id: id.into(),
             rows: Vec::new(),
-            add_label: "Add".into(),
+            add_label: t!("request.kv.add").into_owned().into(),
             on_add: None,
         }
     }
@@ -116,7 +117,7 @@ impl KeyValueTable {
         self
     }
 
-    /// Overrides the trailing row's label (defaults to `"Add"`).
+    /// Overrides the trailing row's label (defaults to the translated "Add").
     #[allow(dead_code)] // no caller needs a non-default label yet
     pub fn add_label(mut self, label: impl Into<SharedString>) -> Self {
         self.add_label = label.into();
@@ -145,8 +146,8 @@ impl RenderOnce for KeyValueTable {
             .text_size(px(11.5))
             .text_color(palette.fg_subtle)
             .child(div().flex_none().w(side_col))
-            .child(div().flex_grow(1.0).child("Key"))
-            .child(div().flex_grow(1.4).child("Value"))
+            .child(div().flex_grow(1.0).child(t!("request.kv.key")))
+            .child(div().flex_grow(1.4).child(t!("common.value")))
             .child(div().flex_none().w(side_col));
 
         let rows = self.rows.into_iter().enumerate().map(|(index, row)| {

@@ -14,6 +14,7 @@ use gpui_kit::component::tree::{TreeEntry, TreeItem, TreeState, tree as tree_vie
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use postino_core::Method;
 use postino_workspace::{Node, RequestEntry, git_branch};
@@ -81,12 +82,20 @@ impl AppView {
                                 .p_4()
                                 .text_sm()
                                 .text_color(palette.fg_subtle)
-                                .child("Open a folder to get started."),
+                                .child(t!("shell.sidebar.empty")),
                         )
                     }),
             )
             .child(self.render_footer(&palette))
             .into_any_element()
+    }
+
+    /// Re-applies the filter input's translated placeholder after a language change
+    /// (`AppView::relocalize`).
+    pub(crate) fn relocalize_sidebar(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.sidebar_filter_input.update(cx, |state, cx| {
+            state.set_placeholder(t!("shell.sidebar.filter"), window, cx);
+        });
     }
 
     /// Renders the filter row: a `list-filter` icon and a borderless [`Input`] inside a bordered
@@ -171,13 +180,13 @@ fn render_header(weak: WeakEntity<AppView>, has_workspace: bool) -> impl IntoEle
         .pr(px(10.0))
         .pb(px(6.0))
         .pl(px(14.0))
-        .child(SectionLabel::new("Collections"))
+        .child(SectionLabel::new(t!("shell.sidebar.collections")))
         .child(
             h_flex()
                 .gap(px(2.0))
                 .child(
                     IconButton::new("new-request-root", IconName::Plus)
-                        .tooltip("New request")
+                        .tooltip(t!("common.new_request"))
                         .disabled(!has_workspace)
                         .on_click({
                             let weak = weak.clone();
@@ -188,7 +197,7 @@ fn render_header(weak: WeakEntity<AppView>, has_workspace: bool) -> impl IntoEle
                 )
                 .child(
                     IconButton::new("new-folder-root", gpui_kit::assets::IconName::FolderPlus)
-                        .tooltip("New folder")
+                        .tooltip(t!("common.new_folder"))
                         .disabled(!has_workspace)
                         .on_click({
                             let weak = weak.clone();
@@ -258,7 +267,7 @@ fn build_filtered_item(node: &Node, visible: &HashSet<String>) -> TreeItem {
 /// parse.
 fn request_label(request: &RequestEntry) -> String {
     match &request.broken {
-        Some(_) => format!("{} (broken)", request.name),
+        Some(_) => t!("shell.sidebar.broken", name = request.name.as_str()).into_owned(),
         None => request.name.clone(),
     }
 }
@@ -371,36 +380,36 @@ fn build_context_menu(
     if !is_request {
         let new_request_weak = weak.clone();
         let parent_for_request = id.clone();
-        menu = menu.item(
-            PopupMenuItem::new("New Request").on_click(move |_, window, cx| {
+        menu = menu.item(PopupMenuItem::new(t!("common.new_request")).on_click(
+            move |_, window, cx| {
                 open_new_request_dialog(
                     new_request_weak.clone(),
                     Some(parent_for_request.clone()),
                     window,
                     cx,
                 );
-            }),
-        );
+            },
+        ));
 
         let new_folder_weak = weak.clone();
         let parent_for_folder = id.clone();
-        menu = menu.item(
-            PopupMenuItem::new("New Folder").on_click(move |_, window, cx| {
+        menu = menu.item(PopupMenuItem::new(t!("common.new_folder")).on_click(
+            move |_, window, cx| {
                 open_new_folder_dialog(
                     new_folder_weak.clone(),
                     Some(parent_for_folder.clone()),
                     window,
                     cx,
                 );
-            }),
-        );
+            },
+        ));
         menu = menu.separator();
     }
 
     let load_test_weak = weak.clone();
     let load_test_id = id.clone();
-    menu = menu.item(
-        PopupMenuItem::new("Load test...").on_click(move |_, _window, cx| {
+    menu = menu.item(PopupMenuItem::new(t!("shell.sidebar.load_test")).on_click(
+        move |_, _window, cx| {
             let load_test_id = load_test_id.clone();
             let _ = load_test_weak.update(cx, |view, cx| {
                 if is_request {
@@ -409,35 +418,39 @@ fn build_context_menu(
                     view.open_load_test_for_collection(load_test_id, cx);
                 }
             });
-        }),
-    );
+        },
+    ));
     menu = menu.separator();
 
     let rename_weak = weak.clone();
     let rename_id = id.clone();
     let rename_name = current_name.clone();
-    menu = menu.item(PopupMenuItem::new("Rename").on_click(move |_, window, cx| {
-        open_rename_dialog(
-            rename_weak.clone(),
-            rename_id.clone(),
-            rename_name.clone(),
-            window,
-            cx,
-        );
-    }));
+    menu = menu.item(
+        PopupMenuItem::new(t!("common.rename")).on_click(move |_, window, cx| {
+            open_rename_dialog(
+                rename_weak.clone(),
+                rename_id.clone(),
+                rename_name.clone(),
+                window,
+                cx,
+            );
+        }),
+    );
 
     let delete_weak = weak.clone();
     let delete_id = id.clone();
     let delete_name = current_name;
-    menu = menu.item(PopupMenuItem::new("Delete").on_click(move |_, window, cx| {
-        open_delete_confirmation(
-            delete_weak.clone(),
-            delete_id.clone(),
-            delete_name.clone(),
-            window,
-            cx,
-        );
-    }));
+    menu = menu.item(
+        PopupMenuItem::new(t!("common.delete")).on_click(move |_, window, cx| {
+            open_delete_confirmation(
+                delete_weak.clone(),
+                delete_id.clone(),
+                delete_name.clone(),
+                window,
+                cx,
+            );
+        }),
+    );
 
     menu
 }
@@ -476,14 +489,15 @@ pub(crate) fn open_new_request_dialog(
     window: &mut Window,
     cx: &mut App,
 ) {
-    let input = cx.new(|cx| InputState::new(window, cx).placeholder("Request name"));
+    let input =
+        cx.new(|cx| InputState::new(window, cx).placeholder(t!("shell.sidebar.request_name")));
     window.open_dialog(cx, move |dialog, _, _| {
         let input_for_content = input.clone();
         let input_for_ok = input.clone();
         let view = view.clone();
         let parent = parent.clone();
         dialog
-            .title("New request")
+            .title(t!("common.new_request"))
             .content(move |content, _, _| content.child(Input::new(&input_for_content)))
             .on_ok(move |_, _, cx| {
                 let name = input_for_ok.read(cx).value().trim().to_string();
@@ -504,14 +518,15 @@ pub(crate) fn open_new_folder_dialog(
     window: &mut Window,
     cx: &mut App,
 ) {
-    let input = cx.new(|cx| InputState::new(window, cx).placeholder("Folder name"));
+    let input =
+        cx.new(|cx| InputState::new(window, cx).placeholder(t!("shell.sidebar.folder_name")));
     window.open_dialog(cx, move |dialog, _, _| {
         let input_for_content = input.clone();
         let input_for_ok = input.clone();
         let view = view.clone();
         let parent = parent.clone();
         dialog
-            .title("New folder")
+            .title(t!("common.new_folder"))
             .content(move |content, _, _| content.child(Input::new(&input_for_content)))
             .on_ok(move |_, _, cx| {
                 let name = input_for_ok.read(cx).value().trim().to_string();
@@ -532,7 +547,7 @@ fn open_rename_dialog(
     window: &mut Window,
     cx: &mut App,
 ) {
-    let input = cx.new(|cx| InputState::new(window, cx).placeholder("Name"));
+    let input = cx.new(|cx| InputState::new(window, cx).placeholder(t!("shell.sidebar.name")));
     input.update(cx, |state, cx| {
         state.set_value(current_name.clone(), window, cx);
     });
@@ -542,7 +557,7 @@ fn open_rename_dialog(
         let view = view.clone();
         let id = id.clone();
         dialog
-            .title("Rename")
+            .title(t!("common.rename"))
             .content(move |content, _, _| content.child(Input::new(&input_for_content)))
             .on_ok(move |_, _, cx| {
                 let name = input_for_ok.read(cx).value().trim().to_string();
@@ -566,15 +581,13 @@ fn open_delete_confirmation(
         let view = view.clone();
         let id = id.clone();
         alert
-            .title("Delete?")
-            .description(format!(
-                "\"{name}\" will be permanently deleted. This cannot be undone."
-            ))
+            .title(t!("shell.sidebar.delete_title"))
+            .description(t!("shell.sidebar.delete_text", name = name.as_str()))
             .button_props(
                 DialogButtonProps::default()
-                    .ok_text("Delete")
+                    .ok_text(t!("common.delete"))
                     .ok_variant(ButtonVariant::Danger)
-                    .cancel_text("Cancel")
+                    .cancel_text(t!("common.cancel"))
                     .show_cancel(true),
             )
             .on_ok(move |_, _, cx| {

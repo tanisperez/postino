@@ -16,9 +16,12 @@ use gpui_kit::component::theme::{Theme, ThemeMode};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use crate::logging;
 use crate::state;
+use crate::state::locale::{self, LanguageChoice};
+use crate::state::number::format_decimal;
 use crate::state::settings::{
     InvalidTlsCertificates, LogLevel, Settings, SettingsCategory, ThemeChoice,
 };
@@ -115,6 +118,28 @@ impl AppView {
         cx.notify();
     }
 
+    /// Picks the UI language: applies it process wide, lets every view re-apply the strings it
+    /// cached outside render ([`Self::relocalize`]), and repaints every window.
+    fn set_language(
+        &mut self,
+        choice: LanguageChoice,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.state.settings.language = choice;
+        self.apply_language(window, cx);
+        self.apply_settings_live(window, cx);
+    }
+
+    /// Applies `self.state.settings.language` live, without persisting it.
+    fn apply_language(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let language = locale::resolve(self.state.settings.language);
+        locale::apply(language);
+        log::info!("language changed to {}", language.code());
+        self.relocalize(window, cx);
+        cx.refresh_windows();
+    }
+
     /// Picks what to do with an invalid TLS certificate.
     fn set_invalid_tls_certificates(
         &mut self,
@@ -195,6 +220,7 @@ impl AppView {
     fn reset_settings_to_defaults(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.state.settings = Settings::default();
         logging::set_level(self.state.settings.log_level.to_filter());
+        self.apply_language(window, cx);
         self.apply_settings_live(window, cx);
     }
 }
@@ -242,7 +268,7 @@ fn render_nav(
 ) -> AnyElement {
     let path_label = state::settings::settings_path()
         .map(|path| state::format::shorten_path(&path, dirs::home_dir().as_deref()))
-        .unwrap_or_else(|| "unknown".to_string());
+        .unwrap_or_else(|| t!("common.unknown").into_owned());
 
     v_flex()
         .flex_none()
@@ -261,7 +287,7 @@ fn render_nav(
                 .pb(px(10.0))
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_size(px(14.0))
-                .child("Settings"),
+                .child(t!("settings.title")),
         )
         .children(
             SettingsCategory::ALL.into_iter().map(|category| {
@@ -275,7 +301,7 @@ fn render_nav(
                 .text_color(palette.fg_subtle)
                 .text_size(px(11.5))
                 .line_height(relative(1.5))
-                .child("Saved to")
+                .child(t!("settings.saved_to"))
                 .child(
                     div()
                         .font_family(mono_font_family.clone())
@@ -349,6 +375,8 @@ fn render_right_column(
                 .gap(px(22.0))
                 .children(match category {
                     SettingsCategory::Appearance => vec![
+                        render_language_section(weak.clone(), palette, settings.language),
+                        divider(palette),
                         render_theme_section(weak.clone(), palette, settings.theme),
                         divider(palette),
                         render_interface_section(
@@ -408,7 +436,7 @@ fn render_header(palette: &Palette, category: SettingsCategory) -> AnyElement {
         .child(
             IconButton::new("settings-close", IconName::Close)
                 .large()
-                .tooltip("Close")
+                .tooltip(t!("common.close"))
                 .on_click(move |_, window, cx| {
                     window.close_dialog(cx);
                 }),
@@ -430,15 +458,89 @@ fn render_footer(weak: WeakEntity<AppView>, palette: &Palette) -> AnyElement {
             div()
                 .text_color(palette.fg_subtle)
                 .text_size(px(12.0))
-                .child("Changes apply immediately."),
+                .child(t!("settings.footer.applied")),
         )
         .child(
-            GhostButton::new("settings-reset", "Reset to defaults").on_click(
+            GhostButton::new("settings-reset", t!("settings.footer.reset")).on_click(
                 move |_, window, cx| {
                     let _ = weak.update(cx, |view, cx| view.reset_settings_to_defaults(window, cx));
                 },
             ),
         )
+        .into_any_element()
+}
+
+/// The dropdown label of `choice`: a language's name in itself, or "Automatic" with the language
+/// the system resolves to.
+fn language_choice_label(choice: LanguageChoice) -> String {
+    match choice.language() {
+        Some(language) => language.native_name().to_string(),
+        None => t!(
+            "settings.language.auto",
+            language = locale::resolve(LanguageChoice::Auto).native_name()
+        )
+        .into_owned(),
+    }
+}
+
+/// The "Language" section: a dropdown with Automatic and the four languages.
+fn render_language_section(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    current: LanguageChoice,
+) -> AnyElement {
+    let trigger = Button::new("settings-language")
+        .ghost()
+        .w(px(SELECT_WIDTH))
+        .h(px(CONTROL_HEIGHT))
+        .px(px(10.0))
+        .rounded(px(RADIUS_MD - 1.0))
+        .border_1()
+        .border_color(palette.border_strong)
+        .bg(palette.raised)
+        .text_color(palette.fg)
+        .child(
+            h_flex()
+                .w_full()
+                .items_center()
+                .justify_between()
+                .child(div().child(language_choice_label(current)))
+                .child(
+                    Icon::new(IconName::ChevronsUpDown)
+                        .small()
+                        .text_color(palette.fg_subtle),
+                ),
+        );
+    let control = trigger
+        .dropdown_menu(move |mut menu, _, _| {
+            for choice in LanguageChoice::ALL {
+                let target = weak.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(language_choice_label(choice))
+                        .checked(choice == current)
+                        .on_click(move |_, window, cx| {
+                            let _ =
+                                target.update(cx, |view, cx| view.set_language(choice, window, cx));
+                        }),
+                );
+            }
+            menu
+        })
+        .into_any_element();
+
+    v_flex()
+        .gap(px(14.0))
+        .child(
+            div()
+                .font_weight(FontWeight::MEDIUM)
+                .child(t!("settings.language.title")),
+        )
+        .child(labeled_row(
+            palette,
+            t!("settings.language.label"),
+            Some(t!("settings.language.description")),
+            control,
+        ))
         .into_any_element()
 }
 
@@ -453,12 +555,16 @@ fn render_theme_section(
         .child(
             v_flex()
                 .gap(px(2.0))
-                .child(div().font_weight(FontWeight::MEDIUM).child("Theme"))
+                .child(
+                    div()
+                        .font_weight(FontWeight::MEDIUM)
+                        .child(t!("settings.theme.title")),
+                )
                 .child(
                     div()
                         .text_color(palette.fg_muted)
                         .text_size(px(12.0))
-                        .child("System follows your OS light/dark setting and switches live."),
+                        .child(t!("settings.theme.description")),
                 ),
         )
         .child(
@@ -480,10 +586,19 @@ fn render_theme_card(
     choice: ThemeChoice,
     selected: bool,
 ) -> AnyElement {
-    let (id, label): (&'static str, &'static str) = match choice {
-        ThemeChoice::System => ("settings-theme-system", "System"),
-        ThemeChoice::Light => ("settings-theme-light", "Light"),
-        ThemeChoice::Dark => ("settings-theme-dark", "Dark"),
+    let (id, label): (&'static str, String) = match choice {
+        ThemeChoice::System => (
+            "settings-theme-system",
+            t!("settings.theme.system").into_owned(),
+        ),
+        ThemeChoice::Light => (
+            "settings-theme-light",
+            t!("settings.theme.light").into_owned(),
+        ),
+        ThemeChoice::Dark => (
+            "settings-theme-dark",
+            t!("settings.theme.dark").into_owned(),
+        ),
     };
     // System's preview is half light, half dark; Light and Dark show their own single mode on
     // both sides (`Settings.dc.html`'s own `renderVals()`: `[["System",L,D],["Light",L,L],
@@ -606,11 +721,15 @@ fn render_interface_section(
     let options = state::settings::font_options("Geist", installed);
     v_flex()
         .gap(px(14.0))
-        .child(div().font_weight(FontWeight::MEDIUM).child("Interface"))
+        .child(
+            div()
+                .font_weight(FontWeight::MEDIUM)
+                .child(t!("settings.interface.title")),
+        )
         .child(labeled_row(
             palette,
-            "Font",
-            Some("Geist is bundled, so every platform looks the same."),
+            t!("settings.font"),
+            Some(t!("settings.interface.font_description")),
             render_font_picker(
                 FontPickerSpec {
                     id: "settings-ui-font",
@@ -626,8 +745,8 @@ fn render_interface_section(
         ))
         .child(labeled_row(
             palette,
-            "Font size",
-            None,
+            t!("settings.font_size"),
+            None::<SharedString>,
             render_size_stepper(
                 "settings-ui-size",
                 weak,
@@ -652,11 +771,15 @@ fn render_editor_section(
     let options = state::settings::font_options("Geist Mono", installed);
     v_flex()
         .gap(px(14.0))
-        .child(div().font_weight(FontWeight::MEDIUM).child("Editor"))
+        .child(
+            div()
+                .font_weight(FontWeight::MEDIUM)
+                .child(t!("settings.editor.title")),
+        )
         .child(labeled_row(
             palette,
-            "Monospace font",
-            None,
+            t!("settings.editor.mono_font"),
+            None::<SharedString>,
             render_font_picker(
                 FontPickerSpec {
                     id: "settings-mono-font",
@@ -672,8 +795,8 @@ fn render_editor_section(
         ))
         .child(labeled_row(
             palette,
-            "Font size",
-            None,
+            t!("settings.font_size"),
+            None::<SharedString>,
             render_size_stepper(
                 "settings-mono-size",
                 weak.clone(),
@@ -740,11 +863,15 @@ fn render_tls_section(
 
     v_flex()
         .gap(px(14.0))
-        .child(div().font_weight(FontWeight::MEDIUM).child("TLS"))
+        .child(
+            div()
+                .font_weight(FontWeight::MEDIUM)
+                .child(t!("settings.tls.title")),
+        )
         .child(labeled_row(
             palette,
-            "Invalid certificates",
-            Some("Self-signed, expired or mismatched server certificates."),
+            t!("settings.tls.invalid_certificates"),
+            Some(t!("settings.tls.invalid_certificates_description")),
             control,
         ))
         .into_any_element()
@@ -799,23 +926,30 @@ fn render_logging_section(
     let log_dir = logging::log_dir();
     let path_label = logging::log_path()
         .map(|path| state::format::shorten_path(&path, dirs::home_dir().as_deref()))
-        .unwrap_or_else(|| "unknown".to_string());
-    let open_folder = GhostButton::new("settings-open-log-folder", "Open folder")
-        .icon(Icon::new(gpui_kit::assets::IconName::FolderOpen))
-        .disabled(log_dir.is_none())
-        .on_click(move |_, _, cx| {
-            if let Some(dir) = &log_dir {
-                cx.open_with_system(dir);
-            }
-        });
+        .unwrap_or_else(|| t!("common.unknown").into_owned());
+    let open_folder = GhostButton::new(
+        "settings-open-log-folder",
+        t!("settings.logging.open_folder"),
+    )
+    .icon(Icon::new(gpui_kit::assets::IconName::FolderOpen))
+    .disabled(log_dir.is_none())
+    .on_click(move |_, _, cx| {
+        if let Some(dir) = &log_dir {
+            cx.open_with_system(dir);
+        }
+    });
 
     v_flex()
         .gap(px(14.0))
-        .child(div().font_weight(FontWeight::MEDIUM).child("Logging"))
+        .child(
+            div()
+                .font_weight(FontWeight::MEDIUM)
+                .child(t!("settings.logging.title")),
+        )
         .child(labeled_row(
             palette,
-            "Log level",
-            Some("Debug and Trace add detail to diagnose problems."),
+            t!("settings.logging.level"),
+            Some(t!("settings.logging.level_description")),
             control,
         ))
         .child(
@@ -827,7 +961,7 @@ fn render_logging_section(
                     v_flex()
                         .min_w_0()
                         .gap(px(2.0))
-                        .child(div().child("Log file"))
+                        .child(div().child(t!("settings.logging.file")))
                         .child(
                             div()
                                 .text_color(palette.fg_muted)
@@ -842,12 +976,11 @@ fn render_logging_section(
             div()
                 .text_color(palette.fg_subtle)
                 .text_size(px(12.0))
-                .child(format!(
-                    "Rotated every {} MB, keeping the last {} files. The {} environment \
-                     variable overrides the level at startup.",
-                    logging::MAX_FILE_SIZE / (1024 * 1024),
-                    logging::MAX_FILES,
-                    logging::ENV_VAR,
+                .child(t!(
+                    "settings.logging.rotation",
+                    size = logging::MAX_FILE_SIZE / (1024 * 1024),
+                    files = logging::MAX_FILES,
+                    variable = logging::ENV_VAR,
                 )),
         )
         .into_any_element()
@@ -856,10 +989,11 @@ fn render_logging_section(
 /// A label (with an optional muted description) on the left, an arbitrary control on the right.
 fn labeled_row(
     palette: &Palette,
-    label: &'static str,
-    description: Option<&'static str>,
+    label: impl Into<SharedString>,
+    description: Option<impl Into<SharedString>>,
     control: AnyElement,
 ) -> AnyElement {
+    let label: SharedString = label.into();
     let leading = match description {
         Some(text) => v_flex()
             .gap(px(2.0))
@@ -868,7 +1002,7 @@ fn labeled_row(
                 div()
                     .text_color(palette.fg_muted)
                     .text_size(px(12.0))
-                    .child(text),
+                    .child(text.into()),
             )
             .into_any_element(),
         None => div().child(label).into_any_element(),
@@ -913,7 +1047,7 @@ fn render_font_picker(
         options,
     } = spec;
     let label = if current == bundled {
-        format!("{current} (bundled)")
+        t!("settings.font_bundled", name = current).into_owned()
     } else {
         current.to_string()
     };
@@ -961,7 +1095,7 @@ fn render_font_picker(
         .dropdown_menu(move |mut menu, _, _| {
             for name in &options {
                 let item_label = if *name == bundled {
-                    format!("{name} (bundled)")
+                    t!("settings.font_bundled", name = name).into_owned()
                 } else {
                     name.clone()
                 };
@@ -1012,7 +1146,10 @@ fn render_size_stepper(
                 .w(px(STEPPER_VALUE_WIDTH))
                 .text_center()
                 .font_family(mono_font_family)
-                .child(format!("{value} px")),
+                .child(format!(
+                    "{} px",
+                    format_decimal(f64::from(value), usize::from(value.fract() != 0.0))
+                )),
         )
         .child(stepper_button(
             format!("{id_prefix}-plus"),

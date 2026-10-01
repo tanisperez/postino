@@ -15,6 +15,7 @@ pub(crate) use config_panel::LoadTestEntities;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use crate::state::TabKind;
 use crate::state::load_test::{self, LoadTestTab, LoadTestTarget};
@@ -26,9 +27,13 @@ use super::root::AppView;
 #[must_use]
 pub(crate) fn tab_label(load_test: &LoadTestTab) -> String {
     if load_test.target_label.is_empty() {
-        "Load test".to_string()
+        t!("load_test.tab.title").into_owned()
     } else {
-        format!("Load test \u{b7} {}", load_test.target_label)
+        format!(
+            "{} \u{b7} {}",
+            t!("load_test.tab.title"),
+            load_test.target_label
+        )
     }
 }
 

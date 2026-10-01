@@ -8,7 +8,10 @@ use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 
 use postino_runner::InvalidCertificates;
+use rust_i18n::t;
 use serde::Serialize;
+
+use super::locale::LanguageChoice;
 
 /// The path, relative to the OS config directory, of the settings file.
 const SETTINGS_FILE: &str = "postino/settings.toml";
@@ -73,12 +76,13 @@ impl SettingsCategory {
     ];
 
     /// The nav item label, also the pane's title.
-    pub fn label(self) -> &'static str {
+    pub fn label(self) -> String {
         match self {
-            SettingsCategory::Appearance => "Appearance",
-            SettingsCategory::Requests => "Requests",
-            SettingsCategory::Advanced => "Advanced",
+            SettingsCategory::Appearance => t!("settings.category.appearance"),
+            SettingsCategory::Requests => t!("common.requests"),
+            SettingsCategory::Advanced => t!("settings.category.advanced"),
         }
+        .into_owned()
     }
 }
 
@@ -116,12 +120,13 @@ impl InvalidTlsCertificates {
     }
 
     /// The label shown in the Settings view.
-    pub fn label(self) -> &'static str {
+    pub fn label(self) -> String {
         match self {
-            InvalidTlsCertificates::Warn => "Send with warning",
-            InvalidTlsCertificates::Reject => "Reject",
-            InvalidTlsCertificates::Accept => "Don't verify",
+            InvalidTlsCertificates::Warn => t!("settings.tls.warn"),
+            InvalidTlsCertificates::Reject => t!("settings.tls.reject"),
+            InvalidTlsCertificates::Accept => t!("settings.tls.accept"),
         }
+        .into_owned()
     }
 
     /// The matching `postino-http` mode.
@@ -182,15 +187,16 @@ impl LogLevel {
     }
 
     /// The label shown in the Settings view.
-    pub fn label(self) -> &'static str {
+    pub fn label(self) -> String {
         match self {
-            LogLevel::Off => "Off",
-            LogLevel::Error => "Error",
-            LogLevel::Warn => "Warn",
-            LogLevel::Info => "Info",
-            LogLevel::Debug => "Debug",
-            LogLevel::Trace => "Trace",
+            LogLevel::Off => t!("settings.log_level.off"),
+            LogLevel::Error => t!("settings.log_level.error"),
+            LogLevel::Warn => t!("settings.log_level.warn"),
+            LogLevel::Info => t!("settings.log_level.info"),
+            LogLevel::Debug => t!("settings.log_level.debug"),
+            LogLevel::Trace => t!("settings.log_level.trace"),
         }
+        .into_owned()
     }
 
     /// The matching `log` crate filter.
@@ -206,10 +212,12 @@ impl LogLevel {
     }
 }
 
-/// User-configurable settings: the theme mode, the two fonts (UI and editor) with their sizes,
+/// User-configurable settings: the UI language, the theme mode, the two fonts (UI and editor) with their sizes,
 /// how requests treat invalid TLS certificates, and the log level.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Settings {
+    /// The UI language: automatic (the system's) or a fixed one.
+    pub language: LanguageChoice,
     /// The theme mode: system, light or dark.
     pub theme: ThemeChoice,
     /// The UI font family name.
@@ -229,6 +237,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Settings {
+            language: LanguageChoice::default(),
             theme: ThemeChoice::default(),
             ui_font: "Geist".to_string(),
             ui_font_size: 13.0,
@@ -309,6 +318,11 @@ fn parse_settings(content: &str) -> Settings {
     };
     let table = value.as_table();
 
+    let language = table
+        .and_then(|table| table.get("language"))
+        .and_then(toml::Value::as_str)
+        .and_then(LanguageChoice::parse)
+        .unwrap_or(defaults.language);
     let theme = table
         .and_then(|table| table.get("theme"))
         .and_then(toml::Value::as_str)
@@ -346,6 +360,7 @@ fn parse_settings(content: &str) -> Settings {
         .unwrap_or(defaults.log_level);
 
     Settings {
+        language,
         theme,
         ui_font,
         ui_font_size,
@@ -396,6 +411,7 @@ mod tests {
     #[test]
     fn defaults_are_the_documented_values() {
         let settings = Settings::default();
+        assert_eq!(settings.language, LanguageChoice::Auto);
         assert_eq!(settings.theme, ThemeChoice::System);
         assert_eq!(settings.ui_font, "Geist");
         assert_eq!(settings.ui_font_size, 13.0);
@@ -418,6 +434,7 @@ mod tests {
     fn round_trips_through_a_config_directory() {
         let dir = tempfile::tempdir().expect("tempdir");
         let settings = Settings {
+            language: LanguageChoice::Gl,
             theme: ThemeChoice::Dark,
             ui_font: "Inter".to_string(),
             ui_font_size: 14.0,
@@ -540,7 +557,7 @@ mod tests {
     fn log_level_parses_every_value_and_falls_back_to_info() {
         let parse = |text: &str| parse_settings(text).log_level;
         for level in LogLevel::ALL {
-            let text = format!("log_level = \"{}\"\n", level.label().to_uppercase());
+            let text = format!("log_level = \"{level:?}\"\n");
             assert_eq!(parse(&text), level);
         }
         assert_eq!(parse(""), LogLevel::Info);
@@ -569,6 +586,34 @@ mod tests {
     fn categories_start_on_appearance() {
         assert_eq!(SettingsCategory::default(), SettingsCategory::Appearance);
         assert_eq!(SettingsCategory::Requests.label(), "Requests");
+    }
+
+    #[test]
+    fn language_parses_every_value_and_falls_back_to_auto() {
+        let parse = |text: &str| parse_settings(text).language;
+        assert_eq!(parse("language = \"es\"\n"), LanguageChoice::Es);
+        assert_eq!(parse("language = \"IT\"\n"), LanguageChoice::It);
+        assert_eq!(parse("language = \"auto\"\n"), LanguageChoice::Auto);
+        assert_eq!(parse(""), LanguageChoice::Auto);
+        assert_eq!(parse("language = \"klingon\"\n"), LanguageChoice::Auto);
+        assert_eq!(parse("language = 3\n"), LanguageChoice::Auto);
+    }
+
+    #[test]
+    fn language_serializes_as_its_toml_value() {
+        let settings = Settings {
+            language: LanguageChoice::Gl,
+            ..Settings::default()
+        };
+        let text = toml::to_string_pretty(&settings).expect("serialize");
+        assert!(text.contains("language = \"gl\""), "{text}");
+    }
+
+    #[test]
+    fn labels_are_translated_with_the_requested_locale() {
+        assert_eq!(t!("common.requests", locale = "es"), "Peticiones");
+        assert_eq!(t!("settings.tls.reject", locale = "gl"), "Rexeitar");
+        assert_eq!(t!("settings.log_level.off", locale = "it"), "Disattivato");
     }
 
     #[test]

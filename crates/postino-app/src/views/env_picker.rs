@@ -7,6 +7,7 @@ use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use crate::theme::metrics::ENV_PILL_HEIGHT;
 use crate::views::components::{EnvMenuItem, EnvPill};
@@ -35,7 +36,7 @@ impl AppView {
             return Button::new("env-pill")
                 .ghost()
                 .h(px(ENV_PILL_HEIGHT))
-                .label("No workspace")
+                .label(t!("request.env.no_workspace"))
                 .disabled(true)
                 .into_any_element();
         };

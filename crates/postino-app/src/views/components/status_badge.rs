@@ -8,6 +8,7 @@
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{RADIUS_SM, STATUS_BADGE_HEIGHT};
@@ -48,8 +49,8 @@ impl StatusBadge {
     fn default_label(&self) -> SharedString {
         match &self.state {
             StatusState::Code(code) => code.to_string().into(),
-            StatusState::NotSent => "Not sent".into(),
-            StatusState::Sending => "Sending...".into(),
+            StatusState::NotSent => t!("response.status.not_sent").into_owned().into(),
+            StatusState::Sending => t!("common.sending").into_owned().into(),
         }
     }
 }

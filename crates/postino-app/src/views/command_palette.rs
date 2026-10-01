@@ -18,6 +18,7 @@ use gpui_kit::component::command::{Command, CommandGroup, CommandItem, CommandSt
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use crate::state::palette::{self, ActionId, PaletteItem, PaletteItemKind};
 use crate::theme::Palette;
@@ -38,8 +39,15 @@ const PALETTE_LIST_HEIGHT: f32 = 480.0;
 /// (or merely the last) row never touches it directly.
 const PALETTE_BOTTOM_PADDING: f32 = 8.0;
 /// The three group headings, in the fixed order they are always shown (`Requests` first even
-/// when empty, matching `IndexPath.section` 0/1/2, see the module doc comment).
-const GROUP_LABELS: [&str; 3] = ["Requests", "Environments", "Actions"];
+/// when empty, matching `IndexPath.section` 0/1/2, see the module doc comment). Built on every
+/// repaint, so they follow the current language.
+fn group_labels() -> [String; 3] {
+    [
+        t!("common.requests").into_owned(),
+        t!("shell.palette.environments").into_owned(),
+        t!("shell.palette.actions").into_owned(),
+    ]
+}
 
 impl AppView {
     /// Opens the command palette. A no-op when a dialog is already open, so `Ctrl K` and the
@@ -110,7 +118,7 @@ fn render_palette_content(
     let query = command_state.read(cx).query(cx).to_string();
     let ranked = palette::fuzzy_filter(&query, &all_items);
 
-    // One ranked, ordered list of (item, matched char indices) per group, in `GROUP_LABELS`'
+    // One ranked, ordered list of (item, matched char indices) per group, in `group_labels`'
     // fixed order, keeping each match's relative rank inside its own group.
     let mut sections: [Vec<(PaletteItem, Vec<usize>)>; 3] = [Vec::new(), Vec::new(), Vec::new()];
     for (index, _score, matched) in ranked {
@@ -139,9 +147,9 @@ fn render_palette_content(
         .bordered(false)
         .filterable(false)
         .max_h(px(PALETTE_LIST_HEIGHT))
-        .placeholder("Search requests and actions");
+        .placeholder(t!("shell.title_bar.search_hint"));
 
-    for (group_items, heading) in sections.iter().zip(GROUP_LABELS) {
+    for (group_items, heading) in sections.iter().zip(group_labels()) {
         let mut group = CommandGroup::new().label(heading);
         for (item, matched) in group_items {
             let item = item.clone();

@@ -1,0 +1,177 @@
+# Window shell: title bar, status bar, sidebar, tabs, import, command palette. Glossary and rules: plans/i18n.md
+_version: 2
+"shell.title_bar.no_workspace":
+  en: "Open a folder"
+  es: "Abrir una carpeta"
+  gl: "Abrir un cartafol"
+  it: "Apri una cartella"
+"shell.title_bar.search_hint":
+  en: "Search requests and actions"
+  es: "Buscar peticiones y acciones"
+  gl: "Buscar peticións e accións"
+  it: "Cerca richieste e azioni"
+"shell.status_bar.local_only":
+  en: "Local only"
+  es: "Solo local"
+  gl: "Só local"
+  it: "Solo locale"
+"shell.status_bar.unsaved":
+  en: "Unsaved changes"
+  es: "Cambios sin guardar"
+  gl: "Cambios sen gardar"
+  it: "Modifiche non salvate"
+"shell.tab.params":
+  en: "Params"
+  es: "Parámetros"
+  gl: "Parámetros"
+  it: "Parametri"
+"shell.tab.pre":
+  en: "Pre-request"
+  es: "Script previo"
+  gl: "Script previo"
+  it: "Script pre"
+"shell.tab.post":
+  en: "Post-response"
+  es: "Script posterior"
+  gl: "Script posterior"
+  it: "Script post"
+"shell.tab.docs":
+  en: "Docs"
+  es: "Docs"
+  gl: "Docs"
+  it: "Docs"
+"shell.import.button":
+  en: "Import"
+  es: "Importar"
+  gl: "Importar"
+  it: "Importa"
+"shell.import.menu_collection":
+  en: "Postman collection..."
+  es: "Colección de Postman..."
+  gl: "Colección de Postman..."
+  it: "Raccolta Postman..."
+"shell.import.menu_environment":
+  en: "Postman environment..."
+  es: "Entorno de Postman..."
+  gl: "Contorno de Postman..."
+  it: "Ambiente Postman..."
+"shell.import.read_failed":
+  en: "Could not read %{path}: %{error}"
+  es: "No se pudo leer %{path}: %{error}"
+  gl: "Non se puido ler %{path}: %{error}"
+  it: "Impossibile leggere %{path}: %{error}"
+"shell.import.collection_done":
+  en: "Postman collection imported"
+  es: "Colección de Postman importada"
+  gl: "Colección de Postman importada"
+  it: "Raccolta Postman importata"
+"shell.import.environment_done":
+  en: "Postman environment imported"
+  es: "Entorno de Postman importado"
+  gl: "Contorno de Postman importado"
+  it: "Ambiente Postman importato"
+"shell.import.files_created.one":
+  en: "%{count} file created."
+  es: "Se creó %{count} archivo."
+  gl: "Creouse %{count} ficheiro."
+  it: "Creato %{count} file."
+"shell.import.files_created.other":
+  en: "%{count} files created."
+  es: "Se crearon %{count} archivos."
+  gl: "Creáronse %{count} ficheiros."
+  it: "Creati %{count} file."
+"shell.import.warnings":
+  en: "Warnings:"
+  es: "Advertencias:"
+  gl: "Advertencias:"
+  it: "Avvisi:"
+"shell.sidebar.filter":
+  en: "Filter"
+  es: "Filtrar"
+  gl: "Filtrar"
+  it: "Filtra"
+"shell.sidebar.empty":
+  en: "Open a folder to get started."
+  es: "Abre una carpeta para empezar."
+  gl: "Abre un cartafol para comezar."
+  it: "Apri una cartella per iniziare."
+"shell.sidebar.collections":
+  en: "Collections"
+  es: "Colecciones"
+  gl: "Coleccións"
+  it: "Raccolte"
+"shell.sidebar.broken":
+  en: "%{name} (broken)"
+  es: "%{name} (dañada)"
+  gl: "%{name} (danada)"
+  it: "%{name} (danneggiata)"
+"shell.sidebar.load_test":
+  en: "Load test..."
+  es: "Prueba de carga..."
+  gl: "Proba de carga..."
+  it: "Test di carico..."
+"shell.sidebar.request_name":
+  en: "Request name"
+  es: "Nombre de la petición"
+  gl: "Nome da petición"
+  it: "Nome della richiesta"
+"shell.sidebar.folder_name":
+  en: "Folder name"
+  es: "Nombre de la carpeta"
+  gl: "Nome do cartafol"
+  it: "Nome della cartella"
+"shell.sidebar.name":
+  en: "Name"
+  es: "Nombre"
+  gl: "Nome"
+  it: "Nome"
+"shell.sidebar.delete_title":
+  en: "Delete?"
+  es: "¿Eliminar?"
+  gl: "Eliminar?"
+  it: "Eliminare?"
+"shell.sidebar.delete_text":
+  en: "\"%{name}\" will be permanently deleted. This cannot be undone."
+  es: "«%{name}» se eliminará de forma permanente. Esta acción no se puede deshacer."
+  gl: "«%{name}» eliminarase de forma permanente. Esta acción non se pode desfacer."
+  it: "Eliminazione definitiva di «%{name}». L'operazione non può essere annullata."
+"shell.palette.environments":
+  en: "Environments"
+  es: "Entornos"
+  gl: "Contornos"
+  it: "Ambienti"
+"shell.palette.actions":
+  en: "Actions"
+  es: "Acciones"
+  gl: "Accións"
+  it: "Azioni"
+"shell.palette.send":
+  en: "Send request"
+  es: "Enviar petición"
+  gl: "Enviar petición"
+  it: "Invia richiesta"
+"shell.palette.import_collection":
+  en: "Import Postman collection..."
+  es: "Importar colección de Postman..."
+  gl: "Importar colección de Postman..."
+  it: "Importa raccolta Postman..."
+"shell.palette.import_environment":
+  en: "Import Postman environment..."
+  es: "Importar entorno de Postman..."
+  gl: "Importar contorno de Postman..."
+  it: "Importa ambiente Postman..."
+"shell.palette.open_settings":
+  en: "Open Settings"
+  es: "Abrir ajustes"
+  gl: "Abrir axustes"
+  it: "Apri impostazioni"
+"shell.palette.new_load_test":
+  en: "New load test"
+  es: "Nueva prueba de carga"
+  gl: "Nova proba de carga"
+  it: "Nuovo test di carico"
+"shell.palette.toggle_theme":
+  en: "Toggle theme"
+  es: "Cambiar tema"
+  gl: "Cambiar o tema"
+  it: "Cambia tema"

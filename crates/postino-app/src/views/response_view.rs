@@ -14,10 +14,12 @@ use gpui_kit::component::spinner::Spinner;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use postino_core::{ConsoleLevel, TestResult};
 use postino_runner::{FailedStage, RunResult};
 
+use crate::state::locale;
 use crate::state::response_render;
 use crate::state::ui_tabs::ResponseTab;
 use crate::theme::PaletteExt;
@@ -106,7 +108,7 @@ impl AppView {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let Some(tab) = self.state.tabs.active() else {
-            return placeholder(cx, "Send the request to see the response", None);
+            return placeholder(cx, &t!("response.placeholder.not_sent"), None);
         };
         let tab_id = tab.id.clone();
 
@@ -118,14 +120,18 @@ impl AppView {
                 .justify_center()
                 .gap_2()
                 .child(Spinner::new().large())
-                .child(div().text_color(palette.fg_muted).child("Sending..."))
+                .child(
+                    div()
+                        .text_color(palette.fg_muted)
+                        .child(t!("common.sending")),
+                )
                 .into_any_element();
         }
 
         if !self.responses.contains_key(&tab_id) {
             return placeholder(
                 cx,
-                "Send the request to see the response",
+                &t!("response.placeholder.not_sent"),
                 Some(SEND_KEY_HINT),
             );
         }
@@ -285,7 +291,7 @@ impl AppView {
                 return div()
                     .p_2()
                     .text_color(palette.fg_muted)
-                    .child("No response body.")
+                    .child(t!("response.body.empty"))
                     .into_any_element();
             };
             self.response_editor
@@ -301,38 +307,44 @@ impl AppView {
         let weak = cx.weak_entity();
         let pretty_available = shown.pretty_available;
         let mut toggle = SegmentedControl::new("body-raw-toggle").item(
-            SegmentedItem::new("Pretty").selected(!show_raw).on_click({
-                let weak = weak.clone();
-                move |_, cx| {
-                    if pretty_available {
+            SegmentedItem::new(t!("response.body.pretty"))
+                .selected(!show_raw)
+                .on_click({
+                    let weak = weak.clone();
+                    move |_, cx| {
+                        if pretty_available {
+                            let _ = weak.update(cx, |view, cx| {
+                                view.response_raw = false;
+                                cx.notify();
+                            });
+                        }
+                    }
+                }),
+        );
+        toggle = toggle.item(
+            SegmentedItem::new(t!("response.body.raw"))
+                .selected(show_raw)
+                .on_click({
+                    let weak = weak.clone();
+                    move |_, cx| {
                         let _ = weak.update(cx, |view, cx| {
-                            view.response_raw = false;
+                            view.response_raw = true;
                             cx.notify();
                         });
                     }
-                }
-            }),
+                }),
         );
-        toggle = toggle.item(SegmentedItem::new("Raw").selected(show_raw).on_click({
-            let weak = weak.clone();
-            move |_, cx| {
-                let _ = weak.update(cx, |view, cx| {
-                    view.response_raw = true;
-                    cx.notify();
-                });
-            }
-        }));
 
         let copy_text = text.clone();
         let copy_button = IconButton::new("response-copy", IconName::Copy)
-            .tooltip("Copy")
+            .tooltip(t!("common.copy"))
             .on_click(move |_, _, cx| {
                 cx.write_to_clipboard(ClipboardItem::new_string(copy_text.to_string()));
             });
 
         let search_editor = self.response_editor.editor.clone();
         let search_button = IconButton::new("response-search", IconName::Search)
-            .tooltip("Search")
+            .tooltip(t!("common.search"))
             .on_click(move |_, _, cx| {
                 if let Some(editor) = &search_editor {
                     editor.update(cx, |state, cx| state.open_search(false, cx));
@@ -391,15 +403,18 @@ impl AppView {
             .map(|group| match group {
                 response_render::WarningGroup::UnknownVariable(name) => {
                     let define_weak = weak.clone();
-                    InlineMessage::new(InlineMessageKind::Warning, "Unknown variable")
-                        .mono_suffix(name.clone())
-                        .action("Define", move |window, cx| {
-                            let name = name.clone();
-                            let _ = define_weak.update(cx, |view, cx| {
-                                view.open_define_variable_dialog(name, window, cx)
-                            });
-                        })
-                        .into_any_element()
+                    InlineMessage::new(
+                        InlineMessageKind::Warning,
+                        t!("response.warning.unknown_variable"),
+                    )
+                    .mono_suffix(name.clone())
+                    .action(t!("common.define"), move |window, cx| {
+                        let name = name.clone();
+                        let _ = define_weak.update(cx, |view, cx| {
+                            view.open_define_variable_dialog(name, window, cx)
+                        });
+                    })
+                    .into_any_element()
                 }
                 response_render::WarningGroup::UnknownVariables(names) => {
                     let define_weak = weak.clone();
@@ -408,17 +423,20 @@ impl AppView {
                     // name (`plans/ui-redesign.md` phase 7 item 3 wires "the Define action", not
                     // a per-name list here). The rest stay listed in the message itself.
                     let first_name = names.first().cloned();
-                    InlineMessage::new(InlineMessageKind::Warning, "Unknown variables")
-                        .mono_suffix(names.join(", "))
-                        .action("Define", move |window, cx| {
-                            let Some(name) = first_name.clone() else {
-                                return;
-                            };
-                            let _ = define_weak.update(cx, |view, cx| {
-                                view.open_define_variable_dialog(name, window, cx)
-                            });
-                        })
-                        .into_any_element()
+                    InlineMessage::new(
+                        InlineMessageKind::Warning,
+                        t!("response.warning.unknown_variables"),
+                    )
+                    .mono_suffix(names.join(", "))
+                    .action(t!("common.define"), move |window, cx| {
+                        let Some(name) = first_name.clone() else {
+                            return;
+                        };
+                        let _ = define_weak.update(cx, |view, cx| {
+                            view.open_define_variable_dialog(name, window, cx)
+                        });
+                    })
+                    .into_any_element()
                 }
                 response_render::WarningGroup::Function(message) => {
                     InlineMessage::new(InlineMessageKind::Warning, message).into_any_element()
@@ -461,9 +479,15 @@ impl AppView {
 /// A short, user-facing message for a failed pipeline stage.
 fn stage_message(stage: &FailedStage) -> String {
     match stage {
-        FailedStage::Pre(error) => format!("Pre-request script failed: {error}"),
-        FailedStage::Send(error) => format!("Sending failed: {error}"),
-        FailedStage::Post(error) => format!("Post-response script failed: {error}"),
+        FailedStage::Pre(error) => {
+            t!("response.stage.pre_failed", error = error.to_string()).into_owned()
+        }
+        FailedStage::Send(error) => {
+            t!("response.stage.send_failed", error = error.to_string()).into_owned()
+        }
+        FailedStage::Post(error) => {
+            t!("response.stage.post_failed", error = error.to_string()).into_owned()
+        }
     }
 }
 
@@ -474,14 +498,14 @@ fn render_headers_tab(result: &RunResult, cx: &Context<AppView>) -> AnyElement {
         return div()
             .p_2()
             .text_color(palette.fg_muted)
-            .child("No response headers.")
+            .child(t!("response.headers.no_response"))
             .into_any_element();
     };
     if response.headers.is_empty() {
         return div()
             .p_2()
             .text_color(palette.fg_muted)
-            .child("No headers.")
+            .child(t!("response.headers.empty"))
             .into_any_element();
     }
     v_flex()
@@ -510,20 +534,22 @@ fn render_tests_tab(result: &RunResult, cx: &Context<AppView>) -> AnyElement {
         return div()
             .p_2()
             .text_color(palette.fg_muted)
-            .child("No tests ran.")
+            .child(t!("response.tests.empty"))
             .into_any_element();
     }
     let total = result.tests.len();
     let passed = result.tests.iter().filter(|test| test.passed).count();
     let summary = if passed == total {
+        let key = locale::plural_key("response.tests.passed", total);
         InlineMessage::new(
             InlineMessageKind::Success,
-            format!("{passed} of {total} tests passed"),
+            t!(key.as_str(), passed = passed, total = total).into_owned(),
         )
     } else {
+        let key = locale::plural_key("response.tests.failed", total);
         InlineMessage::new(
             InlineMessageKind::Danger,
-            format!("{} of {total} tests failed", total - passed),
+            t!(key.as_str(), failed = total - passed, total = total).into_owned(),
         )
     };
 
@@ -569,7 +595,7 @@ fn render_console_tab(result: &RunResult, cx: &Context<AppView>) -> AnyElement {
         return div()
             .p_2()
             .text_color(palette.fg_muted)
-            .child("No console output.")
+            .child(t!("response.console.empty"))
             .into_any_element();
     }
     let mono_font = cx.theme().mono_font_family.clone();

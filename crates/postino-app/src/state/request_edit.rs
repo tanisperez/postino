@@ -6,6 +6,7 @@
 //! into this module, then mark the tab dirty and re-render.
 
 use postino_core::{Body, KeyValue, Request};
+use rust_i18n::t;
 
 /// The kind of body a request has, mirroring [`Body`] without its content. Used by the body type
 /// selector, which needs to list and compare kinds without carrying the (possibly large) body
@@ -47,13 +48,13 @@ impl BodyKind {
     ];
 
     /// The label shown in the body type selector.
-    pub fn label(self) -> &'static str {
+    pub fn label(self) -> String {
         match self {
-            BodyKind::None => "None",
-            BodyKind::Json => "JSON",
-            BodyKind::Text => "Text",
-            BodyKind::Xml => "XML",
-            BodyKind::Form => "Form (urlencoded)",
+            BodyKind::None => t!("request.body.none").into_owned(),
+            BodyKind::Json => "JSON".to_string(),
+            BodyKind::Text => t!("request.body.text").into_owned(),
+            BodyKind::Xml => "XML".to_string(),
+            BodyKind::Form => t!("request.body.form_urlencoded").into_owned(),
         }
     }
 }

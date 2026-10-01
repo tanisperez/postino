@@ -14,6 +14,7 @@ use gpui_kit::component::tree::TreeState;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use postino_core::Body;
 use postino_format::snippet::SnippetLanguage;
@@ -151,7 +152,8 @@ impl AppView {
         cx: &mut Context<Self>,
     ) -> Self {
         let tree_state = cx.new(|cx| TreeState::new(cx));
-        let sidebar_filter_input = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
+        let sidebar_filter_input =
+            cx.new(|cx| InputState::new(window, cx).placeholder(t!("shell.sidebar.filter")));
         cx.subscribe(
             &sidebar_filter_input,
             |view, _entity, event: &InputEvent, cx| {
@@ -601,6 +603,20 @@ impl AppView {
         self.save_active_tab(cx);
     }
 
+    /// Re-applies every translated string that is cached outside `render` after the UI language
+    /// changed (`plans/i18n.md`, section 3.3). Today that means `InputState` placeholders, set
+    /// once at construction: each view that owns inputs exposes a
+    /// `relocalize(&mut self, window, cx)` that calls `InputState::set_placeholder` again, and
+    /// this method forwards to them. Called by the Settings view before it refreshes the windows,
+    /// with the new locale already applied.
+    pub(crate) fn relocalize(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.relocalize_sidebar(window, cx);
+        self.relocalize_request_editor(window, cx);
+        // The command palette, the response view and the load test tab cache no translated text:
+        // the palette rebuilds its items on every repaint, the other two have no input
+        // placeholder.
+    }
+
     /// Handles the `Ctrl+Enter` / `Cmd+Enter` key binding (see `main.rs`'s `bind_keys`).
     fn on_send_action(&mut self, _: &SendActiveTab, _window: &mut Window, cx: &mut Context<Self>) {
         self.send_active_tab(cx);
@@ -910,7 +926,7 @@ impl AppView {
 
         tabs = tabs.suffix(
             IconButton::new("open-tabs-new-request", IconName::Plus)
-                .tooltip("New request")
+                .tooltip(t!("common.new_request"))
                 .on_click(move |_, window, cx| {
                     sidebar::open_new_request_dialog(weak.clone(), None, window, cx);
                 }),
@@ -949,7 +965,7 @@ impl Render for AppView {
             let dismiss_weak = weak.clone();
             div().px_3().pt_2().child(
                 InlineMessage::new(InlineMessageKind::Danger, message).action(
-                    "Dismiss",
+                    t!("common.dismiss"),
                     move |_, cx| {
                         let _ = dismiss_weak.update(cx, |view, cx| {
                             view.workspace_error = None;
