@@ -12,6 +12,7 @@
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
+use gpui_kit::component::scroll::{Scrollbar, ScrollbarMode};
 use gpui_kit::component::theme::{Theme, ThemeMode};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -74,7 +75,7 @@ impl AppView {
                 .border_0()
                 .bg(palette.overlay)
                 .close_button(false)
-                .content(move |content, _window, cx| {
+                .content(move |content, window, cx| {
                     // `DialogContent` (`gpui-component-0.6.6/src/dialog/content.rs`) is
                     // `v_flex().flex_1()` inside the dialog's own `overflow_hidden()` wrapper, but
                     // a flex item's automatic minimum size defaults to its content's natural
@@ -86,9 +87,13 @@ impl AppView {
                     // content pushed the footer past the ancestor's `overflow_hidden()` with no
                     // way to scroll to it. `min_h_0()` here is what makes the body's own
                     // `overflow_y_scroll()` (`render_right_column`) actually take effect instead.
+                    let scroll_handle = window
+                        .use_keyed_state("settings-body-scroll", cx, |_, _| ScrollHandle::default())
+                        .read(cx)
+                        .clone();
                     content
                         .min_h_0()
-                        .child(render_settings_body(weak.clone(), cx))
+                        .child(render_settings_body(weak.clone(), scroll_handle, cx))
                 })
         });
     }
@@ -230,7 +235,11 @@ impl AppView {
 /// window repaints the dialog (the content builder gpui-component calls is a plain `Fn`, not a
 /// `FnMut`, so nothing here is memoized across frames), which is what makes every change appear
 /// immediately.
-fn render_settings_body(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
+fn render_settings_body(
+    weak: WeakEntity<AppView>,
+    scroll_handle: ScrollHandle,
+    cx: &mut App,
+) -> AnyElement {
     let Some(view) = weak.upgrade() else {
         return div().into_any_element();
     };
@@ -239,6 +248,7 @@ fn render_settings_body(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
     let palette = cx.palette();
     let mono_font_family = cx.theme().mono_font_family.clone();
     let installed = cx.text_system().all_font_names();
+    let modal_radius = cx.theme().radius_lg;
 
     h_flex()
         .size_full()
@@ -247,9 +257,11 @@ fn render_settings_body(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
             &palette,
             &mono_font_family,
             category,
+            modal_radius,
         ))
         .child(render_right_column(
             weak,
+            scroll_handle,
             category,
             &palette,
             &settings,
@@ -259,12 +271,15 @@ fn render_settings_body(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
         .into_any_element()
 }
 
-/// The left nav: "Settings" title, one item per category, and the "Saved to" footer.
+/// The left nav: "Settings" title, one item per category, and the "Saved to" footer. Its left
+/// corners repeat the modal's `radius`: the dialog's `overflow_hidden` clips to its bounds but
+/// not to its rounded corners, so the nav's background would otherwise paint square ones.
 fn render_nav(
     weak: WeakEntity<AppView>,
     palette: &Palette,
     mono_font_family: &SharedString,
     current: SettingsCategory,
+    radius: Pixels,
 ) -> AnyElement {
     let path_label = state::settings::settings_path()
         .map(|path| state::format::shorten_path(&path, dirs::home_dir().as_deref()))
@@ -274,6 +289,7 @@ fn render_nav(
         .flex_none()
         .w(px(NAV_WIDTH))
         .h_full()
+        .rounded_l(radius)
         .bg(palette.surface)
         .border_r_1()
         .border_color(palette.border)
@@ -352,8 +368,12 @@ fn render_nav_item(
 }
 
 /// The right column: header, scrollable body (the selected category's sections) and footer.
+/// The body's scrollbar is always shown (while the content overflows), unlike the theme's
+/// default that only shows it while scrolling: on a short window nothing else tells the user
+/// that more settings lie below.
 fn render_right_column(
     weak: WeakEntity<AppView>,
+    scroll_handle: ScrollHandle,
     category: SettingsCategory,
     palette: &Palette,
     settings: &Settings,
@@ -366,55 +386,86 @@ fn render_right_column(
         .h_full()
         .child(render_header(palette, category))
         .child(
-            v_flex()
-                .id("settings-body")
+            div()
                 .flex_1()
                 .min_h_0()
-                .overflow_y_scroll()
-                .p(px(20.0))
-                .gap(px(22.0))
-                .children(match category {
-                    SettingsCategory::Appearance => vec![
-                        render_language_section(weak.clone(), palette, settings.language),
-                        divider(palette),
-                        render_theme_section(weak.clone(), palette, settings.theme),
-                        divider(palette),
-                        render_interface_section(
-                            weak.clone(),
-                            palette,
-                            settings,
-                            installed,
-                            mono_font_family,
-                        ),
-                        divider(palette),
-                        render_editor_section(
-                            weak.clone(),
-                            palette,
-                            settings,
-                            installed,
-                            mono_font_family,
-                        ),
-                    ],
-                    SettingsCategory::Requests => vec![render_tls_section(
-                        weak.clone(),
-                        palette,
-                        settings.invalid_tls_certificates,
-                    )],
-                    SettingsCategory::Advanced => vec![render_logging_section(
-                        weak.clone(),
-                        palette,
-                        settings.log_level,
-                        mono_font_family,
-                    )],
-                }),
+                .relative()
+                .child(render_body(
+                    weak.clone(),
+                    &scroll_handle,
+                    category,
+                    palette,
+                    settings,
+                    installed,
+                    mono_font_family,
+                ))
+                .child(
+                    div()
+                        .absolute()
+                        .inset_0()
+                        .child(Scrollbar::vertical(&scroll_handle).mode(ScrollbarMode::Always)),
+                ),
         )
         .child(render_footer(weak, palette))
         .into_any_element()
 }
 
-/// A full-width 1px divider between sections.
+/// The scrolled part of the right column: the selected category's sections.
+fn render_body(
+    weak: WeakEntity<AppView>,
+    scroll_handle: &ScrollHandle,
+    category: SettingsCategory,
+    palette: &Palette,
+    settings: &Settings,
+    installed: &[String],
+    mono_font_family: &SharedString,
+) -> AnyElement {
+    v_flex()
+        .id("settings-body")
+        .size_full()
+        .overflow_y_scroll()
+        .track_scroll(scroll_handle)
+        .p(px(20.0))
+        .gap(px(22.0))
+        .children(match category {
+            SettingsCategory::Appearance => vec![
+                render_language_section(weak.clone(), palette, settings.language),
+                divider(palette),
+                render_theme_section(weak.clone(), palette, settings.theme),
+                divider(palette),
+                render_interface_section(
+                    weak.clone(),
+                    palette,
+                    settings,
+                    installed,
+                    mono_font_family,
+                ),
+                divider(palette),
+                render_editor_section(weak.clone(), palette, settings, installed, mono_font_family),
+            ],
+            SettingsCategory::Requests => vec![render_tls_section(
+                weak.clone(),
+                palette,
+                settings.invalid_tls_certificates,
+            )],
+            SettingsCategory::Advanced => vec![render_logging_section(
+                weak.clone(),
+                palette,
+                settings.log_level,
+                mono_font_family,
+            )],
+        })
+        .into_any_element()
+}
+
+/// A full-width 1px divider between sections. `flex_none`, or the scrolled body, whose content
+/// overflows it, shrinks this contentless line to nothing.
 fn divider(palette: &Palette) -> AnyElement {
-    div().h(px(1.0)).bg(palette.border).into_any_element()
+    div()
+        .flex_none()
+        .h(px(1.0))
+        .bg(palette.border)
+        .into_any_element()
 }
 
 /// The right column's header: the category title and the close button.
@@ -996,6 +1047,8 @@ fn labeled_row(
     let label: SharedString = label.into();
     let leading = match description {
         Some(text) => v_flex()
+            .flex_1()
+            .min_w_0()
             .gap(px(2.0))
             .child(div().child(label))
             .child(
@@ -1005,15 +1058,17 @@ fn labeled_row(
                     .child(text.into()),
             )
             .into_any_element(),
-        None => div().child(label).into_any_element(),
+        None => div().flex_1().min_w_0().child(label).into_any_element(),
     };
 
+    // The label column shrinks and wraps a long description instead of pushing the control
+    // past the right edge, which kept its natural width and overflowed the modal.
     h_flex()
         .items_center()
         .justify_between()
         .gap(px(16.0))
         .child(leading)
-        .child(control)
+        .child(div().flex_none().child(control))
         .into_any_element()
 }
 

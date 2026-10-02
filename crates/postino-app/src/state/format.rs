@@ -2,7 +2,7 @@
 //! durations, home-relative paths, and relative day labels (`plans/ui-redesign.md`, section 2.3
 //! point 2 "timings, sizes, hints" and section 1 "Recent workspaces").
 
-use std::path::Path;
+use std::path::{MAIN_SEPARATOR, Path, PathBuf};
 use std::time::Duration;
 
 use rust_i18n::t;
@@ -45,13 +45,22 @@ pub fn human_duration(duration: Duration) -> String {
 
 /// Shortens `path` to start with `~` when it is inside `home`, for example `/home/tanis/dev`
 /// with home `/home/tanis` becomes `~/dev`. Returns the path unchanged (as a string) if it is
-/// not inside `home`, or if `home` is `None`.
+/// not inside `home`, or if `home` is `None`. Every separator is the platform's own, so on
+/// Windows `C:\Users\me\AppData\Roaming` plus `postino/settings.toml` shows as
+/// `~\AppData\Roaming\postino\settings.toml`, not with a mix of `/` and `\`.
 pub fn shorten_path(path: &Path, home: Option<&Path>) -> String {
     match home.and_then(|home| path.strip_prefix(home).ok()) {
         Some(relative) if relative.as_os_str().is_empty() => "~".to_string(),
-        Some(relative) => format!("~/{}", relative.display()),
-        None => path.display().to_string(),
+        Some(relative) => format!("~{MAIN_SEPARATOR}{}", with_native_separators(relative)),
+        None => with_native_separators(path),
     }
+}
+
+/// `path` rebuilt from its components, which joins them with the platform's separator. Windows
+/// splits components on both `/` and `\`, so this turns a mixed path into a `\` one; elsewhere
+/// it only drops redundant separators.
+fn with_native_separators(path: &Path) -> String {
+    path.components().collect::<PathBuf>().display().to_string()
 }
 
 /// The label shown in the open-tabs bar for an open request tab: the file stem (its name without
@@ -138,6 +147,18 @@ mod tests {
     #[test]
     fn shorten_path_without_a_home_is_unchanged() {
         assert_eq!(shorten_path(Path::new("/var/log"), None), "/var/log");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn shorten_path_uses_backslashes_on_windows() {
+        assert_eq!(
+            shorten_path(
+                &Path::new(r"C:\Users\me\AppData\Roaming").join("postino/settings.toml"),
+                Some(Path::new(r"C:\Users\me"))
+            ),
+            r"~\AppData\Roaming\postino\settings.toml"
+        );
     }
 
     #[test]
