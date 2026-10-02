@@ -27,6 +27,9 @@ use super::variable_chip::VariableChip;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{RADIUS_MD, URL_BAR_HEIGHT};
 
+/// Line height of the focused URL `Input`, which is also the height of its selection highlight.
+const URL_LINE_HEIGHT: f32 = 22.0;
+
 /// The standard methods offered by the selector, before the trailing "Custom..." entry.
 const STANDARD_METHODS: [Method; 7] = [
     Method::Get,
@@ -168,9 +171,12 @@ impl UrlBar {
                 .border_r_1()
                 .border_color(palette.border)
                 .child(
+                    // Same sizing as the focused URL field, see `RenderOnce for UrlBar`.
                     Input::new(input)
-                        .h(px(URL_BAR_HEIGHT))
+                        .h_full()
                         .px_2()
+                        .py_0()
+                        .line_height(px(URL_LINE_HEIGHT))
                         .bordered(false),
                 )
                 .into_any_element();
@@ -294,12 +300,20 @@ impl RenderOnce for UrlBar {
 
         let on_escape = self.on_escape.clone();
         let field: AnyElement = if focused {
-            // Same mono family and size as `render_line` below, so focusing the field does not
-            // change the URL's font (GitHub #16 follow-up): `Input` defaults to the UI sans font.
+            // Same mono family, size and horizontal padding as `render_line` below, so focusing
+            // the field does not move or restyle the URL (GitHub #16 follow-up): `Input` defaults
+            // to the UI sans font. `h_full` plus no vertical padding keeps the line inside the
+            // bar's border (a fixed `URL_BAR_HEIGHT` overflowed it by the border's 2px and
+            // clipped descenders), and the taller line height gives a selection some room above
+            // and below the glyphs. Transparent, so the bar's own background shows through.
             Input::new(&self.input_state)
-                .h(px(URL_BAR_HEIGHT))
+                .h_full()
                 .flex_1()
+                .px_2()
+                .py_0()
+                .line_height(px(URL_LINE_HEIGHT))
                 .bordered(false)
+                .bg(palette.raised.opacity(0.0))
                 .font_family(mono_font)
                 .text_size(px(12.5))
                 .into_any_element()

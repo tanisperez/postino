@@ -1,5 +1,5 @@
-//! The sidebar: a header with "new request" / "new folder" icon buttons, a filter input, the
-//! workspace's collection tree, and a footer with the workspace path and git branch
+//! The sidebar: a header with "new request" / "new folder" / "import" icon buttons, a filter
+//! input, the workspace's collection tree, and a footer with the workspace path and git branch
 //! (`plans/ui-redesign.md` section 2.3 point 2). Right-clicking a tree row still opens the
 //! rename/delete/new request/new folder context menu (`plans/mvp.md`, phase 8).
 
@@ -52,7 +52,11 @@ impl AppView {
             .bg(palette.surface)
             .border_r_1()
             .border_color(palette.border)
-            .child(render_header(weak.clone(), has_workspace))
+            .child(render_header(
+                weak.clone(),
+                has_workspace,
+                self.render_import_menu(cx),
+            ))
             .child(self.render_filter_row(cx))
             .child(
                 div()
@@ -170,9 +174,13 @@ impl AppView {
     }
 }
 
-/// Renders the sidebar's header row: the "Collections" section label, and the "new request" /
-/// "new folder" icon buttons.
-fn render_header(weak: WeakEntity<AppView>, has_workspace: bool) -> impl IntoElement {
+/// Renders the sidebar's header row: the "Collections" section label, the "new request" / "new
+/// folder" icon buttons, and `import_menu` (`AppView::render_import_menu`).
+fn render_header(
+    weak: WeakEntity<AppView>,
+    has_workspace: bool,
+    import_menu: AnyElement,
+) -> impl IntoElement {
     h_flex()
         .justify_between()
         .items_center()
@@ -205,7 +213,8 @@ fn render_header(weak: WeakEntity<AppView>, has_workspace: bool) -> impl IntoEle
                                 open_new_folder_dialog(weak.clone(), None, window, cx);
                             }
                         }),
-                ),
+                )
+                .child(import_menu),
         )
 }
 

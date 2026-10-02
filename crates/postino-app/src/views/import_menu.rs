@@ -1,4 +1,4 @@
-//! The "Import" dropdown in the title bar: Postman collection and environment import, with the
+//! The "Import" dropdown in the sidebar's header: Postman collection and environment import, with the
 //! result shown in an in-app dialog (`plans/mvp.md`, Phase 9). The actual import call goes
 //! through `state::import`, the same functions its own unit tests exercise.
 
@@ -13,7 +13,7 @@ use postino_workspace::{ImportReport, WorkspaceError};
 
 use crate::state::import;
 use crate::state::locale;
-use crate::theme::metrics::ENV_PILL_HEIGHT;
+use crate::theme::PaletteExt;
 
 use super::root::AppView;
 
@@ -27,8 +27,9 @@ pub(crate) enum ImportKind {
 }
 
 impl AppView {
-    /// Renders the "Import" dropdown button: disabled until a workspace is open, since both
-    /// imports need somewhere to write files into.
+    /// Renders the "Import" dropdown button, an icon button styled like the sidebar header's
+    /// `IconButton`s next to it: disabled until a workspace is open, since both imports need
+    /// somewhere to write files into.
     pub(crate) fn render_import_menu(&self, cx: &Context<Self>) -> AnyElement {
         let weak = cx.weak_entity();
         let has_workspace = self.state.workspace.is_some();
@@ -36,11 +37,11 @@ impl AppView {
         let environment_weak = weak;
         Button::new("import-menu")
             .ghost()
-            .h(px(ENV_PILL_HEIGHT))
-            .icon(Icon::new(gpui_kit::assets::IconName::Download).small())
-            .label(t!("shell.import.button"))
+            .small()
+            .icon(Icon::new(gpui_kit::assets::IconName::Download))
+            .text_color(cx.palette().fg_muted)
+            .tooltip(t!("shell.import.button"))
             .disabled(!has_workspace)
-            .dropdown_caret(true)
             .dropdown_menu(move |mut menu, _, _| {
                 let weak = collection_weak.clone();
                 menu = menu.item(

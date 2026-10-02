@@ -1,6 +1,6 @@
 //! The title bar (`plans/ui-redesign.md` section 2.3 point 1): the "P" logo, "Postino", the
-//! workspace switcher, the search trigger, the environment pill, the Import menu, and the
-//! settings gear. The window controls at the far right are drawn automatically by gpui-kit's
+//! workspace switcher, the search trigger, the environment pill and the settings gear. The
+//! Import menu lives in the sidebar's header, next to "new folder". The window controls at the far right are drawn automatically by gpui-kit's
 //! `TitleBar` (`plans/ui-redesign-spikes.md` section 9), so nothing here adds them. The search
 //! trigger opens the command palette (`views/command_palette.rs`); the settings gear opens
 //! Settings (`views/settings.rs`).
@@ -17,6 +17,7 @@ use crate::theme::Palette;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
     ENV_PILL_HEIGHT, MENU_DOT_COLUMN_WIDTH, MENU_ROW_HEIGHT, RADIUS_MD, SEARCH_TRIGGER_WIDTH,
+    TITLE_BAR_HEIGHT,
 };
 
 use super::root::AppView;
@@ -33,7 +34,9 @@ impl AppView {
         let palette = cx.palette();
         let mono_font = cx.theme().mono_font_family.clone();
 
+        // gpui-kit's own default (34px) felt cramped; the window controls stretch with it.
         TitleBar::new()
+            .h(px(TITLE_BAR_HEIGHT))
             .child(
                 h_flex()
                     .size_full()
@@ -49,7 +52,6 @@ impl AppView {
                         render_search_trigger(weak.clone(), &palette, mono_font),
                     )))
                     .child(no_drag(self.render_env_picker(weak.clone(), cx)))
-                    .child(no_drag(self.render_import_menu(cx)))
                     .child(no_drag(render_settings_gear(weak, &palette))),
             )
             .into_any_element()

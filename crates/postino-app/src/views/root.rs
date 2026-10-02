@@ -924,12 +924,16 @@ impl AppView {
             tabs = tabs.item(doc_tab);
         }
 
+        // Padded off the last tab's border, and large, so the hover area is easy to hit.
         tabs = tabs.suffix(
-            IconButton::new("open-tabs-new-request", IconName::Plus)
-                .tooltip(t!("common.new_request"))
-                .on_click(move |_, window, cx| {
-                    sidebar::open_new_request_dialog(weak.clone(), None, window, cx);
-                }),
+            div().flex_none().px(px(6.0)).child(
+                IconButton::new("open-tabs-new-request", IconName::Plus)
+                    .large()
+                    .tooltip(t!("common.new_request"))
+                    .on_click(move |_, window, cx| {
+                        sidebar::open_new_request_dialog(weak.clone(), None, window, cx);
+                    }),
+            ),
         );
         tabs.into_any_element()
     }

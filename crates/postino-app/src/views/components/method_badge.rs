@@ -18,8 +18,9 @@ use crate::theme::metrics::{METHOD_LABEL_WIDTH, RADIUS_SM};
 /// Which of the two design variants a [`MethodBadge`] renders as.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MethodBadgeVariant {
-    /// Mono 10/600 colored text, right aligned in a [`METHOD_LABEL_WIDTH`]-wide column so the
-    /// names next to it line up while the badge stays close to its name (sidebar tree).
+    /// Mono 10/600 colored text, left aligned in a [`METHOD_LABEL_WIDTH`]-wide column, so every
+    /// sibling's method starts at the same indent and the names next to them line up (sidebar
+    /// tree).
     Label,
     /// The same text at its natural width, for a spot with no column to align (open tabs).
     Inline,
@@ -84,8 +85,6 @@ impl RenderOnce for MethodBadge {
             MethodBadgeVariant::Label => div()
                 .flex_none()
                 .min_w(px(METHOD_LABEL_WIDTH))
-                .flex()
-                .justify_end()
                 .child(text),
             MethodBadgeVariant::Inline => div().flex_none().child(text),
             MethodBadgeVariant::Pill => div()
