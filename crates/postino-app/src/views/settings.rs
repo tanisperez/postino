@@ -403,11 +403,27 @@ fn render_right_column(
                     div()
                         .absolute()
                         .inset_0()
-                        .child(Scrollbar::vertical(&scroll_handle).mode(ScrollbarMode::Always)),
+                        .child(settings_scrollbar(&scroll_handle, palette)),
                 ),
         )
         .child(render_footer(weak, palette))
         .into_any_element()
+}
+
+/// The body's always-shown scrollbar. Its track takes the modal's own background (the theme's
+/// track color is the window's `bg`, which shows as a darker strip on the modal) and no border,
+/// so only the thumb stands out.
+fn settings_scrollbar(scroll_handle: &ScrollHandle, palette: &Palette) -> Scrollbar {
+    let track = palette.overlay;
+    let border = palette.overlay.opacity(0.0);
+    Scrollbar::vertical(scroll_handle)
+        .mode(ScrollbarMode::Always)
+        .styles(|styles| {
+            styles
+                .track(|style| style.bg(track).border_color(border))
+                .track_hover(|style| style.bg(track).border_color(border))
+                .track_active(|style| style.bg(track).border_color(border))
+        })
 }
 
 /// The scrolled part of the right column: the selected category's sections.

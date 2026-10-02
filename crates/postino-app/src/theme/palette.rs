@@ -182,10 +182,12 @@ pub struct Palette {
     /// Inputs, cards and the code editor background.
     pub raised: Hsla,
     /// Menus, popovers and modals background (their own surface fill, JSON key
-    /// `"popover.background"`). Not the dialog backdrop scrim: that is `Tokens::scrim`, mapped to
-    /// the JSON's separate `"overlay"` key and read by `Dialog` itself, not exposed here since no
-    /// view needs it directly.
+    /// `"popover.background"`). Not the dialog backdrop scrim, that is [`Self::scrim`].
     pub overlay: Hsla,
+    /// The dimmed backdrop behind a modal. `AppView` paints it over the window's content while a
+    /// dialog is open; the theme's own `"overlay"` key, which `Dialog` paints, is transparent
+    /// (see `theme_json`).
+    pub scrim: Hsla,
     /// Default separator and border color.
     pub border: Hsla,
     /// Border color for controls (inputs, buttons).
@@ -296,6 +298,7 @@ impl Palette {
             surface: hex(tokens.surface),
             raised: hex(tokens.raised),
             overlay: hex(tokens.overlay),
+            scrim: hex(tokens.scrim),
             border: hex(tokens.border),
             border_strong: hex(tokens.border_strong),
             fg: hex(tokens.fg),
@@ -414,9 +417,12 @@ pub(super) fn theme_colors_and_highlight(dark: bool) -> (serde_json::Value, serd
         "secondary.background": tokens.raised,
         "popover.background": tokens.overlay,
         // A different field from `popover.background` above: this is `Dialog`'s own backdrop
-        // scrim color (`overlay_color()`, `gpui-component-0.6.6/src/dialog/dialog.rs:277`,
-        // reading `cx.theme().overlay`), not the modal/popover surface fill.
-        "overlay": tokens.scrim,
+        // scrim color (`overlay_color()` in gpui-component's `dialog/dialog.rs`, reading
+        // `cx.theme().overlay`), not the modal/popover surface fill. Transparent because
+        // gpui-kit 0.7.0 paints that backdrop over the whole window, client side shadow margin
+        // included, which showed as a gray frame around the window; `AppView` paints
+        // `Palette::scrim` over the content instead.
+        "overlay": "#00000000",
         "border": tokens.border,
         // The design defines no scrollbar, so the thumb is a neutral border tone that darkens
         // to the muted text color on hover; the track stays on the page background.
@@ -486,17 +492,23 @@ fn shadow_layer(layer: &ShadowLayer) -> BoxShadow {
         .spread_radius(px(layer.spread))
 }
 
-/// Parses a `#rrggbb` literal into an opaque [`Hsla`]. Every call site passes one of the
-/// constants above, copied verbatim from the design tokens, so malformed input cannot occur in
-/// practice; a bad literal falls back to opaque black instead of panicking.
+/// Parses a `#rrggbb` literal into an opaque [`Hsla`], or a `#rrggbbaa` one (the scrim) into a
+/// translucent one. Every call site passes one of the constants above, copied verbatim from the
+/// design tokens, so malformed input cannot occur in practice; a bad literal falls back to
+/// opaque black instead of panicking.
 fn hex(value: &str) -> Hsla {
     let digits = value.trim_start_matches('#');
     let parsed = u32::from_str_radix(digits, 16).unwrap_or(0);
+    let (rgb, alpha) = if digits.len() == 8 {
+        (parsed >> 8, (parsed & 0xff) as f32 / 255.0)
+    } else {
+        (parsed, 1.0)
+    };
     rgba(
-        ((parsed >> 16) & 0xff) as u8,
-        ((parsed >> 8) & 0xff) as u8,
-        (parsed & 0xff) as u8,
-        1.0,
+        ((rgb >> 16) & 0xff) as u8,
+        ((rgb >> 8) & 0xff) as u8,
+        (rgb & 0xff) as u8,
+        alpha,
     )
 }
 

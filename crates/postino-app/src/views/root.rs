@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use gpui_kit::component::input::{InputEvent, InputState};
+use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::tree::TreeState;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -32,9 +33,9 @@ use crate::state::settings::{Settings, SettingsCategory};
 use crate::state::ui_tabs::{self, RequestTab, ResponseTab};
 use crate::state::workspace_log::{log_workspace_error, tree_counts};
 use crate::state::{self, AppState};
-use crate::views::components::{
-    DocumentTab, DocumentTabs, IconButton, InlineMessage, InlineMessageKind,
-};
+use crate::theme::PaletteExt;
+use crate::theme::metrics::{ICON_BUTTON_LG, RADIUS_SM};
+use crate::views::components::{DocumentTab, DocumentTabs, InlineMessage, InlineMessageKind};
 use crate::views::define_variable::DefineVariableState;
 use crate::views::request_editor::RequestEditorEntities;
 use crate::views::response_view::ResponseEditorEntities;
@@ -164,6 +165,14 @@ impl AppView {
         )
         .detach();
         let focus_handle = cx.focus_handle();
+        // The modal backdrop is painted by `render` from `has_active_dialog`, but opening or
+        // closing a dialog notifies only gpui-component's private window state, not this view.
+        // Opening one moves focus into the dialog, out of this view; closing it restores focus
+        // back in. Re-rendering on both keeps the backdrop in step, with no work while idle.
+        cx.on_focus_out(&focus_handle, window, |_, _, _, cx| cx.notify())
+            .detach();
+        cx.on_focus_in(&focus_handle, window, |_, _, cx| cx.notify())
+            .detach();
 
         let send_options = SendOptions {
             invalid_certificates: settings.invalid_tls_certificates.to_http(),
@@ -910,7 +919,7 @@ impl AppView {
     /// Renders the open-tabs bar (`plans/ui-redesign.md` section 2.3 point 3): a [`DocumentTab`]
     /// per open request, with a dirty marker and a close button, and a trailing "+" that opens
     /// the same new-request dialog as the sidebar header.
-    fn render_tabs_bar(&mut self, weak: WeakEntity<Self>, _cx: &mut Context<Self>) -> AnyElement {
+    fn render_tabs_bar(&mut self, weak: WeakEntity<Self>, cx: &mut Context<Self>) -> AnyElement {
         if self.state.tabs.open_tabs().is_empty() {
             return div().into_any_element();
         }
@@ -947,12 +956,25 @@ impl AppView {
             tabs = tabs.item(doc_tab);
         }
 
-        // Padded off the last tab's border, and large, so the hover area is easy to hit.
+        // Padded off the last tab's border, with a large hover area around a small icon (an
+        // `IconButton`'s large size also scales its icon up).
+        let palette = cx.palette();
+        let tooltip = SharedString::from(t!("common.new_request"));
         tabs = tabs.suffix(
             div().flex_none().px(px(6.0)).child(
-                IconButton::new("open-tabs-new-request", IconName::Plus)
-                    .large()
-                    .tooltip(t!("common.new_request"))
+                div()
+                    .id("open-tabs-new-request")
+                    .size(px(ICON_BUTTON_LG))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .cursor_pointer()
+                    .rounded(px(RADIUS_SM))
+                    .text_color(palette.fg_muted)
+                    .hover(|style| style.bg(palette.hover))
+                    .active(|style| style.bg(palette.pressed))
+                    .child(Icon::new(IconName::Plus).small())
+                    .tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx))
                     .on_click(move |_, window, cx| {
                         sidebar::open_new_request_dialog(weak.clone(), None, window, cx);
                     }),
@@ -1029,5 +1051,11 @@ impl Render for AppView {
             .children(error_banner)
             .child(body)
             .child(status_bar)
+            // The modal backdrop, see `Palette::scrim`. Paints only, so clicks still reach the
+            // dialog's own (transparent) backdrop above it, which closes the dialog.
+            .when(window.has_active_dialog(cx), |this| {
+                this.relative()
+                    .child(div().absolute().inset_0().bg(cx.palette().scrim))
+            })
     }
 }
