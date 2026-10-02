@@ -12,7 +12,7 @@ Pages) plus the free community registries (AUR, Homebrew tap, winget-pkgs).
 
 | Topic | Decision |
 |---|---|
-| Version source | `[workspace.package] version` in `Cargo.toml`. SemVer, tags `vX.Y.Z`. First public release: `0.1.0`. CI fails if the tag and the version differ. |
+| Version source | `[workspace.package] version` in `Cargo.toml`. SemVer, tags `vX.Y.Z`. First public release: `0.1.0`. CI fails if the tag and the version differ; a pre-release tag (`v0.1.0-rc.1`) only needs the part before the suffix to match. |
 | Website | GitHub Pages with the custom domain `postino.tanis.codes` (a CNAME record, free HTTPS). It hosts the landing page, the install page and the APT/DNF repos. |
 | Pre-releases | Tags with a suffix (`v0.3.0-beta.1`) become GitHub pre-releases: built and attached, but not distributed and invisible to the updater (`/releases/latest` skips pre-releases). |
 | Trigger | `release.yml` on `push: tags: ["v*"]`. The existing `build.yml` stays as the per-push CI. |

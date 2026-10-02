@@ -108,6 +108,8 @@ platform.
 make help
 ```
 
+Releases are built by CI from version tags, see [docs/releasing.md](docs/releasing.md).
+
 ## License
 
 Postino is licensed under the [Apache License 2.0](LICENSE).

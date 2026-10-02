@@ -182,6 +182,12 @@ gpui, wgpu, ureq and rustls messages reach it too. Library crates only depend on
   examples instead of relying on memory of its API.
 - Writing style: never use the em dash in code, comments or docs. Use a comma or a period.
 
+## Releases
+
+Version tags `vX.Y.Z` build and publish a GitHub release through
+`.github/workflows/release.yml`. Steps in `docs/releasing.md`, the full plan (packages,
+distribution, updater) in `plans/releases.md`.
+
 ## Commands
 
 See `make help`. Main targets: `run`, `build`, `release`, `check`, `lint`, `format`, `test`.
