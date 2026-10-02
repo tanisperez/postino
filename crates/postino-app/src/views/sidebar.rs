@@ -21,9 +21,7 @@ use postino_workspace::{Node, RequestEntry, git_branch};
 
 use crate::state;
 use crate::theme::PaletteExt;
-use crate::theme::metrics::{
-    METHOD_LABEL_WIDTH, RADIUS_MD, SIDEBAR_FILTER_HEIGHT, TREE_ROW_HEIGHT,
-};
+use crate::theme::metrics::{RADIUS_MD, SIDEBAR_FILTER_HEIGHT, TREE_ROW_HEIGHT};
 use crate::views::components::{IconButton, MethodBadge, SectionLabel, edit_menu};
 
 use super::root::AppView;
@@ -305,11 +303,14 @@ fn collect_methods(nodes: &[Node], into: &mut HashMap<String, Method>) {
 /// empty, `plans/ui-redesign.md` phase 5, reviewer fix item C).
 const TREE_ROW_ICON_WIDTH: f32 = 13.0;
 
+/// Extra space between a request row's method and its name, on top of the row's 4px gap.
+const TREE_ROW_METHOD_GAP: f32 = 2.0;
+
 /// Renders one visible row of the sidebar tree, matching `Main A.dc.html`'s tree rows
 /// (`plans/ui-redesign.md` phase 5, reviewer fix item 8): a folder shows a chevron (down when
 /// expanded, right when collapsed) and no folder icon; a request shows no file icon, just the
-/// method label (an empty [`METHOD_LABEL_WIDTH`]-wide spacer when `method` is `None`, a broken
-/// request, so names stay aligned with their siblings) and the label built by
+/// method at its natural width, a fixed gap from its name (nothing when `method` is `None`, a
+/// broken request), and the label built by
 /// [`build_tree_item`]/[`build_filtered_item`] (already carrying the "(broken)" marker when it
 /// applies), indented 16 px per depth level. The row itself is exactly [`TREE_ROW_HEIGHT`] tall:
 /// `ListItem`'s own default padding is overridden below, since it would otherwise add to that
@@ -345,14 +346,15 @@ fn render_tree_row(
         .gap_1()
         .pl(px(entry.depth() as f32 * 16.0))
         .child(icon_slot);
-    if is_request {
-        row = row.child(match method {
-            Some(method) => MethodBadge::label(method.clone()).into_any_element(),
-            None => div()
+    // The method at its natural width, a fixed gap before the name (the row's own 4px plus
+    // this margin), however wide the method is. A broken request has no method to show.
+    if let Some(method) = method.filter(|_| is_request) {
+        row = row.child(
+            div()
                 .flex_none()
-                .w(px(METHOD_LABEL_WIDTH))
-                .into_any_element(),
-        });
+                .mr(px(TREE_ROW_METHOD_GAP))
+                .child(MethodBadge::inline(method.clone())),
+        );
     }
     let label_color = if selected {
         palette.accent_text

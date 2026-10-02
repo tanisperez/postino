@@ -249,13 +249,14 @@ fn render_leading(
     palette: &Palette,
     mono_font: SharedString,
 ) -> AnyElement {
-    const LEADING_WIDTH: f32 = 34.0;
     match &item.kind {
+        // At its natural width, a fixed gap from the path like the sidebar tree: a fixed 34px
+        // column wrapped `DELETE` and `OPTIONS` onto two lines.
         PaletteItemKind::Request(_) => {
             let label = item.detail.clone().unwrap_or_default();
             div()
                 .flex_none()
-                .w(px(LEADING_WIDTH))
+                .whitespace_nowrap()
                 .font_family(mono_font)
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_size(px(10.0))

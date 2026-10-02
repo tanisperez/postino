@@ -59,9 +59,8 @@ pub const RADIUS_MODAL: f32 = 14.0;
 /// Height of a `StatusBadge`.
 pub const STATUS_BADGE_HEIGHT: f32 = 22.0;
 /// Fixed width of a `MethodBadge`'s `label` variant, and of the method label in a sidebar tree
-/// row or open tab. Wide enough for the longest standard method (`OPTIONS`, 7 mono characters
-/// at 10px), so no standard method pushes its name out of line.
-pub const METHOD_LABEL_WIDTH: f32 = 44.0;
+/// row or open tab.
+pub const METHOD_LABEL_WIDTH: f32 = 34.0;
 /// Side length of an `IconButton`'s small size.
 pub const ICON_BUTTON_SM: f32 = 24.0;
 /// Side length of an `IconButton`'s large size.
