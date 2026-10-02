@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Postino
+GenericName=HTTP Client
+Comment=Lightweight native HTTP client
+Exec=postino %f
+Icon=codes.tanis.postino
+Terminal=false
+Categories=Development;Network;
+MimeType=application/x-postino;
+Keywords=http;api;rest;request;client;
+StartupNotify=true
+StartupWMClass=codes.tanis.postino
