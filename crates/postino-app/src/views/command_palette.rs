@@ -15,6 +15,7 @@
 //! `PaletteItemKind` without any extra bookkeeping.
 
 use gpui_kit::component::command::{Command, CommandGroup, CommandItem, CommandState};
+use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -23,6 +24,7 @@ use rust_i18n::t;
 use crate::state::palette::{self, ActionId, PaletteItem, PaletteItemKind};
 use crate::theme::Palette;
 use crate::theme::PaletteExt;
+use crate::views::components::edit_menu;
 
 use super::root::AppView;
 use super::{import_menu, sidebar};
@@ -38,6 +40,9 @@ const PALETTE_LIST_HEIGHT: f32 = 480.0;
 /// Bottom padding kept between the command list and the dialog's rounded bottom corner, so a cut
 /// (or merely the last) row never touches it directly.
 const PALETTE_BOTTOM_PADDING: f32 = 8.0;
+/// Height of the search row. `Command`'s own search field is `h_8` (2rem, so 26px at the 13px
+/// UI font) and cannot be resized, so the palette draws its own (see [`render_search_row`]).
+const SEARCH_ROW_HEIGHT: f32 = 36.0;
 /// The three group headings, in the fixed order they are always shown (`Requests` first even
 /// when empty, matching `IndexPath.section` 0/1/2, see the module doc comment). Built on every
 /// repaint, so they follow the current language.
@@ -58,11 +63,26 @@ impl AppView {
         }
         let weak = cx.weak_entity();
         let command_state = cx.new(|cx| CommandState::new(window, cx));
-        let focus_command_state = command_state.clone();
+        let search_input =
+            cx.new(|cx| InputState::new(window, cx).placeholder(t!("shell.title_bar.search_hint")));
+        // Typing in the palette's own search field drives `Command`'s query, as its built-in
+        // field would. Owned by the dialog's builder below, so it ends with the dialog.
+        let query_subscription = window.subscribe(&search_input, cx, {
+            let command_state = command_state.clone();
+            move |input, event: &InputEvent, window, cx| {
+                if matches!(event, InputEvent::Change) {
+                    let query = input.read(cx).value();
+                    command_state.update(cx, |state, cx| state.set_query(query, window, cx));
+                }
+            }
+        });
+        let focus_search_input = search_input.clone();
         window.open_dialog(cx, move |dialog, window, cx| {
+            let _ = &query_subscription;
             let palette = cx.palette();
             let weak = weak.clone();
             let command_state = command_state.clone();
+            let search_input = search_input.clone();
             // Top-anchored rather than dead center (as `Settings.dc.html` centers its modal):
             // no design mockup exists for the palette (checked `Main A.dc.html`, `Components
             // .dc.html` and `Postino Screens.dc.html`, none show it), and every well-known
@@ -86,6 +106,7 @@ impl AppView {
                                 .child(render_palette_content(
                                     weak.clone(),
                                     command_state.clone(),
+                                    search_input.clone(),
                                     cx,
                                 )),
                         )
@@ -100,7 +121,7 @@ impl AppView {
         // window-level shortcut (`Ctrl K`, `Ctrl S`, `Ctrl ,`, ...) dead until the next manual
         // click. Doing it here keeps `Root`'s own capture correct while still autofocusing the
         // field for the first keystroke.
-        focus_command_state.update(cx, |state, cx| state.focus(window, cx));
+        focus_search_input.update(cx, |state, cx| state.focus(window, cx));
     }
 }
 
@@ -109,6 +130,7 @@ impl AppView {
 fn render_palette_content(
     weak: WeakEntity<AppView>,
     command_state: Entity<CommandState>,
+    search_input: Entity<InputState>,
     cx: &mut App,
 ) -> AnyElement {
     let Some(view) = weak.upgrade() else {
@@ -143,11 +165,15 @@ fn render_palette_content(
         .map(|group| group.iter().map(|(item, _)| item.kind.clone()).collect())
         .collect();
 
+    // `Command` paints its own background, square unless bordered, over the dialog's rounded
+    // top corners; the bottom ones sit below the list's padding, on the dialog itself.
     let mut command = Command::new(&command_state)
         .bordered(false)
         .filterable(false)
+        .searchable(false)
+        .rounded_t(cx.theme().radius_lg)
         .max_h(px(PALETTE_LIST_HEIGHT))
-        .placeholder(t!("shell.title_bar.search_hint"));
+        .header(move |_, _, cx| render_search_row(&search_input, cx));
 
     for (group_items, heading) in sections.iter().zip(group_labels()) {
         let mut group = CommandGroup::new().label(heading);
@@ -185,6 +211,29 @@ fn render_palette_content(
             window.close_dialog(cx);
             execute_palette_item(weak.clone(), kind, window, cx);
         })
+        .into_any_element()
+}
+
+/// The search row: the same icon and borderless field as `Command`'s built-in one, at
+/// [`SEARCH_ROW_HEIGHT`]. Rendered as `Command`'s header, inside its key context, so Up, Down,
+/// Enter and Escape typed in the field still move the selection, confirm and cancel.
+fn render_search_row(search_input: &Entity<InputState>, cx: &App) -> AnyElement {
+    h_flex()
+        .flex_none()
+        .h(px(SEARCH_ROW_HEIGHT))
+        .px_3()
+        .gap_2()
+        .items_center()
+        .border_b_1()
+        .border_color(cx.theme().border)
+        .child(Icon::new(IconName::Search).text_color(cx.theme().muted_foreground))
+        .child(
+            Input::new(search_input)
+                .context_menu(edit_menu(search_input, cx))
+                .appearance(false)
+                .flex_1()
+                .p_0(),
+        )
         .into_any_element()
 }
 
