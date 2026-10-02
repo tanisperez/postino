@@ -7,7 +7,7 @@ same without the font installed. `crates/postino-app/assets/postino.ico` is the 
 The PNG sizes under `png/` are generated from it and committed:
 
 ```
-for s in 16 24 32 48 64 128 256 512; do
+for s in 16 24 32 48 64 128 256 512 1024; do
   rsvg-convert -w $s -h $s postino.svg -o png/postino-$s.png
 done
 ```
