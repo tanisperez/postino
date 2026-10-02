@@ -7,6 +7,10 @@
 //! or `bg` background, `fg`/`fg_muted` text) are simplest to pin directly from the palette on a
 //! plain `div` row. The dirty dot / hover-reveals-close-`x` behavior uses gpui's `group_hover`,
 //! toggling opacity between the two rather than swapping elements.
+//!
+//! Tabs reorder by dragging, like any editor: dropping a tab on another puts it in that tab's
+//! place (an accent line on the side it will land), dropping it on the bar's empty space moves it
+//! to the end. The bar only reports the move ([`DocumentTabs::on_reorder`]).
 
 use std::rc::Rc;
 
@@ -19,7 +23,7 @@ use postino_core::Method;
 
 use super::method_badge::MethodBadge;
 use crate::theme::PaletteExt;
-use crate::theme::metrics::OPEN_TABS_BAR_HEIGHT;
+use crate::theme::metrics::{OPEN_TABS_BAR_HEIGHT, RADIUS_SM};
 
 /// One open tab.
 pub struct DocumentTab {
@@ -35,6 +39,37 @@ pub struct DocumentTab {
 
 /// A tab click handler, factored out because clippy's `type_complexity` flags the inline form.
 type TabHandler = Rc<dyn Fn(&mut Window, &mut App)>;
+/// A reorder handler, called with the dragged tab's index and the index it moves to.
+type ReorderHandler = Rc<dyn Fn(usize, usize, &mut Window, &mut App)>;
+
+/// The value carried while a tab is dragged, also rendered as the preview under the pointer.
+#[derive(Clone)]
+struct DraggedTab {
+    index: usize,
+    method: Option<Method>,
+    label: SharedString,
+}
+
+impl Render for DraggedTab {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let palette = cx.palette();
+        h_flex()
+            .h(px(OPEN_TABS_BAR_HEIGHT))
+            .items_center()
+            .gap(px(6.0))
+            .px_3()
+            .rounded(px(RADIUS_SM))
+            .border_1()
+            .border_color(palette.border_strong)
+            .bg(palette.bg)
+            .shadow(palette.shadow.clone())
+            .opacity(0.9)
+            .text_size(px(13.0))
+            .text_color(palette.fg)
+            .children(self.method.clone().map(MethodBadge::inline))
+            .child(self.label.clone())
+    }
+}
 
 impl DocumentTab {
     /// A new tab labeled `label` (the request's file stem, or `"Load test \u{b7} <name>"`).
@@ -104,6 +139,7 @@ pub struct DocumentTabs {
     id: ElementId,
     items: Vec<DocumentTab>,
     suffix: Option<AnyElement>,
+    on_reorder: Option<ReorderHandler>,
 }
 
 impl DocumentTabs {
@@ -113,12 +149,23 @@ impl DocumentTabs {
             id: id.into(),
             items: Vec::new(),
             suffix: None,
+            on_reorder: None,
         }
     }
 
     /// Appends one tab.
     pub fn item(mut self, item: DocumentTab) -> Self {
         self.items.push(item);
+        self
+    }
+
+    /// Makes the tabs draggable: `handler` gets the dragged tab's index and the index it moves to
+    /// (`usize::MAX` for "the end", when dropped on the bar's empty space).
+    pub fn on_reorder(
+        mut self,
+        handler: impl Fn(usize, usize, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_reorder = Some(Rc::new(handler));
         self
     }
 
@@ -132,6 +179,8 @@ impl DocumentTabs {
 impl RenderOnce for DocumentTabs {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let palette = cx.palette();
+        let on_reorder = self.on_reorder;
+        let bar_reorder = on_reorder.clone();
 
         h_flex()
             .id(self.id)
@@ -139,6 +188,11 @@ impl RenderOnce for DocumentTabs {
             .bg(palette.surface)
             .border_b_1()
             .border_color(palette.border)
+            .when_some(bar_reorder, |bar, handler| {
+                bar.on_drop(move |dragged: &DraggedTab, window, cx| {
+                    handler(dragged.index, usize::MAX, window, cx)
+                })
+            })
             .children(self.items.into_iter().enumerate().map(|(index, item)| {
                 let group = SharedString::from(format!("doc-tab-{index}"));
                 let selected = item.selected;
@@ -172,6 +226,30 @@ impl RenderOnce for DocumentTabs {
                     });
                 if let Some(icon) = item.icon {
                     tab = tab.child(Icon::new(icon).small().text_color(palette.fg_subtle));
+                }
+                if let Some(handler) = on_reorder.clone() {
+                    let dragged = DraggedTab {
+                        index,
+                        method: item.method.clone(),
+                        label: item.label.clone(),
+                    };
+                    let accent = palette.accent;
+                    tab = tab
+                        .on_drag(dragged, |dragged, _, _, cx| cx.new(|_| dragged.clone()))
+                        // The line marks where the dragged tab lands: before this tab when it
+                        // comes from the right, after it when it comes from the left.
+                        .drag_over::<DraggedTab>(move |style, dragged, _, _| {
+                            if dragged.index > index {
+                                style.border_l_2().border_color(accent)
+                            } else if dragged.index < index {
+                                style.border_r_2().border_color(accent)
+                            } else {
+                                style
+                            }
+                        })
+                        .on_drop(move |dragged: &DraggedTab, window, cx| {
+                            handler(dragged.index, index, window, cx)
+                        });
                 }
                 if let Some(method) = item.method {
                     tab = tab.child(MethodBadge::inline(method));

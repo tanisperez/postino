@@ -172,6 +172,23 @@ impl TabsState {
         }
     }
 
+    /// Moves the tab at `from` to position `to` (dragging a tab in the open-tabs bar), shifting
+    /// the tabs in between by one. The active tab stays the same tab, wherever it ends up. `to`
+    /// past the end means the last position. Does nothing if `from` is out of range.
+    pub fn move_tab(&mut self, from: usize, to: usize) {
+        if from >= self.open.len() {
+            return;
+        }
+        let to = to.min(self.open.len() - 1);
+        if from == to {
+            return;
+        }
+        let active_id = self.active().map(|tab| tab.id.clone());
+        let tab = self.open.remove(from);
+        self.open.insert(to, tab);
+        self.active = active_id.and_then(|id| self.index_of(&id));
+    }
+
     /// Activates the tab after the active one, wrapping from the last to the first. Does nothing
     /// when no tab is open.
     pub fn activate_next(&mut self) {
@@ -283,6 +300,53 @@ mod tests {
         assert_eq!(tabs.open_tabs().len(), 2);
         assert_eq!(tabs.active_index(), Some(1));
         assert_eq!(tabs.open_tabs()[1].id, "c.postino");
+    }
+
+    fn ids(tabs: &TabsState) -> Vec<&str> {
+        tabs.open_tabs().iter().map(|tab| tab.id.as_str()).collect()
+    }
+
+    fn three_tabs() -> TabsState {
+        let mut tabs = TabsState::default();
+        tabs.open("a.postino", request());
+        tabs.open("b.postino", request());
+        tabs.open("c.postino", request());
+        tabs
+    }
+
+    #[test]
+    fn move_tab_moves_forward_and_backward() {
+        let mut tabs = three_tabs();
+        tabs.move_tab(0, 2);
+        assert_eq!(ids(&tabs), ["b.postino", "c.postino", "a.postino"]);
+        tabs.move_tab(2, 0);
+        assert_eq!(ids(&tabs), ["a.postino", "b.postino", "c.postino"]);
+        tabs.move_tab(1, 0);
+        assert_eq!(ids(&tabs), ["b.postino", "a.postino", "c.postino"]);
+    }
+
+    #[test]
+    fn move_tab_keeps_the_same_tab_active() {
+        let mut tabs = three_tabs();
+        tabs.set_active(1);
+
+        tabs.move_tab(1, 0);
+        assert_eq!(tabs.active().map(|tab| tab.id.as_str()), Some("b.postino"));
+        assert_eq!(tabs.active_index(), Some(0));
+
+        tabs.move_tab(2, 0);
+        assert_eq!(ids(&tabs), ["c.postino", "b.postino", "a.postino"]);
+        assert_eq!(tabs.active().map(|tab| tab.id.as_str()), Some("b.postino"));
+        assert_eq!(tabs.active_index(), Some(1));
+    }
+
+    #[test]
+    fn move_tab_clamps_the_target_and_ignores_a_bad_source() {
+        let mut tabs = three_tabs();
+        tabs.move_tab(0, 99);
+        assert_eq!(ids(&tabs), ["b.postino", "c.postino", "a.postino"]);
+        tabs.move_tab(7, 0);
+        assert_eq!(ids(&tabs), ["b.postino", "c.postino", "a.postino"]);
     }
 
     #[test]

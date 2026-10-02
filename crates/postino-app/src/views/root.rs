@@ -925,7 +925,14 @@ impl AppView {
         }
 
         let active_index = self.state.tabs.active_index();
-        let mut tabs = DocumentTabs::new("open-tabs");
+        let reorder_weak = weak.clone();
+        let mut tabs = DocumentTabs::new("open-tabs").on_reorder(move |from, to, _, cx| {
+            let _ = reorder_weak.update(cx, |view, cx| {
+                log::debug!("moved tab {from} to {to}");
+                view.state.tabs.move_tab(from, to);
+                cx.notify();
+            });
+        });
         for (index, tab) in self.state.tabs.open_tabs().iter().enumerate() {
             let select_weak = weak.clone();
             let close_weak = weak.clone();
