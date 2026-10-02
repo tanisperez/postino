@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help run build release check lint lint-fix format format-check test clean
+.PHONY: help run build release dist check lint lint-fix format format-check test clean
 
 help:
 	@echo "Usage: make [target]"
@@ -8,6 +8,7 @@ help:
 	@echo "  run           Build and run the app (debug)"
 	@echo "  build         Build in debug mode"
 	@echo "  release       Build an optimized release binary"
+	@echo "  dist          Build the release packages for this OS into target/dist"
 	@echo "  check         Fast type-check without producing a binary"
 	@echo "  lint          Run Clippy (warnings are errors)"
 	@echo "  lint-fix      Run Clippy and apply automatic fixes"
@@ -24,6 +25,18 @@ build:
 
 release:
 	cargo build --release
+
+# The workspace version from Cargo.toml, for the package names.
+VERSION := $(shell sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\(.*\)"/\1/p' Cargo.toml)
+
+# Linux needs nfpm on PATH, macOS the Xcode command line tools. On Windows, compile
+# packaging/windows/postino.iss with Inno Setup (see its README).
+dist: release
+	@case "$$(uname -s)" in \
+	Linux) packaging/linux/package.sh $(VERSION) target/release/postino target/dist ;; \
+	Darwin) packaging/macos/bundle.sh $(VERSION) target/release/postino target/dist ;; \
+	*) echo "make dist supports Linux and macOS; see packaging/windows/README.md"; exit 1 ;; \
+	esac
 
 check:
 	cargo check --all-targets

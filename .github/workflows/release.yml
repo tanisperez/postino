@@ -1,7 +1,7 @@
 name: Release
 
-# Builds Postino for every platform when a version tag is pushed and attaches the binaries to
-# the GitHub release of that tag. The release is normally created by hand as a draft with its
+# Builds and packages Postino for every platform when a version tag is pushed and attaches the
+# packages to the GitHub release of that tag. The release is normally created by hand as a draft with its
 # notes right after pushing the tag; this workflow creates the draft itself if it is missing, and
 # publishes it only once every asset is uploaded. See docs/releasing.md.
 
@@ -61,15 +61,12 @@ jobs:
           - name: linux-x86_64
             os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            ext: ""
           - name: windows-x86_64
             os: windows-latest
             target: x86_64-pc-windows-msvc
-            ext: ".exe"
           - name: macos-arm64
             os: macos-latest
             target: aarch64-apple-darwin
-            ext: ""
 
     steps:
       - uses: actions/checkout@v4
@@ -96,12 +93,40 @@ jobs:
       - name: Build
         run: cargo build --release --locked --target ${{ matrix.target }}
 
-      - name: Rename the binary
-        shell: bash
+      # Tarball, deb and rpm (packaging/linux).
+      - name: Package for Linux
+        if: runner.os == 'Linux'
+        env:
+          NFPM_VERSION: 2.47.0
+          VERSION: ${{ needs.check.outputs.version }}
         run: |
-          mkdir dist
-          cp "target/${{ matrix.target }}/release/postino${{ matrix.ext }}" \
-            "dist/postino-${{ needs.check.outputs.version }}-${{ matrix.name }}${{ matrix.ext }}"
+          mkdir -p "$RUNNER_TEMP/nfpm"
+          curl -sSfL "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP/nfpm" nfpm
+          PATH="$RUNNER_TEMP/nfpm:$PATH" packaging/linux/package.sh "$VERSION" \
+            "target/${{ matrix.target }}/release/postino" dist
+
+      # Postino.app as .dmg and .app.tar.gz (packaging/macos).
+      - name: Package for macOS
+        if: runner.os == 'macOS'
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          packaging/macos/bundle.sh "$VERSION" "target/${{ matrix.target }}/release/postino" dist
+
+      # Per-user Inno Setup installer (packaging/windows).
+      - name: Package for Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup --no-progress -y }
+          & $iscc /Q "/DAppVersion=$env:VERSION" `
+            "/DSourceExe=$PWD\target\${{ matrix.target }}\release\postino.exe" `
+            "/DOutputDir=$PWD\dist" packaging\windows\postino.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

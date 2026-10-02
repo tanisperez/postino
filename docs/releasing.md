@@ -46,10 +46,21 @@ The release stays a draft until every asset is uploaded, so nobody sees a half-b
 
 | Asset | Content |
 |---|---|
-| `postino-X.Y.Z-linux-x86_64` | Linux binary, built on Ubuntu 22.04 (glibc 2.35) |
-| `postino-X.Y.Z-windows-x86_64.exe` | Windows binary |
-| `postino-X.Y.Z-macos-arm64` | macOS binary, Apple silicon, unsigned |
+| `postino-X.Y.Z-linux-x86_64.tar.gz` | Linux binary plus desktop entry, MIME type and icons in a `/usr`-like layout |
+| `postino_X.Y.Z_amd64.deb` | Debian and Ubuntu package |
+| `postino-X.Y.Z-1.x86_64.rpm` | Fedora and openSUSE package |
+| `Postino-X.Y.Z-macos-arm64.dmg` | macOS app, Apple silicon, ad-hoc signed |
+| `Postino-X.Y.Z-macos-arm64.app.tar.gz` | The same app, for the in-app updater |
+| `Postino-X.Y.Z-windows-x86_64-setup.exe` | Per-user Windows installer |
 | `SHA256SUMS` | SHA-256 of every asset above |
+
+Linux binaries are built on Ubuntu 22.04 (glibc 2.35). In the deb and rpm a pre-release version
+uses a tilde (`0.1.0~rc.1`) so it sorts before the final release; the other names keep the dash.
+
+The packaging scripts live in `packaging/` (one README per platform) and run in the workflow.
+`make dist` builds the packages for the current OS locally into `target/dist` (Linux needs
+`nfpm` on `PATH`, macOS the Xcode command line tools). The Windows installer is compiled with
+Inno Setup, see `packaging/windows/README.md`.
 
 ## When something fails
 

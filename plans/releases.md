@@ -192,9 +192,9 @@ Behaviour:
   release notes. Nothing installs without a click.
 - On click:
   - **Windows**: run the downloaded installer with
-    `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART` and quit. The installer replaces the files
-    (closing Postino through the Restart Manager if needed) and its `[Run]` entry relaunches
-    Postino.
+    `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /relaunch=1` and quit. The installer replaces the
+    files (closing Postino through the Restart Manager if needed) and relaunches Postino only
+    because of `/relaunch=1`, so silent installs from winget do not open the app.
   - **macOS**: unpack the `.app.tar.gz` into a staging folder next to the installed bundle
     (same volume, so the swap is a rename), spawn a detached `sh` script that waits for our PID
     to exit, swaps the bundles, removes the old one and runs `open` on the new one, then quit.
