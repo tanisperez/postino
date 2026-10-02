@@ -28,6 +28,13 @@ use actions::{
 use state::settings::ThemeChoice;
 use views::AppView;
 
+/// The application id: Wayland `app_id`, X11 `WM_CLASS`, Windows AppUserModelID. The Linux
+/// `codes.tanis.postino.desktop` file and the Windows installer shortcut use the same value.
+const APP_ID: &str = "codes.tanis.postino";
+
+/// The user-visible application name given to the OS together with [`APP_ID`].
+const APP_NAME: &str = "Postino";
+
 fn main() {
     // Settings first, for the log level: the logger is installed before anything else runs, so
     // every later message (gpui's own included) reaches the log file.
@@ -57,12 +64,21 @@ fn main() {
         state::locale::system_locales().join(", "),
     );
 
-    // The workspace folder to open on startup: the first CLI argument if given (handy for
-    // testing), otherwise the folder remembered from the previous run.
-    let initial_workspace: Option<PathBuf> = std::env::args()
-        .nth(1)
-        .map(PathBuf::from)
-        .or_else(state::config::load_last_workspace);
+    // What to open on startup: the first CLI argument if given (a workspace folder, or a request
+    // file, which opens in a tab), otherwise the folder remembered from the previous run.
+    let arg = std::env::args_os().nth(1).map(PathBuf::from);
+    let launch = state::launch::resolve_launch_target(
+        arg.as_deref(),
+        state::config::load_last_workspace().as_deref(),
+    );
+    let (initial_workspace, initial_request) = match launch {
+        Some(target) => (Some(target.workspace), target.request_id),
+        None => (None, None),
+    };
+
+    // Files the OS hands over while running (macOS Apple Events). They can arrive before the
+    // window exists, so they wait in this queue until the window's task drains it.
+    let open_queue = state::open_queue::OpenQueue::default();
 
     let theme_choice = settings.theme;
 
@@ -73,98 +89,130 @@ fn main() {
     // catalog (`gpui_kit::assets::IconName`, 1830 icons) that `plans/ui-redesign.md`'s design
     // uses (`gauge`, `wand-sparkles`, `send-horizontal`, ...), a strict superset of the curated
     // one, so switching to it does not affect any icon that already worked.
-    gpui_kit::application()
-        .with_assets(gpui_kit::assets::AllAssets)
-        .run(move |cx| {
-            gpui_kit::init(cx);
-            bind_keys(cx);
-            theme::install(cx, &settings);
+    let app = gpui_kit::application().with_assets(gpui_kit::assets::AllAssets);
+    let url_queue = open_queue.clone();
+    app.on_open_urls(move |urls| url_queue.push(state::launch::paths_from_urls(&urls)));
+    app.run(move |cx| {
+        // The AppUserModelID on Windows (the installer's shortcut must use the same id) and
+        // the app name for notifications elsewhere.
+        cx.set_app_identity(APP_ID, APP_NAME);
+        gpui_kit::init(cx);
+        bind_keys(cx);
+        theme::install(cx, &settings);
 
-            // Centered at 1440x900 logical, capped to 90% of the display's visible bounds
-            // (`plans/ui-redesign.md` phase 5, reviewer fix item 10): `WindowBounds::centered`
-            // only caps at 100% of the display (`Bounds::centered`'s own `size.min(&visible_
-            // bounds.size)`), which is not tight enough to keep the title bar, status bar and
-            // sidebar footer on screen on a display where 1440x900 is close to the full visible
-            // area.
-            //
-            // `cx.primary_display()` (and `cx.displays()`) can legitimately return nothing here:
-            // confirmed with temporary logging on this session's KDE Plasma/Wayland setup, where
-            // both are empty at this point in `.run()`'s callback, and even `window.display(cx)`
-            // right after `open_window` still returns `None` (the compositor hands over
-            // output/display info only after the window's first configure event, which no
-            // synchronous call at window-creation time can observe). Without this fallback,
-            // `window_bounds: None` used to defer to `gpui`'s own default placement, which on
-            // that same session came out as 1536x1095, taller than the visible screen (a 1920x
-            // 1080 physical display at 1.2 scale, with a 54 px physical taskbar, leaves about
-            // 1600x855 logical), hiding the status bar and sidebar footer. 1280x760 comfortably
-            // fits that, and any other Wayland compositor's typical visible area.
-            let window_bounds = match cx.primary_display() {
-                Some(display) => {
-                    let visible = display.visible_bounds();
-                    let cap = size(visible.size.width * 0.9, visible.size.height * 0.9);
-                    let target = size(px(1440.0), px(900.0)).min(&cap);
-                    WindowBounds::Windowed(Bounds::centered_at(visible.center(), target))
+        // Centered at 1440x900 logical, capped to 90% of the display's visible bounds
+        // (`plans/ui-redesign.md` phase 5, reviewer fix item 10): `WindowBounds::centered`
+        // only caps at 100% of the display (`Bounds::centered`'s own `size.min(&visible_
+        // bounds.size)`), which is not tight enough to keep the title bar, status bar and
+        // sidebar footer on screen on a display where 1440x900 is close to the full visible
+        // area.
+        //
+        // `cx.primary_display()` (and `cx.displays()`) can legitimately return nothing here:
+        // confirmed with temporary logging on this session's KDE Plasma/Wayland setup, where
+        // both are empty at this point in `.run()`'s callback, and even `window.display(cx)`
+        // right after `open_window` still returns `None` (the compositor hands over
+        // output/display info only after the window's first configure event, which no
+        // synchronous call at window-creation time can observe). Without this fallback,
+        // `window_bounds: None` used to defer to `gpui`'s own default placement, which on
+        // that same session came out as 1536x1095, taller than the visible screen (a 1920x
+        // 1080 physical display at 1.2 scale, with a 54 px physical taskbar, leaves about
+        // 1600x855 logical), hiding the status bar and sidebar footer. 1280x760 comfortably
+        // fits that, and any other Wayland compositor's typical visible area.
+        let window_bounds = match cx.primary_display() {
+            Some(display) => {
+                let visible = display.visible_bounds();
+                let cap = size(visible.size.width * 0.9, visible.size.height * 0.9);
+                let target = size(px(1440.0), px(900.0)).min(&cap);
+                WindowBounds::Windowed(Bounds::centered_at(visible.center(), target))
+            }
+            None => WindowBounds::Windowed(Bounds {
+                origin: point(px(0.0), px(0.0)),
+                size: size(px(1280.0), px(760.0)),
+            }),
+        };
+
+        let window_options = WindowOptions {
+            window_bounds: Some(window_bounds),
+            window_min_size: Some(size(px(760.), px(480.))),
+            // On Linux the default is server side decorations, which makes the compositor draw
+            // its own title bar on top of ours. Client side decorations let `TitleBar` be the
+            // only one; `Root` then draws the window border and resize edges. Other platforms
+            // ignore this option.
+            window_decorations: Some(WindowDecorations::Client),
+            // Wayland app_id and X11 WM_CLASS: must match `codes.tanis.postino.desktop` for
+            // the right icon and name in the dock and alt-tab.
+            app_id: Some(APP_ID.to_string()),
+            ..TitleBar::window_options()
+        };
+
+        cx.spawn(async move |cx| {
+            let opened = cx.open_window(window_options, move |window, cx| {
+                // "System" keeps matching the OS light/dark setting, including if the user
+                // changes it while Postino is running; an explicit choice sets the mode once.
+                match theme_choice {
+                    ThemeChoice::System => Theme::sync_system_appearance(Some(window), cx),
+                    ThemeChoice::Light => Theme::change(ThemeMode::Light, Some(window), cx),
+                    ThemeChoice::Dark => Theme::change(ThemeMode::Dark, Some(window), cx),
                 }
-                None => WindowBounds::Windowed(Bounds {
-                    origin: point(px(0.0), px(0.0)),
-                    size: size(px(1280.0), px(760.0)),
-                }),
-            };
 
-            let window_options = WindowOptions {
-                window_bounds: Some(window_bounds),
-                window_min_size: Some(size(px(760.), px(480.))),
-                // On Linux the default is server side decorations, which makes the compositor draw
-                // its own title bar on top of ours. Client side decorations let `TitleBar` be the
-                // only one; `Root` then draws the window border and resize edges. Other platforms
-                // ignore this option.
-                window_decorations: Some(WindowDecorations::Client),
-                ..TitleBar::window_options()
-            };
-
-            cx.spawn(async move |cx| {
-                let opened = cx.open_window(window_options, move |window, cx| {
-                    // "System" keeps matching the OS light/dark setting, including if the user
-                    // changes it while Postino is running; an explicit choice sets the mode once.
-                    match theme_choice {
-                        ThemeChoice::System => Theme::sync_system_appearance(Some(window), cx),
-                        ThemeChoice::Light => Theme::change(ThemeMode::Light, Some(window), cx),
-                        ThemeChoice::Dark => Theme::change(ThemeMode::Dark, Some(window), cx),
-                    }
-
-                    let view =
-                        cx.new(|cx| AppView::new(initial_workspace.clone(), settings, window, cx));
-
-                    // Always listen for OS appearance changes, live, regardless of the theme
-                    // choice at startup: the Settings view (`plans/ui-redesign.md` phase 6) can
-                    // switch the choice at any time afterwards, and "System" must start following
-                    // the OS the moment it is picked, even if the app launched in Light or Dark.
-                    // Checking the *current* setting on every OS change (instead of only
-                    // attaching this observer when `theme_choice == System`) is what lets Light
-                    // and Dark stop following it without detaching anything: the observer simply
-                    // no-ops while they are active.
-                    let weak = view.downgrade();
-                    window
-                        .observe_window_appearance(move |window, cx| {
-                            let follows_system = weak.upgrade().is_some_and(|view| {
-                                view.read(cx).state.settings.theme == ThemeChoice::System
-                            });
-                            if follows_system {
-                                Theme::sync_system_appearance(Some(window), cx);
-                            }
-                        })
-                        .detach();
-
-                    cx.new(|cx| Root::new(view, window, cx))
+                let view = cx.new(|cx| {
+                    AppView::new(
+                        initial_workspace.clone(),
+                        initial_request.clone(),
+                        settings,
+                        window,
+                        cx,
+                    )
                 });
-                // Opening the very first window failing is not recoverable: there is nothing left
-                // for the app to do, so this is one of the "truly impossible state" exceptions
-                // AGENTS.md allows an `expect()` for.
-                #[allow(clippy::expect_used)]
-                opened.expect("failed to open the main window");
-            })
-            .detach();
-        });
+
+                // Opens files the OS delivers. Sleeps on the queue, so an idle window does
+                // no work; files queued before this point are delivered right away.
+                let queue = open_queue.clone();
+                let weak_view = view.downgrade();
+                window
+                    .spawn(cx, async move |cx| {
+                        loop {
+                            let paths = queue.next().await;
+                            let result = weak_view.update_in(cx, |view, window, cx| {
+                                view.open_external_files(paths, window, cx)
+                            });
+                            if result.is_err() {
+                                break;
+                            }
+                        }
+                    })
+                    .detach();
+
+                // Always listen for OS appearance changes, live, regardless of the theme
+                // choice at startup: the Settings view (`plans/ui-redesign.md` phase 6) can
+                // switch the choice at any time afterwards, and "System" must start following
+                // the OS the moment it is picked, even if the app launched in Light or Dark.
+                // Checking the *current* setting on every OS change (instead of only
+                // attaching this observer when `theme_choice == System`) is what lets Light
+                // and Dark stop following it without detaching anything: the observer simply
+                // no-ops while they are active.
+                let weak = view.downgrade();
+                window
+                    .observe_window_appearance(move |window, cx| {
+                        let follows_system = weak.upgrade().is_some_and(|view| {
+                            view.read(cx).state.settings.theme == ThemeChoice::System
+                        });
+                        if follows_system {
+                            Theme::sync_system_appearance(Some(window), cx);
+                        }
+                    })
+                    .detach();
+
+                cx.new(|cx| Root::new(view, window, cx))
+            });
+            // Opening the very first window failing is not recoverable: there is nothing left
+            // for the app to do, so this is one of the "truly impossible state" exceptions
+            // AGENTS.md allows an `expect()` for.
+            #[allow(clippy::expect_used)]
+            opened.expect("failed to open the main window");
+        })
+        .detach();
+    });
 }
 
 /// Logs where and how Postino runs: the first lines of every session, and the ones a bug report

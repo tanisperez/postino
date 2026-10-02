@@ -148,6 +148,7 @@ impl AppView {
     /// `InputState`, needs it); every other debug hook ignores it.
     pub fn new(
         initial_workspace: Option<PathBuf>,
+        initial_request: Option<String>,
         settings: Settings,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -211,6 +212,10 @@ impl AppView {
         };
         if let Some(root) = initial_workspace {
             view.open_workspace_at(&root, window, cx);
+            // A file given on the command line: open its request in a tab, without sending.
+            if let Some(id) = initial_request {
+                view.open_request(id, cx);
+            }
         }
         // Before `apply_debug_open`: a `POSTINO_OPEN=settings` launch defers opening the dialog
         // (see that method), and `Root::open_dialog` captures whatever is focused at that later
@@ -308,6 +313,41 @@ impl AppView {
         if let Ok(request_id) = std::env::var("POSTINO_AUTOSEND") {
             self.open_request(request_id, cx);
             self.send_active_tab(cx);
+        }
+    }
+
+    /// Opens files the OS asked the app to open (macOS "Open with" and double click). A file
+    /// inside the open workspace opens in a tab; any other file switches to its parent folder
+    /// first, through the same path as "Open folder...", then opens in a tab. A directory opens as
+    /// the workspace.
+    pub(crate) fn open_external_files(
+        &mut self,
+        paths: Vec<PathBuf>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        for path in paths {
+            if path.is_dir() {
+                log::info!("opening a folder requested by the OS");
+                self.open_workspace_at(&path, window, cx);
+                continue;
+            }
+            if !path.is_file() {
+                log::warn!("the OS asked to open a file that does not exist");
+                continue;
+            }
+            let current = self
+                .state
+                .workspace
+                .as_ref()
+                .map(|workspace| workspace.root().to_path_buf());
+            let target = state::launch::target_for_file(&path, current.as_deref());
+            if current.as_deref() != Some(target.workspace.as_path()) {
+                self.open_workspace_at(&target.workspace, window, cx);
+            }
+            if let Some(id) = target.request_id {
+                self.open_request(id, cx);
+            }
         }
     }
 
