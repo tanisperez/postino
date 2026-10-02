@@ -1,7 +1,9 @@
 //! Remembers recently opened workspace folders in the OS config directory, most recent first
 //! (`plans/ui-redesign.md`, section 1 "Recent workspaces"), so the app can offer to reopen one
-//! automatically at startup and show them in the workspace switcher menu.
+//! automatically at startup and show them in the workspace switcher menu. Also remembers each
+//! recent workspace's last active environment, restored when it is opened again.
 
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -15,6 +17,12 @@ const RECENT_WORKSPACES_FILE: &str = "postino/recent-workspaces.txt";
 /// The path of the single-workspace file this module replaces. Read once to migrate existing
 /// users the first time [`RECENT_WORKSPACES_FILE`] does not exist yet, then ignored.
 const LEGACY_LAST_WORKSPACE_FILE: &str = "postino/last-workspace.txt";
+
+/// The path, relative to the OS config directory, of the file holding each recent workspace's
+/// last active environment: a TOML table from absolute workspace path to environment name. It
+/// lives here rather than in the workspace so picking an environment never shows up in the
+/// workspace's git diff.
+const LAST_ENVIRONMENTS_FILE: &str = "postino/last-environments.toml";
 
 /// Returns the list of recently opened workspaces, most recent first, migrating from the legacy
 /// single-workspace file the first time the new file does not exist yet.
@@ -54,6 +62,80 @@ pub fn load_last_workspace() -> Option<PathBuf> {
 /// [`load_last_workspace`] so it can be tested without touching the real OS config directory.
 fn first_existing(paths: Vec<PathBuf>) -> Option<PathBuf> {
     paths.into_iter().find(|path| path.is_dir())
+}
+
+/// The environment that was active when the workspace at `root` was last used, if any was. The
+/// caller checks it still exists.
+pub fn last_environment(root: &Path) -> Option<String> {
+    let base = dirs::config_dir()?;
+    last_environment_at(&base, &workspace_key(root))
+}
+
+/// Remembers `name` (`None` for "No environment") as the active environment of the workspace at
+/// `root`. Like [`record_workspace`], failing to persist it is silently ignored.
+pub fn record_environment(root: &Path, name: Option<&str>) {
+    if let Some(base) = dirs::config_dir() {
+        record_environment_at(&base, &workspace_key(root), name);
+    }
+}
+
+/// The key a workspace is remembered under: its absolute path, as [`record_workspace`] stores
+/// it, so a workspace opened through a relative path matches its recent list entry. `dunce`
+/// avoids the verbatim `\\?\C:\...` form `std` returns on Windows.
+fn workspace_key(root: &Path) -> PathBuf {
+    dunce::canonicalize(root).unwrap_or_else(|_| root.to_path_buf())
+}
+
+/// The testable core of [`last_environment`], taking the config base directory explicitly.
+fn last_environment_at(base: &Path, root: &Path) -> Option<String> {
+    read_last_environments(base).remove(&root.to_string_lossy().into_owned())
+}
+
+/// The testable core of [`record_environment`], taking the config base directory explicitly.
+/// Drops the entries of workspaces no longer in the recent list, so the file never outgrows it.
+fn record_environment_at(base: &Path, root: &Path, name: Option<&str>) {
+    let mut environments = read_last_environments(base);
+    let key = root.to_string_lossy().into_owned();
+    match name {
+        Some(name) => environments.insert(key, name.to_string()),
+        None => environments.remove(&key),
+    };
+    let recent: HashSet<String> = read_recent_workspaces(base)
+        .iter()
+        .map(|path| path.to_string_lossy().into_owned())
+        .collect();
+    environments.retain(|workspace, _| recent.contains(workspace));
+    write_last_environments(base, &environments);
+}
+
+/// Reads `<base>/postino/last-environments.toml`. A missing or unreadable file reads as empty.
+fn read_last_environments(base: &Path) -> BTreeMap<String, String> {
+    fs::read_to_string(base.join(LAST_ENVIRONMENTS_FILE))
+        .ok()
+        .and_then(|content| toml::from_str(&content).ok())
+        .unwrap_or_default()
+}
+
+/// Writes `<base>/postino/last-environments.toml`, creating the folder if needed.
+fn write_last_environments(base: &Path, environments: &BTreeMap<String, String>) {
+    let path = base.join(LAST_ENVIRONMENTS_FILE);
+    let Some(parent) = path.parent() else {
+        return;
+    };
+    if let Err(error) = fs::create_dir_all(parent) {
+        log::warn!("could not create {}: {error}", parent.display());
+        return;
+    }
+    let content = match toml::to_string(environments) {
+        Ok(content) => content,
+        Err(error) => {
+            log::warn!("could not serialize {}: {error}", path.display());
+            return;
+        }
+    };
+    if let Err(error) = fs::write(&path, content) {
+        log::warn!("could not save {}: {error}", path.display());
+    }
 }
 
 /// Reads the recent workspace list from `<base>/postino/recent-workspaces.txt`, migrating from
@@ -233,6 +315,43 @@ mod tests {
             Some(real)
         );
         assert_eq!(first_existing(vec![missing]), None);
+    }
+
+    #[test]
+    fn last_environment_round_trips_per_workspace() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let base = dir.path();
+        let (a, b) = (base.join("a"), base.join("b"));
+        record_workspace_at(base, &a);
+        record_workspace_at(base, &b);
+
+        assert_eq!(last_environment_at(base, &a), None);
+        record_environment_at(base, &a, Some("local"));
+        record_environment_at(base, &b, Some("prod"));
+        assert_eq!(last_environment_at(base, &a), Some("local".to_string()));
+        assert_eq!(last_environment_at(base, &b), Some("prod".to_string()));
+
+        record_environment_at(base, &a, None);
+        assert_eq!(last_environment_at(base, &a), None);
+        assert_eq!(last_environment_at(base, &b), Some("prod".to_string()));
+    }
+
+    #[test]
+    fn last_environment_forgets_workspaces_that_left_the_recent_list() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let base = dir.path();
+        let old = base.join("old");
+        record_workspace_at(base, &old);
+        record_environment_at(base, &old, Some("local"));
+        for index in 0..MAX_RECENT_WORKSPACES {
+            record_workspace_at(base, &base.join(format!("w{index}")));
+        }
+
+        let current = base.join("w0");
+        record_environment_at(base, &current, Some("dev"));
+
+        assert_eq!(last_environment_at(base, &old), None);
+        assert_eq!(last_environment_at(base, &current), Some("dev".to_string()));
     }
 
     #[cfg(windows)]

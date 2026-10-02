@@ -171,7 +171,7 @@ impl AppView {
             Ok(()) => {
                 self.workspace_error = None;
                 if self.state.active_environment.is_none() {
-                    self.state.active_environment = Some(target_env);
+                    self.select_environment(Some(target_env), cx);
                 }
             }
             Err(error) => {

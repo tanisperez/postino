@@ -323,6 +323,7 @@ impl AppView {
                 // verbatim `\\?\C:\...` form `std` returns on Windows.
                 let absolute = dunce::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
                 state::config::record_workspace(&absolute);
+                self.restore_last_environment(&absolute);
             }
             Err(error) => {
                 log_workspace_error(&format!("open workspace {}", root.display()), &error);
@@ -336,6 +337,24 @@ impl AppView {
         });
         self.refresh_tree(cx);
         cx.notify();
+    }
+
+    /// Re-selects the environment that was active when the workspace at `root` was last used,
+    /// unless it has been deleted or renamed since.
+    fn restore_last_environment(&mut self, root: &Path) {
+        let Some(workspace) = self.state.workspace.as_ref() else {
+            return;
+        };
+        let Some(name) = state::config::last_environment(root) else {
+            return;
+        };
+        let exists = workspace
+            .list_environments()
+            .is_ok_and(|names| names.contains(&name));
+        if exists {
+            log::debug!("restored active environment: {name}");
+            self.state.active_environment = Some(name);
+        }
     }
 
     /// Logs a successfully opened workspace: where it is, what it holds, how long the scan took,
@@ -670,10 +689,14 @@ impl AppView {
         cx.notify();
     }
 
-    /// Sets the active environment (`None` for "No environment"). Used by the environment
-    /// picker's clicks and by [`Self::select_environment_by_shortcut`].
+    /// Sets the active environment (`None` for "No environment") and remembers it for the open
+    /// workspace, so reopening it restores the choice. Used by the environment picker's clicks
+    /// and by [`Self::select_environment_by_shortcut`].
     pub(crate) fn select_environment(&mut self, name: Option<String>, cx: &mut Context<Self>) {
         log::debug!("active environment: {}", name.as_deref().unwrap_or("none"));
+        if let Some(workspace) = self.state.workspace.as_ref() {
+            state::config::record_environment(workspace.root(), name.as_deref());
+        }
         self.state.active_environment = name;
         cx.notify();
     }
