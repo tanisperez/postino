@@ -82,10 +82,9 @@ impl RenderOnce for MethodBadge {
             .child(label);
 
         match self.variant {
-            MethodBadgeVariant::Label => div()
-                .flex_none()
-                .min_w(px(METHOD_LABEL_WIDTH))
-                .child(text),
+            MethodBadgeVariant::Label => {
+                div().flex_none().min_w(px(METHOD_LABEL_WIDTH)).child(text)
+            }
             MethodBadgeVariant::Inline => div().flex_none().child(text),
             MethodBadgeVariant::Pill => div()
                 .flex_none()

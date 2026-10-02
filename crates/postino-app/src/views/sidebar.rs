@@ -24,7 +24,7 @@ use crate::theme::PaletteExt;
 use crate::theme::metrics::{
     METHOD_LABEL_WIDTH, RADIUS_MD, SIDEBAR_FILTER_HEIGHT, TREE_ROW_HEIGHT,
 };
-use crate::views::components::{IconButton, MethodBadge, SectionLabel};
+use crate::views::components::{IconButton, MethodBadge, SectionLabel, edit_menu};
 
 use super::root::AppView;
 
@@ -127,6 +127,7 @@ impl AppView {
                     .child(Icon::new(gpui_kit::assets::IconName::ListFilter).small())
                     .child(
                         Input::new(&self.sidebar_filter_input)
+                            .context_menu(edit_menu(&self.sidebar_filter_input, cx))
                             .h(px(SIDEBAR_FILTER_HEIGHT))
                             .bordered(false)
                             // Transparent so only the outer pill shows: without this, the
@@ -507,7 +508,11 @@ pub(crate) fn open_new_request_dialog(
         let parent = parent.clone();
         dialog
             .title(t!("common.new_request"))
-            .content(move |content, _, _| content.child(Input::new(&input_for_content)))
+            .content(move |content, _, cx| {
+                content.child(
+                    Input::new(&input_for_content).context_menu(edit_menu(&input_for_content, cx)),
+                )
+            })
             .on_ok(move |_, _, cx| {
                 let name = input_for_ok.read(cx).value().trim().to_string();
                 if !name.is_empty() {
@@ -536,7 +541,11 @@ pub(crate) fn open_new_folder_dialog(
         let parent = parent.clone();
         dialog
             .title(t!("common.new_folder"))
-            .content(move |content, _, _| content.child(Input::new(&input_for_content)))
+            .content(move |content, _, cx| {
+                content.child(
+                    Input::new(&input_for_content).context_menu(edit_menu(&input_for_content, cx)),
+                )
+            })
             .on_ok(move |_, _, cx| {
                 let name = input_for_ok.read(cx).value().trim().to_string();
                 if !name.is_empty() {
@@ -567,7 +576,11 @@ fn open_rename_dialog(
         let id = id.clone();
         dialog
             .title(t!("common.rename"))
-            .content(move |content, _, _| content.child(Input::new(&input_for_content)))
+            .content(move |content, _, cx| {
+                content.child(
+                    Input::new(&input_for_content).context_menu(edit_menu(&input_for_content, cx)),
+                )
+            })
             .on_ok(move |_, _, cx| {
                 let name = input_for_ok.read(cx).value().trim().to_string();
                 if !name.is_empty() {

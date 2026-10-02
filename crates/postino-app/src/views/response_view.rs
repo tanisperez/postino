@@ -25,7 +25,7 @@ use crate::state::ui_tabs::ResponseTab;
 use crate::theme::PaletteExt;
 use crate::views::components::{
     IconButton, InlineMessage, InlineMessageKind, SegmentedControl, SegmentedItem, StatusBadge,
-    StatusState, UnderlineTabItem, UnderlineTabs,
+    StatusState, UnderlineTabItem, UnderlineTabs, edit_menu,
 };
 
 use super::root::AppView;
@@ -371,7 +371,10 @@ impl AppView {
         // phase 5, reviewer fix round 3 item 2; see `views/request_editor.rs`'s
         // `render_editor_or_placeholder` doc comment for the `gpui-component` precedent).
         let body: AnyElement = match &self.response_editor.editor {
-            Some(editor) => Editor::new(editor).h(relative(1.0)).into_any_element(),
+            Some(editor) => Editor::new(editor)
+                .context_menu(edit_menu(editor, cx))
+                .h(relative(1.0))
+                .into_any_element(),
             None => div().into_any_element(),
         };
 

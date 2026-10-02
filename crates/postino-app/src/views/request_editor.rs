@@ -27,7 +27,7 @@ use crate::theme::PaletteExt;
 use crate::theme::metrics::{RADIUS_MD, SEND_BUTTON_HEIGHT, SEND_BUTTON_MIN_WIDTH};
 use crate::views::components::{
     GhostButton, KeyValueRow, KeyValueTable, PrimaryButton, SegmentedControl, SegmentedItem,
-    UnderlineTabItem, UnderlineTabs, UrlBar,
+    UnderlineTabItem, UnderlineTabs, UrlBar, edit_menu,
 };
 
 use super::root::AppView;
@@ -776,6 +776,7 @@ impl AppView {
                 Some(docs) => {
                     let palette = cx.palette();
                     Textarea::new(docs)
+                        .context_menu(edit_menu(docs, cx))
                         .h(px(320.0))
                         .border_1()
                         .border_color(palette.border)
@@ -885,8 +886,12 @@ impl AppView {
             let remove_tab_id = tab_id.to_string();
             table = table.row(
                 KeyValueRow::with_elements(
-                    Input::new(&row_entities.key).w_full(),
-                    Input::new(&row_entities.value).w_full(),
+                    Input::new(&row_entities.key)
+                        .context_menu(edit_menu(&row_entities.key, cx))
+                        .w_full(),
+                    Input::new(&row_entities.value)
+                        .context_menu(edit_menu(&row_entities.value, cx))
+                        .w_full(),
                 )
                 .enabled(row.enabled)
                 .on_toggle(move |enabled, _, cx| {
@@ -947,6 +952,7 @@ fn render_editor_or_placeholder(
     match editor {
         Some(editor) => {
             let editor = Editor::new(editor)
+                .context_menu(edit_menu(editor, cx))
                 .border_1()
                 .border_color(palette.border)
                 .rounded(px(RADIUS_MD))

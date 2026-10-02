@@ -16,7 +16,9 @@ use crate::state::load_test::{LoadTestConfigInputs, LoadTestTab, LoadTestTarget,
 use crate::state::locale;
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
 use crate::theme::{Palette, PaletteExt};
-use crate::views::components::{DangerButton, PrimaryButton, SegmentedControl, SegmentedItem};
+use crate::views::components::{
+    DangerButton, PrimaryButton, SegmentedControl, SegmentedItem, edit_menu,
+};
 
 use crate::views::root::AppView;
 
@@ -175,6 +177,7 @@ impl AppView {
                         self.load_test_entities.vus.as_ref(),
                         "VUs",
                         is_running,
+                        cx,
                     ))
                     .child(render_field(
                         &palette,
@@ -185,6 +188,7 @@ impl AppView {
                         self.load_test_entities.duration_secs.as_ref(),
                         "s",
                         is_running,
+                        cx,
                     ))
                     .child(render_field(
                         &palette,
@@ -195,6 +199,7 @@ impl AppView {
                         self.load_test_entities.ramp_up_secs.as_ref(),
                         "s",
                         is_running,
+                        cx,
                     ))
                     .child(render_field(
                         &palette,
@@ -205,6 +210,7 @@ impl AppView {
                         self.load_test_entities.think_time_ms.as_ref(),
                         "ms",
                         is_running,
+                        cx,
                     ))
                     .child(render_stop_on_error_row(
                         weak.clone(),
@@ -445,6 +451,7 @@ fn render_field(
     entity: Option<&Entity<InputState>>,
     unit: &'static str,
     disabled: bool,
+    cx: &App,
 ) -> AnyElement {
     let mut row = h_flex().justify_between().text_size(px(12.0)).child(
         div()
@@ -469,6 +476,7 @@ fn render_field(
     if let Some(entity) = entity {
         pill = pill.child(
             Input::new(entity)
+                .context_menu(edit_menu(entity, cx))
                 .flex_1()
                 .h(px(CONTROL_HEIGHT))
                 .bordered(false)

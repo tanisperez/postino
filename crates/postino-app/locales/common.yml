@@ -105,3 +105,18 @@ _version: 2
   es: "Eliminar"
   gl: "Eliminar"
   it: "Elimina"
+"common.edit_menu.cut":
+  en: "Cut"
+  es: "Cortar"
+  gl: "Cortar"
+  it: "Taglia"
+"common.edit_menu.paste":
+  en: "Paste"
+  es: "Pegar"
+  gl: "Pegar"
+  it: "Incolla"
+"common.edit_menu.select_all":
+  en: "Select all"
+  es: "Seleccionar todo"
+  gl: "Seleccionar todo"
+  it: "Seleziona tutto"

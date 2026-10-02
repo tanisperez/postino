@@ -23,6 +23,7 @@ use rust_i18n::t;
 
 use postino_core::{Method, VariableSpan};
 
+use super::edit_menu::edit_menu;
 use super::variable_chip::VariableChip;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{RADIUS_MD, URL_BAR_HEIGHT};
@@ -173,6 +174,7 @@ impl UrlBar {
                 .child(
                     // Same sizing as the focused URL field, see `RenderOnce for UrlBar`.
                     Input::new(input)
+                        .context_menu(edit_menu(input, cx))
                         .h_full()
                         .px_2()
                         .py_0()
@@ -307,6 +309,7 @@ impl RenderOnce for UrlBar {
             // clipped descenders), and the taller line height gives a selection some room above
             // and below the glyphs. Transparent, so the bar's own background shows through.
             Input::new(&self.input_state)
+                .context_menu(edit_menu(&self.input_state, cx))
                 .h_full()
                 .flex_1()
                 .px_2()

@@ -9,6 +9,7 @@
 pub mod buttons;
 pub mod card;
 pub mod document_tabs;
+pub mod edit_menu;
 pub mod env_pill;
 pub mod gallery;
 pub mod icon_button;
@@ -25,6 +26,7 @@ pub mod variable_chip;
 pub use buttons::{DangerButton, GhostButton, PrimaryButton, SecondaryButton};
 pub use card::Card;
 pub use document_tabs::{DocumentTab, DocumentTabs};
+pub use edit_menu::edit_menu;
 pub use env_pill::{EnvMenuItem, EnvPill};
 pub use icon_button::IconButton;
 pub use inline_message::{InlineMessage, InlineMessageKind};

@@ -19,6 +19,7 @@ use rust_i18n::t;
 use crate::state::define_variable;
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
 use crate::theme::{Palette, PaletteExt};
+use crate::views::components::edit_menu;
 
 use super::root::AppView;
 
@@ -227,11 +228,15 @@ fn render_define_variable_body(
         .gap(px(14.0))
         .child(labeled_field(
             t!("request.define_variable.variable"),
-            Input::new(&name_input).w_full(),
+            Input::new(&name_input)
+                .context_menu(edit_menu(&name_input, cx))
+                .w_full(),
         ))
         .child(labeled_field(
             t!("common.value"),
-            Input::new(&value_input).w_full(),
+            Input::new(&value_input)
+                .context_menu(edit_menu(&value_input, cx))
+                .w_full(),
         ))
         .child(labeled_field(
             t!("request.define_variable.environment"),
@@ -247,6 +252,7 @@ fn render_define_variable_body(
             labeled_field(
                 t!("request.define_variable.new_environment_name"),
                 Input::new(&new_environment_input)
+                    .context_menu(edit_menu(&new_environment_input, cx))
                     .w_full()
                     .into_any_element(),
             )
