@@ -90,6 +90,11 @@ any other icon silently renders empty. On Linux, the window is opened with `Wind
 - UI logic (open tabs, dirty state, the active environment, ...) lives in plain Rust under
   `postino-app/src/state`, not in `gpui` views, specifically so it can be unit tested without a
   window or a GPU.
+- Manual end-to-end checks: `cargo run -- examples/sample-workspace` opens the bundled sample
+  workspace. Two environment variables are read at startup and do nothing when unset:
+  `POSTINO_ENV=<name>` selects an environment (a name under `environments/`) before sending
+  anything, and `POSTINO_AUTOSEND=<request id>` opens that request (a workspace-relative id, for
+  example `auth/login.postino`) and sends it right away.
 
 ## Translations
 

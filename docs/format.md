@@ -206,9 +206,15 @@ unicode, `=` inside values, and `:` inside header values.
 ## 8. Environment files (`.env`)
 
 `environments/<name>.env`, one flat list of variables, versioned normally.
-`environments/<name>.local.env` is the optional, gitignored counterpart for secrets: see
-`README.md` for the recommended `.gitignore` entry. The `environments/` folder itself is not
-shown as a collection in the sidebar; it is read separately.
+`environments/<name>.local.env` is the optional, gitignored counterpart for secrets; its values
+override `<name>.env`. Add this to the workspace's `.gitignore`:
+
+```
+*.local.env
+```
+
+The `environments/` folder itself is not shown as a collection in the sidebar; it is read
+separately.
 
 Rules, exactly as implemented in `crates/postino-format/src/env.rs`:
 

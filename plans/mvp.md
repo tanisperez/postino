@@ -42,8 +42,8 @@ Out of scope for the MVP: multipart bodies, file uploads, cookies jar UI, auth h
 plain headers, OAuth flows, WebSockets, GraphQL-specific UI, gRPC, collection runner, CLI,
 `pm.*` compatibility shim, request history, persisting script-set environment values to disk,
 shared script code between requests, custom sidebar ordering, responses larger than 10 MiB (the
-current `ureq` read limit), creating a body from a pre script when the request has none. The same
-list lives in `README.md` under "Future (after the MVP)"; keep both in sync.
+current `ureq` read limit), creating a body from a pre script when the request has none. Each one
+is tracked as a GitHub issue (#14, #15, #35 and #51 to #63).
 
 ## 2. Architecture
 
