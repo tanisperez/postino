@@ -4,7 +4,7 @@
 # Usage: packaging/linux/package.sh <version> <path-to-postino-binary> <out-dir> [arch]
 #
 # <version> is the bare version (0.1.0 or 0.1.0-rc.1, no leading "v").
-# [arch] is x86_64 (default) or aarch64. The deb/rpm are named by nfpm.
+# [arch] is x86_64 (default) or aarch64.
 # Requires nfpm on PATH (https://nfpm.goreleaser.com).
 set -euo pipefail
 
@@ -70,9 +70,13 @@ export POSTINO_VERSION=$version
 export POSTINO_ARCH=$deb_arch
 export POSTINO_BIN=$binary
 export POSTINO_ROOT=$root
-for packager in deb rpm; do
-    nfpm pkg --config "$linux_dir/nfpm.yaml" --packager "$packager" --target "$out_dir/"
-done
+# The file names use <version> as given: nfpm's default names carry the "~" of a pre-release
+# (0.1.0~rc.1), which GitHub turns into "." on upload, breaking SHA256SUMS. The version inside the
+# packages keeps the "~", so a pre-release still sorts before the final release.
+nfpm pkg --config "$linux_dir/nfpm.yaml" --packager deb \
+    --target "$out_dir/postino_${version}_$deb_arch.deb"
+nfpm pkg --config "$linux_dir/nfpm.yaml" --packager rpm \
+    --target "$out_dir/postino-$version-1.$arch.rpm"
 
 echo "Built in $out_dir:"
 ls -1 "$out_dir"

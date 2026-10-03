@@ -54,8 +54,9 @@ The release stays a draft until every asset is uploaded, so nobody sees a half-b
 | `Postino-X.Y.Z-windows-x86_64-setup.exe` | Per-user Windows installer |
 | `SHA256SUMS` | SHA-256 of every asset above |
 
-Linux binaries are built on Ubuntu 22.04 (glibc 2.35). In the deb and rpm a pre-release version
-uses a tilde (`0.1.0~rc.1`) so it sorts before the final release; the other names keep the dash.
+Linux binaries are built on Ubuntu 22.04 (glibc 2.35). Inside the deb and rpm a pre-release
+version uses a tilde (`0.1.0~rc.1`) so it sorts before the final release. Every file name keeps
+the dash, since GitHub renames a `~` in an asset name to `.`.
 
 The packaging scripts live in `packaging/` (one README per platform) and run in the workflow.
 `make dist` builds the packages for the current OS locally into `target/dist` (Linux needs

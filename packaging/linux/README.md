@@ -21,7 +21,9 @@ deb and rpm (nfpm semver handling). The optional arch defaults to `x86_64`; `aar
 
 - `postino-<version>-linux-<arch>.tar.gz`: a `/usr`-like prefix (`bin/`, `share/`) plus `LICENSE`
   and `README.md`, meant to be copied into `/usr` (AUR `PKGBUILD`) or `~/.local`.
-- `postino_<version>_amd64.deb` and `postino-<version>-1.x86_64.rpm` (nfpm default names).
+- `postino_<version>_amd64.deb` and `postino-<version>-1.x86_64.rpm`. The file names keep the
+  `-` of a pre-release (`0.1.0-rc.1`), only the version inside the packages uses `~`. GitHub
+  renames `~` to `.` in uploaded assets, which would break `SHA256SUMS`.
 
 `nfpm` must be on `PATH`. Tested with nfpm 2.47.0.
 
