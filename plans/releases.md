@@ -69,7 +69,7 @@ tag v0.3.0 pushed
           └─ publish: SHA256SUMS + latest.json, upload all to the draft (create it if missing),
                       mark it published (and prerelease if needed)
               └─ distribute (stable only, each job independent, a failure does not block others):
-                   ├─ apt + dnf repos on GitHub Pages
+                   ├─ website + apt + dnf repos, deployed to GitHub Pages
                    ├─ AUR postino-bin
                    ├─ Homebrew tap cask
                    └─ winget PR
@@ -127,12 +127,33 @@ Per OS:
 | **Fedora / openSUSE** | Signed DNF repo on the same Pages site (`createrepo_c` + GPG, `rpm --addsign`). One `.repo` file, then `dnf upgrade`. | none after setup |
 | Everyone else | The tarball, plus the deb/rpm as direct downloads. | none |
 
-APT and DNF repos share one `gh-pages` branch and one GPG key (private key and passphrase as
-secrets, public key published on the site). GitHub Pages limits: 1 GB per site, 100 MB per file,
-so the repos keep only the last 3 versions; older ones stay downloadable from Releases. The Pages
-site, served at `postino.tanis.codes`, is also the project's landing page and install page
-with the copy-paste commands. Repo URLs use that domain, so moving the hosting later never
-breaks the users' apt/dnf configuration.
+APT and DNF repos share one GPG key (private key and passphrase as secrets, public key
+published on the site). There is no `gh-pages` branch: a branch holding the deb and rpm files
+would make every `git clone` of Postino download them too. The site is deployed from Actions
+(`actions/deploy-pages`) and rebuilt from scratch each time: the job builds the website,
+downloads the deb and rpm of the last 3 stable releases from GitHub Releases, regenerates and
+signs the APT and DNF metadata, and uploads the whole site. It runs after each stable release
+and on pushes to `main` that touch `site/`, both producing the same result. GitHub Pages limits: 1 GB per site,
+100 MB per file, 100 GB of bandwidth per month (soft); older versions stay downloadable from
+Releases. Repo URLs use the `postino.tanis.codes` domain, so moving the hosting later (for
+example to Cloudflare Pages, ruled out for now by its 25 MB per file limit) never breaks the
+users' apt/dnf configuration.
+
+The site, served at the same domain, is also the project's landing page and install page with
+the copy-paste commands:
+
+- Plain static HTML and CSS under `site/` in this repository, no JavaScript and no build tool,
+  so a feature and its screenshot and text change in the same pull request.
+- Styled with the Postino design system (`postino_design_system/`): its color tokens as CSS
+  custom properties, light and dark through `prefers-color-scheme`, Geist and Geist Mono served
+  from the site (SIL OFL 1.1).
+- Pages: the landing page (features, each with a screenshot), the install page (one download
+  button per OS, then the `apt`, `dnf`, `yay`, `brew` and `winget` commands). The docs link to
+  `docs/` on GitHub.
+- Screenshots are generated, not taken by hand: a script opens the sample workspace, drives the
+  app with xdotool and saves each screen in light and dark, as WebP plus a PNG fallback with
+  fixed width and height to avoid layout shifts.
+- English only for now.
 
 Considered and left for later:
 
