@@ -1,0 +1,77 @@
+# In-app updater (macOS and Windows builds from GitHub). Glossary and rules: plans/i18n.md
+_version: 2
+"update.setting.title":
+  en: "Updates"
+  es: "Actualizaciones"
+  gl: "Actualizacións"
+  it: "Aggiornamenti"
+"update.setting.check":
+  en: "Check for updates automatically"
+  es: "Buscar actualizaciones automáticamente"
+  gl: "Buscar actualizacións automaticamente"
+  it: "Cerca aggiornamenti automaticamente"
+"update.setting.check_description":
+  en: "Once at startup. It only downloads a small file from GitHub and sends no identifiers."
+  es: "Una vez al arrancar. Solo descarga un archivo pequeño de GitHub y no envía identificadores."
+  gl: "Unha vez ao arrancar. Só descarga un ficheiro pequeno de GitHub e non envía identificadores."
+  it: "Una volta all'avvio. Scarica solo un piccolo file da GitHub e non invia identificatori."
+"update.status.ready":
+  en: "Update %{version} ready, restart"
+  es: "Actualización %{version} lista, reiniciar"
+  gl: "Actualización %{version} lista, reiniciar"
+  it: "Aggiornamento %{version} pronto, riavvia"
+"update.status.notes":
+  en: "Release notes"
+  es: "Notas de la versión"
+  gl: "Notas da versión"
+  it: "Note di rilascio"
+"update.checking":
+  en: "Checking for updates..."
+  es: "Buscando actualizaciones..."
+  gl: "Buscando actualizacións..."
+  it: "Ricerca di aggiornamenti..."
+"update.up_to_date":
+  en: "Postino is up to date (%{version})"
+  es: "Postino está actualizado (%{version})"
+  gl: "Postino está actualizado (%{version})"
+  it: "Postino è aggiornato (%{version})"
+"update.already_ready":
+  en: "Update %{version} is ready, restart to install it"
+  es: "La actualización %{version} está lista, reinicia para instalarla"
+  gl: "A actualización %{version} está lista, reinicia para instalala"
+  it: "L'aggiornamento %{version} è pronto, riavvia per installarlo"
+"update.found":
+  en: "Update %{version} downloaded, restart to install it"
+  es: "Actualización %{version} descargada, reinicia para instalarla"
+  gl: "Actualización %{version} descargada, reinicia para instalala"
+  it: "Aggiornamento %{version} scaricato, riavvia per installarlo"
+"update.check_failed":
+  en: "Could not check for updates: %{error}"
+  es: "No se pudo buscar actualizaciones: %{error}"
+  gl: "Non se puido buscar actualizacións: %{error}"
+  it: "Impossibile cercare aggiornamenti: %{error}"
+"update.install_failed":
+  en: "Could not install the update: %{error}"
+  es: "No se pudo instalar la actualización: %{error}"
+  gl: "Non se puido instalar a actualización: %{error}"
+  it: "Impossibile installare l'aggiornamento: %{error}"
+"update.fallback":
+  en: "Could not update in place, download the new version from GitHub"
+  es: "No se pudo actualizar en el sitio, descarga la nueva versión desde GitHub"
+  gl: "Non se puido actualizar no sitio, descarga a nova versión desde GitHub"
+  it: "Impossibile aggiornare sul posto, scarica la nuova versione da GitHub"
+"update.confirm.title":
+  en: "Restart to update?"
+  es: "¿Reiniciar para actualizar?"
+  gl: "Reiniciar para actualizar?"
+  it: "Riavviare per aggiornare?"
+"update.confirm.text":
+  en: "There are unsaved changes that will be lost when Postino restarts."
+  es: "Hay cambios sin guardar que se perderán al reiniciar Postino."
+  gl: "Hai cambios sen gardar que se perderán ao reiniciar Postino."
+  it: "Ci sono modifiche non salvate che andranno perse al riavvio di Postino."
+"update.confirm.restart":
+  en: "Restart"
+  es: "Reiniciar"
+  gl: "Reiniciar"
+  it: "Riavvia"

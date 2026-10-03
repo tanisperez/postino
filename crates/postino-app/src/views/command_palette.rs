@@ -367,6 +367,7 @@ fn action_icon(action: ActionId) -> gpui_kit::assets::IconName {
         ActionId::OpenWorkspace => Lucide::Folder,
         ActionId::NewLoadTest => Lucide::Gauge,
         ActionId::ToggleTheme => Lucide::Palette,
+        ActionId::CheckForUpdates => Lucide::RefreshCw,
     }
 }
 
@@ -438,6 +439,9 @@ fn execute_action(weak: WeakEntity<AppView>, action: ActionId, window: &mut Wind
         }
         ActionId::ToggleTheme => {
             let _ = weak.update(cx, |view, cx| view.toggle_theme(window, cx));
+        }
+        ActionId::CheckForUpdates => {
+            let _ = weak.update(cx, |view, cx| view.check_for_updates_manually(window, cx));
         }
     }
 }

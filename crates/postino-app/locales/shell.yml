@@ -175,3 +175,8 @@ _version: 2
   es: "Cambiar tema"
   gl: "Cambiar o tema"
   it: "Cambia tema"
+"shell.palette.check_for_updates":
+  en: "Check for updates"
+  es: "Buscar actualizaciones"
+  gl: "Buscar actualizacións"
+  it: "Cerca aggiornamenti"

@@ -232,6 +232,9 @@ pub struct Settings {
     pub invalid_tls_certificates: InvalidTlsCertificates,
     /// How much is written to the log file.
     pub log_level: LogLevel,
+    /// Whether to check for a new version once at startup. Only used by builds that have an
+    /// updater (`state::update::updater_enabled`).
+    pub check_updates: bool,
 }
 
 impl Default for Settings {
@@ -245,6 +248,7 @@ impl Default for Settings {
             mono_font_size: 12.5,
             invalid_tls_certificates: InvalidTlsCertificates::default(),
             log_level: LogLevel::default(),
+            check_updates: true,
         }
     }
 }
@@ -359,6 +363,11 @@ fn parse_settings(content: &str) -> Settings {
         .and_then(LogLevel::parse)
         .unwrap_or(defaults.log_level);
 
+    let check_updates = table
+        .and_then(|table| table.get("check_updates"))
+        .and_then(toml::Value::as_bool)
+        .unwrap_or(defaults.check_updates);
+
     Settings {
         language,
         theme,
@@ -368,6 +377,7 @@ fn parse_settings(content: &str) -> Settings {
         mono_font_size,
         invalid_tls_certificates,
         log_level,
+        check_updates,
     }
 }
 
@@ -422,6 +432,7 @@ mod tests {
             InvalidTlsCertificates::Warn
         );
         assert_eq!(settings.log_level, LogLevel::Info);
+        assert!(settings.check_updates);
     }
 
     #[test]
@@ -442,6 +453,7 @@ mod tests {
             mono_font_size: 13.5,
             invalid_tls_certificates: InvalidTlsCertificates::Reject,
             log_level: LogLevel::Trace,
+            check_updates: false,
         };
 
         write_settings(dir.path(), &settings);
@@ -563,6 +575,27 @@ mod tests {
         assert_eq!(parse(""), LogLevel::Info);
         assert_eq!(parse("log_level = \"loud\"\n"), LogLevel::Info);
         assert_eq!(LogLevel::parse(" warning "), Some(LogLevel::Warn));
+    }
+
+    #[test]
+    fn check_updates_defaults_to_on_and_falls_back_per_field() {
+        let parse = |text: &str| parse_settings(text).check_updates;
+        assert!(parse(""));
+        assert!(!parse("check_updates = false\n"));
+        assert!(parse("check_updates = \"no\"\n"));
+        let settings = parse_settings("theme = \"dark\"\ncheck_updates = 3\n");
+        assert_eq!(settings.theme, ThemeChoice::Dark);
+        assert!(settings.check_updates);
+    }
+
+    #[test]
+    fn check_updates_serializes_as_a_toml_bool() {
+        let settings = Settings {
+            check_updates: false,
+            ..Settings::default()
+        };
+        let text = toml::to_string_pretty(&settings).expect("serialize");
+        assert!(text.contains("check_updates = false"), "{text}");
     }
 
     #[test]

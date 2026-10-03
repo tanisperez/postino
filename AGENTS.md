@@ -52,14 +52,15 @@ These are to be settled in a dedicated planning session. Do not pick one silentl
 
 ## Architecture
 
-A Cargo workspace of seven small crates, UI kept thin. Dependency direction (arrows mean
+A Cargo workspace of eight small crates, UI kept thin. Dependency direction (arrows mean
 "depends on"), no cycles, no crate depends on `postino-app`:
 
 ```
 postino-app ──> postino-runner ──> postino-script ──> postino-core
      │                 └────────> postino-http ────> postino-core
      ├──────> postino-workspace ─> postino-format ─> postino-core
-     └──────> postino-format (the Code snippet dialog renders `render_snippet` directly)
+     ├──────> postino-format (the Code snippet dialog renders `render_snippet` directly)
+     └──────> postino-update (standalone, depends on no other postino crate)
 ```
 
 - `postino-core`: domain model (`Request`, `Method`, `Body`, ...) and `{{ }}` variable
@@ -69,6 +70,8 @@ postino-app ──> postino-runner ──> postino-script ──> postino-core
 - `postino-script`: the `ScriptEngine` trait and its QuickJS implementation.
 - `postino-http`: sends a resolved request with `ureq`, measures timing.
 - `postino-runner`: the pipeline, vars, pre script, interpolate, send, post script.
+- `postino-update`: in-app updater: reads the `latest.json` release manifest, downloads and
+  verifies the asset, and has the macOS and Windows install helpers. Blocking calls.
 - `postino-app`: the `gpui` binary (`postino`). Only UI and glue.
 
 Everything except `postino-app` is testable with `cargo test`, with no window, no GPU and no
@@ -181,6 +184,15 @@ gpui, wgpu, ureq and rustls messages reach it too. Library crates only depend on
 - GPUI evolves quickly. Check the version pinned in `Cargo.toml` and read its actual source or
   examples instead of relying on memory of its API.
 - Writing style: never use the em dash in code, comments or docs. Use a comma or a period.
+
+## Updater
+
+In-app updater for macOS and Windows (#45). The library is `postino-update` (standalone, no other
+postino crate); the app glue is `state/update.rs` (gate, ready state, install decisions, unit
+tested) and `views/update.rs`. The feature exists only when built with `POSTINO_UPDATER=github`
+and `Platform::current()` is `Some` (`state::update::updater_enabled`); nothing is `cfg`-gated by
+OS, so it all compiles on Linux. One delayed check 10 s after startup, no timers or polling.
+Strings live in `locales/update.yml`.
 
 ## Releases
 

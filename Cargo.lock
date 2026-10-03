@@ -5165,6 +5165,7 @@ dependencies = [
  "postino-load",
  "postino-runner",
  "postino-script",
+ "postino-update",
  "postino-workspace",
  "pretty_assertions",
  "rust-i18n",
@@ -5248,6 +5249,21 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "postino-update"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "semver",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tiny_http",
+ "ureq",
 ]
 
 [[package]]

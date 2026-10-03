@@ -19,5 +19,6 @@ pub mod sidebar;
 pub mod snippet_dialog;
 pub mod status_bar;
 pub mod title_bar;
+pub mod update;
 
 pub use root::AppView;

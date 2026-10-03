@@ -65,6 +65,8 @@ pub enum ActionId {
     NewLoadTest,
     /// Toggles between the light and dark theme.
     ToggleTheme,
+    /// Checks for a new version now (only listed when the build has an updater).
+    CheckForUpdates,
 }
 
 /// Builds the "Requests" group's items from a workspace's collection tree, in tree order
@@ -127,7 +129,7 @@ pub fn environment_items(environments: &[String]) -> Vec<PaletteItem> {
 /// Builds the "Actions" group's items: every [`ActionId`], in the order the palette lists them,
 /// with the shortcut hint of the ones that have a real key binding (`main.rs`'s `bind_keys`).
 pub fn action_items() -> Vec<PaletteItem> {
-    vec![
+    let mut items = vec![
         action_item(
             ActionId::Send,
             t!("shell.palette.send"),
@@ -166,7 +168,15 @@ pub fn action_items() -> Vec<PaletteItem> {
             t!("shell.palette.toggle_theme"),
             None,
         ),
-    ]
+    ];
+    if super::update::updater_enabled() {
+        items.push(action_item(
+            ActionId::CheckForUpdates,
+            t!("shell.palette.check_for_updates"),
+            None,
+        ));
+    }
+    items
 }
 
 fn action_item(

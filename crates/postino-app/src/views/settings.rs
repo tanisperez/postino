@@ -13,6 +13,7 @@
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::scroll::{Scrollbar, ScrollbarMode};
+use gpui_kit::component::switch::Switch;
 use gpui_kit::component::theme::{Theme, ThemeMode};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -160,6 +161,12 @@ impl AppView {
     fn set_log_level(&mut self, level: LogLevel, window: &mut Window, cx: &mut Context<Self>) {
         self.state.settings.log_level = level;
         logging::set_level(level.to_filter());
+        self.apply_settings_live(window, cx);
+    }
+
+    /// Turns the automatic update check at startup on or off.
+    fn set_check_updates(&mut self, enabled: bool, window: &mut Window, cx: &mut Context<Self>) {
+        self.state.settings.check_updates = enabled;
         self.apply_settings_live(window, cx);
     }
 
@@ -464,12 +471,23 @@ fn render_body(
                 palette,
                 settings.invalid_tls_certificates,
             )],
-            SettingsCategory::Advanced => vec![render_logging_section(
-                weak.clone(),
-                palette,
-                settings.log_level,
-                mono_font_family,
-            )],
+            SettingsCategory::Advanced => {
+                let mut sections = vec![render_logging_section(
+                    weak.clone(),
+                    palette,
+                    settings.log_level,
+                    mono_font_family,
+                )];
+                if state::update::updater_enabled() {
+                    sections.push(divider(palette));
+                    sections.push(render_updates_section(
+                        weak.clone(),
+                        palette,
+                        settings.check_updates,
+                    ));
+                }
+                sections
+            }
         })
         .into_any_element()
 }
@@ -1050,6 +1068,35 @@ fn render_logging_section(
                     variable = logging::ENV_VAR,
                 )),
         )
+        .into_any_element()
+}
+
+/// The "Updates" section of the Advanced pane, only shown in builds that have an updater.
+fn render_updates_section(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    check_updates: bool,
+) -> AnyElement {
+    let control = Switch::new("settings-check-updates")
+        .checked(check_updates)
+        .on_click(move |checked, window, cx| {
+            let checked = *checked;
+            let _ = weak.update(cx, |view, cx| view.set_check_updates(checked, window, cx));
+        })
+        .into_any_element();
+    v_flex()
+        .gap(px(14.0))
+        .child(
+            div()
+                .font_weight(FontWeight::MEDIUM)
+                .child(t!("update.setting.title")),
+        )
+        .child(labeled_row(
+            palette,
+            t!("update.setting.check"),
+            Some(t!("update.setting.check_description")),
+            control,
+        ))
         .into_any_element()
 }
 

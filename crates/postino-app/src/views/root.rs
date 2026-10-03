@@ -224,6 +224,7 @@ impl AppView {
         focus_handle.focus(window, cx);
         view.apply_debug_autosend(cx);
         view.apply_debug_open(window, cx);
+        view.schedule_startup_update_check(cx);
         view
     }
 

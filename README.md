@@ -99,6 +99,15 @@ angle is a native, fast GPUI app with an open and diff-friendly file format.
 trademark in the same field, so the name may change before a public release. Avoid postman
 imagery (mailmen, envelopes, orange branding) in the UI and assets.
 
+## Updates
+
+The macOS and Windows builds downloaded from GitHub check for a new version once, ten seconds
+after startup. The check is a single download of `latest.json` from GitHub: no identifiers, no
+telemetry. A newer version is downloaded and verified in the background, and Postino only
+installs it when you click "restart" in the status bar. Turn the automatic check off in
+Settings, Advanced; "Check for updates" in the command palette still works. Linux packages and
+builds from source have no updater.
+
 ## Development
 
 Requires the Rust toolchain (via `rustup`) and the system libraries that GPUI needs on your
