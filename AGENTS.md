@@ -15,7 +15,8 @@ Expo/React Native conventions here.
 
 - Name: **Postino**. Legal caveat: it is the Italian word for "postman". Do not use postman
   imagery or branding, and never present the tool as "Postman in Italian". Mentioning that it
-  imports Postman collections is fine.
+  imports Postman collections is fine. Confirmed as final on 2026-10-03.
+- Website: `postino.tanis.codes`, the landing page plus the APT and DNF repos.
 - Stack: Rust (edition 2024, stable toolchain) + `gpui`.
 - UI: close to Postman's layout (sidebar of collections, request editor, response viewer),
   without login and without online storage.
@@ -45,9 +46,7 @@ Expo/React Native conventions here.
 
 These are to be settled in a dedicated planning session. Do not pick one silently.
 
-- Final name, after checking trademark databases (USPTO, EUIPO, OEPM) for "Postino". Backup
-  candidates: Corriere, Piccione.
-- Domain and GitHub organization for the project.
+- GitHub organization for the project (it lives under `tanisperez` for now).
 - Language of the docs (currently English).
 
 ## Architecture

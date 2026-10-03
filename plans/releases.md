@@ -228,9 +228,8 @@ apply to SignPath once the project has some history.
 
 ## 8. Settled questions
 
-1. App id `codes.tanis.postino` (section 1). The product name is still pending in `AGENTS.md`;
-   package names (AUR, winget, Homebrew, repos) follow the name, so a rename means re-registering
-   them, the app id stays.
+1. App id `codes.tanis.postino` (section 1). The product name Postino is final (2026-10-03, see
+   `AGENTS.md`); package names (AUR, winget, Homebrew, repos) follow it.
 2. A `.postino` file opened on its own opens its parent folder as the workspace, unless a
    remembered workspace already contains it (section 4).
 3. The first release is `0.1.0`.
