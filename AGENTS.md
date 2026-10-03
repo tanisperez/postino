@@ -185,6 +185,15 @@ gpui, wgpu, ureq and rustls messages reach it too. Library crates only depend on
   examples instead of relying on memory of its API.
 - Writing style: never use the em dash in code, comments or docs. Use a comma or a period.
 
+## Updater
+
+In-app updater for macOS and Windows (#45). The library is `postino-update` (standalone, no other
+postino crate); the app glue is `state/update.rs` (gate, ready state, install decisions, unit
+tested) and `views/update.rs`. The feature exists only when built with `POSTINO_UPDATER=github`
+and `Platform::current()` is `Some` (`state::update::updater_enabled`); nothing is `cfg`-gated by
+OS, so it all compiles on Linux. One delayed check 10 s after startup, no timers or polling.
+Strings live in `locales/update.yml`.
+
 ## Releases
 
 Version tags `vX.Y.Z` build and publish a GitHub release through

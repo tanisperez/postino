@@ -5165,6 +5165,7 @@ dependencies = [
  "postino-load",
  "postino-runner",
  "postino-script",
+ "postino-update",
  "postino-workspace",
  "pretty_assertions",
  "rust-i18n",

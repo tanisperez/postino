@@ -23,6 +23,7 @@ pub mod settings;
 pub mod sidebar_filter;
 mod tabs;
 pub mod ui_tabs;
+pub mod update;
 pub mod workspace_log;
 
 pub use tabs::{TabKind, TabsState};
@@ -51,6 +52,8 @@ pub struct AppState {
     /// Loaded once at startup (`main.rs`) and from then on only changed by the Settings view,
     /// which also persists every change to `settings.toml`.
     pub settings: Settings,
+    /// The in-app updater: the downloaded update waiting for a restart, if any.
+    pub update: update::UpdateState,
 }
 
 impl AppState {
