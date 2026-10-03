@@ -151,8 +151,9 @@ the copy-paste commands:
   button per OS, then the `apt`, `dnf`, `yay`, `brew` and `winget` commands). The docs link to
   `docs/` on GitHub.
 - Screenshots are generated, not taken by hand: a script opens the sample workspace, drives the
-  app with xdotool and saves each screen in light and dark, as WebP plus a PNG fallback with
-  fixed width and height to avoid layout shifts.
+  app and saves each screen in light and dark, as WebP only (every current browser supports it,
+  and it halves what the images add to the git history), with fixed width and height to avoid
+  layout shifts. They are regenerated when the UI changes visibly, not on every release.
 - English only for now.
 
 Considered and left for later:

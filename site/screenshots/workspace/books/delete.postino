@@ -1,0 +1,7 @@
+DELETE {{baseUrl}}/books/{{bookId}}
+Authorization: Bearer {{token}}
+
+::: post
+test("book deleted", () => {
+  expect(res.status).toBe(204);
+});

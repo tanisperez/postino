@@ -1,0 +1,19 @@
+POST {{baseUrl}}/orders
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: {{ uuid() }}
+
+::: body json
+{
+  "items": [
+    { "bookId": 1, "quantity": 2 },
+    { "bookId": 3, "quantity": 1 }
+  ],
+  "shippingAddress": "221B Baker Street, London"
+}
+
+::: post
+test("order created", () => {
+  expect(res.status).toBe(201);
+  expect(res.json().status).toBe("pending");
+});

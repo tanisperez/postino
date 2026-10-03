@@ -1,0 +1,9 @@
+GET {{baseUrl}}/users/me
+Accept: application/json
+Authorization: Bearer {{token}}
+
+::: post
+test("returns the current user", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().email).toBe("reader@bookshelf.dev");
+});

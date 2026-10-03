@@ -1,0 +1,25 @@
+POST {{baseUrl}}/books
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{token}}
+
+::: body json
+{
+  "title": "The Pragmatic Programmer",
+  "author": "Andrew Hunt",
+  "year": 1999,
+  "isbn": "978-0201616224",
+  "price": 42.5,
+  "tags": ["software", "craft"]
+}
+
+::: post
+test("book created", () => {
+  expect(res.status).toBe(201);
+});
+
+test("has a Location header", () => {
+  expect(res.headers.get("location")).toMatch(/^\/books\/\d+$/);
+});
+
+env.set("bookId", res.json().id);

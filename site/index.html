@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Postino, a native HTTP client that keeps your requests in plain files</title>
+    <meta name="description" content="Postino is a fast, native, open source HTTP client for Linux, Windows and macOS. No account, no cloud, no telemetry: every request is a plain text file you can diff and commit.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
+    <link rel="canonical" href="https://postino.tanis.codes/">
+    <link rel="icon" href="img/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="img/icon-512.png">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Postino, a native HTTP client">
+    <meta property="og:description" content="No account, no cloud, no telemetry. Every request is a plain text file you can diff and commit.">
+    <meta property="og:url" content="https://postino.tanis.codes/">
+    <meta property="og:image" content="https://postino.tanis.codes/img/hero-light.webp">
+    <link rel="preload" href="fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/theme.js"></script>
+</head>
+<body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" href="./">
+                <img src="img/logo.svg" alt="" width="28" height="28">
+                Postino
+            </a>
+            <nav class="nav" aria-label="Main">
+                <a class="nav-wide" href="#features">Features</a>
+                <a href="install.html">Download</a>
+                <a href="https://github.com/tanisperez/postino/tree/main/docs">Docs</a>
+                <a class="nav-github" href="https://github.com/tanisperez/postino" aria-label="Postino on GitHub">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    <span>GitHub</span>
+                </a>
+                <button class="theme-toggle" type="button" aria-label="Dark theme" title="Switch between light and dark">
+                    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main">
+        <section class="hero">
+            <div class="wrap">
+                <span class="eyebrow"><span class="pill">Open source</span> Free for everyone, Apache-2.0</span>
+                <h1>The HTTP client that keeps your requests <span class="accent">in plain files</span></h1>
+                <p class="lead">Postino is a fast, native API client. No account, no cloud, no telemetry. Every request is a small text file you can read, diff and commit next to your code.</p>
+                <div class="actions">
+                    <a class="btn btn-primary" href="install.html">Download Postino</a>
+                    <a class="btn btn-secondary" href="https://github.com/tanisperez/postino">
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                        View on GitHub
+                    </a>
+                </div>
+                <p class="platforms">For Linux, Windows and macOS</p>
+
+                <div class="hero-shot">
+                    <div class="shot">
+                        <img class="light" src="img/hero-light.webp" width="2018" height="1282" loading="lazy" fetchpriority="high"
+                            alt="The Postino window: a sidebar with request folders, a GET request to a books API and its JSON response.">
+                        <img class="dark" src="img/hero-dark.webp" width="2018" height="1282" loading="lazy" fetchpriority="high"
+                            alt="The Postino window: a sidebar with request folders, a GET request to a books API and its JSON response.">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="highlights" aria-label="Highlights">
+            <div class="wrap">
+                <ul>
+                    <li><strong>Native, not a browser</strong><span>Written in Rust on gpui, the GPU accelerated UI framework behind the Zed editor.</span></li>
+                    <li><strong>Light on your machine</strong><span>No bundled web engine, so it stays small in memory and quick on any computer.</span></li>
+                    <li><strong>Local first</strong><span>No sign in, no sync, no telemetry. Only the requests you send leave your computer.</span></li>
+                    <li><strong>Yours to keep</strong><span>Open source under Apache-2.0, with a documented, open file format.</span></li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="section" id="files">
+            <div class="wrap files">
+                <div class="copy">
+                    <span class="kicker">Plain text, by design</span>
+                    <h2>One request, one file. Diffs you can actually review.</h2>
+                    <p>A collection is a folder and a request is a <code>.postino</code> file inside it. The format is short, readable and stable, so a change to a request shows up in git as the one line you changed.</p>
+                    <ul class="checks">
+                        <li>Keep your API requests in the same repository as the API</li>
+                        <li>Review request changes in pull requests, like any other code</li>
+                        <li>Secrets stay out of git in a separate <code>.local.env</code> file</li>
+                    </ul>
+                </div>
+                <div class="code-stack">
+                    <figure class="code" style="margin: 0">
+                        <figcaption class="code-title"><span class="dot"></span>books/search.postino</figcaption>
+<pre><span class="m-get">GET</span> <span class="var">{{baseUrl}}</span>/books
+<span class="hd">Accept</span>: application/json
+<span class="hd">Authorization</span>: Bearer <span class="var">{{token}}</span>
+
+<span class="sec">::: query</span>
+<span class="hd">genre</span> = science-fiction
+<span class="hd">limit</span> = 20
+<span class="cm"># inStock = true</span>
+
+<span class="sec">::: post</span>
+<span class="fn">test</span>(<span class="str">"returns the books"</span>, () =&gt; {
+  <span class="fn">expect</span>(res.status).<span class="fn">toBe</span>(<span class="num">200</span>);
+});</pre>
+                    </figure>
+                    <figure class="code diff" style="margin: 0">
+                        <figcaption class="code-title"><span class="dot"></span>git diff</figcaption>
+<pre><span class="ctx"> ::: query</span><span class="ctx"> genre = science-fiction</span><span class="del">-limit = 20</span><span class="add">+limit = 50</span><span class="ctx"> # inStock = true</span></pre>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <section class="section section-alt" id="features">
+            <div class="wrap">
+                <div class="section-head">
+                    <span class="kicker">Features</span>
+                    <h2>Everything you need to work with HTTP APIs</h2>
+                    <p>A familiar layout, built for speed: collections on the left, the request on top, the response below.</p>
+                </div>
+
+                <div class="features">
+                    <article class="feature">
+                        <div class="copy">
+                            <h3>Scripts and tests in JavaScript</h3>
+                            <div class="text">
+                                <p>Run a script before a request to sign it or build data, and after it to check the response and pass values on to the next one. Scripts run in a sandboxed QuickJS engine.</p>
+                                <ul class="checks">
+                                    <li><code>test()</code> and <code>expect()</code> assertions, with results per request</li>
+                                    <li>Save a token from the login response into the environment</li>
+                                    <li>Console output captured next to the response</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="shot">
+                            <img class="light" src="img/scripts-light.webp" width="2018" height="1282" loading="lazy"
+                                alt="A request with a post response script and its passing tests.">
+                            <img class="dark" src="img/scripts-dark.webp" width="2018" height="1282" loading="lazy"
+                                alt="A request with a post response script and its passing tests.">
+                        </div>
+                    </article>
+
+                    <article class="feature">
+                        <div class="copy">
+                            <h3>Load testing built in</h3>
+                            <div class="text">
+                                <p>Point a load test at a request or a whole folder, choose virtual users, duration and ramp up, and watch throughput and latency live. Every run is saved, so you can compare it with the last one.</p>
+                                <ul class="checks">
+                                    <li>Requests per second, p50, p95 and p99 latency, error rate</li>
+                                    <li>Run history stored next to your requests</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="shot">
+                            <img class="light" src="img/loadtest-light.webp" width="2018" height="1282" loading="lazy"
+                                alt="A finished load test run with throughput and latency charts.">
+                            <img class="dark" src="img/loadtest-dark.webp" width="2018" height="1282" loading="lazy"
+                                alt="A finished load test run with throughput and latency charts.">
+                        </div>
+                    </article>
+
+                    <article class="feature">
+                        <div class="copy">
+                            <h3>Keyboard first</h3>
+                            <div class="text">
+                                <p>Press <kbd>Ctrl</kbd> <kbd>K</kbd> to jump to any request or run any action. Send with <kbd>Ctrl</kbd> <kbd>Enter</kbd> and switch environments with <kbd>Ctrl</kbd> <kbd>1</kbd> to <kbd>9</kbd>, without touching the mouse. On macOS, use <kbd>⌘</kbd> instead of <kbd>Ctrl</kbd>.</p>
+                            </div>
+                        </div>
+                        <div class="shot">
+                            <img class="light" src="img/palette-light.webp" width="2018" height="1282" loading="lazy"
+                                alt="The command palette listing requests and actions.">
+                            <img class="dark" src="img/palette-dark.webp" width="2018" height="1282" loading="lazy"
+                                alt="The command palette listing requests and actions.">
+                        </div>
+                    </article>
+
+                    <article class="feature">
+                        <div class="copy">
+                            <h3>Turn any request into code</h3>
+                            <div class="text">
+                                <p>Copy the request you are working on as a <code>curl</code> command, JavaScript <code>fetch</code> or Python <code>requests</code> call, with every variable already resolved.</p>
+                            </div>
+                        </div>
+                        <div class="shot">
+                            <img class="light" src="img/snippet-light.webp" width="2018" height="1282" loading="lazy"
+                                alt="The code snippet dialog showing a curl command.">
+                            <img class="dark" src="img/snippet-dark.webp" width="2018" height="1282" loading="lazy"
+                                alt="The code snippet dialog showing a curl command.">
+                        </div>
+                    </article>
+
+                    <article class="feature">
+                        <div class="copy">
+                            <h3>Made to feel at home</h3>
+                            <div class="text">
+                                <p>Light and dark themes, or follow your system. Pick the interface and editor fonts and sizes. Postino speaks English, Spanish, Galician and Italian.</p>
+                            </div>
+                        </div>
+                        <div class="shot">
+                            <img class="light" src="img/settings-light.webp" width="2018" height="1282" loading="lazy"
+                                alt="The Settings window with appearance options.">
+                            <img class="dark" src="img/settings-dark.webp" width="2018" height="1282" loading="lazy"
+                                alt="The Settings window with appearance options.">
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" id="themes">
+            <div class="wrap">
+                <div class="section-head">
+                    <span class="kicker">Light or dark</span>
+                    <h2>Two themes, one design. You choose.</h2>
+                    <p>Postino comes with a light and a dark theme built from the same palette, so neither one feels like an afterthought. Pick one in Settings or let it follow your system.</p>
+                </div>
+                <div class="themes">
+                    <img class="light" src="img/hero-light.webp" width="2018" height="1282" loading="lazy"
+                        alt="Postino in its light theme.">
+                    <img class="dark" src="img/hero-dark.webp" width="2018" height="1282" loading="lazy"
+                        alt="Postino in its dark theme, over the right half of the same window.">
+                </div>
+                <div class="themes-labels" aria-hidden="true"><span>Light</span><span>Dark</span></div>
+                <p class="themes-note">Every screenshot on this page comes in both themes. Use the button at the top to switch.</p>
+            </div>
+        </section>
+
+        <section class="section section-alt" id="more">
+            <div class="wrap">
+                <div class="section-head">
+                    <span class="kicker">And more</span>
+                    <h2>The details that matter every day</h2>
+                </div>
+                <ul class="grid">
+                    <li class="card">
+                        <span class="badge">GET POST PATCH</span>
+                        <h3>Any method, any body</h3>
+                        <p>Standard or custom methods, query parameters and headers you can switch on and off, and JSON, XML, text or form bodies.</p>
+                    </li>
+                    <li class="card">
+                        <span class="badge">{{baseUrl}}</span>
+                        <h3>Environments and variables</h3>
+                        <p>Switch between local, staging and production in one click. Variables are highlighted right in the URL.</p>
+                    </li>
+                    <li class="card">
+                        <span class="badge">{{uuid()}}</span>
+                        <h3>Template functions</h3>
+                        <p>Generate a UUID, a timestamp, a random value or a Base64 string inline, without writing a script.</p>
+                    </li>
+                    <li class="card">
+                        <span class="badge">200 OK · 142 ms</span>
+                        <h3>A clear response viewer</h3>
+                        <p>Status, timing and size at a glance, a formatted or raw body, headers, test results and console output.</p>
+                    </li>
+                    <li class="card">
+                        <span class="badge">v2.1</span>
+                        <h3>Import from Postman</h3>
+                        <p>Bring your Postman collections and environment exports, and keep working with them as plain files.</p>
+                    </li>
+                    <li class="card">
+                        <span class="badge">.local.env</span>
+                        <h3>Secrets stay local</h3>
+                        <p>Environment values meant for git go in one file, passwords and tokens in a local file that overrides it.</p>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="cta">
+            <div class="wrap">
+                <div class="cta-box">
+                    <img src="img/logo.svg" alt="" width="64" height="64">
+                    <h2>Give Postino a try</h2>
+                    <p>Free and open source, for Linux, Windows and macOS. No account needed, just download and open a folder.</p>
+                    <div class="actions">
+                        <a class="btn btn-primary" href="install.html">Download Postino</a>
+                        <a class="btn btn-secondary" href="https://github.com/tanisperez/postino/tree/main/docs">Read the docs</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <span>Postino is open source under the Apache License 2.0.</span>
+            <nav aria-label="Footer">
+                <a href="https://github.com/tanisperez/postino">GitHub</a>
+                <a href="https://github.com/tanisperez/postino/releases">Releases</a>
+                <a href="https://github.com/tanisperez/postino/issues">Report an issue</a>
+                <a href="https://tanis.codes">tanis.codes</a>
+            </nav>
+        </div>
+    </footer>
+</body>
+</html>

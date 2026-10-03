@@ -1,0 +1,12 @@
+GET {{baseUrl}}/orders
+Accept: application/json
+Authorization: Bearer {{token}}
+
+::: query
+status = shipped
+# limit = 20
+
+::: post
+test("status is 200", () => {
+  expect(res.status).toBe(200);
+});

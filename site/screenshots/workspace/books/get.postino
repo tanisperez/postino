@@ -1,0 +1,9 @@
+GET {{baseUrl}}/books/{{bookId}}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+::: post
+test("found the book", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().id).toBe(1);
+});

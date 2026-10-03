@@ -1,0 +1,8 @@
+GET {{baseUrl}}/health
+Accept: application/json
+
+::: post
+test("service is up", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().status).toBe("ok");
+});
