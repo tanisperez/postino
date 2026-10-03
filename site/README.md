@@ -1,12 +1,16 @@
 # Postino website
 
 The landing page and install page served at <https://postino.tanis.codes>. Plain HTML and CSS,
-no JavaScript and no build step. Plan in `plans/releases.md`, section 5.
+no build step. Plan in `plans/releases.md`, section 5.
 
 - `index.html`, `install.html`: the pages.
 - `css/style.css`: every color, radius and font comes from the Postino design system
-  (`postino_design_system/`, `crates/postino-app/src/theme/palette.rs`). Light and dark follow
-  `prefers-color-scheme`. Screenshots switch with it through `<picture>` and a `media` source.
+  (`postino_design_system/`, `crates/postino-app/src/theme/palette.rs`). Each color token is a
+  `light-dark()` pair, picked by `color-scheme`. Every screenshot is in the page twice, `.light`
+  and `.dark`, and CSS shows the one for the active theme.
+- `js/theme.js`: the only script. Follows the system theme until the visitor picks one with the
+  header button, keeps that choice in `localStorage` and sets `data-theme` on `<html>`. Without
+  JavaScript the page still follows the system and the button is hidden.
 - `fonts/`: Geist and Geist Mono (SIL OFL 1.1, `fonts/OFL.txt`), subset to Latin and converted to
   WOFF2 from the TTFs in `crates/postino-app/assets/fonts/` with `pyftsubset`.
 - `img/`: the logo (`packaging/icons/`) and the app screenshots, WebP only.

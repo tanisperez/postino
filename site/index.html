@@ -19,6 +19,7 @@
     <link rel="preload" href="fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="css/style.css">
+    <script src="js/theme.js"></script>
 </head>
 <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -37,6 +38,10 @@
                     <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
                     <span>GitHub</span>
                 </a>
+                <button class="theme-toggle" type="button" aria-label="Dark theme" title="Switch between light and dark">
+                    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+                </button>
             </nav>
         </div>
     </header>
@@ -57,11 +62,12 @@
                 <p class="platforms">For Linux, Windows and macOS</p>
 
                 <div class="hero-shot">
-                    <picture class="shot">
-                        <source srcset="img/hero-dark.webp" media="(prefers-color-scheme: dark)">
-                        <img src="img/hero-light.webp" width="2018" height="1282" fetchpriority="high"
+                    <div class="shot">
+                        <img class="light" src="img/hero-light.webp" width="2018" height="1282" loading="lazy" fetchpriority="high"
                             alt="The Postino window: a sidebar with request folders, a GET request to a books API and its JSON response.">
-                    </picture>
+                        <img class="dark" src="img/hero-dark.webp" width="2018" height="1282" loading="lazy" fetchpriority="high"
+                            alt="The Postino window: a sidebar with request folders, a GET request to a books API and its JSON response.">
+                    </div>
                 </div>
             </div>
         </section>
@@ -135,11 +141,12 @@
                                 </ul>
                             </div>
                         </div>
-                        <picture class="shot">
-                            <source srcset="img/scripts-dark.webp" media="(prefers-color-scheme: dark)">
-                            <img src="img/scripts-light.webp" width="2018" height="1282" loading="lazy"
+                        <div class="shot">
+                            <img class="light" src="img/scripts-light.webp" width="2018" height="1282" loading="lazy"
                                 alt="A request with a post response script and its passing tests.">
-                        </picture>
+                            <img class="dark" src="img/scripts-dark.webp" width="2018" height="1282" loading="lazy"
+                                alt="A request with a post response script and its passing tests.">
+                        </div>
                     </article>
 
                     <article class="feature">
@@ -153,11 +160,12 @@
                                 </ul>
                             </div>
                         </div>
-                        <picture class="shot">
-                            <source srcset="img/loadtest-dark.webp" media="(prefers-color-scheme: dark)">
-                            <img src="img/loadtest-light.webp" width="2018" height="1282" loading="lazy"
+                        <div class="shot">
+                            <img class="light" src="img/loadtest-light.webp" width="2018" height="1282" loading="lazy"
                                 alt="A finished load test run with throughput and latency charts.">
-                        </picture>
+                            <img class="dark" src="img/loadtest-dark.webp" width="2018" height="1282" loading="lazy"
+                                alt="A finished load test run with throughput and latency charts.">
+                        </div>
                     </article>
 
                     <article class="feature">
@@ -167,11 +175,12 @@
                                 <p>Press <kbd>Ctrl</kbd> <kbd>K</kbd> to jump to any request or run any action. Send with <kbd>Ctrl</kbd> <kbd>Enter</kbd> and switch environments with <kbd>Ctrl</kbd> <kbd>1</kbd> to <kbd>9</kbd>, without touching the mouse. On macOS, use <kbd>⌘</kbd> instead of <kbd>Ctrl</kbd>.</p>
                             </div>
                         </div>
-                        <picture class="shot">
-                            <source srcset="img/palette-dark.webp" media="(prefers-color-scheme: dark)">
-                            <img src="img/palette-light.webp" width="2018" height="1282" loading="lazy"
+                        <div class="shot">
+                            <img class="light" src="img/palette-light.webp" width="2018" height="1282" loading="lazy"
                                 alt="The command palette listing requests and actions.">
-                        </picture>
+                            <img class="dark" src="img/palette-dark.webp" width="2018" height="1282" loading="lazy"
+                                alt="The command palette listing requests and actions.">
+                        </div>
                     </article>
 
                     <article class="feature">
@@ -181,11 +190,12 @@
                                 <p>Copy the request you are working on as a <code>curl</code> command, JavaScript <code>fetch</code> or Python <code>requests</code> call, with every variable already resolved.</p>
                             </div>
                         </div>
-                        <picture class="shot">
-                            <source srcset="img/snippet-dark.webp" media="(prefers-color-scheme: dark)">
-                            <img src="img/snippet-light.webp" width="2018" height="1282" loading="lazy"
+                        <div class="shot">
+                            <img class="light" src="img/snippet-light.webp" width="2018" height="1282" loading="lazy"
                                 alt="The code snippet dialog showing a curl command.">
-                        </picture>
+                            <img class="dark" src="img/snippet-dark.webp" width="2018" height="1282" loading="lazy"
+                                alt="The code snippet dialog showing a curl command.">
+                        </div>
                     </article>
 
                     <article class="feature">
@@ -195,17 +205,36 @@
                                 <p>Light and dark themes, or follow your system. Pick the interface and editor fonts and sizes. Postino speaks English, Spanish, Galician and Italian.</p>
                             </div>
                         </div>
-                        <picture class="shot">
-                            <source srcset="img/settings-dark.webp" media="(prefers-color-scheme: dark)">
-                            <img src="img/settings-light.webp" width="2018" height="1282" loading="lazy"
+                        <div class="shot">
+                            <img class="light" src="img/settings-light.webp" width="2018" height="1282" loading="lazy"
                                 alt="The Settings window with appearance options.">
-                        </picture>
+                            <img class="dark" src="img/settings-dark.webp" width="2018" height="1282" loading="lazy"
+                                alt="The Settings window with appearance options.">
+                        </div>
                     </article>
                 </div>
             </div>
         </section>
 
-        <section class="section" id="more">
+        <section class="section" id="themes">
+            <div class="wrap">
+                <div class="section-head">
+                    <span class="kicker">Light or dark</span>
+                    <h2>Two themes, one design. You choose.</h2>
+                    <p>Postino comes with a light and a dark theme built from the same palette, so neither one feels like an afterthought. Pick one in Settings or let it follow your system.</p>
+                </div>
+                <div class="themes">
+                    <img class="light" src="img/hero-light.webp" width="2018" height="1282" loading="lazy"
+                        alt="Postino in its light theme.">
+                    <img class="dark" src="img/hero-dark.webp" width="2018" height="1282" loading="lazy"
+                        alt="Postino in its dark theme, over the right half of the same window.">
+                </div>
+                <div class="themes-labels" aria-hidden="true"><span>Light</span><span>Dark</span></div>
+                <p class="themes-note">Every screenshot on this page comes in both themes. Use the button at the top to switch.</p>
+            </div>
+        </section>
+
+        <section class="section section-alt" id="more">
             <div class="wrap">
                 <div class="section-head">
                     <span class="kicker">And more</span>

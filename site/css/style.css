@@ -37,31 +37,31 @@
 :root {
     color-scheme: light dark;
 
-    --bg: #fcfcfd;
-    --surface: #f4f5f7;
-    --raised: #ffffff;
-    --border: #e3e5ea;
-    --border-strong: #cdd0d8;
-    --fg: #1b1c22;
-    --fg-muted: #5c606e;
-    --fg-subtle: #8b8e9a;
-    --accent: #4f57d8;
-    --accent-hover: #434bc9;
+    --bg: light-dark(#fcfcfd, #15161a);
+    --surface: light-dark(#f4f5f7, #1b1c21);
+    --raised: light-dark(#ffffff, #23252c);
+    --border: light-dark(#e3e5ea, #2c2e36);
+    --border-strong: light-dark(#cdd0d8, #3b3e48);
+    --fg: light-dark(#1b1c22, #e9eaee);
+    --fg-muted: light-dark(#5c606e, #a0a3ae);
+    --fg-subtle: light-dark(#8b8e9a, #6f7280);
+    --accent: light-dark(#4f57d8, #5b63e6);
+    --accent-hover: light-dark(#434bc9, #6a72ee);
     --accent-fg: #ffffff;
-    --accent-text: #3f47c4;
-    --accent-subtle: #e8e9fd;
-    --hover: #eceef2;
-    --success: #1d8657;
-    --success-subtle: #e2f4ea;
-    --warning: #9a6500;
-    --danger: #cf3535;
-    --danger-subtle: #fde7e7;
-    --info: #1c6fb0;
-    --m-patch: #7a4fd6;
-    --syn-key: #3f47c4;
-    --syn-str: #1d7a4f;
-    --syn-num: #9a6500;
-    --glow: rgba(79, 87, 216, 0.16);
+    --accent-text: light-dark(#3f47c4, #a3a9ff);
+    --accent-subtle: light-dark(#e8e9fd, #272b4d);
+    --hover: light-dark(#eceef2, #25272e);
+    --success: light-dark(#1d8657, #4fc88f);
+    --success-subtle: light-dark(#e2f4ea, #15302a);
+    --warning: light-dark(#9a6500, #e8b75a);
+    --danger: light-dark(#cf3535, #f27171);
+    --danger-subtle: light-dark(#fde7e7, #3b1e21);
+    --info: light-dark(#1c6fb0, #62b3f0);
+    --m-patch: light-dark(#7a4fd6, #b597f7);
+    --syn-key: light-dark(#3f47c4, #a3a9ff);
+    --syn-str: light-dark(#1d7a4f, #86d7a5);
+    --syn-num: light-dark(#9a6500, #e8b75a);
+    --glow: light-dark(rgba(79, 87, 216, 0.16), rgba(91, 99, 230, 0.22));
 
     --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
@@ -75,33 +75,14 @@
     --gutter: 24px;
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg: #15161a;
-        --surface: #1b1c21;
-        --raised: #23252c;
-        --border: #2c2e36;
-        --border-strong: #3b3e48;
-        --fg: #e9eaee;
-        --fg-muted: #a0a3ae;
-        --fg-subtle: #6f7280;
-        --accent: #5b63e6;
-        --accent-hover: #6a72ee;
-        --accent-text: #a3a9ff;
-        --accent-subtle: #272b4d;
-        --hover: #25272e;
-        --success: #4fc88f;
-        --success-subtle: #15302a;
-        --warning: #e8b75a;
-        --danger: #f27171;
-        --danger-subtle: #3b1e21;
-        --info: #62b3f0;
-        --m-patch: #b597f7;
-        --syn-key: #a3a9ff;
-        --syn-str: #86d7a5;
-        --syn-num: #e8b75a;
-        --glow: rgba(91, 99, 230, 0.22);
-    }
+/* js/theme.js sets data-theme from the visitor's choice or the system. Without JavaScript the
+   page still follows the system through color-scheme. */
+:root[data-theme="light"] {
+    color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
 }
 
 /* Base */
@@ -287,6 +268,50 @@ kbd {
     fill: currentColor;
 }
 
+/* Theme switch: shows the sun in light mode and the moon in dark mode. Hidden without
+   JavaScript, where the page simply follows the system. */
+.theme-toggle {
+    display: none;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    margin-left: 4px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--raised);
+    color: var(--fg-muted);
+    cursor: pointer;
+    transition:
+        background-color 0.15s,
+        color 0.15s;
+}
+
+:root[data-theme] .theme-toggle {
+    display: grid;
+}
+
+.theme-toggle:hover {
+    background: var(--hover);
+    color: var(--fg);
+}
+
+.theme-toggle svg {
+    grid-area: 1 / 1;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+:root[data-theme="dark"] .theme-toggle .sun,
+:root[data-theme="light"] .theme-toggle .moon {
+    display: none;
+}
+
 /* Buttons */
 
 .btn {
@@ -442,6 +467,26 @@ kbd {
     width: 100%;
 }
 
+/* Every screenshot comes in both themes and shows the one that matches the page. */
+.shot .dark,
+:root[data-theme="dark"] .shot .light {
+    display: none;
+}
+
+:root[data-theme="dark"] .shot .dark {
+    display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .shot .light {
+        display: none;
+    }
+
+    :root:not([data-theme]) .shot .dark {
+        display: block;
+    }
+}
+
 .hero-shot .shot {
     margin: 0 -1.4%;
 }
@@ -558,7 +603,8 @@ kbd {
     color: var(--fg);
 }
 
-.checks li::before {
+.checks li::before,
+.checks li::after {
     content: "";
     position: absolute;
     left: 0;
@@ -566,15 +612,17 @@ kbd {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: var(--success-subtle)
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M6 10.5l2.5 2.5L14 7.5' fill='none' stroke='%231d8657' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
-        center / 20px no-repeat;
 }
 
-@media (prefers-color-scheme: dark) {
-    .checks li::before {
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M6 10.5l2.5 2.5L14 7.5' fill='none' stroke='%234fc88f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    }
+.checks li::before {
+    background: var(--success-subtle);
+}
+
+/* The tick is a mask, so it takes the theme's success color. */
+.checks li::after {
+    background: var(--success);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M6 10.5l2.5 2.5L14 7.5' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+        center / 20px no-repeat;
 }
 
 .code-stack {
@@ -719,6 +767,41 @@ kbd {
 .feature .shot {
     grid-column: 1 / -1;
     margin: 16px -1.4% 0;
+}
+
+/* Light and dark side by side: the dark screenshot sits on top of the light one, cut on a
+   diagonal, whatever theme the page uses. */
+.themes {
+    position: relative;
+    display: grid;
+    margin: 0 -1.4%;
+}
+
+.themes img {
+    grid-area: 1 / 1;
+    width: 100%;
+}
+
+.themes .dark {
+    clip-path: polygon(58% 0, 100% 0, 100% 100%, 42% 100%);
+}
+
+.themes-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    color: var(--fg-muted);
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.themes-note {
+    margin-top: 32px;
+    color: var(--fg-muted);
+    text-align: center;
 }
 
 /* Grid of small capabilities */
@@ -1013,6 +1096,10 @@ kbd {
 
     .nav a {
         padding: 6px 8px;
+    }
+
+    .theme-toggle {
+        margin-left: 0;
     }
 
     .nav .nav-github span,
