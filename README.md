@@ -93,12 +93,6 @@ organization, and the language of the docs. See
 Similar tools exist and are worth studying: Bruno, Yaak, Hoppscotch and Insomnia. Postino's
 angle is a native, fast GPUI app with an open and diff-friendly file format.
 
-## Name
-
-"Postino" is Italian for "postman". It is a nod to the category, but it is close to a registered
-trademark in the same field, so the name may change before a public release. Avoid postman
-imagery (mailmen, envelopes, orange branding) in the UI and assets.
-
 ## Updates
 
 The macOS and Windows builds downloaded from GitHub check for a new version once, ten seconds
