@@ -52,11 +52,20 @@ The release stays a draft until every asset is uploaded, so nobody sees a half-b
 | `Postino-X.Y.Z-macos-arm64.dmg` | macOS app, Apple silicon, ad-hoc signed |
 | `Postino-X.Y.Z-macos-arm64.app.tar.gz` | The same app, for the in-app updater |
 | `Postino-X.Y.Z-windows-x86_64-setup.exe` | Per-user Windows installer |
+| `latest.json` | Manifest read by the in-app updater: version, release page, and URL plus SHA-256 of the macOS and Windows assets |
 | `SHA256SUMS` | SHA-256 of every asset above |
 
 Linux binaries are built on Ubuntu 22.04 (glibc 2.35). Inside the deb and rpm a pre-release
 version uses a tilde (`0.1.0~rc.1`) so it sorts before the final release. Every file name keeps
 the dash, since GitHub renames a `~` in an asset name to `.`.
+
+The updater reads `latest.json` from `releases/latest/download/`, which GitHub points at the newest
+stable release and never at a pre-release. To test an update between pre-releases, run the older
+pre-release with `POSTINO_UPDATE_URL` set to the manifest of the newer one before launching it:
+
+```sh
+POSTINO_UPDATE_URL=https://github.com/tanisperez/postino/releases/download/vX.Y.Z-rc.N/latest.json postino
+```
 
 The packaging scripts live in `packaging/` (one README per platform) and run in the workflow.
 `make dist` builds the packages for the current OS locally into `target/dist` (Linux needs

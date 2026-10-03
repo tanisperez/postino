@@ -52,14 +52,15 @@ These are to be settled in a dedicated planning session. Do not pick one silentl
 
 ## Architecture
 
-A Cargo workspace of seven small crates, UI kept thin. Dependency direction (arrows mean
+A Cargo workspace of eight small crates, UI kept thin. Dependency direction (arrows mean
 "depends on"), no cycles, no crate depends on `postino-app`:
 
 ```
 postino-app ──> postino-runner ──> postino-script ──> postino-core
      │                 └────────> postino-http ────> postino-core
      ├──────> postino-workspace ─> postino-format ─> postino-core
-     └──────> postino-format (the Code snippet dialog renders `render_snippet` directly)
+     ├──────> postino-format (the Code snippet dialog renders `render_snippet` directly)
+     └──────> postino-update (standalone, depends on no other postino crate)
 ```
 
 - `postino-core`: domain model (`Request`, `Method`, `Body`, ...) and `{{ }}` variable
@@ -69,6 +70,8 @@ postino-app ──> postino-runner ──> postino-script ──> postino-core
 - `postino-script`: the `ScriptEngine` trait and its QuickJS implementation.
 - `postino-http`: sends a resolved request with `ureq`, measures timing.
 - `postino-runner`: the pipeline, vars, pre script, interpolate, send, post script.
+- `postino-update`: in-app updater: reads the `latest.json` release manifest, downloads and
+  verifies the asset, and has the macOS and Windows install helpers. Blocking calls.
 - `postino-app`: the `gpui` binary (`postino`). Only UI and glue.
 
 Everything except `postino-app` is testable with `cargo test`, with no window, no GPU and no
