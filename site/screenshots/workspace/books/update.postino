@@ -1,0 +1,15 @@
+PATCH {{baseUrl}}/books/{{bookId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+::: body json
+{
+  "price": 19.9,
+  "inStock": true
+}
+
+::: post
+test("book updated", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().price).toBe(19.9);
+});

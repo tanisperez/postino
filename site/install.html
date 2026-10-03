@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Download Postino for Linux, Windows and macOS</title>
+    <meta name="description" content="Download Postino, the native open source HTTP client, or install it with apt, dnf, the AUR, Homebrew or winget.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
+    <link rel="canonical" href="https://postino.tanis.codes/install.html">
+    <link rel="icon" href="img/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="img/icon-512.png">
+    <link rel="preload" href="fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" href="./">
+                <img src="img/logo.svg" alt="" width="28" height="28">
+                Postino
+            </a>
+            <nav class="nav" aria-label="Main">
+                <a class="nav-wide" href="./#features">Features</a>
+                <a href="install.html" aria-current="page">Download</a>
+                <a href="https://github.com/tanisperez/postino/tree/main/docs">Docs</a>
+                <a class="nav-github" href="https://github.com/tanisperez/postino" aria-label="Postino on GitHub">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    <span>GitHub</span>
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main">
+        <section class="page-head">
+            <div class="wrap">
+                <h1>Download Postino</h1>
+                <p>Free and open source. Pick your system below, or install it with your package manager to get updates with the rest of your software.</p>
+            </div>
+        </section>
+
+        <section aria-label="Downloads">
+            <div class="wrap">
+                <ul class="downloads">
+                    <li class="download">
+                        <h2>Windows</h2>
+                        <p>Windows 10 and 11, 64 bit. Installs for your user only, no administrator rights needed. Updates itself.</p>
+                        <a class="btn btn-primary" href="https://github.com/tanisperez/postino/releases/latest">Download the installer</a>
+                        <span class="alt">File <code>Postino-…-windows-x86_64-setup.exe</code></span>
+                    </li>
+                    <li class="download">
+                        <h2>macOS</h2>
+                        <p>Apple silicon (M1 and later). Drag Postino to Applications. Updates itself.</p>
+                        <a class="btn btn-primary" href="https://github.com/tanisperez/postino/releases/latest">Download the disk image</a>
+                        <span class="alt">File <code>Postino-…-macos-arm64.dmg</code></span>
+                    </li>
+                    <li class="download">
+                        <h2>Linux</h2>
+                        <p>x86_64. A <code>.deb</code>, an <code>.rpm</code> and a tarball. Use a repository below to get updates.</p>
+                        <a class="btn btn-primary" href="https://github.com/tanisperez/postino/releases/latest">Download a package</a>
+                        <span class="alt">Files <code>.deb</code>, <code>.rpm</code>, <code>.tar.gz</code></span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="section" id="package-managers">
+            <div class="wrap">
+                <div class="section-head">
+                    <span class="kicker">Package managers</span>
+                    <h2>Install from the command line</h2>
+                    <p>Each channel is updated with every release, so your usual upgrade command keeps Postino up to date.</p>
+                </div>
+
+                <div class="channels">
+                    <article class="channel" id="debian">
+                        <h3>Debian and Ubuntu <small>apt</small></h3>
+                        <p>Add the signing key and the repository once, then install.</p>
+                        <div class="code">
+<pre><span class="prompt">$ </span>sudo curl -fsSLo /etc/apt/keyrings/postino.asc https://postino.tanis.codes/postino.asc
+<span class="prompt">$ </span>echo "deb [signed-by=/etc/apt/keyrings/postino.asc] https://postino.tanis.codes/apt stable main" \
+    | sudo tee /etc/apt/sources.list.d/postino.list
+<span class="prompt">$ </span>sudo apt update &amp;&amp; sudo apt install postino</pre>
+                        </div>
+                    </article>
+
+                    <article class="channel" id="fedora">
+                        <h3>Fedora and openSUSE <small>dnf, zypper</small></h3>
+                        <p>Add the repository once, then install. The key is imported on the first install.</p>
+                        <div class="code">
+<pre><span class="cm"># Fedora</span>
+<span class="prompt">$ </span>sudo curl -fsSLo /etc/yum.repos.d/postino.repo https://postino.tanis.codes/rpm/postino.repo
+<span class="prompt">$ </span>sudo dnf install postino
+
+<span class="cm"># openSUSE</span>
+<span class="prompt">$ </span>sudo zypper addrepo https://postino.tanis.codes/rpm/postino.repo
+<span class="prompt">$ </span>sudo zypper install postino</pre>
+                        </div>
+                    </article>
+
+                    <article class="channel" id="arch">
+                        <h3>Arch Linux <small>AUR</small></h3>
+                        <p>With your favourite AUR helper.</p>
+                        <div class="code">
+<pre><span class="prompt">$ </span>yay -S postino-bin</pre>
+                        </div>
+                    </article>
+
+                    <article class="channel" id="homebrew">
+                        <h3>macOS <small>Homebrew</small></h3>
+                        <p>Postino updates itself after the first install.</p>
+                        <div class="code">
+<pre><span class="prompt">$ </span>brew install --cask tanisperez/postino/postino</pre>
+                        </div>
+                    </article>
+
+                    <article class="channel" id="winget">
+                        <h3>Windows <small>winget</small></h3>
+                        <p>From a terminal. <code>winget upgrade</code> picks up new versions too.</p>
+                        <div class="code">
+<pre><span class="prompt">&gt; </span>winget install Postino</pre>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section section-alt" id="first-launch">
+            <div class="wrap">
+                <div class="section-head">
+                    <span class="kicker">First launch</span>
+                    <h2>A note on unsigned builds</h2>
+                    <p>Postino is not code signed yet, so your system asks once before opening it. Updates are not affected.</p>
+                </div>
+                <div class="channels">
+                    <article class="channel">
+                        <h3>macOS</h3>
+                        <p>If macOS says it cannot verify the developer, open System Settings, Privacy and Security, and choose <strong>Open Anyway</strong>. Or run this once:</p>
+                        <div class="code">
+<pre><span class="prompt">$ </span>xattr -dr com.apple.quarantine /Applications/Postino.app</pre>
+                        </div>
+                    </article>
+                    <article class="channel">
+                        <h3>Windows</h3>
+                        <p>If SmartScreen shows <strong>Windows protected your PC</strong>, choose <strong>More info</strong> and then <strong>Run anyway</strong>.</p>
+                    </article>
+                    <article class="channel">
+                        <h3>Build from source</h3>
+                        <p>Postino builds with the stable Rust toolchain. Clone the repository and run <code>cargo run --release</code>. See the <a href="https://github.com/tanisperez/postino#development">README</a> for the system libraries each platform needs.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <span>Postino is open source under the Apache License 2.0.</span>
+            <nav aria-label="Footer">
+                <a href="https://github.com/tanisperez/postino">GitHub</a>
+                <a href="https://github.com/tanisperez/postino/releases">Releases</a>
+                <a href="https://github.com/tanisperez/postino/issues">Report an issue</a>
+                <a href="https://tanis.codes">tanis.codes</a>
+            </nav>
+        </div>
+    </footer>
+</body>
+</html>

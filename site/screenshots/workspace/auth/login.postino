@@ -1,0 +1,31 @@
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+X-Request-Id: {{requestId}}
+
+::: body json
+{
+  "email": "{{username}}",
+  "password": "{{password}}"
+}
+
+::: pre
+vars.set("requestId", util.uuid());
+console.log("Request id", vars.get("requestId"));
+
+::: post
+test("login succeeded", () => {
+  expect(res.status).toBe(200);
+});
+
+test("returns a bearer token", () => {
+  expect(res.json().tokenType).toBe("Bearer");
+  expect(res.json().accessToken).toBeTruthy();
+});
+
+env.set("token", res.json().accessToken);
+console.log("Token stored in the session environment");
+
+::: docs
+Exchanges the user credentials for an access token. The token is saved in the session
+environment, so every other request can use `{{token}}`.

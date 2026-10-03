@@ -1,0 +1,15 @@
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+::: body json
+{
+  "refreshToken": "rt_7f3a91c2d4"
+}
+
+::: post
+test("issues a new token", () => {
+  expect(res.status).toBe(200);
+  expect(res.json()).toHaveProperty("accessToken");
+});
+env.set("token", res.json().accessToken);

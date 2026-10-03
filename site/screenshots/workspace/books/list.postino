@@ -1,0 +1,45 @@
+GET {{baseUrl}}/books
+Accept: application/json
+Authorization: Bearer {{token}}
+# X-Debug: true
+
+::: query
+limit = 8
+page = 1
+sort = title
+# genre = fiction
+# inStock = true
+
+::: pre
+console.log("Listing books, page 1");
+
+::: post
+test("status is 200", () => {
+  expect(res.status).toBe(200);
+});
+
+test("returns JSON", () => {
+  expect(res.headers.get("content-type")).toContain("application/json");
+});
+
+test("lists eight books", () => {
+  const body = res.json();
+  expect(body.data.length).toBe(8);
+  expect(body.meta.total).toBeGreaterThan(7);
+});
+
+test("every book has a title and a price", () => {
+  for (const book of res.json().data) {
+    expect(book).toHaveProperty("title");
+    expect(book.price).toBeGreaterThan(0);
+  }
+});
+
+test("responds quickly", () => {
+  expect(res.timeMs).toBeLessThan(1000);
+});
+
+console.log("Received", res.json().data.length, "books in", res.timeMs, "ms");
+
+::: docs
+Paginated list of books. Use `genre` and `inStock` to filter.

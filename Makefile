@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help run build release dist check lint lint-fix format format-check test clean
+.PHONY: help run build release dist check lint lint-fix format format-check test clean screenshots
 
 help:
 	@echo "Usage: make [target]"
@@ -16,6 +16,7 @@ help:
 	@echo "  format-check  Check formatting without modifying files"
 	@echo "  test          Run all tests"
 	@echo "  clean         Remove build artifacts"
+	@echo "  screenshots   Regenerate the website screenshots (site/img)"
 
 run:
 	cargo run
@@ -58,3 +59,6 @@ test:
 
 clean:
 	cargo clean
+
+screenshots:
+	site/screenshots/capture.sh

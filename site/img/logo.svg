@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Postino app icon: the title bar logo, accent square with a "P" in Geist Bold (outlined). -->
+  <rect width="256" height="256" rx="71" fill="#4f57d8"/>
+  <path fill="#ffffff" d="M86 188V74H131.6Q152.15 74 163.79 83.95Q175.43 93.91 175.43 111.25Q175.43 128.59 163.79 138.63Q152.15 148.66 131.6 148.66H110.41V188ZM110.41 128.11H130.15Q139.79 128.11 145.09 123.85Q150.39 119.6 150.39 111.25Q150.39 102.9 145.09 98.73Q139.79 94.55 130.15 94.55H110.41Z"/>
+</svg>
