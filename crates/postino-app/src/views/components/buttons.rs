@@ -46,6 +46,7 @@ struct ButtonSpec {
     icon: Option<Icon>,
     height: f32,
     min_width: Option<f32>,
+    full_width: bool,
     disabled: bool,
     on_click: Option<ClickHandler>,
 }
@@ -62,6 +63,7 @@ impl ButtonSpec {
             icon: None,
             height: CONTROL_HEIGHT,
             min_width: None,
+            full_width: false,
             disabled: false,
             on_click: None,
         }
@@ -74,6 +76,7 @@ impl ButtonSpec {
         let mut button = apply(Button::new(self.id))
             .h(px(self.height))
             .when_some(self.min_width, |button, width| button.min_w(px(width)))
+            .when(self.full_width, |button| button.w_full())
             .rounded(px(RADIUS_MD))
             .font_weight(FontWeight::MEDIUM)
             .disabled(self.disabled)
@@ -129,6 +132,18 @@ impl PrimaryButton {
     /// Sets the button's minimum width in px.
     pub fn min_width(mut self, width: f32) -> Self {
         self.spec.min_width = Some(width);
+        self
+    }
+
+    /// Sets a leading icon.
+    pub fn icon(mut self, icon: impl Into<Icon>) -> Self {
+        self.spec.icon = Some(icon.into());
+        self
+    }
+
+    /// Makes the button fill the width of its parent.
+    pub fn full_width(mut self) -> Self {
+        self.spec.full_width = true;
         self
     }
 

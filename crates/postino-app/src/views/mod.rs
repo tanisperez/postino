@@ -7,9 +7,12 @@
 pub mod command_palette;
 pub mod components;
 pub mod define_variable;
+pub mod env_panel;
 pub mod env_picker;
 pub mod import_menu;
+pub mod load_panel;
 pub mod load_test;
+pub mod navigation;
 pub mod request_editor;
 pub mod response_view;
 pub mod root;

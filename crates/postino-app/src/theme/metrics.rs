@@ -35,11 +35,17 @@ pub const STATUS_BAR_HEIGHT: f32 = 24.0;
 pub const SEGMENTED_CONTROL_INNER_HEIGHT: f32 = 22.0;
 
 /// Default sidebar width.
-pub const SIDEBAR_WIDTH: f32 = 264.0;
+pub const SIDEBAR_WIDTH: f32 = 248.0;
 /// Minimum sidebar width when resizing.
 pub const SIDEBAR_WIDTH_MIN: f32 = 180.0;
 /// Maximum sidebar width when resizing.
 pub const SIDEBAR_WIDTH_MAX: f32 = 480.0;
+/// Width of the activity rail left of the sidebar.
+pub const RAIL_WIDTH: f32 = 48.0;
+/// Side length of an activity rail button.
+pub const RAIL_BUTTON_SIZE: f32 = 34.0;
+/// Height of a row of the Environments panel.
+pub const ENV_ROW_HEIGHT: f32 = 30.0;
 /// Width of the command palette's search trigger in the title bar.
 pub const SEARCH_TRIGGER_WIDTH: f32 = 360.0;
 /// Width (and height) of each window control button (minimize, maximize, close).
