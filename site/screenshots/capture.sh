@@ -143,6 +143,11 @@ for theme in light dark; do
     shot settings "$theme"
     quit_app
 
+    # environment editor, opened from the Environments panel of the activity rail
+    launch "$theme" POSTINO_OPEN=env:staging
+    shot environments "$theme"
+    quit_app
+
     # load test: pick books/list, 25 VUs for 10 s, then wait for the run to finish
     launch "$theme" POSTINO_OPEN=loadtest
     click 632 256; click 515 487
@@ -150,6 +155,7 @@ for theme in light dark; do
     click 632 1106
     sleep 15
     click 1400 1150    # blur the focused input so no text cursor is captured
+    click 61 220       # Load tests panel of the activity rail, with the finished run
     shot loadtest "$theme"
     quit_app
 done

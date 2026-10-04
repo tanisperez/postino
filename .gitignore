@@ -3,3 +3,4 @@
 # Environment secrets stay local. Test fixtures are the exception.
 *.local.env
 !crates/*/tests/fixtures/*.local.env
+!site/screenshots/workspace/environments/*.local.env

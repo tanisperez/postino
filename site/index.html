@@ -151,20 +151,41 @@
 
                     <article class="feature">
                         <div class="copy">
+                            <h3>Environments you can see and edit</h3>
+                            <div class="text">
+                                <p>Open any environment from the Environments panel and edit its variables in a table. Each variable shows the file it lives in, so shared values stay in <code>.env</code> and secrets in a <code>.local.env</code> file that never reaches git.</p>
+                                <ul class="checks">
+                                    <li>Move a variable between the shared and the local file with one click</li>
+                                    <li>Secrets masked until you choose to show them</li>
+                                    <li>Values set by scripts during the session, shown next to the rest</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="shot">
+                            <img class="light" src="img/environments-light.webp" width="2018" height="1282" loading="lazy"
+                                alt="The environment editor: the staging variables, two of them stored in the gitignored local file and masked.">
+                            <img class="dark" src="img/environments-dark.webp" width="2018" height="1282" loading="lazy"
+                                alt="The environment editor: the staging variables, two of them stored in the gitignored local file and masked.">
+                        </div>
+                    </article>
+
+                    <article class="feature">
+                        <div class="copy">
                             <h3>Load testing built in</h3>
                             <div class="text">
                                 <p>Point a load test at a request or a whole folder, choose virtual users, duration and ramp up, and watch throughput and latency live. Every run is saved, so you can compare it with the last one.</p>
                                 <ul class="checks">
                                     <li>Requests per second, p50, p95 and p99 latency, error rate</li>
+                                    <li>Start a test from the Load tests panel, with every run of the session at hand</li>
                                     <li>Run history stored next to your requests</li>
                                 </ul>
                             </div>
                         </div>
                         <div class="shot">
                             <img class="light" src="img/loadtest-light.webp" width="2018" height="1282" loading="lazy"
-                                alt="A finished load test run with throughput and latency charts.">
+                                alt="The Load tests panel and a finished load test run with throughput and latency charts.">
                             <img class="dark" src="img/loadtest-dark.webp" width="2018" height="1282" loading="lazy"
-                                alt="A finished load test run with throughput and latency charts.">
+                                alt="The Load tests panel and a finished load test run with throughput and latency charts.">
                         </div>
                     </article>
 

@@ -1,8 +1,8 @@
 # Website screenshots
 
 `capture.sh` regenerates every screenshot of the website into `site/img/` as WebP, one light and
-one dark version of each: `hero`, `scripts`, `palette`, `snippet`, `settings` and
-`loadtest`. Run it from anywhere, or with `make screenshots`.
+one dark version of each: `hero`, `scripts`, `palette`, `snippet`, `settings`,
+`environments` and `loadtest`. Run it from anywhere, or with `make screenshots`.
 
 ## What it does
 

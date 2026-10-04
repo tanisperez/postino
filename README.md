@@ -32,11 +32,18 @@ Scripts and tests in JavaScript, before and after each request:
   <img src="site/img/scripts-light.webp" alt="A request with a post response script and its passing tests.">
 </picture>
 
+Environments with their variables, secrets kept apart in a gitignored `.local.env` file:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/img/environments-dark.webp">
+  <img src="site/img/environments-light.webp" alt="The environment editor: the staging variables, two of them stored in the gitignored local file and masked.">
+</picture>
+
 Load testing built in, with live throughput and latency:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="site/img/loadtest-dark.webp">
-  <img src="site/img/loadtest-light.webp" alt="A finished load test run with throughput and latency charts.">
+  <img src="site/img/loadtest-light.webp" alt="The Load tests panel and a finished load test run with throughput and latency charts.">
 </picture>
 
 ## Building from source
