@@ -88,9 +88,22 @@ contents:
     file_info:
       mode: 0644
     packager: deb
+  - src: ${POSTINO_ROOT}/NOTICE
+    dst: /usr/share/doc/postino/NOTICE
+    expand: true
+    file_info:
+      mode: 0644
+    packager: deb
   # rpm convention: /usr/share/licenses/<name>/, flagged as a license file
   - src: ${POSTINO_ROOT}/LICENSE
     dst: /usr/share/licenses/postino/LICENSE
+    expand: true
+    type: license
+    file_info:
+      mode: 0644
+    packager: rpm
+  - src: ${POSTINO_ROOT}/NOTICE
+    dst: /usr/share/licenses/postino/NOTICE
     expand: true
     type: license
     file_info:

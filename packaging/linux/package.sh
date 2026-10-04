@@ -61,6 +61,7 @@ for size in "${sizes[@]}"; do
         "$top/share/icons/hicolor/${size}x${size}/apps/$app_id.png"
 done
 install -m644 "$root/LICENSE" "$top/LICENSE"
+install -m644 "$root/NOTICE" "$top/NOTICE"
 install -m644 "$root/README.md" "$top/README.md"
 tar --sort=name --owner=0 --group=0 --numeric-owner --mtime='UTC 2020-01-01' \
     -C "$stage" -czf "$out_dir/$name.tar.gz" "$name"

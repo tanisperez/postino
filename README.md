@@ -78,4 +78,6 @@ On Linux and macOS the `Makefile` wraps the usual commands (`make run`, `make re
 
 ## License
 
-Postino is licensed under the [Apache License 2.0](LICENSE).
+Copyright 2026 Estanislao Pérez Nartallo.
+
+Postino is licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE).
