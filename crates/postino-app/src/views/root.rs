@@ -143,6 +143,9 @@ pub struct AppView {
     /// The Environments panel's rows, loaded when the workspace or an environment changes
     /// ([`Self::refresh_env_rows`]) so render never reads files.
     pub(crate) env_rows: Vec<state::env_panel::EnvRow>,
+    /// The `gpui` entities behind every open environment editor tab, keyed by tab id, created
+    /// when the tab is first shown. See `views/env_editor.rs`.
+    pub(crate) env_editors: HashMap<String, crate::views::env_editor::EnvEditorEntities>,
     /// The Environments panel's inline "new environment" name input, `Some` while it is shown.
     pub(crate) new_env_input: Option<Entity<InputState>>,
     /// The Load tests panel's target tree (`views/load_panel.rs`), rebuilt by
@@ -226,6 +229,7 @@ impl AppView {
             load_runs: HashMap::new(),
             nav: state::navigation::NavState::default(),
             env_rows: Vec::new(),
+            env_editors: HashMap::new(),
             new_env_input: None,
             load_targets: state::load_panel::TargetTree::default(),
             render_count: 0,
@@ -257,6 +261,11 @@ impl AppView {
         let Ok(value) = std::env::var("POSTINO_OPEN") else {
             return;
         };
+        if let Some(name) = debug_open::parse_env(&value) {
+            self.nav.click(state::navigation::NavSection::Environments);
+            self.open_environment_tab(name.to_string(), cx);
+            return;
+        }
         let Some(target) = debug_open::parse(&value) else {
             return;
         };
@@ -407,6 +416,7 @@ impl AppView {
         }
         self.last_selected_request = None;
         self.new_env_input = None;
+        self.env_editors.clear();
         self.sidebar_filter_pre_expansion = None;
         self.sidebar_filter_input.update(cx, |state, cx| {
             state.set_value(String::new(), window, cx);
@@ -567,6 +577,7 @@ impl AppView {
         {
             log::debug!("closed tab {tab_id}");
             self.stop_load_test(&tab_id);
+            self.env_editors.remove(&tab_id);
         }
         self.state.tabs.close(index);
         cx.notify();
@@ -583,6 +594,10 @@ impl AppView {
         let Some(tab) = self.state.tabs.active() else {
             return;
         };
+        if tab.environment().is_some() {
+            self.save_env_tab(active_index, cx);
+            return;
+        }
         let id = tab.id.clone();
         let Some(request) = tab.request().cloned() else {
             return;
@@ -713,6 +728,7 @@ impl AppView {
     pub(crate) fn relocalize(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.relocalize_sidebar(window, cx);
         self.relocalize_request_editor(window, cx);
+        self.relocalize_env_editors(window, cx);
         // The command palette, the response view and the load test tab cache no translated text:
         // the palette rebuilds its items on every repaint, the other two have no input
         // placeholder.
@@ -962,9 +978,16 @@ impl AppView {
             .tabs
             .active()
             .is_some_and(|tab| tab.load_test().is_some());
+        let is_environment = self
+            .state
+            .tabs
+            .active()
+            .is_some_and(|tab| tab.environment().is_some());
 
         let content = if is_load_test {
             self.render_load_test_tab(window, cx)
+        } else if is_environment {
+            self.render_env_tab(window, cx)
         } else {
             v_resizable("postino-main")
                 .child(
@@ -1019,11 +1042,18 @@ impl AppView {
         for (index, tab) in self.state.tabs.open_tabs().iter().enumerate() {
             let select_weak = weak.clone();
             let close_weak = weak.clone();
-            let full_id = tab.id.clone();
+            let full_id = match tab.environment() {
+                Some(edit) => state::env_edit::status_path(&edit.name),
+                None => tab.id.clone(),
+            };
             let mut doc_tab = match &tab.kind {
                 state::TabKind::Request(request) => {
                     DocumentTab::new(state::format::tab_label(&tab.id).to_string())
                         .method(request.method.clone())
+                }
+                state::TabKind::Environment(edit) => {
+                    DocumentTab::new(state::env_edit::tab_label(&edit.name))
+                        .icon(gpui_kit::assets::IconName::Variable)
                 }
                 state::TabKind::LoadTest(load_test) => {
                     DocumentTab::new(crate::views::load_test::tab_label(load_test))
@@ -1040,8 +1070,9 @@ impl AppView {
                         cx.notify();
                     });
                 })
-                .on_close(move |_, cx| {
-                    let _ = close_weak.update(cx, |view, cx| view.close_tab(index, cx));
+                .on_close(move |window, cx| {
+                    let _ =
+                        close_weak.update(cx, |view, cx| view.request_close_tab(index, window, cx));
                 });
             tabs = tabs.item(doc_tab);
         }

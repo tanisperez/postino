@@ -171,6 +171,7 @@ impl AppView {
             Ok(()) => {
                 self.workspace_error = None;
                 self.refresh_env_rows();
+                self.reload_env_tab_if_clean(&target_env, cx);
                 if self.state.active_environment.is_none() {
                     self.select_environment(Some(target_env), cx);
                 }

@@ -7,6 +7,7 @@
 pub mod command_palette;
 pub mod components;
 pub mod define_variable;
+pub mod env_editor;
 pub mod env_panel;
 pub mod env_picker;
 pub mod import_menu;

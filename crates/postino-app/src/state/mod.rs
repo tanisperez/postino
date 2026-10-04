@@ -8,6 +8,7 @@ pub mod config;
 pub mod debug_open;
 pub mod define_variable;
 pub mod env_color;
+pub mod env_edit;
 pub mod env_panel;
 pub mod format;
 pub mod import;

@@ -38,7 +38,12 @@ impl AppView {
                     .child(Icon::new(gpui_kit::assets::IconName::Lock).small())
                     .child(t!("shell.status_bar.local_only")),
             )
-            .children(active_tab.map(|tab| div().child(tab.id.clone())))
+            .children(active_tab.map(|tab| {
+                div().child(match tab.environment() {
+                    Some(edit) => crate::state::env_edit::status_path(&edit.name),
+                    None => tab.id.clone(),
+                })
+            }))
             .child(div().flex_1())
             .children(
                 self.state

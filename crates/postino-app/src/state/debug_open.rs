@@ -52,10 +52,23 @@ pub fn parse(value: &str) -> Option<DebugOpenTarget> {
     }
 }
 
+/// The environment name of a `POSTINO_OPEN=env:<name>` value, which opens that environment's
+/// editor tab. Separate from [`parse`] because it carries a name.
+pub fn parse_env(value: &str) -> Option<&str> {
+    value.strip_prefix("env:").filter(|name| !name.is_empty())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn parses_an_environment_target() {
+        assert_eq!(parse_env("env:local"), Some("local"));
+        assert_eq!(parse_env("env:"), None);
+        assert_eq!(parse_env("settings"), None);
+    }
 
     #[test]
     fn parses_components() {

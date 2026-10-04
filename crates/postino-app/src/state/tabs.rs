@@ -1,18 +1,21 @@
-//! Open tabs: requests being edited and load test tabs (`plans/ui-redesign.md` phase 8 item 1),
+//! Open tabs: requests being edited, environment editors and load test tabs (`plans/ui-redesign.md` phase 8 item 1),
 //! in which order, which one is active, and whether each has unsaved changes. No `gpui` types
 //! here, so this is unit-tested directly.
 
 use postino_core::Request;
 
+use super::env_edit::{self, EnvEditTab};
 use super::load_test::LoadTestTab;
 
-/// What one open tab shows: a request being edited, or a load test in progress or finished.
-/// Dirty state and saving only apply to [`TabKind::Request`] (`plans/ui-redesign.md` phase 8
-/// item 1).
+/// What one open tab shows: a request being edited, an environment being edited, or a load test
+/// in progress or finished. Dirty state and saving apply to [`TabKind::Request`] and
+/// [`TabKind::Environment`] (`plans/ui-redesign.md` phase 8 item 1, GitHub #65).
 #[derive(Debug, Clone, PartialEq)]
 pub enum TabKind {
     /// A request open for editing.
     Request(Request),
+    /// An environment editor tab (`state::env_edit`). Boxed for the same reason as `LoadTest`.
+    Environment(Box<EnvEditTab>),
     /// A load test tab. Boxed: `LoadTestTab` is far larger than `Request` (it carries the run
     /// history and the latest snapshot), and clippy's `large_enum_variant` flags the gap between
     /// the two otherwise.
@@ -38,7 +41,7 @@ impl OpenTab {
     pub fn request(&self) -> Option<&Request> {
         match &self.kind {
             TabKind::Request(request) => Some(request),
-            TabKind::LoadTest(_) => None,
+            TabKind::Environment(_) | TabKind::LoadTest(_) => None,
         }
     }
 
@@ -46,7 +49,23 @@ impl OpenTab {
     pub fn request_mut(&mut self) -> Option<&mut Request> {
         match &mut self.kind {
             TabKind::Request(request) => Some(request),
-            TabKind::LoadTest(_) => None,
+            TabKind::Environment(_) | TabKind::LoadTest(_) => None,
+        }
+    }
+
+    /// This tab's environment editor state, if it is a [`TabKind::Environment`].
+    pub fn environment(&self) -> Option<&EnvEditTab> {
+        match &self.kind {
+            TabKind::Environment(edit) => Some(edit.as_ref()),
+            TabKind::Request(_) | TabKind::LoadTest(_) => None,
+        }
+    }
+
+    /// This tab's environment editor state, mutably, if it is a [`TabKind::Environment`].
+    pub fn environment_mut(&mut self) -> Option<&mut EnvEditTab> {
+        match &mut self.kind {
+            TabKind::Environment(edit) => Some(edit.as_mut()),
+            TabKind::Request(_) | TabKind::LoadTest(_) => None,
         }
     }
 
@@ -54,7 +73,7 @@ impl OpenTab {
     pub fn load_test(&self) -> Option<&LoadTestTab> {
         match &self.kind {
             TabKind::LoadTest(load_test) => Some(load_test.as_ref()),
-            TabKind::Request(_) => None,
+            TabKind::Request(_) | TabKind::Environment(_) => None,
         }
     }
 
@@ -62,7 +81,7 @@ impl OpenTab {
     pub fn load_test_mut(&mut self) -> Option<&mut LoadTestTab> {
         match &mut self.kind {
             TabKind::LoadTest(load_test) => Some(load_test.as_mut()),
-            TabKind::Request(_) => None,
+            TabKind::Request(_) | TabKind::Environment(_) => None,
         }
     }
 }
@@ -119,6 +138,40 @@ impl TabsState {
             return index;
         }
         self.push_and_activate(id, TabKind::Request(request))
+    }
+
+    /// Opens `edit` as the editor tab of its environment and makes it active. If that
+    /// environment already has a tab, it is made active instead and `edit` is dropped. Returns
+    /// the tab's index.
+    pub fn open_environment(&mut self, edit: EnvEditTab) -> usize {
+        let id = env_edit::tab_id(&edit.name);
+        if let Some(index) = self.index_of(&id) {
+            self.active = Some(index);
+            return index;
+        }
+        self.push_and_activate(id, TabKind::Environment(Box::new(edit)))
+    }
+
+    /// The name of the environment shown by the active tab, if the active tab is an environment
+    /// editor.
+    pub fn active_environment_name(&self) -> Option<&str> {
+        self.active()
+            .and_then(OpenTab::environment)
+            .map(|edit| edit.name.as_str())
+    }
+
+    /// Points the editor tab of the environment `old` at `new` after a rename: its id and its
+    /// state. Does nothing if `old` has no tab.
+    pub fn rename_environment(&mut self, old: &str, new: &str) {
+        let Some(index) = self.index_of(&env_edit::tab_id(old)) else {
+            return;
+        };
+        if let Some(tab) = self.open.get_mut(index) {
+            tab.id = env_edit::tab_id(new);
+            if let Some(edit) = tab.environment_mut() {
+                edit.name = new.to_string();
+            }
+        }
     }
 
     /// Opens a new load test tab and makes it active (`plans/ui-redesign.md` phase 8 item 2).
@@ -211,6 +264,13 @@ impl TabsState {
     pub fn mark_saved(&mut self, index: usize) {
         if let Some(tab) = self.open.get_mut(index) {
             tab.dirty = false;
+        }
+    }
+
+    /// Sets the dirty flag of the tab at `index`. Does nothing if out of range.
+    pub fn set_dirty(&mut self, index: usize, dirty: bool) {
+        if let Some(tab) = self.open.get_mut(index) {
+            tab.dirty = dirty;
         }
     }
 
@@ -582,5 +642,68 @@ mod tests {
 
         assert_eq!(tabs.open_tabs().len(), 1);
         assert!(tabs.open_tabs()[0].load_test().is_some());
+    }
+
+    fn env_tab(name: &str) -> EnvEditTab {
+        EnvEditTab::load(
+            name,
+            &postino_workspace::EnvLayers {
+                base: Some(Vec::new()),
+                local: None,
+            },
+        )
+    }
+
+    #[test]
+    fn open_environment_dedupes_by_name_and_never_collides_with_requests() {
+        let mut tabs = TabsState::default();
+        tabs.open("local", request());
+        let first = tabs.open_environment(env_tab("local"));
+        tabs.open("b.postino", request());
+        let second = tabs.open_environment(env_tab("local"));
+        assert_eq!(first, 1);
+        assert_eq!(second, 1);
+        assert_eq!(tabs.open_tabs().len(), 3);
+        assert_eq!(tabs.active_environment_name(), Some("local"));
+        assert_eq!(tabs.open_tabs()[1].id, "env:local");
+    }
+
+    #[test]
+    fn an_environment_tab_exposes_its_editor_only() {
+        let mut tabs = TabsState::default();
+        tabs.open_environment(env_tab("local"));
+        let tab = tabs.active().expect("just opened");
+        assert!(tab.environment().is_some());
+        assert!(tab.request().is_none());
+        assert!(tab.load_test().is_none());
+    }
+
+    #[test]
+    fn rename_environment_updates_the_id_and_the_name() {
+        let mut tabs = TabsState::default();
+        tabs.open_environment(env_tab("local"));
+        tabs.rename_environment("local", "dev");
+        assert_eq!(tabs.open_tabs()[0].id, "env:dev");
+        assert_eq!(tabs.active_environment_name(), Some("dev"));
+    }
+
+    #[test]
+    fn rename_prefix_and_close_prefix_leave_environment_tabs_alone() {
+        let mut tabs = TabsState::default();
+        tabs.open_environment(env_tab("auth"));
+        tabs.rename_prefix("auth", "x");
+        tabs.close_prefix("auth");
+        assert_eq!(tabs.open_tabs()[0].id, "env:auth");
+    }
+
+    #[test]
+    fn set_dirty_sets_and_clears_the_flag() {
+        let mut tabs = TabsState::default();
+        tabs.open("a.postino", request());
+        tabs.set_dirty(0, true);
+        assert!(tabs.open_tabs()[0].dirty);
+        tabs.set_dirty(0, false);
+        assert!(!tabs.open_tabs()[0].dirty);
+        tabs.set_dirty(9, true);
     }
 }

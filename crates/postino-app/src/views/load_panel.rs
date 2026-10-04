@@ -200,7 +200,6 @@ fn target_row(
         .pr(px(4.0))
         .rounded(px(RADIUS_SM))
         .cursor_pointer()
-        .text_size(px(13.0))
         .text_color(palette.fg)
         .hover(|style| style.bg(palette.hover))
         .active(|style| style.bg(palette.pressed))
@@ -219,7 +218,15 @@ fn target_row(
                 )
             },
         )
-        .child(div().flex_1().min_w_0().truncate().child(row.label.clone()))
+        // `text_sm` on the label alone, like the Collections tree (`views/sidebar.rs`).
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .truncate()
+                .text_sm()
+                .child(row.label.clone()),
+        )
         .child(play)
         .on_click(move |_, _, cx| {
             if is_folder {

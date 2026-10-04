@@ -3,8 +3,10 @@
 //! that opens the `environments/` folder. The rows come from `state::env_panel`, loaded when the
 //! workspace or an environment changes ([`AppView::refresh_env_rows`]), never in render.
 //!
-//! Until the environment editor tab exists (#65), clicking a row makes that environment the
-//! active one, the same as the title bar's picker.
+//! Clicking an environment row opens its editor tab (#65, `views/env_editor.rs`), and the row of
+//! the environment shown by the active tab is tinted. The "Active" tag follows the active
+//! environment, which the title bar's picker and the editor's "Use this environment" change.
+//! The "No environment" row deactivates it.
 
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::*;
@@ -118,6 +120,11 @@ impl AppView {
         let palette = cx.palette();
         let has_workspace = self.state.workspace.is_some();
         let active = self.state.active_environment.clone();
+        let selected = self
+            .state
+            .tabs
+            .active_environment_name()
+            .map(str::to_string);
         let mono_font = cx.theme().mono_font_family.clone();
 
         let header = h_flex()
@@ -147,6 +154,7 @@ impl AppView {
                 "env-row-none",
                 weak.clone(),
                 None,
+                active.is_none() && selected.is_none(),
                 active.is_none(),
                 None,
                 &palette,
@@ -157,6 +165,7 @@ impl AppView {
                     ("env-row", index),
                     weak.clone(),
                     Some(row.name.clone()),
+                    selected.as_deref() == Some(row.name.as_str()),
                     active.as_deref() == Some(row.name.as_str()),
                     Some(row.var_count),
                     &palette,
@@ -298,11 +307,14 @@ impl AppView {
 }
 
 /// One environment row. `name` is `None` for "No environment" (a hollow ring dot, no count).
-/// The active row is tinted and, for a named environment, carries the "Active" tag.
+/// The selected row is tinted, and the active one carries the "Active" tag when it is a named
+/// environment.
+#[allow(clippy::too_many_arguments)]
 fn env_row(
     id: impl Into<ElementId>,
     weak: WeakEntity<AppView>,
     name: Option<String>,
+    selected: bool,
     active: bool,
     var_count: Option<usize>,
     palette: &Palette,
@@ -326,11 +338,11 @@ fn env_row(
         .px(px(8.0))
         .rounded(px(RADIUS_SM))
         .cursor_pointer()
-        .when(active, |row| {
+        .when(selected, |row| {
             row.bg(palette.accent_subtle)
                 .text_color(palette.accent_text)
         })
-        .when(!active, |row| {
+        .when(!selected, |row| {
             row.text_color(palette.fg)
                 .hover(|style| style.bg(palette.hover))
                 .active(|style| style.bg(palette.pressed))
@@ -359,7 +371,10 @@ fn env_row(
         })
         .on_click(move |_, _, cx| {
             let name = name.clone();
-            let _ = weak.update(cx, |view, cx| view.select_environment(name, cx));
+            let _ = weak.update(cx, |view, cx| match name {
+                Some(name) => view.open_environment_tab(name, cx),
+                None => view.select_environment(None, cx),
+            });
         })
         .into_any_element()
 }

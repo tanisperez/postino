@@ -6,7 +6,7 @@ use std::fs;
 use std::path::Path;
 
 use postino_core::Method;
-use postino_workspace::{Node, Workspace, WorkspaceError};
+use postino_workspace::{EnvChange, EnvLayer, Node, Workspace, WorkspaceError};
 use pretty_assertions::assert_eq;
 use tempfile::TempDir;
 
@@ -668,4 +668,189 @@ fn a_dot_dot_new_name_cannot_be_used_to_escape_on_rename() {
         .expect("rename should sanitize, not fail");
     assert_eq!(new_id, "untitled.postino");
     assert!(temp.path().join("untitled.postino").exists());
+}
+
+fn env_dir(temp: &TempDir) -> std::path::PathBuf {
+    temp.path().join("environments")
+}
+
+#[test]
+fn load_environment_layers_returns_each_file_apart() {
+    let temp = TempDir::new().expect("temp dir");
+    write_file(&env_dir(&temp).join("dev.env"), "A=1\nB=2\n");
+    write_file(&env_dir(&temp).join("dev.local.env"), "B=3\n");
+    let workspace = Workspace::open(temp.path()).expect("open");
+
+    let layers = workspace.load_environment_layers("dev").expect("layers");
+
+    assert_eq!(layers.base.expect("base").len(), 2);
+    assert_eq!(layers.local.expect("local").len(), 1);
+    assert!(matches!(
+        workspace.load_environment_layers("nope"),
+        Err(WorkspaceError::EnvironmentNotFound(_))
+    ));
+}
+
+#[test]
+fn save_environment_preserves_comments_blank_lines_and_order() {
+    let temp = TempDir::new().expect("temp dir");
+    write_file(
+        &env_dir(&temp).join("dev.env"),
+        "# api\nURL=http://x\n\n# creds\nUSER=me\nKEEP=1\n",
+    );
+    write_file(
+        &env_dir(&temp).join("dev.local.env"),
+        "# secrets\nPASS=old\n",
+    );
+    let workspace = Workspace::open(temp.path()).expect("open");
+
+    workspace
+        .save_environment(
+            "dev",
+            &[
+                EnvChange::Set {
+                    layer: EnvLayer::Base,
+                    key: "URL".into(),
+                    value: "http://y".into(),
+                },
+                EnvChange::Remove {
+                    layer: EnvLayer::Base,
+                    key: "USER".into(),
+                },
+                EnvChange::Set {
+                    layer: EnvLayer::Base,
+                    key: "NEW".into(),
+                    value: "n".into(),
+                },
+                EnvChange::Rename {
+                    layer: EnvLayer::Local,
+                    from: "PASS".into(),
+                    to: "PASSWORD".into(),
+                },
+                EnvChange::Set {
+                    layer: EnvLayer::Local,
+                    key: "PASSWORD".into(),
+                    value: "new".into(),
+                },
+            ],
+        )
+        .expect("save");
+
+    assert_eq!(
+        fs::read_to_string(env_dir(&temp).join("dev.env")).unwrap(),
+        "# api\nURL=http://y\n\n# creds\nKEEP=1\nNEW=n\n"
+    );
+    assert_eq!(
+        fs::read_to_string(env_dir(&temp).join("dev.local.env")).unwrap(),
+        "# secrets\nPASSWORD=new\n"
+    );
+}
+
+#[test]
+fn save_environment_swaps_two_names_and_creates_a_missing_local_file() {
+    let temp = TempDir::new().expect("temp dir");
+    write_file(&env_dir(&temp).join("dev.env"), "A=1\nB=2\n");
+    let workspace = Workspace::open(temp.path()).expect("open");
+
+    workspace
+        .save_environment(
+            "dev",
+            &[
+                EnvChange::Rename {
+                    layer: EnvLayer::Base,
+                    from: "A".into(),
+                    to: "B".into(),
+                },
+                EnvChange::Rename {
+                    layer: EnvLayer::Base,
+                    from: "B".into(),
+                    to: "A".into(),
+                },
+                EnvChange::Set {
+                    layer: EnvLayer::Local,
+                    key: "S".into(),
+                    value: "x".into(),
+                },
+            ],
+        )
+        .expect("save");
+
+    assert_eq!(
+        fs::read_to_string(env_dir(&temp).join("dev.env")).unwrap(),
+        "B=1\nA=2\n"
+    );
+    assert_eq!(
+        fs::read_to_string(env_dir(&temp).join("dev.local.env")).unwrap(),
+        "S=x\n"
+    );
+}
+
+#[test]
+fn save_environment_without_changes_for_a_file_does_not_create_it() {
+    let temp = TempDir::new().expect("temp dir");
+    write_file(&env_dir(&temp).join("dev.env"), "A=1\n");
+    let workspace = Workspace::open(temp.path()).expect("open");
+
+    workspace
+        .save_environment(
+            "dev",
+            &[EnvChange::Remove {
+                layer: EnvLayer::Base,
+                key: "A".into(),
+            }],
+        )
+        .expect("save");
+
+    assert_eq!(
+        fs::read_to_string(env_dir(&temp).join("dev.env")).unwrap(),
+        ""
+    );
+    assert!(!env_dir(&temp).join("dev.local.env").exists());
+}
+
+#[test]
+fn rename_environment_moves_both_files() {
+    let temp = TempDir::new().expect("temp dir");
+    write_file(&env_dir(&temp).join("dev.env"), "A=1\n");
+    write_file(&env_dir(&temp).join("dev.local.env"), "B=2\n");
+    write_file(&env_dir(&temp).join("taken.env"), "");
+    let workspace = Workspace::open(temp.path()).expect("open");
+
+    assert!(matches!(
+        workspace.rename_environment("dev", "taken"),
+        Err(WorkspaceError::AlreadyExists(_))
+    ));
+    assert!(matches!(
+        workspace.rename_environment("dev", "a/b"),
+        Err(WorkspaceError::InvalidId(_))
+    ));
+    workspace.rename_environment("dev", "qa").expect("rename");
+
+    assert!(!env_dir(&temp).join("dev.env").exists());
+    assert!(!env_dir(&temp).join("dev.local.env").exists());
+    assert_eq!(
+        fs::read_to_string(env_dir(&temp).join("qa.env")).unwrap(),
+        "A=1\n"
+    );
+    assert_eq!(
+        fs::read_to_string(env_dir(&temp).join("qa.local.env")).unwrap(),
+        "B=2\n"
+    );
+}
+
+#[test]
+fn delete_environment_removes_both_files() {
+    let temp = TempDir::new().expect("temp dir");
+    write_file(&env_dir(&temp).join("dev.env"), "A=1\n");
+    write_file(&env_dir(&temp).join("dev.local.env"), "B=2\n");
+    let workspace = Workspace::open(temp.path()).expect("open");
+
+    workspace.delete_environment("dev").expect("delete");
+
+    assert!(!env_dir(&temp).join("dev.env").exists());
+    assert!(!env_dir(&temp).join("dev.local.env").exists());
+    assert!(matches!(
+        workspace.delete_environment("dev"),
+        Err(WorkspaceError::EnvironmentNotFound(_))
+    ));
 }
