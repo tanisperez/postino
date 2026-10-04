@@ -125,8 +125,8 @@ for theme in light dark; do
     # hero and scripts share one session
     launch "$theme" POSTINO_AUTOSEND=books/list.postino
     shot hero "$theme"
-    click 904 225      # Post-response tab of the request editor
-    click 638 729      # Tests tab of the response pane
+    click 925 224      # Post-response tab of the request editor
+    click 660 729      # Tests tab of the response pane
     shot scripts "$theme"
     quit_app
 
@@ -145,9 +145,9 @@ for theme in light dark; do
 
     # load test: pick books/list, 25 VUs for 10 s, then wait for the run to finish
     launch "$theme" POSTINO_OPEN=loadtest
-    click 611 254; click 494 488
-    type_into 586 352 25; type_into 586 449 10; type_into 586 547 3; type_into 586 644 20
-    click 611 1106
+    click 632 256; click 515 487
+    type_into 606 351 25; type_into 606 448 10; type_into 606 546 3; type_into 606 643 20
+    click 632 1106
     sleep 15
     click 1400 1150    # blur the focused input so no text cursor is captured
     shot loadtest "$theme"
