@@ -23,6 +23,10 @@ use crate::theme::metrics::{
 use super::root::AppView;
 use super::sidebar;
 
+/// Longest path, in characters, shown next to a recent workspace in the switcher menu. Longer
+/// ones get their middle elided so the menu stays as narrow as a normal one.
+const MENU_PATH_MAX_CHARS: usize = 36;
+
 impl AppView {
     /// Renders the whole title bar's content.
     pub(crate) fn render_title_bar(
@@ -95,7 +99,10 @@ impl AppView {
                         .file_name()
                         .map(|name| name.to_string_lossy().into_owned())
                         .unwrap_or_else(|| path.display().to_string());
-                    let shortened = state::format::shorten_path(path, home.as_deref());
+                    let shortened = state::format::elide_path(
+                        &state::format::shorten_path(path, home.as_deref()),
+                        MENU_PATH_MAX_CHARS,
+                    );
                     let is_current = current_canonical.as_deref() == Some(path.as_path());
                     let select_weak = weak.clone();
                     let target = path.clone();

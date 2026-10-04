@@ -63,6 +63,37 @@ fn with_native_separators(path: &Path) -> String {
     path.components().collect::<PathBuf>().display().to_string()
 }
 
+/// Elides the middle of a long `path` with `…` so it fits in `max_chars`, keeping its first
+/// component and as many trailing ones as fit, for example `/tmp/…/scratchpad/ws`. A path that
+/// already fits is returned unchanged. If even the last component is too long, the start of the
+/// whole path is cut instead (`…tail`).
+pub fn elide_path(path: &str, max_chars: usize) -> String {
+    if path.chars().count() <= max_chars {
+        return path.to_string();
+    }
+    let segments: Vec<&str> = path.split(MAIN_SEPARATOR).collect();
+    let head_len = segments
+        .iter()
+        .position(|segment| !segment.is_empty())
+        .map_or(0, |index| index + 1);
+    let head = segments[..head_len].join(std::path::MAIN_SEPARATOR_STR);
+    let fixed = head.chars().count() + 2;
+    let mut tail = String::new();
+    for segment in segments[head_len..].iter().rev() {
+        let candidate = format!("{MAIN_SEPARATOR}{segment}{tail}");
+        if fixed + candidate.chars().count() > max_chars {
+            break;
+        }
+        tail = candidate;
+    }
+    if tail.is_empty() {
+        let keep = max_chars.saturating_sub(1);
+        let skip = path.chars().count().saturating_sub(keep);
+        return format!("…{}", path.chars().skip(skip).collect::<String>());
+    }
+    format!("{head}{MAIN_SEPARATOR}…{tail}")
+}
+
 /// The label shown in the open-tabs bar for an open request tab: the file stem (its name without
 /// the `.postino` extension), for example `"login"` for `"auth/login.postino"`. The full id is
 /// shown in the tab's tooltip instead (`plans/ui-redesign.md` section 2.3 point 3).
@@ -158,6 +189,34 @@ mod tests {
                 Some(Path::new(r"C:\Users\me"))
             ),
             r"~\AppData\Roaming\postino\settings.toml"
+        );
+    }
+
+    #[test]
+    fn elide_path_keeps_a_short_path() {
+        assert_eq!(elide_path("~/dev/postino", 40), "~/dev/postino");
+    }
+
+    #[test]
+    fn elide_path_keeps_the_head_and_the_tail() {
+        assert_eq!(
+            elide_path(
+                "/tmp/claude-1000/-home-tanis-dev-postino/5d5e073d-3b50/scratchpad/ws",
+                30
+            ),
+            "/tmp/…/scratchpad/ws"
+        );
+        assert_eq!(
+            elide_path("~/dev/some/deep/folder/project", 24),
+            "~/…/deep/folder/project"
+        );
+    }
+
+    #[test]
+    fn elide_path_cuts_the_start_when_the_last_component_is_too_long() {
+        assert_eq!(
+            elide_path("/tmp/abcdefghijklmnopqrstuvwxyz", 10),
+            "…rstuvwxyz"
         );
     }
 
