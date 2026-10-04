@@ -183,6 +183,12 @@ impl SecondaryButton {
         }
     }
 
+    /// Sets a leading icon.
+    pub fn icon(mut self, icon: impl Into<Icon>) -> Self {
+        self.spec.icon = Some(icon.into());
+        self
+    }
+
     /// Sets the button's height (defaults to [`CONTROL_HEIGHT`]).
     #[allow(dead_code)] // no caller outside the components gallery needs this yet
     pub fn height(mut self, height: f32) -> Self {
@@ -191,14 +197,12 @@ impl SecondaryButton {
     }
 
     /// Disables the button (45% opacity, no click).
-    #[allow(dead_code)] // no caller outside the components gallery needs this yet
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.spec.disabled = disabled;
         self
     }
 
     /// Sets the click handler.
-    #[allow(dead_code)] // no caller outside the components gallery needs this yet
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,

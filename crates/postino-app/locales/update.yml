@@ -11,10 +11,10 @@ _version: 2
   gl: "Buscar actualizacións automaticamente"
   it: "Cerca aggiornamenti automaticamente"
 "update.setting.check_description":
-  en: "Once at startup. It only downloads a small file from GitHub and sends no identifiers."
-  es: "Una vez al arrancar. Solo descarga un archivo pequeño de GitHub y no envía identificadores."
-  gl: "Unha vez ao arrancar. Só descarga un ficheiro pequeno de GitHub e non envía identificadores."
-  it: "Una volta all'avvio. Scarica solo un piccolo file da GitHub e non invia identificatori."
+  en: "Once, a few seconds after launch. Never polls in the background."
+  es: "Una vez, unos segundos tras arrancar. Nunca consulta en segundo plano."
+  gl: "Unha vez, uns segundos tras arrancar. Nunca consulta en segundo plano."
+  it: "Una volta, pochi secondi dopo l'avvio. Non controlla mai in background."
 "update.status.ready":
   en: "Update %{version} ready, restart"
   es: "Actualización %{version} lista, reiniciar"

@@ -28,6 +28,7 @@ use crate::actions::{
     SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
     SelectNoEnvironment, SendActiveTab,
 };
+use crate::state::about::AboutInfo;
 use crate::state::debug_open::{self, DebugOpenTarget};
 use crate::state::settings::{Settings, SettingsCategory};
 use crate::state::ui_tabs::{self, RequestTab, ResponseTab};
@@ -102,6 +103,8 @@ pub struct AppView {
     pub(crate) send_options: SendOptions,
     /// The category the Settings modal shows (`views/settings.rs`).
     pub(crate) settings_category: SettingsCategory,
+    /// Version, platform and paths shown by Settings, "About", read once at startup.
+    pub(crate) about_info: AboutInfo,
     /// The UI state `POSTINO_OPEN` requested at startup, if any (`state::debug_open`). `None` on
     /// a normal launch.
     pub(crate) debug_open: Option<DebugOpenTarget>,
@@ -212,6 +215,7 @@ impl AppView {
             script_engine: Arc::new(QuickJsEngine),
             send_options,
             settings_category: SettingsCategory::default(),
+            about_info: AboutInfo::detect(),
             debug_open: None,
             gallery_url_input: None,
             sidebar_filter_input,
@@ -265,7 +269,11 @@ impl AppView {
             }
             DebugOpenTarget::Settings
             | DebugOpenTarget::SettingsRequests
-            | DebugOpenTarget::SettingsAdvanced => {
+            | DebugOpenTarget::SettingsAdvanced
+            | DebugOpenTarget::SettingsAbout => {
+                if target == DebugOpenTarget::SettingsAbout {
+                    self.settings_category = SettingsCategory::About;
+                }
                 if target == DebugOpenTarget::SettingsRequests {
                     self.settings_category = SettingsCategory::Requests;
                 }

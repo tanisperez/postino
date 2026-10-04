@@ -3,6 +3,7 @@
 //! a window (`plans/mvp.md`, phase 8: "unit-tested without gpui"). `views/` wraps this in `gpui`
 //! entities and renders it.
 
+pub mod about;
 pub mod config;
 pub mod debug_open;
 pub mod define_variable;

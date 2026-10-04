@@ -200,3 +200,78 @@ _version: 2
   es: "Trace"
   gl: "Trace"
   it: "Trace"
+"settings.category.about":
+  en: "About"
+  es: "Acerca de"
+  gl: "Acerca de"
+  it: "Informazioni"
+"settings.about.version":
+  en: "Version"
+  es: "Versión"
+  gl: "Versión"
+  it: "Versione"
+"settings.about.ready.title":
+  en: "Postino %{version} is ready to install"
+  es: "Postino %{version} está listo para instalar"
+  gl: "Postino %{version} está listo para instalar"
+  it: "Postino %{version} è pronto per l'installazione"
+"settings.about.ready.text":
+  en: "Downloaded and verified. Restarting keeps your open tabs; unsaved changes ask first."
+  es: "Descargado y verificado. Reiniciar conserva tus pestañas abiertas; los cambios sin guardar se preguntan antes."
+  gl: "Descargado e verificado. Reiniciar conserva as túas lapelas abertas; os cambios sen gardar pregúntanse antes."
+  it: "Scaricato e verificato. Il riavvio mantiene le schede aperte; per le modifiche non salvate viene chiesta conferma."
+"settings.about.ready.restart":
+  en: "Restart to update"
+  es: "Reiniciar para actualizar"
+  gl: "Reiniciar para actualizar"
+  it: "Riavvia per aggiornare"
+"settings.about.status.failed":
+  en: "The last check failed. The log has the details."
+  es: "La última comprobación falló. El registro tiene los detalles."
+  gl: "A última comprobación fallou. O rexistro ten os detalles."
+  it: "L'ultimo controllo non è riuscito. I dettagli sono nel log."
+"settings.about.check_now":
+  en: "Check now"
+  es: "Comprobar ahora"
+  gl: "Comprobar agora"
+  it: "Controlla ora"
+"settings.about.downloads_to":
+  en: "Downloads to"
+  es: "Se descarga en"
+  gl: "Descárgase en"
+  it: "Scarica in"
+"settings.about.managed.title":
+  en: "Updates come from your distribution"
+  es: "Las actualizaciones vienen de tu distribución"
+  gl: "As actualizacións veñen da túa distribución"
+  it: "Gli aggiornamenti arrivano dalla tua distribuzione"
+"settings.about.managed.text":
+  en: "Postino doesn't update itself on Linux. Use your package manager or software center to get new versions."
+  es: "Postino no se actualiza solo en Linux. Usa tu gestor de paquetes o el centro de software para obtener nuevas versiones."
+  gl: "Postino non se actualiza só en Linux. Usa o teu xestor de paquetes ou o centro de software para obter novas versións."
+  it: "Postino non si aggiorna da solo su Linux. Usa il gestore di pacchetti o il centro software per ottenere le nuove versioni."
+"settings.about.unavailable.title":
+  en: "Updates are not available in this build"
+  es: "Las actualizaciones no están disponibles en esta compilación"
+  gl: "As actualizacións non están dispoñibles nesta compilación"
+  it: "Gli aggiornamenti non sono disponibili in questa build"
+"settings.about.unavailable.text":
+  en: "This build of Postino doesn't update itself. Download new versions from GitHub."
+  es: "Esta compilación de Postino no se actualiza sola. Descarga las nuevas versiones desde GitHub."
+  gl: "Esta compilación de Postino non se actualiza soa. Descarga as novas versións desde GitHub."
+  it: "Questa build di Postino non si aggiorna da sola. Scarica le nuove versioni da GitHub."
+"settings.about.installed_from":
+  en: "Installed from"
+  es: "Instalado desde"
+  gl: "Instalado desde"
+  it: "Installato da"
+"settings.about.footer.updater":
+  en: "Local only. Postino only contacts GitHub to check for updates."
+  es: "Solo local. Postino únicamente contacta con GitHub para buscar actualizaciones."
+  gl: "Só local. Postino unicamente contacta con GitHub para buscar actualizacións."
+  it: "Solo locale. Postino contatta GitHub solo per cercare aggiornamenti."
+"settings.about.footer.offline":
+  en: "Local only. Postino never connects to the internet on its own."
+  es: "Solo local. Postino nunca se conecta a internet por su cuenta."
+  gl: "Só local. Postino nunca se conecta a internet por si mesmo."
+  it: "Solo locale. Postino non si connette mai a internet da solo."
