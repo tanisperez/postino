@@ -67,6 +67,11 @@ pre-release with `POSTINO_UPDATE_URL` set to the manifest of the newer one befor
 POSTINO_UPDATE_URL=https://github.com/tanisperez/postino/releases/download/vX.Y.Z-rc.N/latest.json postino
 ```
 
+The app takes its own version from the workspace version in `Cargo.toml`, not from the tag. For a
+test pre-release, set the full version there (`version = "0.1.0-rc.4"`) before tagging, or the
+build reports `0.1.0`, which is newer than any `0.1.0-rc.N`, and the updater finds nothing. Set it
+back to `0.1.0` for the final release.
+
 The packaging scripts live in `packaging/` (one README per platform) and run in the workflow.
 `make dist` builds the packages for the current OS locally into `target/dist` (Linux needs
 `nfpm` on `PATH`, macOS the Xcode command line tools). The Windows installer is compiled with

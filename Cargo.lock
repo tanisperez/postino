@@ -5149,7 +5149,7 @@ dependencies = [
 
 [[package]]
 name = "postino-app"
-version = "0.1.0"
+version = "0.1.0-rc.4"
 dependencies = [
  "anyhow",
  "chrono",
@@ -5178,7 +5178,7 @@ dependencies = [
 
 [[package]]
 name = "postino-core"
-version = "0.1.0"
+version = "0.1.0-rc.4"
 dependencies = [
  "base64 0.23.1",
  "fastrand",
@@ -5189,7 +5189,7 @@ dependencies = [
 
 [[package]]
 name = "postino-format"
-version = "0.1.0"
+version = "0.1.0-rc.4"
 dependencies = [
  "postino-core",
  "pretty_assertions",
@@ -5200,7 +5200,7 @@ dependencies = [
 
 [[package]]
 name = "postino-http"
-version = "0.1.0"
+version = "0.1.0-rc.4"
 dependencies = [
  "log",
  "postino-core",
@@ -5214,7 +5214,7 @@ dependencies = [
 
 [[package]]
 name = "postino-load"
-version = "0.1.0"
+version = "0.1.0-rc.4"
 dependencies = [
  "postino-core",
  "postino-http",
@@ -5229,7 +5229,7 @@ dependencies = [
 
 [[package]]
 name = "postino-runner"
-version = "0.1.0"
+version = "0.1.0-rc.4"
 dependencies = [
  "log",
  "postino-core",
@@ -5241,7 +5241,7 @@ dependencies = [
 
 [[package]]
 name = "postino-script"
-version = "0.1.0"
+version = "0.1.0-rc.4"
 dependencies = [
  "postino-core",
  "pretty_assertions",
@@ -5253,7 +5253,7 @@ dependencies = [
 
 [[package]]
 name = "postino-update"
-version = "0.1.0"
+version = "0.1.0-rc.4"
 dependencies = [
  "log",
  "semver",
@@ -5268,7 +5268,7 @@ dependencies = [
 
 [[package]]
 name = "postino-workspace"
-version = "0.1.0"
+version = "0.1.0-rc.4"
 dependencies = [
  "postino-core",
  "postino-format",
