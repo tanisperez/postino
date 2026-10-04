@@ -33,8 +33,13 @@ impl AppView {
             cx.background_executor().timer(STARTUP_DELAY).await;
             // The setting may have been turned off during the delay.
             let start = this
-                .update(cx, |view, _| {
-                    view.state.settings.check_updates && view.state.update.begin_check()
+                .update(cx, |view, cx| {
+                    let start =
+                        view.state.settings.check_updates && view.state.update.begin_check();
+                    if start {
+                        cx.notify();
+                    }
+                    start
                 })
                 .unwrap_or(false);
             if !start {
@@ -43,17 +48,16 @@ impl AppView {
             let result = cx
                 .background_spawn(async move { update::check_and_download(platform) })
                 .await;
-            let _ = this.update(cx, |view, cx| match result {
-                Ok(outcome) => {
-                    view.state.update.finish_check(&outcome);
-                    if matches!(outcome, CheckOutcome::Ready(_)) {
-                        cx.notify();
+            // One repaint per change, for the status bar and an open Settings, "About".
+            let _ = this.update(cx, |view, cx| {
+                match result {
+                    Ok(outcome) => view.state.update.finish_check(&outcome),
+                    Err(error) => {
+                        view.state.update.fail_check();
+                        log::warn!("update check failed: {error}");
                     }
                 }
-                Err(error) => {
-                    view.state.update.fail_check();
-                    log::warn!("update check failed: {error}");
-                }
+                cx.notify();
             });
         })
         .detach();
@@ -78,6 +82,7 @@ impl AppView {
             return;
         }
         window.push_notification(Notification::info(t!("update.checking").into_owned()), cx);
+        cx.notify();
         cx.spawn_in(window, async move |this, cx| {
             let result = cx
                 .background_spawn(async move { update::check_and_download(platform) })
@@ -91,13 +96,9 @@ impl AppView {
                                 t!("update.up_to_date", version = update::CURRENT_VERSION)
                                     .into_owned(),
                             ),
-                            CheckOutcome::Ready(ready) => {
-                                cx.notify();
-                                Notification::info(
-                                    t!("update.found", version = ready.version.as_str())
-                                        .into_owned(),
-                                )
-                            }
+                            CheckOutcome::Ready(ready) => Notification::info(
+                                t!("update.found", version = ready.version.as_str()).into_owned(),
+                            ),
                         }
                     }
                     Err(error) => {
@@ -109,6 +110,7 @@ impl AppView {
                     }
                 };
                 window.push_notification(notification, cx);
+                cx.notify();
             });
         })
         .detach();

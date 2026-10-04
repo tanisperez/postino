@@ -65,14 +65,17 @@ pub enum SettingsCategory {
     Requests,
     /// Diagnostics: the log level and the log file.
     Advanced,
+    /// The version, the release links and the updater.
+    About,
 }
 
 impl SettingsCategory {
     /// Every category, in the order the nav lists them.
-    pub const ALL: [SettingsCategory; 3] = [
+    pub const ALL: [SettingsCategory; 4] = [
         SettingsCategory::Appearance,
         SettingsCategory::Requests,
         SettingsCategory::Advanced,
+        SettingsCategory::About,
     ];
 
     /// The nav item label, also the pane's title.
@@ -81,6 +84,7 @@ impl SettingsCategory {
             SettingsCategory::Appearance => t!("settings.category.appearance"),
             SettingsCategory::Requests => t!("common.requests"),
             SettingsCategory::Advanced => t!("settings.category.advanced"),
+            SettingsCategory::About => t!("settings.category.about"),
         }
         .into_owned()
     }

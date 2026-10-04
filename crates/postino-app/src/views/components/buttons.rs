@@ -46,6 +46,7 @@ struct ButtonSpec {
     icon: Option<Icon>,
     height: f32,
     min_width: Option<f32>,
+    full_width: bool,
     disabled: bool,
     on_click: Option<ClickHandler>,
 }
@@ -62,6 +63,7 @@ impl ButtonSpec {
             icon: None,
             height: CONTROL_HEIGHT,
             min_width: None,
+            full_width: false,
             disabled: false,
             on_click: None,
         }
@@ -74,6 +76,7 @@ impl ButtonSpec {
         let mut button = apply(Button::new(self.id))
             .h(px(self.height))
             .when_some(self.min_width, |button, width| button.min_w(px(width)))
+            .when(self.full_width, |button| button.w_full())
             .rounded(px(RADIUS_MD))
             .font_weight(FontWeight::MEDIUM)
             .disabled(self.disabled)
@@ -132,6 +135,18 @@ impl PrimaryButton {
         self
     }
 
+    /// Sets a leading icon.
+    pub fn icon(mut self, icon: impl Into<Icon>) -> Self {
+        self.spec.icon = Some(icon.into());
+        self
+    }
+
+    /// Makes the button fill the width of its parent.
+    pub fn full_width(mut self) -> Self {
+        self.spec.full_width = true;
+        self
+    }
+
     /// Disables the button (45% opacity, no click).
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.spec.disabled = disabled;
@@ -168,6 +183,12 @@ impl SecondaryButton {
         }
     }
 
+    /// Sets a leading icon.
+    pub fn icon(mut self, icon: impl Into<Icon>) -> Self {
+        self.spec.icon = Some(icon.into());
+        self
+    }
+
     /// Sets the button's height (defaults to [`CONTROL_HEIGHT`]).
     #[allow(dead_code)] // no caller outside the components gallery needs this yet
     pub fn height(mut self, height: f32) -> Self {
@@ -176,14 +197,12 @@ impl SecondaryButton {
     }
 
     /// Disables the button (45% opacity, no click).
-    #[allow(dead_code)] // no caller outside the components gallery needs this yet
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.spec.disabled = disabled;
         self
     }
 
     /// Sets the click handler.
-    #[allow(dead_code)] // no caller outside the components gallery needs this yet
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,

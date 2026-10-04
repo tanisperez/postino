@@ -13,7 +13,6 @@
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::scroll::{Scrollbar, ScrollbarMode};
-use gpui_kit::component::switch::Switch;
 use gpui_kit::component::theme::{Theme, ThemeMode};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -32,6 +31,8 @@ use crate::theme::{self, Palette, PaletteExt};
 
 use super::components::{GhostButton, IconButton};
 use super::root::AppView;
+
+mod about;
 
 /// Width of the modal itself.
 const MODAL_WIDTH: f32 = 800.0;
@@ -252,6 +253,8 @@ fn render_settings_body(
     };
     let settings = view.read(cx).state.settings.clone();
     let category = view.read(cx).settings_category;
+    let about =
+        (category == SettingsCategory::About).then(|| about::AboutPane::capture(view.read(cx)));
     let palette = cx.palette();
     let mono_font_family = cx.theme().mono_font_family.clone();
     let installed = cx.text_system().all_font_names();
@@ -274,6 +277,7 @@ fn render_settings_body(
             &settings,
             &installed,
             &mono_font_family,
+            about.as_ref(),
         ))
         .into_any_element()
 }
@@ -348,6 +352,10 @@ fn render_nav_item(
             "settings-nav-advanced",
             Icon::new(gpui_kit::assets::IconName::Wrench),
         ),
+        SettingsCategory::About => (
+            "settings-nav-about",
+            Icon::new(gpui_kit::assets::IconName::Info),
+        ),
     };
     let item = h_flex()
         .id(id)
@@ -378,6 +386,7 @@ fn render_nav_item(
 /// The body's scrollbar is always shown (while the content overflows), unlike the theme's
 /// default that only shows it while scrolling: on a short window nothing else tells the user
 /// that more settings lie below.
+#[allow(clippy::too_many_arguments)]
 fn render_right_column(
     weak: WeakEntity<AppView>,
     scroll_handle: ScrollHandle,
@@ -386,6 +395,7 @@ fn render_right_column(
     settings: &Settings,
     installed: &[String],
     mono_font_family: &SharedString,
+    about: Option<&about::AboutPane>,
 ) -> AnyElement {
     v_flex()
         .flex_1()
@@ -405,6 +415,7 @@ fn render_right_column(
                     settings,
                     installed,
                     mono_font_family,
+                    about,
                 ))
                 .child(
                     div()
@@ -413,7 +424,11 @@ fn render_right_column(
                         .child(settings_scrollbar(&scroll_handle, palette)),
                 ),
         )
-        .child(render_footer(weak, palette))
+        .child(if about.is_some() {
+            about::render_about_footer(palette)
+        } else {
+            render_footer(weak, palette)
+        })
         .into_any_element()
 }
 
@@ -434,6 +449,7 @@ fn settings_scrollbar(scroll_handle: &ScrollHandle, palette: &Palette) -> Scroll
 }
 
 /// The scrolled part of the right column: the selected category's sections.
+#[allow(clippy::too_many_arguments)]
 fn render_body(
     weak: WeakEntity<AppView>,
     scroll_handle: &ScrollHandle,
@@ -442,6 +458,7 @@ fn render_body(
     settings: &Settings,
     installed: &[String],
     mono_font_family: &SharedString,
+    about: Option<&about::AboutPane>,
 ) -> AnyElement {
     v_flex()
         .id("settings-body")
@@ -471,23 +488,15 @@ fn render_body(
                 palette,
                 settings.invalid_tls_certificates,
             )],
-            SettingsCategory::Advanced => {
-                let mut sections = vec![render_logging_section(
-                    weak.clone(),
-                    palette,
-                    settings.log_level,
-                    mono_font_family,
-                )];
-                if state::update::updater_enabled() {
-                    sections.push(divider(palette));
-                    sections.push(render_updates_section(
-                        weak.clone(),
-                        palette,
-                        settings.check_updates,
-                    ));
-                }
-                sections
-            }
+            SettingsCategory::Advanced => vec![render_logging_section(
+                weak.clone(),
+                palette,
+                settings.log_level,
+                mono_font_family,
+            )],
+            SettingsCategory::About => about
+                .map(|pane| about::render_about(weak.clone(), palette, mono_font_family, pane))
+                .unwrap_or_default(),
         })
         .into_any_element()
 }
@@ -1068,35 +1077,6 @@ fn render_logging_section(
                     variable = logging::ENV_VAR,
                 )),
         )
-        .into_any_element()
-}
-
-/// The "Updates" section of the Advanced pane, only shown in builds that have an updater.
-fn render_updates_section(
-    weak: WeakEntity<AppView>,
-    palette: &Palette,
-    check_updates: bool,
-) -> AnyElement {
-    let control = Switch::new("settings-check-updates")
-        .checked(check_updates)
-        .on_click(move |checked, window, cx| {
-            let checked = *checked;
-            let _ = weak.update(cx, |view, cx| view.set_check_updates(checked, window, cx));
-        })
-        .into_any_element();
-    v_flex()
-        .gap(px(14.0))
-        .child(
-            div()
-                .font_weight(FontWeight::MEDIUM)
-                .child(t!("update.setting.title")),
-        )
-        .child(labeled_row(
-            palette,
-            t!("update.setting.check"),
-            Some(t!("update.setting.check_description")),
-            control,
-        ))
         .into_any_element()
 }
 

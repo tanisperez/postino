@@ -3,15 +3,20 @@
 //! a window (`plans/mvp.md`, phase 8: "unit-tested without gpui"). `views/` wraps this in `gpui`
 //! entities and renders it.
 
+pub mod about;
 pub mod config;
 pub mod debug_open;
 pub mod define_variable;
 pub mod env_color;
+pub mod env_edit;
+pub mod env_panel;
 pub mod format;
 pub mod import;
 pub mod launch;
+pub mod load_panel;
 pub mod load_test;
 pub mod locale;
+pub mod navigation;
 pub mod number;
 pub mod open_queue;
 pub mod palette;

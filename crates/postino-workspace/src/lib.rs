@@ -9,6 +9,7 @@
 //! writing them back safely (atomic writes, every id confined to the workspace root).
 #![warn(missing_docs)]
 
+mod env_edit;
 mod error;
 mod git;
 mod ids;
@@ -18,6 +19,7 @@ mod scan;
 mod tree;
 mod workspace;
 
+pub use env_edit::{EnvChange, EnvLayer, EnvLayers};
 pub use error::WorkspaceError;
 pub use git::git_branch;
 pub use postman::ImportReport;

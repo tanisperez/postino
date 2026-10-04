@@ -61,18 +61,38 @@ pub enum CheckOutcome {
     Ready(ReadyUpdate),
 }
 
+/// How the last check went, shown in Settings, "About".
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum CheckStatus {
+    /// No check has finished yet.
+    #[default]
+    Idle,
+    /// A check is running.
+    Checking,
+    /// The last check found nothing newer.
+    UpToDate,
+    /// The last check failed.
+    Failed,
+}
+
 /// What the app remembers about updates: the ready one (if any) and whether a check is running.
 #[derive(Debug, Default)]
 pub struct UpdateState {
     ready: Option<ReadyUpdate>,
     checking: bool,
     installing: bool,
+    status: CheckStatus,
 }
 
 impl UpdateState {
     /// The update waiting to be installed.
     pub fn ready(&self) -> Option<&ReadyUpdate> {
         self.ready.as_ref()
+    }
+
+    /// How the last check went, or [`CheckStatus::Checking`] while one runs.
+    pub fn status(&self) -> CheckStatus {
+        self.status
     }
 
     /// Marks a check as started. Returns `false`, doing nothing, when one is already running or
@@ -82,12 +102,17 @@ impl UpdateState {
             return false;
         }
         self.checking = true;
+        self.status = CheckStatus::Checking;
         true
     }
 
     /// Records the end of a check. A ready update is remembered, never replaced by a later one.
     pub fn finish_check(&mut self, outcome: &CheckOutcome) {
         self.checking = false;
+        self.status = match outcome {
+            CheckOutcome::UpToDate => CheckStatus::UpToDate,
+            CheckOutcome::Ready(_) => CheckStatus::Idle,
+        };
         if let CheckOutcome::Ready(update) = outcome
             && self.ready.is_none()
         {
@@ -98,6 +123,7 @@ impl UpdateState {
     /// Records a failed check.
     pub fn fail_check(&mut self) {
         self.checking = false;
+        self.status = CheckStatus::Failed;
     }
 
     /// Marks the installation as started and returns the update to install. `None`, doing
@@ -240,6 +266,22 @@ mod tests {
         assert!(!state.begin_check());
         state.fail_check();
         assert!(state.begin_check());
+    }
+
+    #[test]
+    fn the_status_follows_the_last_check() {
+        let mut state = UpdateState::default();
+        assert_eq!(state.status(), CheckStatus::Idle);
+        state.begin_check();
+        assert_eq!(state.status(), CheckStatus::Checking);
+        state.fail_check();
+        assert_eq!(state.status(), CheckStatus::Failed);
+        state.begin_check();
+        state.finish_check(&CheckOutcome::UpToDate);
+        assert_eq!(state.status(), CheckStatus::UpToDate);
+        state.begin_check();
+        state.finish_check(&CheckOutcome::Ready(ready("0.2.0")));
+        assert_eq!(state.status(), CheckStatus::Idle);
     }
 
     #[test]

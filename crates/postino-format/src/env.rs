@@ -143,6 +143,37 @@ pub fn set_variable(lines: &mut Vec<EnvLine>, key: &str, value: &str) {
     }
 }
 
+/// Removes the first `key=value` line for `key` from `lines`, in place, leaving every other line
+/// (comments and blank lines included) untouched. Returns whether a line was removed.
+pub fn remove_variable(lines: &mut Vec<EnvLine>, key: &str) -> bool {
+    let position = lines
+        .iter()
+        .position(|line| matches!(line, EnvLine::Variable(variable) if variable.key == key));
+    match position {
+        Some(index) => {
+            lines.remove(index);
+            true
+        }
+        None => false,
+    }
+}
+
+/// Renames the first `from` key to `to` in `lines`, in place, keeping the line's position and
+/// value. Returns whether a line was renamed.
+pub fn rename_variable(lines: &mut [EnvLine], from: &str, to: &str) -> bool {
+    let existing = lines.iter_mut().find_map(|line| match line {
+        EnvLine::Variable(variable) if variable.key == from => Some(variable),
+        _ => None,
+    });
+    match existing {
+        Some(variable) => {
+            variable.key = to.to_string();
+            true
+        }
+        None => false,
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::expect_used)]
 mod tests {
@@ -288,5 +319,21 @@ mod tests {
         let mut lines = parse_lines("").expect("valid env file");
         set_variable(&mut lines, "TOKEN", "secret");
         assert_eq!(serialize_lines(&lines), "TOKEN=secret\n");
+    }
+
+    #[test]
+    fn remove_variable_drops_only_the_first_matching_line() {
+        let mut lines = parse_lines("# top\nA=1\n\nB=2\nA=3\n").expect("valid");
+        assert!(remove_variable(&mut lines, "A"));
+        assert_eq!(serialize_lines(&lines), "# top\n\nB=2\nA=3\n");
+        assert!(!remove_variable(&mut lines, "missing"));
+    }
+
+    #[test]
+    fn rename_variable_keeps_position_and_value() {
+        let mut lines = parse_lines("# top\nA=1\nB=2\n").expect("valid");
+        assert!(rename_variable(&mut lines, "A", "C"));
+        assert_eq!(serialize_lines(&lines), "# top\nC=1\nB=2\n");
+        assert!(!rename_variable(&mut lines, "A", "D"));
     }
 }
