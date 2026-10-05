@@ -85,6 +85,11 @@ _version: 2
   es: "Nueva petición"
   gl: "Nova petición"
   it: "Nuova richiesta"
+"common.create":
+  en: "Create"
+  es: "Crear"
+  gl: "Crear"
+  it: "Crea"
 "common.new_folder":
   en: "New folder"
   es: "Nueva carpeta"

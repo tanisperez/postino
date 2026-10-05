@@ -4,10 +4,11 @@
 //! rename/delete/new request/new folder context menu (`plans/mvp.md`, phase 8).
 
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 use gpui_kit::component::button::ButtonVariant;
 use gpui_kit::component::dialog::DialogButtonProps;
-use gpui_kit::component::input::{Input, InputState};
+use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::list::ListItem;
 use gpui_kit::component::menu::{PopupMenu, PopupMenuItem};
 use gpui_kit::component::tree::{TreeEntry, TreeItem, TreeState, tree as tree_view};
@@ -22,7 +23,9 @@ use postino_workspace::{Node, RequestEntry, git_branch};
 use crate::state;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{RADIUS_MD, SIDEBAR_FILTER_HEIGHT, TREE_ROW_HEIGHT};
-use crate::views::components::{IconButton, MethodBadge, SectionLabel, edit_menu, text_field};
+use crate::views::components::{
+    IconButton, MethodBadge, PrimaryButton, SecondaryButton, SectionLabel, edit_menu, text_field,
+};
 
 use super::root::AppView;
 
@@ -492,9 +495,78 @@ pub(crate) fn pick_workspace_folder(view: WeakEntity<AppView>, window: &mut Wind
     .detach();
 }
 
-/// Opens an in-app dialog (never a native blocking one) asking for a new request's name, inside
-/// `parent` (the workspace root when `None`). Also called from the open-tabs bar's trailing "+"
-/// button (`plans/ui-redesign.md` section 2.3 point 3).
+/// What a name dialog does with the trimmed, non-empty name once it is confirmed.
+type NameSubmit = Rc<dyn Fn(String, &mut App)>;
+
+/// Confirms a name dialog: reads the field, closes the dialog and runs the [`NameSubmit`].
+type NameConfirm = Rc<dyn Fn(&mut Window, &mut App)>;
+
+/// Opens an in-app dialog (never a native blocking one) with a name field, a Cancel button and
+/// `ok_label`. Enter in the field and the button confirm it; an empty name keeps the dialog open.
+fn open_name_dialog(
+    title: SharedString,
+    ok_label: SharedString,
+    input: Entity<InputState>,
+    submit: NameSubmit,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    // Confirms and closes the dialog; shared by Enter in the input and the button.
+    let confirm: NameConfirm = {
+        let input = input.clone();
+        Rc::new(move |window, cx| {
+            let name = input.read(cx).value().trim().to_string();
+            if name.is_empty() {
+                return;
+            }
+            window.close_dialog(cx);
+            submit(name, cx);
+        })
+    };
+    {
+        let confirm = confirm.clone();
+        window
+            .subscribe(&input, cx, move |_, event: &InputEvent, window, cx| {
+                if matches!(event, InputEvent::PressEnter { .. }) {
+                    confirm(window, cx);
+                }
+            })
+            .detach();
+    }
+    let dialog_input = input.clone();
+    window.open_dialog(cx, move |dialog, _, _| {
+        let input_for_content = dialog_input.clone();
+        let confirm = confirm.clone();
+        let ok_label = ok_label.clone();
+        dialog
+            .title(title.clone())
+            .content(move |content, _, cx| content.child(text_field(&input_for_content, cx)))
+            .footer(
+                h_flex()
+                    .justify_end()
+                    .gap(px(8.0))
+                    .child(
+                        SecondaryButton::new("name-dialog-cancel", t!("common.cancel"))
+                            .on_click(|_, window, cx| window.close_dialog(cx)),
+                    )
+                    .child(
+                        PrimaryButton::new("name-dialog-ok", ok_label)
+                            .on_click(move |_, window, cx| confirm(window, cx)),
+                    ),
+            )
+    });
+    // Focus only after `open_dialog`, which captures the focused handle to restore on close
+    // (see `views/command_palette.rs`). Selecting the whole text makes typing replace a
+    // pre-filled name.
+    input.update(cx, |state, cx| {
+        state.focus(window, cx);
+        state.select_all(window, cx);
+    });
+}
+
+/// Opens the dialog asking for a new request's name, inside `parent` (the workspace root when
+/// `None`). Also called from the open-tabs bar's trailing "+" button (`plans/ui-redesign.md`
+/// section 2.3 point 3).
 pub(crate) fn open_new_request_dialog(
     view: WeakEntity<AppView>,
     parent: Option<String>,
@@ -503,30 +575,20 @@ pub(crate) fn open_new_request_dialog(
 ) {
     let input =
         cx.new(|cx| InputState::new(window, cx).placeholder(t!("shell.sidebar.request_name")));
-    let dialog_input = input.clone();
-    window.open_dialog(cx, move |dialog, _, _| {
-        let input_for_content = dialog_input.clone();
-        let input_for_ok = dialog_input.clone();
-        let view = view.clone();
-        let parent = parent.clone();
-        dialog
-            .title(t!("common.new_request"))
-            .content(move |content, _, cx| content.child(text_field(&input_for_content, cx)))
-            .on_ok(move |_, _, cx| {
-                let name = input_for_ok.read(cx).value().trim().to_string();
-                if !name.is_empty() {
-                    let _ =
-                        view.update(cx, |view, cx| view.create_request(parent.clone(), name, cx));
-                }
-                true
-            })
+    let submit: NameSubmit = Rc::new(move |name, cx| {
+        let _ = view.update(cx, |view, cx| view.create_request(parent.clone(), name, cx));
     });
-    // Focus only after `open_dialog`, which captures the focused handle to restore on close
-    // (see `views/command_palette.rs`).
-    input.update(cx, |state, cx| state.focus(window, cx));
+    open_name_dialog(
+        t!("common.new_request").into(),
+        t!("common.create").into(),
+        input,
+        submit,
+        window,
+        cx,
+    );
 }
 
-/// Opens an in-app dialog asking for a new folder's name, inside `parent`. Also called from the
+/// Opens the dialog asking for a new folder's name, inside `parent`. Also called from the
 /// command palette's "New folder" action (`plans/ui-redesign.md` phase 7 item 1).
 pub(crate) fn open_new_folder_dialog(
     view: WeakEntity<AppView>,
@@ -536,28 +598,20 @@ pub(crate) fn open_new_folder_dialog(
 ) {
     let input =
         cx.new(|cx| InputState::new(window, cx).placeholder(t!("shell.sidebar.folder_name")));
-    let dialog_input = input.clone();
-    window.open_dialog(cx, move |dialog, _, _| {
-        let input_for_content = dialog_input.clone();
-        let input_for_ok = dialog_input.clone();
-        let view = view.clone();
-        let parent = parent.clone();
-        dialog
-            .title(t!("common.new_folder"))
-            .content(move |content, _, cx| content.child(text_field(&input_for_content, cx)))
-            .on_ok(move |_, _, cx| {
-                let name = input_for_ok.read(cx).value().trim().to_string();
-                if !name.is_empty() {
-                    let _ =
-                        view.update(cx, |view, cx| view.create_folder(parent.clone(), name, cx));
-                }
-                true
-            })
+    let submit: NameSubmit = Rc::new(move |name, cx| {
+        let _ = view.update(cx, |view, cx| view.create_folder(parent.clone(), name, cx));
     });
-    input.update(cx, |state, cx| state.focus(window, cx));
+    open_name_dialog(
+        t!("common.new_folder").into(),
+        t!("common.create").into(),
+        input,
+        submit,
+        window,
+        cx,
+    );
 }
 
-/// Opens an in-app dialog, pre-filled with `current_name`, to rename `id`.
+/// Opens the dialog, pre-filled with `current_name`, to rename `id`.
 fn open_rename_dialog(
     view: WeakEntity<AppView>,
     id: String,
@@ -569,28 +623,17 @@ fn open_rename_dialog(
     input.update(cx, |state, cx| {
         state.set_value(current_name.clone(), window, cx);
     });
-    let dialog_input = input.clone();
-    window.open_dialog(cx, move |dialog, _, _| {
-        let input_for_content = dialog_input.clone();
-        let input_for_ok = dialog_input.clone();
-        let view = view.clone();
-        let id = id.clone();
-        dialog
-            .title(t!("common.rename"))
-            .content(move |content, _, cx| content.child(text_field(&input_for_content, cx)))
-            .on_ok(move |_, _, cx| {
-                let name = input_for_ok.read(cx).value().trim().to_string();
-                if !name.is_empty() {
-                    let _ = view.update(cx, |view, cx| view.rename(id.clone(), name, cx));
-                }
-                true
-            })
+    let submit: NameSubmit = Rc::new(move |name, cx| {
+        let _ = view.update(cx, |view, cx| view.rename(id.clone(), name, cx));
     });
-    // Selecting the whole name makes typing replace it.
-    input.update(cx, |state, cx| {
-        state.focus(window, cx);
-        state.select_all(window, cx);
-    });
+    open_name_dialog(
+        t!("common.rename").into(),
+        t!("common.rename").into(),
+        input,
+        submit,
+        window,
+        cx,
+    );
 }
 
 /// Opens an in-app confirmation (never a native blocking dialog) before deleting `id`.
