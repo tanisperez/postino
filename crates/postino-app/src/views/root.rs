@@ -23,10 +23,10 @@ use postino_runner::{RunResult, ScriptEngine, SendOptions};
 use postino_script::QuickJsEngine;
 
 use crate::actions::{
-    NextTab, OpenCommandPalette, OpenSettings, PreviousTab, SaveActiveTab, SelectEnvironment1,
-    SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
-    SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
-    SelectNoEnvironment, SendActiveTab,
+    CloseActiveTab, NextTab, OpenCommandPalette, OpenSettings, PreviousTab, SaveActiveTab,
+    SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
+    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
+    SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
 };
 use crate::state::about::AboutInfo;
 use crate::state::debug_open::{self, DebugOpenTarget};
@@ -762,6 +762,25 @@ impl AppView {
         self.open_command_palette(window, cx);
     }
 
+    /// Handles the `Ctrl+W` / `Cmd+W` key binding (see `main.rs`'s `bind_keys`). Like the tab's
+    /// close button it asks first for an environment tab with unsaved edits, and like a tab
+    /// switch it refocuses the view, because the closed tab's focused input vanishes.
+    fn on_close_tab_action(
+        &mut self,
+        _: &CloseActiveTab,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(index) = self.state.tabs.active_index() else {
+            return;
+        };
+        let before = self.state.tabs.open_tabs().len();
+        self.request_close_tab(index, window, cx);
+        if self.state.tabs.open_tabs().len() != before {
+            self.refocus_after_tab_switch(window, cx);
+        }
+    }
+
     /// Handles the `Ctrl+Tab` key binding (see `main.rs`'s `bind_keys`).
     fn on_next_tab_action(&mut self, _: &NextTab, window: &mut Window, cx: &mut Context<Self>) {
         self.state.tabs.activate_next();
@@ -1156,6 +1175,7 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_send_action))
             .on_action(cx.listener(Self::on_open_settings_action))
             .on_action(cx.listener(Self::on_open_command_palette_action))
+            .on_action(cx.listener(Self::on_close_tab_action))
             .on_action(cx.listener(Self::on_next_tab_action))
             .on_action(cx.listener(Self::on_previous_tab_action))
             .on_action(cx.listener(Self::on_select_environment_1))
