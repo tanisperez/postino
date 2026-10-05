@@ -140,7 +140,7 @@ impl AppView {
                             .h(px(MENU_ROW_HEIGHT))
                             .items_center()
                             .gap_2()
-                            .px_2()
+                            .px_1()
                             .w_full()
                             .child(leading)
                             .child(div().flex_1().child(name.clone()))
