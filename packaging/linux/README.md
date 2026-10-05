@@ -6,6 +6,8 @@
 | `codes.tanis.postino.xml` | shared-mime-info definition of `*.postino` (`application/x-postino`) |
 | `nfpm.yaml` | nfpm config shared by the deb and the rpm |
 | `package.sh` | Builds the tarball, the deb and the rpm |
+| `repo.sh` | Builds the signed APT and DNF repositories published on the website |
+| `test-repo.sh` | Tests `repo.sh` end to end with podman (Ubuntu and Fedora containers) |
 
 ## Usage
 
@@ -36,3 +38,11 @@ deb and rpm (nfpm semver handling). The optional arch defaults to `x86_64`; `aar
   embedded in the binary. The Vulkan loader is only recommended. Package names for deb and rpm
   are set in `nfpm.yaml`.
 - nfpm only expands environment variables in content entries that set `expand: true`.
+
+## Repositories
+
+`website.yml` runs `repo.sh` after each stable release (and when it changes) and uploads the
+result with the site: `apt/`, `rpm/` and `postino.asc` (the public key, shared by both). Only the
+last 3 stable releases are kept. Secrets: `GPG_PRIVATE_KEY` (armored export) and
+`GPG_PASSPHRASE`. Without `GPG_PRIVATE_KEY` the repository steps are skipped and the site still
+deploys. Check a change with `packaging/linux/test-repo.sh <dir with a deb and an rpm>`.

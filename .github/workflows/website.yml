@@ -1,6 +1,7 @@
 # Publishes site/ to GitHub Pages (postino.tanis.codes). The site is rebuilt from scratch on
-# every run, there is no gh-pages branch (plans/releases.md, section 5). The APT and DNF
-# repositories (#43) will be added to the same upload.
+# every run, there is no gh-pages branch (plans/releases.md, section 5). The signed APT and DNF
+# repositories (#43) are added to the same upload from the deb and rpm files of the last stable
+# releases. They are skipped until the GPG_PRIVATE_KEY secret exists and a stable release does.
 name: Website
 
 on:
@@ -8,7 +9,11 @@ on:
     branches: [main]
     paths:
       - "site/**"
+      - "packaging/linux/repo.sh"
       - ".github/workflows/website.yml"
+  # A stable release publishes new packages. Pre-releases never enter the repositories.
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -23,6 +28,8 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -32,6 +39,40 @@ jobs:
       # site/screenshots holds the screenshot tooling and its demo workspace, not pages.
       - name: Assemble the site
         run: rsync -a --exclude screenshots/ --exclude README.md site/ _site/
+
+      - name: Install the repository tools
+        if: env.GPG_PRIVATE_KEY != ''
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq apt-utils createrepo-c rpm
+
+      # The last 3 stable releases stay in the repositories, older ones remain on Releases.
+      - name: Build the APT and DNF repositories
+        if: env.GPG_PRIVATE_KEY != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          tags=$(gh release list --exclude-pre-releases --exclude-drafts --limit 3 \
+              --json tagName -q '.[].tagName')
+          if [ -z "$tags" ]; then
+            echo "No stable release yet, skipping the Linux repositories."
+            exit 0
+          fi
+          mkdir packages
+          for tag in $tags; do
+            gh release download "$tag" --pattern '*.deb' --pattern '*.rpm' --dir packages
+          done
+
+          export GNUPGHOME=$RUNNER_TEMP/gnupg
+          mkdir -m 700 "$GNUPGHOME"
+          printf '%s' "$GPG_PASSPHRASE" > "$RUNNER_TEMP/gpg-pass"
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          export GPG_KEY_ID=$(gpg --batch --list-secret-keys --with-colons | awk -F: '/^fpr/ {print $10; exit}')
+          export GPG_PASSPHRASE_FILE=$RUNNER_TEMP/gpg-pass
+
+          for what in apt rpm key; do
+            packaging/linux/repo.sh "$what" packages _site
+          done
+          rm -rf "$GNUPGHOME" "$RUNNER_TEMP/gpg-pass"
 
       - uses: actions/configure-pages@v5
 
