@@ -359,7 +359,19 @@ fn render_distro_updates(
                             .text_color(palette.fg_muted)
                             .line_height(relative(1.5))
                             .child(text),
-                    ),
+                    )
+                    .when(cfg!(target_os = "linux"), |this| {
+                        this.child(
+                            div().pt(px(6.0)).child(
+                                SecondaryButton::new(
+                                    "about-install-instructions",
+                                    t!("settings.about.managed.link"),
+                                )
+                                .icon(Icon::new(gpui_kit::assets::IconName::ExternalLink))
+                                .on_click(|_, _, cx| cx.open_url(about::INSTALL_URL)),
+                            ),
+                        )
+                    }),
             )
             .into_any_element(),
     ];

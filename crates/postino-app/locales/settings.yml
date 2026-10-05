@@ -241,15 +241,20 @@ _version: 2
   gl: "Descárgase en"
   it: "Scarica in"
 "settings.about.managed.title":
-  en: "Updates come from your distribution"
-  es: "Las actualizaciones vienen de tu distribución"
-  gl: "As actualizacións veñen da túa distribución"
-  it: "Gli aggiornamenti arrivano dalla tua distribuzione"
+  en: "Updates come from your package manager"
+  es: "Las actualizaciones vienen de tu gestor de paquetes"
+  gl: "As actualizacións veñen do teu xestor de paquetes"
+  it: "Gli aggiornamenti arrivano dal tuo gestore di pacchetti"
 "settings.about.managed.text":
-  en: "Postino doesn't update itself on Linux. Use your package manager or software center to get new versions."
-  es: "Postino no se actualiza solo en Linux. Usa tu gestor de paquetes o el centro de software para obtener nuevas versiones."
-  gl: "Postino non se actualiza só en Linux. Usa o teu xestor de paquetes ou o centro de software para obter novas versións."
-  it: "Postino non si aggiorna da solo su Linux. Usa il gestore di pacchetti o il centro software per ottenere le nuove versioni."
+  en: "Postino doesn't update itself on Linux. Install it from the apt or dnf repositories and your usual upgrade command will bring new versions. If you use the tarball, download new versions from the releases page."
+  es: "Postino no se actualiza solo en Linux. Instálalo desde los repositorios apt o dnf y tu comando de actualización habitual traerá las nuevas versiones. Si usas el tarball, descarga las nuevas versiones desde la página de releases."
+  gl: "Postino non se actualiza só en Linux. Instálao desde os repositorios apt ou dnf e o teu comando de actualización habitual traerá as novas versións. Se usas o tarball, descarga as novas versións desde a páxina de releases."
+  it: "Postino non si aggiorna da solo su Linux. Installalo dai repository apt o dnf e il tuo solito comando di aggiornamento porterà le nuove versioni. Se usi il tarball, scarica le nuove versioni dalla pagina delle release."
+"settings.about.managed.link":
+  en: "Install instructions"
+  es: "Instrucciones de instalación"
+  gl: "Instrucións de instalación"
+  it: "Istruzioni di installazione"
 "settings.about.unavailable.title":
   en: "Updates are not available in this build"
   es: "Las actualizaciones no están disponibles en esta compilación"

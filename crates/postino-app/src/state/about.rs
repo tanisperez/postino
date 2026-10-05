@@ -8,6 +8,9 @@ use super::update::{CURRENT_VERSION, download_dir};
 /// The repository page.
 pub const REPO_URL: &str = "https://github.com/tanisperez/postino";
 
+/// The install page of the website, with the apt, dnf and AUR instructions.
+pub const INSTALL_URL: &str = "https://postino.tanis.codes/install.html";
+
 /// The release page of `version`.
 pub fn release_notes_url(version: &str) -> String {
     format!("{REPO_URL}/releases/tag/v{version}")
