@@ -39,24 +39,43 @@ impl AppView {
         let mono_font = cx.theme().mono_font_family.clone();
 
         // gpui-kit's own default (34px) felt cramped; the window controls stretch with it.
-        TitleBar::new()
-            .h(px(TITLE_BAR_HEIGHT))
+        let bar = TitleBar::new().h(px(TITLE_BAR_HEIGHT)).child(
+            h_flex()
+                .size_full()
+                .items_center()
+                .gap_2()
+                .child(render_logo(&palette))
+                .child(div().font_weight(FontWeight::SEMIBOLD).child("Postino"))
+                .child(div().w(px(1.0)).h(px(16.0)).mx(px(4.0)).bg(palette.border))
+                .child(no_drag(
+                    self.render_workspace_switcher(weak.clone(), &palette),
+                ))
+                .child(div().flex_1())
+                .child(no_drag(self.render_env_picker(weak.clone(), cx)))
+                .child(no_drag(render_settings_gear(weak.clone(), &palette))),
+        );
+
+        // The search field is centered on the whole window, not in the gap between the side
+        // groups: the environment pill changes width with the active environment's name, which
+        // would otherwise move the field sideways. The overlay lives outside `TitleBar` because
+        // the bar lays the window controls out beside its content, so centering inside the
+        // content would be off by half of their width. The overlay has no handlers, so it does
+        // not take mouse input away from the bar.
+        div()
+            .relative()
+            .w_full()
+            .flex_none()
+            .child(bar)
             .child(
-                h_flex()
+                div()
+                    .absolute()
+                    .top_0()
+                    .left_0()
                     .size_full()
+                    .flex()
                     .items_center()
-                    .gap_2()
-                    .child(render_logo(&palette))
-                    .child(div().font_weight(FontWeight::SEMIBOLD).child("Postino"))
-                    .child(div().w(px(1.0)).h(px(16.0)).mx(px(4.0)).bg(palette.border))
-                    .child(no_drag(
-                        self.render_workspace_switcher(weak.clone(), &palette),
-                    ))
-                    .child(div().flex_1().flex().justify_center().child(no_drag(
-                        render_search_trigger(weak.clone(), &palette, mono_font),
-                    )))
-                    .child(no_drag(self.render_env_picker(weak.clone(), cx)))
-                    .child(no_drag(render_settings_gear(weak, &palette))),
+                    .justify_center()
+                    .child(no_drag(render_search_trigger(weak, &palette, mono_font))),
             )
             .into_any_element()
     }
