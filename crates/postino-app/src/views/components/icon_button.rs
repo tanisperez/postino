@@ -20,6 +20,7 @@ pub struct IconButton {
     id: ElementId,
     icon: Icon,
     large: bool,
+    box_size: Option<f32>,
     disabled: bool,
     tooltip: Option<SharedString>,
     on_click: Option<ClickHandler>,
@@ -35,6 +36,7 @@ impl IconButton {
             id: id.into(),
             icon: icon.into(),
             large: false,
+            box_size: None,
             disabled: false,
             tooltip: None,
             on_click: None,
@@ -44,6 +46,13 @@ impl IconButton {
     /// Switches to the large (28x28) size.
     pub fn large(mut self) -> Self {
         self.large = true;
+        self
+    }
+
+    /// Keeps the small icon but makes the button a `size` x `size` square, for a roomier hover
+    /// background.
+    pub fn box_size(mut self, size: f32) -> Self {
+        self.box_size = Some(size);
         self
     }
 
@@ -84,6 +93,9 @@ impl RenderOnce for IconButton {
             .icon(self.icon)
             .text_color(palette.fg_muted)
             .disabled(self.disabled);
+        if let Some(size) = self.box_size {
+            button = button.size(px(size));
+        }
         if let Some(tooltip) = self.tooltip {
             button = button.tooltip(tooltip);
         }

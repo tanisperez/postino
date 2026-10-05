@@ -71,6 +71,9 @@ pub const METHOD_LABEL_WIDTH: f32 = 34.0;
 pub const ICON_BUTTON_SM: f32 = 24.0;
 /// Side length of an `IconButton`'s large size.
 pub const ICON_BUTTON_LG: f32 = 28.0;
+/// Side length of the icon buttons in the Collections, Environments and Load tests headers: the
+/// small icon in a slightly larger box, so the hover background has more room.
+pub const ICON_BUTTON_HEADER: f32 = 22.0;
 /// Width of the checkbox and delete columns of a `KeyValueTable`.
 pub const KEY_VALUE_SIDE_COL_WIDTH: f32 = 30.0;
 /// Width of the column that centers a colored dot in an `EnvMenu` row.

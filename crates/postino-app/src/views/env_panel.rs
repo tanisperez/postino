@@ -18,7 +18,7 @@ use crate::state::env_color::env_color;
 use crate::state::env_panel::load_env_rows;
 use crate::state::number::format_integer;
 use crate::state::workspace_log::log_workspace_error;
-use crate::theme::metrics::{ENV_ROW_HEIGHT, RADIUS_SM};
+use crate::theme::metrics::{ENV_ROW_HEIGHT, ICON_BUTTON_HEADER, RADIUS_SM};
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{IconButton, SectionLabel, edit_menu};
 
@@ -137,6 +137,7 @@ impl AppView {
             .child(SectionLabel::new(t!("navigation.env.title")))
             .child(
                 IconButton::new("new-environment-header", IconName::Plus)
+                    .box_size(ICON_BUTTON_HEADER)
                     .tooltip(t!("navigation.env.new"))
                     .disabled(!has_workspace)
                     .on_click({

@@ -21,7 +21,9 @@ use postino_workspace::{Node, RequestEntry};
 
 use crate::state;
 use crate::theme::PaletteExt;
-use crate::theme::metrics::{RADIUS_MD, SIDEBAR_FILTER_HEIGHT, TREE_ROW_HEIGHT};
+use crate::theme::metrics::{
+    ICON_BUTTON_HEADER, RADIUS_MD, SIDEBAR_FILTER_HEIGHT, TREE_ROW_HEIGHT,
+};
 use crate::views::components::{
     IconButton, MethodBadge, PrimaryButton, SecondaryButton, SectionLabel, edit_menu, text_field,
 };
@@ -159,6 +161,7 @@ fn render_header(
                 .gap(px(2.0))
                 .child(
                     IconButton::new("new-request-root", IconName::Plus)
+                        .box_size(ICON_BUTTON_HEADER)
                         .tooltip(t!("common.new_request"))
                         .disabled(!has_workspace)
                         .on_click({
@@ -170,6 +173,7 @@ fn render_header(
                 )
                 .child(
                     IconButton::new("new-folder-root", gpui_kit::assets::IconName::FolderPlus)
+                        .box_size(ICON_BUTTON_HEADER)
                         .tooltip(t!("common.new_folder"))
                         .disabled(!has_workspace)
                         .on_click({

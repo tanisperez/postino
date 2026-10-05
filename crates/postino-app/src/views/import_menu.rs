@@ -14,6 +14,7 @@ use postino_workspace::{ImportReport, WorkspaceError};
 use crate::state::import;
 use crate::state::locale;
 use crate::theme::PaletteExt;
+use crate::theme::metrics::ICON_BUTTON_HEADER;
 
 use super::root::AppView;
 
@@ -38,6 +39,7 @@ impl AppView {
         Button::new("import-menu")
             .ghost()
             .small()
+            .size(px(ICON_BUTTON_HEADER))
             .icon(Icon::new(gpui_kit::assets::IconName::Download))
             .text_color(cx.palette().fg_muted)
             .tooltip(t!("shell.import.button"))

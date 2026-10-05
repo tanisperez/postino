@@ -12,7 +12,7 @@ use rust_i18n::t;
 use crate::state::load_panel::{
     RunDot, RunEntry, TargetRow, TargetRowKind, meta_text, run_entries,
 };
-use crate::theme::metrics::{RADIUS_SM, TREE_ROW_HEIGHT};
+use crate::theme::metrics::{ICON_BUTTON_HEADER, RADIUS_SM, TREE_ROW_HEIGHT};
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{IconButton, MethodBadge, PrimaryButton, SectionLabel};
 
@@ -47,6 +47,7 @@ impl AppView {
             .child(SectionLabel::new(t!("navigation.load.title")))
             .child(
                 IconButton::new("new-load-test-header", IconName::Plus)
+                    .box_size(ICON_BUTTON_HEADER)
                     .tooltip(t!("navigation.load.new"))
                     .on_click({
                         let weak = weak.clone();
