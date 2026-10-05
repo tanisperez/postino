@@ -19,12 +19,13 @@ use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use postino_core::Method;
 use rust_i18n::t;
 
 use crate::state::palette::{self, ActionId, PaletteItem, PaletteItemKind};
 use crate::theme::Palette;
 use crate::theme::PaletteExt;
-use crate::views::components::edit_menu;
+use crate::views::components::{MethodBadge, edit_menu};
 
 use super::root::AppView;
 use super::{import_menu, sidebar};
@@ -269,7 +270,7 @@ fn render_item_row(
     palette: &Palette,
     mono_font: SharedString,
 ) -> AnyElement {
-    let leading = render_leading(item, is_active_environment, palette, mono_font.clone());
+    let leading = render_leading(item, is_active_environment, palette);
     let label = highlighted_label(&item.label, matched, palette.accent_text);
 
     let mut row = h_flex()
@@ -296,23 +297,15 @@ fn render_leading(
     item: &PaletteItem,
     is_active_environment: bool,
     palette: &Palette,
-    mono_font: SharedString,
 ) -> AnyElement {
     match &item.kind {
-        // At its natural width, a fixed gap from the path like the sidebar tree: a fixed 34px
-        // column wrapped `DELETE` and `OPTIONS` onto two lines.
-        PaletteItemKind::Request(_) => {
-            let label = item.detail.clone().unwrap_or_default();
-            div()
-                .flex_none()
-                .whitespace_nowrap()
-                .font_family(mono_font)
-                .font_weight(FontWeight::SEMIBOLD)
-                .text_size(px(10.0))
-                .text_color(palette.fg_subtle)
-                .child(label)
-                .into_any_element()
-        }
+        // The sidebar tree's colored badge, at its natural width: a fixed 34px column wrapped
+        // `DELETE` and `OPTIONS` onto two lines. `detail` holds the method's own text, and
+        // parsing it back is lossless (a custom method is kept verbatim).
+        PaletteItemKind::Request(_) => match item.detail.as_deref().map(str::parse::<Method>) {
+            Some(Ok(method)) => MethodBadge::inline(method).into_any_element(),
+            _ => div().into_any_element(),
+        },
         PaletteItemKind::Environment(name) => {
             let mut leading = div().flex_none().w(px(14.0)).flex().justify_center();
             leading = if is_active_environment {
