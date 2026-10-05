@@ -361,6 +361,7 @@ fn action_icon(action: ActionId) -> gpui_kit::assets::IconName {
         ActionId::NewFolder => Lucide::FolderPlus,
         ActionId::ImportCollection | ActionId::ImportEnvironment => Lucide::Download,
         ActionId::OpenSettings => Lucide::Settings,
+        ActionId::OpenShortcuts => Lucide::Keyboard,
         ActionId::OpenWorkspace => Lucide::Folder,
         ActionId::NewLoadTest => Lucide::Gauge,
         ActionId::ToggleTheme => Lucide::Palette,
@@ -429,6 +430,9 @@ fn execute_action(weak: WeakEntity<AppView>, action: ActionId, window: &mut Wind
         }
         ActionId::OpenSettings => {
             let _ = weak.update(cx, |view, cx| view.open_settings(window, cx));
+        }
+        ActionId::OpenShortcuts => {
+            let _ = weak.update(cx, |view, cx| view.open_shortcuts(window, cx));
         }
         ActionId::OpenWorkspace => sidebar::pick_workspace_folder(weak, window, cx),
         ActionId::NewLoadTest => {

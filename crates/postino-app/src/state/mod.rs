@@ -25,6 +25,7 @@ pub mod response_render;
 pub mod run_log;
 pub mod script_heuristics;
 pub mod settings;
+pub mod shortcuts;
 pub mod sidebar_filter;
 mod tabs;
 pub mod ui_tabs;

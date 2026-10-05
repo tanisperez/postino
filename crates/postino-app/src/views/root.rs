@@ -23,8 +23,8 @@ use postino_runner::{RunResult, ScriptEngine, SendOptions};
 use postino_script::QuickJsEngine;
 
 use crate::actions::{
-    CloseActiveTab, NextTab, OpenCommandPalette, OpenSettings, PreviousTab, SaveActiveTab,
-    SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
+    CloseActiveTab, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, PreviousTab,
+    SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
     SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
     SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
 };
@@ -762,6 +762,16 @@ impl AppView {
         self.open_command_palette(window, cx);
     }
 
+    /// Handles the `F1` / `Cmd+Shift+/` key binding (see `main.rs`'s `bind_keys`).
+    fn on_open_shortcuts_action(
+        &mut self,
+        _: &OpenShortcuts,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.open_shortcuts(window, cx);
+    }
+
     /// Handles the `Ctrl+W` / `Cmd+W` key binding (see `main.rs`'s `bind_keys`). Like the tab's
     /// close button it asks first for an environment tab with unsaved edits, and like a tab
     /// switch it refocuses the view, because the closed tab's focused input vanishes.
@@ -1175,6 +1185,7 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_send_action))
             .on_action(cx.listener(Self::on_open_settings_action))
             .on_action(cx.listener(Self::on_open_command_palette_action))
+            .on_action(cx.listener(Self::on_open_shortcuts_action))
             .on_action(cx.listener(Self::on_close_tab_action))
             .on_action(cx.listener(Self::on_next_tab_action))
             .on_action(cx.listener(Self::on_previous_tab_action))

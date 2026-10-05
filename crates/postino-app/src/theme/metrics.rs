@@ -31,6 +31,8 @@ pub const TREE_ROW_HEIGHT: f32 = 26.0;
 pub const MENU_ROW_HEIGHT: f32 = 28.0;
 /// Height of the status bar.
 pub const STATUS_BAR_HEIGHT: f32 = 24.0;
+/// Side length of the status bar's keyboard shortcuts button, a little under its height.
+pub const STATUS_BAR_BUTTON: f32 = 20.0;
 /// Height of a segmented control's inner items.
 pub const SEGMENTED_CONTROL_INNER_HEIGHT: f32 = 22.0;
 

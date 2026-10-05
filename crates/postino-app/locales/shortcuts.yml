@@ -1,0 +1,77 @@
+# Keyboard shortcuts cheat sheet (F1). Glossary and rules: plans/i18n.md
+_version: 2
+"shortcuts.title":
+  en: "Keyboard shortcuts"
+  es: "Atajos de teclado"
+  gl: "Atallos de teclado"
+  it: "Scorciatoie da tastiera"
+"shortcuts.tooltip":
+  en: "Keyboard shortcuts (%{keys})"
+  es: "Atajos de teclado (%{keys})"
+  gl: "Atallos de teclado (%{keys})"
+  it: "Scorciatoie da tastiera (%{keys})"
+"shortcuts.group.general":
+  en: "General"
+  es: "General"
+  gl: "Xeral"
+  it: "Generale"
+"shortcuts.group.requests":
+  en: "Requests"
+  es: "Peticiones"
+  gl: "Peticións"
+  it: "Richieste"
+"shortcuts.group.environments":
+  en: "Environments"
+  es: "Entornos"
+  gl: "Contornos"
+  it: "Ambienti"
+"shortcuts.action.palette":
+  en: "Open the command palette"
+  es: "Abrir la paleta de comandos"
+  gl: "Abrir a paleta de comandos"
+  it: "Apri la tavolozza dei comandi"
+"shortcuts.action.settings":
+  en: "Open Settings"
+  es: "Abrir ajustes"
+  gl: "Abrir axustes"
+  it: "Apri impostazioni"
+"shortcuts.action.help":
+  en: "Show keyboard shortcuts"
+  es: "Mostrar los atajos de teclado"
+  gl: "Amosar os atallos de teclado"
+  it: "Mostra le scorciatoie da tastiera"
+"shortcuts.action.close_tab":
+  en: "Close the tab"
+  es: "Cerrar la pestaña"
+  gl: "Pechar a pestana"
+  it: "Chiudi la scheda"
+"shortcuts.action.next_tab":
+  en: "Next tab"
+  es: "Pestaña siguiente"
+  gl: "Pestana seguinte"
+  it: "Scheda successiva"
+"shortcuts.action.previous_tab":
+  en: "Previous tab"
+  es: "Pestaña anterior"
+  gl: "Pestana anterior"
+  it: "Scheda precedente"
+"shortcuts.action.send":
+  en: "Send the request"
+  es: "Enviar la petición"
+  gl: "Enviar a petición"
+  it: "Invia la richiesta"
+"shortcuts.action.save":
+  en: "Save"
+  es: "Guardar"
+  gl: "Gardar"
+  it: "Salva"
+"shortcuts.action.select_environment":
+  en: "Select environment 1 to 9"
+  es: "Seleccionar el entorno 1 a 9"
+  gl: "Seleccionar o contorno 1 a 9"
+  it: "Seleziona l'ambiente da 1 a 9"
+"shortcuts.action.no_environment":
+  en: "No environment"
+  es: "Sin entorno"
+  gl: "Sen contorno"
+  it: "Nessun ambiente"

@@ -39,6 +39,8 @@ actions!(
         OpenSettings,
         /// Opens the command palette (`Ctrl K` / `Cmd K`), `plans/ui-redesign.md` phase 7 item 1.
         OpenCommandPalette,
+        /// Opens the keyboard shortcuts cheat sheet (`F1`, or `Cmd+Shift+/` on macOS).
+        OpenShortcuts,
         /// Closes the active tab (`Ctrl+W` / `Cmd+W`), asking first when it has unsaved
         /// environment edits like the tab's close button.
         CloseActiveTab,

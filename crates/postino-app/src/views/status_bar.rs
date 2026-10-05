@@ -11,9 +11,10 @@ use rust_i18n::t;
 
 use crate::state;
 use crate::state::update::ReadyUpdate;
-use crate::theme::metrics::STATUS_BAR_HEIGHT;
+use crate::theme::metrics::{STATUS_BAR_BUTTON, STATUS_BAR_HEIGHT};
 use crate::theme::{Palette, PaletteExt};
 
+use super::components::IconButton;
 use super::root::AppView;
 
 impl AppView {
@@ -62,7 +63,7 @@ impl AppView {
                 self.state
                     .update
                     .ready()
-                    .map(|ready| render_update_ready(weak, ready, &palette)),
+                    .map(|ready| render_update_ready(weak.clone(), ready, &palette)),
             )
             .children(
                 active_tab
@@ -70,6 +71,17 @@ impl AppView {
                     .map(|_| div().child(t!("shell.status_bar.unsaved"))),
             )
             .child(div().child("UTF-8"))
+            .child(
+                IconButton::new("status-bar-shortcuts", gpui_kit::assets::IconName::Keyboard)
+                    .box_size(STATUS_BAR_BUTTON)
+                    .tooltip(t!(
+                        "shortcuts.tooltip",
+                        keys = state::shortcuts::open_hint()
+                    ))
+                    .on_click(move |_, window, cx| {
+                        let _ = weak.update(cx, |view, cx| view.open_shortcuts(window, cx));
+                    }),
+            )
             .into_any_element()
     }
 }

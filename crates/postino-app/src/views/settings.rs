@@ -435,7 +435,7 @@ fn render_right_column(
 /// The body's always-shown scrollbar. Its track takes the modal's own background (the theme's
 /// track color is the window's `bg`, which shows as a darker strip on the modal) and no border,
 /// so only the thumb stands out.
-fn settings_scrollbar(scroll_handle: &ScrollHandle, palette: &Palette) -> Scrollbar {
+pub(super) fn settings_scrollbar(scroll_handle: &ScrollHandle, palette: &Palette) -> Scrollbar {
     let track = palette.overlay;
     let border = palette.overlay.opacity(0.0);
     Scrollbar::vertical(scroll_handle)

@@ -59,6 +59,8 @@ pub enum ActionId {
     ImportEnvironment,
     /// Opens the Settings modal.
     OpenSettings,
+    /// Opens the keyboard shortcuts cheat sheet.
+    OpenShortcuts,
     /// Opens the "Open folder" picker.
     OpenWorkspace,
     /// Starts creating a new load test tab.
@@ -156,6 +158,11 @@ pub fn action_items() -> Vec<PaletteItem> {
             ActionId::OpenSettings,
             t!("shell.palette.open_settings"),
             Some(format!("{MODIFIER_KEY}+,")),
+        ),
+        action_item(
+            ActionId::OpenShortcuts,
+            t!("shortcuts.title"),
+            Some(super::shortcuts::open_hint()),
         ),
         action_item(ActionId::OpenWorkspace, t!("common.open_folder"), None),
         action_item(
@@ -356,7 +363,7 @@ mod tests {
     #[test]
     fn action_items_cover_every_action_id() {
         let items = action_items();
-        assert_eq!(items.len(), 10);
+        assert_eq!(items.len(), 11);
         assert!(
             items
                 .iter()
@@ -366,6 +373,14 @@ mod tests {
             items
                 .iter()
                 .any(|item| item.kind == PaletteItemKind::Action(ActionId::ToggleTheme))
+        );
+        let shortcuts = items
+            .iter()
+            .find(|item| item.kind == PaletteItemKind::Action(ActionId::OpenShortcuts))
+            .expect("the shortcuts action");
+        assert_eq!(
+            shortcuts.shortcut,
+            Some(super::super::shortcuts::open_hint())
         );
     }
 
