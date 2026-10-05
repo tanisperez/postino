@@ -425,8 +425,10 @@ pub(super) fn theme_colors_and_highlight(dark: bool) -> (serde_json::Value, serd
         "overlay": "#00000000",
         "border": tokens.border,
         // The design defines no scrollbar, so the thumb is a neutral border tone that darkens
-        // to the muted text color on hover; the track stays on the page background.
-        "scrollbar.background": tokens.bg,
+        // to the muted text color on hover. The track is transparent so it shows whatever
+        // surface it sits on: `bg` painted a darker strip over every raised surface (the
+        // command palette, menus, the Settings modal).
+        "scrollbar.background": "#00000000",
         "scrollbar.thumb.background": tokens.border_strong,
         "scrollbar.thumb.hover.background": tokens.fg_subtle,
         "input.border": tokens.border_strong,

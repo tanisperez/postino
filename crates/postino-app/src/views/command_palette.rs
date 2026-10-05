@@ -30,6 +30,9 @@ use crate::views::components::{MethodBadge, edit_menu};
 use super::root::AppView;
 use super::{import_menu, sidebar};
 
+/// Right margin of a row's shortcut hint, so the list's scrollbar does not sit on top of it.
+const SCROLLBAR_CLEARANCE: f32 = 6.0;
+
 /// Width of the palette overlay.
 const PALETTE_WIDTH: f32 = 560.0;
 /// Max height of the command list itself (excluding the search field). Generous enough that a
@@ -283,6 +286,7 @@ fn render_item_row(
         row = row.child(
             div()
                 .flex_none()
+                .mr(px(SCROLLBAR_CLEARANCE))
                 .font_family(mono_font)
                 .text_size(px(10.5))
                 .text_color(palette.fg_subtle)
