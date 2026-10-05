@@ -22,7 +22,7 @@ use postino_workspace::{Node, RequestEntry, git_branch};
 use crate::state;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{RADIUS_MD, SIDEBAR_FILTER_HEIGHT, TREE_ROW_HEIGHT};
-use crate::views::components::{IconButton, MethodBadge, SectionLabel, edit_menu};
+use crate::views::components::{IconButton, MethodBadge, SectionLabel, edit_menu, text_field};
 
 use super::root::AppView;
 
@@ -503,18 +503,15 @@ pub(crate) fn open_new_request_dialog(
 ) {
     let input =
         cx.new(|cx| InputState::new(window, cx).placeholder(t!("shell.sidebar.request_name")));
+    let dialog_input = input.clone();
     window.open_dialog(cx, move |dialog, _, _| {
-        let input_for_content = input.clone();
-        let input_for_ok = input.clone();
+        let input_for_content = dialog_input.clone();
+        let input_for_ok = dialog_input.clone();
         let view = view.clone();
         let parent = parent.clone();
         dialog
             .title(t!("common.new_request"))
-            .content(move |content, _, cx| {
-                content.child(
-                    Input::new(&input_for_content).context_menu(edit_menu(&input_for_content, cx)),
-                )
-            })
+            .content(move |content, _, cx| content.child(text_field(&input_for_content, cx)))
             .on_ok(move |_, _, cx| {
                 let name = input_for_ok.read(cx).value().trim().to_string();
                 if !name.is_empty() {
@@ -524,6 +521,9 @@ pub(crate) fn open_new_request_dialog(
                 true
             })
     });
+    // Focus only after `open_dialog`, which captures the focused handle to restore on close
+    // (see `views/command_palette.rs`).
+    input.update(cx, |state, cx| state.focus(window, cx));
 }
 
 /// Opens an in-app dialog asking for a new folder's name, inside `parent`. Also called from the
@@ -536,18 +536,15 @@ pub(crate) fn open_new_folder_dialog(
 ) {
     let input =
         cx.new(|cx| InputState::new(window, cx).placeholder(t!("shell.sidebar.folder_name")));
+    let dialog_input = input.clone();
     window.open_dialog(cx, move |dialog, _, _| {
-        let input_for_content = input.clone();
-        let input_for_ok = input.clone();
+        let input_for_content = dialog_input.clone();
+        let input_for_ok = dialog_input.clone();
         let view = view.clone();
         let parent = parent.clone();
         dialog
             .title(t!("common.new_folder"))
-            .content(move |content, _, cx| {
-                content.child(
-                    Input::new(&input_for_content).context_menu(edit_menu(&input_for_content, cx)),
-                )
-            })
+            .content(move |content, _, cx| content.child(text_field(&input_for_content, cx)))
             .on_ok(move |_, _, cx| {
                 let name = input_for_ok.read(cx).value().trim().to_string();
                 if !name.is_empty() {
@@ -557,6 +554,7 @@ pub(crate) fn open_new_folder_dialog(
                 true
             })
     });
+    input.update(cx, |state, cx| state.focus(window, cx));
 }
 
 /// Opens an in-app dialog, pre-filled with `current_name`, to rename `id`.
@@ -571,18 +569,15 @@ fn open_rename_dialog(
     input.update(cx, |state, cx| {
         state.set_value(current_name.clone(), window, cx);
     });
+    let dialog_input = input.clone();
     window.open_dialog(cx, move |dialog, _, _| {
-        let input_for_content = input.clone();
-        let input_for_ok = input.clone();
+        let input_for_content = dialog_input.clone();
+        let input_for_ok = dialog_input.clone();
         let view = view.clone();
         let id = id.clone();
         dialog
             .title(t!("common.rename"))
-            .content(move |content, _, cx| {
-                content.child(
-                    Input::new(&input_for_content).context_menu(edit_menu(&input_for_content, cx)),
-                )
-            })
+            .content(move |content, _, cx| content.child(text_field(&input_for_content, cx)))
             .on_ok(move |_, _, cx| {
                 let name = input_for_ok.read(cx).value().trim().to_string();
                 if !name.is_empty() {
@@ -590,6 +585,11 @@ fn open_rename_dialog(
                 }
                 true
             })
+    });
+    // Selecting the whole name makes typing replace it.
+    input.update(cx, |state, cx| {
+        state.focus(window, cx);
+        state.select_all(window, cx);
     });
 }
 
