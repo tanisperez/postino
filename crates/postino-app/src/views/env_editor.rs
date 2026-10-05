@@ -44,6 +44,24 @@ const TRASH_COLUMN_WIDTH: f32 = 30.0;
 /// Height of the toolbar and header controls.
 const CONTROL_HEIGHT: f32 = 28.0;
 
+/// Line height of the row inputs, which is also the height of their selection highlight (same as
+/// the URL bar's). Use `row_line_height`, not this, to size an input.
+const ROW_LINE_HEIGHT: f32 = 22.0;
+
+/// The whole-pixel line height closest to `ROW_LINE_HEIGHT` that a row input can hold without
+/// scrolling. gpui rounds a line height to whole logical pixels and snaps an input's box to
+/// device pixels, so at a fractional scale (1.2: 22 px is 26.4 device pixels, snapped to 26) the
+/// box ends up shorter than the line and the input scrolls the missing fraction when focused,
+/// then snaps back. That is the text bobbing on click.
+fn row_line_height(scale_factor: f32) -> Pixels {
+    let fits = |line: f32| (line * scale_factor).round() >= line * scale_factor;
+    let line = (0..=4)
+        .flat_map(|step| [ROW_LINE_HEIGHT + step as f32, ROW_LINE_HEIGHT - step as f32])
+        .find(|&line| fits(line))
+        .unwrap_or(ROW_LINE_HEIGHT);
+    px(line)
+}
+
 /// A shared dialog submit handler.
 type SubmitHandler = Rc<dyn Fn(&mut Window, &mut App)>;
 
@@ -668,7 +686,15 @@ impl AppView {
                     .px(px(20.0))
                     .py(px(12.0))
                     .child(render_table(
-                        edit, entities, &session, &tab_id, &weak, &palette, &mono_font, cx,
+                        edit,
+                        entities,
+                        &session,
+                        &tab_id,
+                        &weak,
+                        &palette,
+                        &mono_font,
+                        row_line_height(window.scale_factor()),
+                        cx,
                     )),
             )
             .child(render_footer(&palette))
@@ -950,6 +976,7 @@ fn render_toolbar(
                 Input::new(&entities.filter)
                     .context_menu(edit_menu(&entities.filter, cx))
                     .h(px(CONTROL_HEIGHT))
+                    .py_0()
                     .prefix(
                         Icon::new(IconName::ListFilter)
                             .small()
@@ -1003,6 +1030,7 @@ fn render_table(
     weak: &WeakEntity<AppView>,
     palette: &Palette,
     mono_font: &SharedString,
+    line_height: Pixels,
     cx: &mut Context<AppView>,
 ) -> AnyElement {
     let header_cell = |text: String| {
@@ -1051,7 +1079,16 @@ fn render_table(
         };
         let last = position + 1 == total;
         table = table.child(file_row(
-            edit, row, inputs, last, tab_id, weak, palette, mono_font, cx,
+            edit,
+            row,
+            inputs,
+            last,
+            tab_id,
+            weak,
+            palette,
+            mono_font,
+            line_height,
+            cx,
         ));
     }
     for (offset, variable) in session_rows.iter().enumerate() {
@@ -1133,6 +1170,7 @@ fn file_row(
     weak: &WeakEntity<AppView>,
     palette: &Palette,
     mono_font: &SharedString,
+    line_height: Pixels,
     cx: &mut Context<AppView>,
 ) -> AnyElement {
     let row_id = row.id;
@@ -1199,6 +1237,8 @@ fn file_row(
                 .child(
                     Input::new(&inputs.name)
                         .context_menu(edit_menu(&inputs.name, cx))
+                        .py_0()
+                        .line_height(line_height)
                         .appearance(false)
                         .bordered(false),
                 ),
@@ -1216,6 +1256,8 @@ fn file_row(
                         .child(
                             Input::new(&inputs.value)
                                 .context_menu(edit_menu(&inputs.value, cx))
+                                .py_0()
+                                .line_height(line_height)
                                 .appearance(false)
                                 .bordered(false),
                         ),
@@ -1350,4 +1392,25 @@ fn render_footer(palette: &Palette) -> AnyElement {
                 .child(t!("environments.resolution.order")),
         )
         .into_any_element()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ROW_LINE_HEIGHT, row_line_height};
+
+    #[test]
+    fn row_line_height_fills_whole_device_pixels() {
+        for scale in [1.0, 1.1, 1.2, 1.25, 1.5, 1.75, 2.0, 3.0] {
+            let line: f32 = row_line_height(scale).into();
+            assert!(
+                (line * scale).round() >= line * scale,
+                "scale {scale}: {line}"
+            );
+            assert!(
+                (line - ROW_LINE_HEIGHT).abs() <= 4.0,
+                "scale {scale}: {line}"
+            );
+        }
+        assert_eq!(f32::from(row_line_height(1.0)), ROW_LINE_HEIGHT);
+    }
 }
