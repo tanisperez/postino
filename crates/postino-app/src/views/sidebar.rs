@@ -1,6 +1,5 @@
 //! The sidebar: a header with "new request" / "new folder" / "import" icon buttons, a filter
-//! input, the workspace's collection tree, and a footer with the workspace path and git branch
-//! (`plans/ui-redesign.md` section 2.3 point 2). Right-clicking a tree row still opens the
+//! input and the workspace's collection tree (`plans/ui-redesign.md` section 2.3 point 2). Right-clicking a tree row still opens the
 //! rename/delete/new request/new folder context menu (`plans/mvp.md`, phase 8).
 
 use std::collections::{HashMap, HashSet};
@@ -18,7 +17,7 @@ use gpui_kit::*;
 use rust_i18n::t;
 
 use postino_core::Method;
-use postino_workspace::{Node, RequestEntry, git_branch};
+use postino_workspace::{Node, RequestEntry};
 
 use crate::state;
 use crate::theme::PaletteExt;
@@ -91,7 +90,6 @@ impl AppView {
                         )
                     }),
             )
-            .child(self.render_footer(&palette))
             .into_any_element()
     }
 
@@ -137,41 +135,6 @@ impl AppView {
                             .bg(palette.bg.opacity(0.0)),
                     ),
             )
-            .into_any_element()
-    }
-
-    /// Renders the footer: the `hard-drive` icon, the workspace path shortened with `~`, and,
-    /// when the workspace is inside a git repository, the `git-branch` icon and branch name.
-    fn render_footer(&self, palette: &crate::theme::Palette) -> AnyElement {
-        let Some(workspace) = self.state.workspace.as_ref() else {
-            return div().into_any_element();
-        };
-        let path_label = state::format::shorten_path(workspace.root(), dirs::home_dir().as_deref());
-        let branch = git_branch(workspace.root());
-
-        h_flex()
-            .w_full()
-            .overflow_hidden()
-            .border_t_1()
-            .border_color(palette.border)
-            .px(px(14.0))
-            .py(px(8.0))
-            .items_center()
-            .gap_2()
-            .text_size(px(12.0))
-            .text_color(palette.fg_subtle)
-            .child(Icon::new(IconName::HardDrive).small())
-            // `min_w_0` plus `truncate` lets a long path shrink with an ellipsis instead of
-            // pushing the branch name out of the sidebar.
-            .child(div().flex_1().min_w_0().truncate().child(path_label))
-            .children(branch.map(|branch| {
-                h_flex()
-                    .flex_none()
-                    .items_center()
-                    .gap(px(6.0))
-                    .child(Icon::new(gpui_kit::assets::IconName::GitBranch).small())
-                    .child(branch)
-            }))
             .into_any_element()
     }
 }

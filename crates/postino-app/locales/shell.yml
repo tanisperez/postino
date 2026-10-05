@@ -10,11 +10,6 @@ _version: 2
   es: "Buscar peticiones y acciones"
   gl: "Buscar peticións e accións"
   it: "Cerca richieste e azioni"
-"shell.status_bar.local_only":
-  en: "Local only"
-  es: "Solo local"
-  gl: "Só local"
-  it: "Solo locale"
 "shell.status_bar.unsaved":
   en: "Unsaved changes"
   es: "Cambios sin guardar"

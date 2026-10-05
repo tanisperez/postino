@@ -1,12 +1,15 @@
 //! The status bar at the bottom of the main window (`plans/ui-redesign.md` section 2.3 point 6):
-//! "Local only" (translated) with a lock icon, the active tab's id, a spacer, "Unsaved changes" when the
-//! active tab is dirty, and "UTF-8".
+//! the workspace path with a `hard-drive` icon and, inside a git repository, the branch with a
+//! `git-branch` icon in the accent color, a spacer, "Unsaved changes" when the active tab is
+//! dirty, and "UTF-8".
 
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use postino_workspace::git_branch;
 use rust_i18n::t;
 
+use crate::state;
 use crate::state::update::ReadyUpdate;
 use crate::theme::metrics::STATUS_BAR_HEIGHT;
 use crate::theme::{Palette, PaletteExt};
@@ -31,18 +34,28 @@ impl AppView {
             .border_color(palette.border)
             .text_size(px(11.5))
             .text_color(palette.fg_subtle)
-            .child(
+            .children(self.state.workspace.as_ref().map(|workspace| {
+                let path_label =
+                    state::format::shorten_path(workspace.root(), dirs::home_dir().as_deref());
+                let branch = git_branch(workspace.root());
                 h_flex()
                     .items_center()
-                    .gap(px(6.0))
-                    .child(Icon::new(gpui_kit::assets::IconName::Lock).small())
-                    .child(t!("shell.status_bar.local_only")),
-            )
-            .children(active_tab.map(|tab| {
-                div().child(match tab.environment() {
-                    Some(edit) => crate::state::env_edit::status_path(&edit.name),
-                    None => tab.id.clone(),
-                })
+                    .gap(px(16.0))
+                    .child(
+                        h_flex()
+                            .items_center()
+                            .gap(px(6.0))
+                            .child(Icon::new(gpui_kit::assets::IconName::HardDrive).small())
+                            .child(path_label),
+                    )
+                    .children(branch.map(|branch| {
+                        h_flex()
+                            .items_center()
+                            .gap(px(6.0))
+                            .text_color(palette.accent_text)
+                            .child(Icon::new(gpui_kit::assets::IconName::GitBranch).small())
+                            .child(branch)
+                    }))
             }))
             .child(div().flex_1())
             .children(
