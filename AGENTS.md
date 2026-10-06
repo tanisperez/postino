@@ -110,6 +110,28 @@ with `make sample-server` or `make sample`; details, endpoints and known gaps in
 against the server (it skips itself without Python 3). Every request must carry a `test()`, and a
 new feature should get a request there.
 
+## User documentation
+
+The user guide is published at `postino.tanis.codes/docs/`. Its sources are in
+`site/docs-src/pages/` (one HTML file per page, the sidebar order in the `NAV` list of
+`site/docs-src/build.py`); `site/docs/` is generated and ignored by git. Details in
+`site/README.md`.
+
+- Every change that users can notice must update the documentation in the same commit or pull
+  request: a new feature, a changed behavior, a new or renamed setting, shortcut, UI label,
+  script global, file format rule, command line option or environment variable, a fixed
+  limitation the docs mention. A feature without its documentation is not done.
+- Write it from the code, not from memory: the docs state exact defaults, ranges, labels and
+  messages, so check them in the source. UI labels are the English strings of
+  `crates/postino-app/locales/`.
+- Keep the reference pages exhaustive (`keyboard-shortcuts`, `settings`, `file-format`,
+  `script-api`, `command-line`, `files-and-folders`) and update the guide that covers the
+  feature. A new topic gets its own page, added to `NAV`.
+- When the change also touches a developer document in `docs/` (`format.md`, `scripting.md`,
+  ...), keep both in agreement.
+- Run `make docs` before considering a task done: it fails on broken links or anchors between
+  pages, missing images and em dashes. Check the result with `make site`.
+
 ## Design system
 
 Colors, metrics, typography and layout of both themes are in `docs/design-system.md`. Read it before
@@ -204,6 +226,8 @@ gpui, wgpu, ureq and rustls messages reach it too. Library crates only depend on
 - Keep changes small and traceable to the request. Do not refactor unrelated code.
 - Run `make format` and `make lint` before considering a task done, and `make test` when there
   are tests.
+- Update the user documentation with every user-visible change, and run `make docs` (see "User
+  documentation").
 - Match the style of the surrounding code. Formatting is enforced by `rustfmt.toml` and
   `.editorconfig` (4 spaces, LF, max width 100).
 - GPUI evolves quickly. Check the version pinned in `Cargo.toml` and read its actual source or
