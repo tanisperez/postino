@@ -812,6 +812,69 @@ mod tests {
         );
     }
 
+    #[test]
+    fn request_header_names_are_case_insensitive_in_pre() {
+        let mut ctx = pre_ctx();
+        ctx.request.headers.push(KeyValue::new("X-Old", "gone"));
+        ctx.request
+            .headers
+            .push(KeyValue::new("Content-Type", "text/plain"));
+        let script = r#"
+            req.headers.set("content-type", "application/json");
+            req.headers.remove("X-OLD");
+            vars.set("seen", req.headers.get("CONTENT-TYPE"));
+        "#;
+        let outcome = engine().run_pre(script, ctx).expect("script runs fine");
+        // The existing entry keeps its spelling and gets the new value, with no duplicate.
+        assert_eq!(
+            outcome.request.headers,
+            vec![KeyValue::new("Content-Type", "application/json")]
+        );
+        assert_eq!(
+            outcome.vars,
+            vec![KeyValue::new("seen", "application/json")]
+        );
+    }
+
+    #[test]
+    fn response_header_lookups_are_case_insensitive() {
+        let mut ctx = post_ctx("{}");
+        ctx.response
+            .headers
+            .push(KeyValue::new("content-type", "application/json"));
+        let script = r#"
+            test("mixed case", () => expect(res.headers.get("Content-Type")).toBe("application/json"));
+            test("upper case", () => expect(res.headers.get("CONTENT-TYPE")).toBe("application/json"));
+            test("missing", () => expect(res.headers.get("X-Missing")).toBeFalsy());
+        "#;
+        let outcome = engine()
+            .run_post(script, ctx)
+            .expect("run_post never fails for a plain script error");
+        assert!(
+            outcome.tests.iter().all(|test| test.passed),
+            "{:?}",
+            outcome.tests
+        );
+    }
+
+    #[test]
+    fn variable_and_env_names_stay_case_sensitive() {
+        let script = r#"
+            vars.set("Name", "a");
+            env.set("Token", "b");
+            test("vars", () => expect(vars.get("name")).toBeFalsy());
+            test("env", () => expect(env.get("token")).toBeFalsy());
+        "#;
+        let outcome = engine()
+            .run_post(script, post_ctx("{}"))
+            .expect("run_post never fails for a plain script error");
+        assert!(
+            outcome.tests.iter().all(|test| test.passed),
+            "{:?}",
+            outcome.tests
+        );
+    }
+
     fn base_response(body: &str) -> ScriptResponse {
         ScriptResponse {
             status: 200,

@@ -137,7 +137,5 @@ A request that is supposed to fail needs an entry in `expectation()` in `sample_
 - There is no `multipart/form-data` body type yet. The server parses multipart, so a request can
   be added when the type exists.
 - Postino keeps no cookie jar: `Set-Cookie` is shown, never stored or sent back.
-- Response header lookups in scripts are case sensitive, so the suite uses lowercase names
-  (#72).
 - An empty body section serializes with an extra blank line, so `bodies/json-empty.postino` is
   written that way (#73).

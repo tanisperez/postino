@@ -24,19 +24,26 @@
         return entries;
     }
 
-    function entriesGet(entries, name) {
+    // Whether two entry names are the same. Header names are case insensitive, variable names
+    // are not, so only the header lists pass `fold = true`.
+    function sameName(a, b, fold) {
+        return fold ? a.toLowerCase() === b.toLowerCase() : a === b;
+    }
+
+    function entriesGet(entries, name, fold) {
         for (var i = 0; i < entries.length; i++) {
-            if (entries[i].key === name) {
+            if (sameName(entries[i].key, name, fold)) {
                 return entries[i].value;
             }
         }
         return undefined;
     }
 
-    function entriesSet(entries, name, value) {
+    // An existing entry keeps the spelling of its name and only gets the new value.
+    function entriesSet(entries, name, value, fold) {
         var text = String(value);
         for (var i = 0; i < entries.length; i++) {
-            if (entries[i].key === name) {
+            if (sameName(entries[i].key, name, fold)) {
                 entries[i].value = text;
                 return;
             }
@@ -44,9 +51,9 @@
         entries.push({ key: name, value: text });
     }
 
-    function entriesRemove(entries, name) {
+    function entriesRemove(entries, name, fold) {
         for (var i = entries.length - 1; i >= 0; i--) {
-            if (entries[i].key === name) {
+            if (sameName(entries[i].key, name, fold)) {
                 entries.splice(i, 1);
             }
         }
@@ -64,19 +71,19 @@
     function makeHeaders(entries, readOnly) {
         return {
             get: function (name) {
-                return entriesGet(entries, name);
+                return entriesGet(entries, name, true);
             },
             set: function (name, value) {
                 if (readOnly) {
                     throw new Error("headers are read-only in a post script");
                 }
-                entriesSet(entries, name, value);
+                entriesSet(entries, name, value, true);
             },
             remove: function (name) {
                 if (readOnly) {
                     throw new Error("headers are read-only in a post script");
                 }
-                entriesRemove(entries, name);
+                entriesRemove(entries, name, true);
             },
         };
     }

@@ -22,7 +22,10 @@ The request about to be sent (in `pre`) or the request as it was actually sent (
   with no body at all, `req.body` reads as `""`.
 - `req.headers`: `get(name)`, `set(name, value)`, `remove(name)`. Only *enabled* headers are ever
   visible or settable here; a disabled header in the file is invisible to the script and is
-  carried through unchanged underneath whatever the script leaves behind.
+  carried through unchanged underneath whatever the script leaves behind. Header names are
+  case insensitive in `get`, `set` and `remove`, as in HTTP: `set("content-type", ...)` replaces
+  an existing `Content-Type` and keeps its spelling. (Names of `vars` and `env` stay case
+  sensitive.)
 
 **In `pre`**, every one of the above is writable: `req.method = "POST"`, `req.url = "..."`,
 `req.headers.set(...)`, `req.body = "..."`. Values assigned with `set`/`body`/`method`/`url` are
@@ -38,7 +41,7 @@ pre-script source.
 ### `res` (post only)
 
 - `res.status`: number.
-- `res.headers.get(name)`: read-only, `set`/`remove` throw.
+- `res.headers.get(name)`: case insensitive, read-only, `set`/`remove` throw.
 - `res.body`: the response body as a string (decoded as UTF-8, lossily if it is not valid UTF-8).
 - `res.json()`: `JSON.parse(res.body)`. Throws if the body is not valid JSON.
 - `res.timeMs`: total time from opening the connection to reading the last byte, in milliseconds.

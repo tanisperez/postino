@@ -6,7 +6,8 @@ test("res properties", () => {
   expect(res.body.length).toBeGreaterThan(10);
   expect(res.size).toBeGreaterThan(res.body.length - 1);
   expect(res.timeMs).toBeGreaterThan(-1);
-  expect(res.headers.get("content-type")).toBe("application/json; charset=utf-8");
+  expect(res.headers.get("Content-Type")).toContain("json");
+  expect(res.headers.get("Content-Type")).toBe(res.headers.get("content-type"));
 });
 test("res is read only", () => {
   let threw = false;

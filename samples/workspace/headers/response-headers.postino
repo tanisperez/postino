@@ -5,8 +5,8 @@ X-Custom-One = 1
 X-Custom-Two = two words
 
 ::: post
-test("response headers are readable by their lowercase name", () => {
-  expect(res.headers.get("x-custom-one")).toBe("1");
-  expect(res.headers.get("x-custom-two")).toBe("two words");
+test("response headers are readable, whatever the case", () => {
+  expect(res.headers.get("X-Custom-One")).toBe("1");
+  expect(res.headers.get("X-CUSTOM-TWO")).toBe("two words");
   expect(res.headers.get("x-missing")).toBeFalsy();
 });
