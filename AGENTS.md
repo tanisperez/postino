@@ -34,7 +34,8 @@ Expo/React Native conventions here.
   must not render them again.
 - MVP scope: HTTP methods (standard or custom), URL, query params, headers, body (json/text/
   xml/form), environments and variables, pre/post JavaScript scripts with `test()`/`expect()`,
-  a response viewer, Postman collection import. See `plans/mvp.md` section 1 for the full table.
+  a response viewer, Postman collection import. The reasons behind these choices
+  are in `docs/architecture.md`.
 - Postman import: Collection format v2.1 (v2.0 accepted when it parses the same) and Postman
   environment exports.
 - HTTP client: `ureq` 3 (blocking, rustls), run on GPUI's background executor.
@@ -51,12 +52,15 @@ These are to be settled in a dedicated planning session. Do not pick one silentl
 
 ## Architecture
 
-A Cargo workspace of eight small crates, UI kept thin. Dependency direction (arrows mean
-"depends on"), no cycles, no crate depends on `postino-app`:
+A Cargo workspace of nine small crates, UI kept thin. The reasons and conventions are in
+`docs/architecture.md`; notes on `gpui-kit` pitfalls are in `docs/gpui-notes.md`. Dependency
+direction (arrows mean "depends on"), no cycles, no crate depends on `postino-app`:
 
 ```
-postino-app ──> postino-runner ──> postino-script ──> postino-core
-     │                 └────────> postino-http ────> postino-core
+postino-app ──> postino-load ──> postino-runner ──> postino-script ──> postino-core
+     │               │                  └─────────> postino-http ────> postino-core
+     │               └──> postino-http, postino-script, postino-core
+     ├──────> postino-runner
      ├──────> postino-workspace ─> postino-format ─> postino-core
      ├──────> postino-format (the Code snippet dialog renders `render_snippet` directly)
      └──────> postino-update (standalone, depends on no other postino crate)
@@ -69,6 +73,7 @@ postino-app ──> postino-runner ──> postino-script ──> postino-core
 - `postino-script`: the `ScriptEngine` trait and its QuickJS implementation.
 - `postino-http`: sends a resolved request with `ureq`, measures timing.
 - `postino-runner`: the pipeline, vars, pre script, interpolate, send, post script.
+- `postino-load`: the load test engine, live metrics, run comparison and run history.
 - `postino-update`: in-app updater: reads the `latest.json` release manifest, downloads and
   verifies the asset, and has the macOS and Windows install helpers. Blocking calls.
 - `postino-app`: the `gpui` binary (`postino`). Only UI and glue.
@@ -103,7 +108,7 @@ changing any UI, and keep to its rules (colors from `cx.palette()`, sizes from `
 
 ## Translations
 
-Plan, glossary and phases in `plans/i18n.md`. Languages: English (source and fallback), Spanish,
+Decisions, glossary and how to add a string or a language in `docs/i18n.md`. Languages: English (source and fallback), Spanish,
 Galician, Italian.
 
 - Library: `rust-i18n` 4, `i18n!("locales", fallback = "en")` in `main.rs`, strings read with
@@ -206,8 +211,8 @@ Strings live in `locales/update.yml`.
 ## Releases
 
 Version tags `vX.Y.Z` build and publish a GitHub release through
-`.github/workflows/release.yml`. Steps in `docs/releasing.md`, the full plan (packages,
-distribution, updater) in `plans/releases.md`.
+`.github/workflows/release.yml`. Steps, packages, distribution
+channels and the updater are in `docs/releasing.md`.
 
 ## Commands
 

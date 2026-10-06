@@ -1,5 +1,5 @@
 # Publishes site/ to GitHub Pages (postino.tanis.codes). The site is rebuilt from scratch on
-# every run, there is no gh-pages branch (plans/releases.md, section 5). The signed APT and DNF
+# every run, there is no gh-pages branch (docs/releasing.md). The signed APT and DNF
 # repositories (#43) are added to the same upload from the deb and rpm files of the last stable
 # releases. They are skipped until the GPG_PRIVATE_KEY secret exists and a stable release does.
 name: Website

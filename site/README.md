@@ -1,7 +1,7 @@
 # Postino website
 
 The landing page and install page served at <https://postino.tanis.codes>. Plain HTML and CSS,
-no build step. Plan in `plans/releases.md`, section 5.
+no build step. How it is deployed: `docs/releasing.md`.
 
 - `index.html`, `install.html`: the pages.
 - `css/style.css`: every color, radius and font comes from the Postino design system
