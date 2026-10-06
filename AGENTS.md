@@ -95,8 +95,8 @@ any other icon silently renders empty. On Linux, the window is opened with `Wind
 - UI logic (open tabs, dirty state, the active environment, ...) lives in plain Rust under
   `postino-app/src/state`, not in `gpui` views, specifically so it can be unit tested without a
   window or a GPU.
-- Manual end-to-end checks: `cargo run -- examples/sample-workspace` opens the bundled sample
-  workspace. Two environment variables are read at startup and do nothing when unset:
+- Manual end-to-end checks: `make sample` starts the sample suite server and opens its workspace
+  (`samples/workspace`, see "Sample suite"). Two environment variables are read at startup and do nothing when unset:
   `POSTINO_ENV=<name>` selects an environment (a name under `environments/`) before sending
   anything, and `POSTINO_AUTOSEND=<request id>` opens that request (a workspace-relative id, for
   example `auth/login.postino`) and sends it right away.
@@ -181,7 +181,7 @@ Found in the 2026-09-30 investigation (#32, #33, #34). Keep these rules in every
   `SharedString`, so clones are O(1).
 - Resync an editor (`set_value`) only when that cheap key changes, never by reading its whole
   value and comparing it with the new text on every render.
-- Test with big data, not only `examples/sample-workspace`: a 5 MB JSON response, or the 15 MB
+- Test with big data, not only the small requests of the sample suite: a 5 MB JSON response, or the 15 MB
   `responses/large-15mb` of the sample suite (the response body limit is a setting,
   20 MB by default, `postino_http::DEFAULT_MAX_RESPONSE_SIZE`), measuring main thread CPU while idle and while
   typing, and RSS. A 15 MB JSON body costs about 475 MB of extra RSS, roughly 30 times its size.

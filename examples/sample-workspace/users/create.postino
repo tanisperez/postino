@@ -1,6 +1,0 @@
-POST {{baseUrl}}/users
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-::: body json
-{ "name": "{{userName}}", "email": "{{userEmail}}" }

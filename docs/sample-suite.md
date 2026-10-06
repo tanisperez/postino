@@ -13,9 +13,6 @@ samples/
     environments/        local (HTTP) and secure (HTTPS)
 ```
 
-`examples/sample-workspace` is a different, tiny workspace used for `POSTINO_AUTOSEND` and quick
-manual checks. It also works against this server (`/health`, `/auth/login`, `/users`).
-
 ## Running it
 
 ```

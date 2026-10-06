@@ -68,13 +68,14 @@ Build and run:
 ```
 git clone https://github.com/tanisperez/postino.git
 cd postino
-cargo run -- examples/sample-workspace   # debug build, opens the sample workspace
-cargo build --release                    # optimized binary in target/release/postino
-cargo test --all-targets                 # run the tests
+cargo run                    # debug build
+cargo build --release        # optimized binary in target/release/postino
+cargo test --all-targets     # run the tests
 ```
 
 On Linux and macOS the `Makefile` wraps the usual commands (`make run`, `make release`,
-`make test`, `make lint`, ...). Run `make help` for the full list.
+`make test`, `make lint`, ...). `make sample` starts a local test server and opens a workspace of
+about 140 requests that exercise every feature. Run `make help` for the full list.
 
 ## Documentation
 

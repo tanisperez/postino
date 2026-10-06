@@ -44,8 +44,8 @@ mod tests {
 
     #[test]
     fn import_postman_collection_writes_files_that_parse_back() {
-        // A fresh, empty workspace in a temporary directory: never `examples/`, so this never
-        // touches the sample workspace shipped with the repository.
+        // A fresh, empty workspace in a temporary directory, so this never touches a workspace
+        // shipped with the repository.
         let dir = tempfile::tempdir().expect("tempdir");
         let mut workspace = Workspace::open(dir.path()).expect("opening an empty folder");
 
