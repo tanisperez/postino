@@ -1,0 +1,11 @@
+GET {{baseUrl}}/anything/params
+
+::: query
+page = 2
+limit = 10
+sort = name
+
+::: post
+test("every entry arrived", () => {
+  expect(res.json().args).toEqual({ page: "2", limit: "10", sort: "name" });
+});

@@ -1,0 +1,16 @@
+GET {{baseUrl}}/anything/headers
+X-Request-Source: postino-samples
+X-Number: 42
+X-Url: https://a.test/b:8080
+Accept: application/json
+
+::: post
+test("headers arrived", () => {
+  const sent = res.json().headers;
+  expect(sent["x-request-source"]).toBe("postino-samples");
+  expect(sent["x-number"]).toBe("42");
+  expect(sent.accept).toBe("application/json");
+});
+test("a colon inside the value is kept", () => {
+  expect(res.json().headers["x-url"]).toBe("https://a.test/b:8080");
+});

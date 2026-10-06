@@ -1,0 +1,15 @@
+GET {{baseUrl}}/anything/vars
+
+::: query
+step = set
+
+::: pre
+env.set("sessionValue", "set-by-a-script");
+
+::: post
+test("ok", () => {
+  expect(res.status).toBe(200);
+});
+
+::: docs
+Sets `sessionValue` for the rest of the session. `session-use` reads it.

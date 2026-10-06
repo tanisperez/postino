@@ -1,0 +1,10 @@
+PATCH {{baseUrl}}/users/{{userId}}
+
+::: body json
+{ "email": "countess@example.com" }
+
+::: post
+test("PATCH changes only what is sent", () => {
+  expect(res.json().name).toBe("Ada King");
+  expect(res.json().email).toBe("countess@example.com");
+});

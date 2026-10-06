@@ -1,0 +1,7 @@
+GET {{baseUrl}}/image/png
+
+::: post
+test("PNG", () => {
+  expect(res.headers.get("content-type")).toBe("image/png");
+  expect(res.size).toBeGreaterThan(50);
+});

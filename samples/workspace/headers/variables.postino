@@ -1,0 +1,9 @@
+GET {{baseUrl}}/anything/headers
+X-User: {{username}}
+X-Api-Key: {{apiKey}}
+
+::: post
+test("variables are interpolated", () => {
+  expect(res.json().headers["x-user"]).toBe("demo");
+  expect(res.json().headers["x-api-key"]).toBe("sample-api-key");
+});

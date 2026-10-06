@@ -1,0 +1,15 @@
+POST {{baseUrl}}/users
+Authorization: Bearer {{token}}
+
+::: body json
+{ "name": "{{userName}}", "email": "{{userEmail}}" }
+
+::: post
+test("201 with a Location header", () => {
+  expect(res.status).toBe(201);
+  expect(res.headers.get("location")).toMatch(/^\/users\/\d+$/);
+});
+env.set("userId", String(res.json().id));
+
+::: docs
+Stores the new id as `userId` for the next requests.

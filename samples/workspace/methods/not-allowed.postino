@@ -1,0 +1,10 @@
+POST {{baseUrl}}/methods/get
+
+::: post
+test("405 with the allowed method", () => {
+  expect(res.status).toBe(405);
+  expect(res.headers.get("allow")).toBe("GET");
+});
+
+::: docs
+4xx is a normal response, not an error.

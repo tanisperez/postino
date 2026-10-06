@@ -1,0 +1,13 @@
+HEAD {{baseUrl}}/anything/methods
+
+::: post
+test("status is 200", () => {
+  expect(res.status).toBe(200);
+});
+test("a HEAD response has no body", () => {
+  expect(res.size).toBe(0);
+});
+test("headers are still there", () => {
+  expect(res.headers.get("x-sample-profile")).toBeTruthy();
+  expect(res.headers.get("content-type")).toContain("json");
+});

@@ -1,0 +1,9 @@
+GET {{baseUrl}}/status/429
+
+::: post
+test("status is 429", () => {
+  expect(res.status).toBe(429);
+});
+test("Retry-After", () => {
+  expect(res.headers.get("retry-after")).toBe("30");
+});

@@ -1,0 +1,9 @@
+GET {{tlsWrongHostUrl}}/tls
+
+::: post
+test("served with a certificate for another host", () => {
+  expect(res.json().profile).toBe("wrong-host");
+});
+
+::: docs
+The certificate is for other.example.test. The verifier reports the unknown issuer first, so the warning says so, not that the name does not match.

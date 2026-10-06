@@ -1,0 +1,13 @@
+GET {{baseUrl}}/cookies/set
+
+::: query
+token = xyz
+lang = es
+
+::: post
+test("Set-Cookie is visible", () => {
+  expect(res.headers.get("set-cookie")).toContain("token=xyz");
+});
+
+::: docs
+Postino has no cookie jar: the cookie is shown, not stored.

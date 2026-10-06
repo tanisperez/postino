@@ -5235,7 +5235,9 @@ dependencies = [
  "postino-core",
  "postino-http",
  "postino-script",
+ "postino-workspace",
  "pretty_assertions",
+ "serde_json",
  "thiserror 2.0.21",
 ]
 

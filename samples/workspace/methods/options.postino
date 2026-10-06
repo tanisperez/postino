@@ -1,0 +1,7 @@
+OPTIONS {{baseUrl}}/health
+
+::: post
+test("204 with an Allow header", () => {
+  expect(res.status).toBe(204);
+  expect(res.headers.get("allow")).toContain("GET");
+});

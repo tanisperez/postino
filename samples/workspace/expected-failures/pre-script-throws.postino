@@ -1,0 +1,7 @@
+GET {{baseUrl}}/health
+
+::: pre
+throw new Error("pre script exploded");
+
+::: docs
+Expected to fail, on purpose. An uncaught exception in a pre script aborts the run, nothing is sent.

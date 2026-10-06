@@ -1,0 +1,10 @@
+GET {{baseUrl}}/users
+
+::: query
+q = grace
+
+::: post
+test("search is case insensitive", () => {
+  expect(res.json().total).toBe(1);
+  expect(res.json().data[0].email).toBe("grace@example.com");
+});

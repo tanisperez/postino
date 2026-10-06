@@ -1,0 +1,16 @@
+GET {{baseUrl}}/anything/original
+
+::: pre
+req.method = "PUT";
+req.url = req.url.replace("original", "rewritten") + "?by=pre";
+
+::: post
+test("method and url were rewritten", () => {
+  expect(res.json().method).toBe("PUT");
+  expect(res.json().path).toBe("/anything/rewritten");
+  expect(res.json().args.by).toBe("pre");
+});
+test("req in post is the request actually sent", () => {
+  expect(req.method).toBe("PUT");
+  expect(req.url).toContain("/anything/rewritten");
+});

@@ -1,0 +1,12 @@
+GET {{baseUrl}}/large
+
+::: query
+size = 5000000
+
+::: post
+test("about 5 MB, below the 10 MB response limit", () => {
+  expect(res.size).toBeGreaterThan(4990000);
+});
+
+::: docs
+Use this one to check idle CPU and memory with a big response (see AGENTS.md, Performance).

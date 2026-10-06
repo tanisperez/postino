@@ -1,0 +1,11 @@
+GET {{tlsSelfSignedUrl}}/tls
+
+::: post
+test("served with the self-signed certificate", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().profile).toBe("self-signed");
+  expect(res.json().tls).toBe(true);
+});
+
+::: docs
+With the default setting (warn) the request is sent and a certificate warning is shown. With reject it fails.

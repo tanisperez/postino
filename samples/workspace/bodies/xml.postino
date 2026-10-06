@@ -1,0 +1,14 @@
+POST {{baseUrl}}/echo
+
+::: body xml
+<?xml version="1.0" encoding="UTF-8"?>
+<order id="{{ randomInt(7, 7) }}">
+  <customer>{{userName}}</customer>
+</order>
+
+::: post
+test("XML with variables and functions", () => {
+  expect(res.json().content_type).toBe("application/xml");
+  expect(res.json().body).toContain('<order id="7">');
+  expect(res.json().body).toContain("<customer>Ada Lovelace</customer>");
+});

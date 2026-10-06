@@ -1,0 +1,10 @@
+GET {{baseUrl}}/json
+
+::: post
+test("runs before the exception", () => {
+  expect(res.status).toBe(200);
+});
+throw new Error("post script exploded");
+
+::: docs
+Expected to fail, on purpose. The response and the test that ran before the exception are kept.

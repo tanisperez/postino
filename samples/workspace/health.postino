@@ -1,0 +1,10 @@
+GET {{baseUrl}}/health
+
+::: post
+test("server is up", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().status).toBe("ok");
+});
+
+::: docs
+Smoke test. Run it first: if it fails, the sample server is not running (`make sample-server`).

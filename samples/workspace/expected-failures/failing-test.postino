@@ -1,0 +1,9 @@
+GET {{baseUrl}}/health
+
+::: post
+test("fails on purpose", () => {
+  expect(res.status).toBe(500);
+});
+
+::: docs
+Expected: the run completes but one test is red.

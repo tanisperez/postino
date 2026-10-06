@@ -1,0 +1,7 @@
+GET {{baseUrl}}/html
+
+::: post
+test("HTML body", () => {
+  expect(res.headers.get("content-type")).toContain("text/html");
+  expect(res.body).toContain("<h1>");
+});

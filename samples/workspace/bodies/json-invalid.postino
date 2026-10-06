@@ -1,0 +1,10 @@
+POST {{baseUrl}}/echo
+
+::: body json
+{ "broken": [1, 2, 
+
+::: post
+test("Postino sends what you typed, valid or not", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().json_error).toBeTruthy();
+});

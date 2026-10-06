@@ -1,0 +1,20 @@
+POST {{baseUrl}}/echo
+X-Signature: {{signature}}
+
+::: body json
+{ "amount": 100, "currency": "EUR" }
+
+::: pre
+// Builds a value from the body, the way a signing script would.
+const payload = JSON.parse(req.body);
+const digest = util.base64Encode(payload.currency + ":" + payload.amount);
+vars.set("signature", digest);
+console.log("signature", digest);
+
+::: post
+test("the signature header was computed", () => {
+  expect(res.json().headers["x-signature"]).toBe("RVVSOjEwMA==");
+});
+test("the pre script logged", () => {
+  expect(res.status).toBe(200);
+});

@@ -1,0 +1,12 @@
+GET {{baseUrl}}/anything/vars
+
+::: query
+value = {{doesNotExist}}
+
+::: post
+test("an unknown variable is left as written", () => {
+  expect(res.json().args.value).toBe("{{doesNotExist}}");
+});
+
+::: docs
+Reported as a warning, never an error. The only request in the suite that is expected to warn.

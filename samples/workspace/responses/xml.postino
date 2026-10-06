@@ -1,0 +1,7 @@
+GET {{baseUrl}}/xml
+
+::: post
+test("XML body", () => {
+  expect(res.headers.get("content-type")).toContain("xml");
+  expect(res.body).toContain("<title>Rust in Action</title>");
+});

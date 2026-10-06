@@ -1,0 +1,9 @@
+GET {{tlsPrivateCaUrl}}/tls
+
+::: post
+test("served with a certificate from a private CA", () => {
+  expect(res.json().profile).toBe("private-ca");
+});
+
+::: docs
+The CA is certs/ca.pem. Postino does not trust it, so this is an unknown issuer warning.

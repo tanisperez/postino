@@ -1,0 +1,7 @@
+GET {{baseUrl}}/users
+
+::: post
+test("three users", () => {
+  expect(res.json().total).toBe(3);
+  expect(res.json().data[0].name).toBe("Ada Lovelace");
+});

@@ -1,0 +1,13 @@
+GET {{baseUrl}}/json
+
+::: post
+test("JSON types", () => {
+  const data = res.json();
+  expect(res.headers.get("content-type")).toContain("application/json");
+  expect(data.string).toBe("hello");
+  expect(data.number).toBe(42);
+  expect(data.bool).toBe(true);
+  expect(data.null).toBe(null);
+  expect(data.object.nested.deep[2]).toEqual({ c: "d" });
+  expect(data.unicode).toContain("日本語");
+});

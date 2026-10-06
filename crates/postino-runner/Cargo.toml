@@ -15,6 +15,9 @@ log = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
+serde_json = { workspace = true }
+# Only for the sample suite test, which loads samples/workspace.
+postino-workspace = { path = "../postino-workspace" }
 # Enables the test server helper for this crate's own tests, without shipping it in release builds.
 postino-http = { path = "../postino-http", features = ["test-support"] }
 

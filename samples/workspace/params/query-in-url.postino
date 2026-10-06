@@ -1,0 +1,6 @@
+GET {{baseUrl}}/anything/params?a=1&b=two
+
+::: post
+test("a literal query string is sent as is", () => {
+  expect(res.json().args).toEqual({ a: "1", b: "two" });
+});

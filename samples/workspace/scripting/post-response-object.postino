@@ -1,0 +1,20 @@
+GET {{baseUrl}}/json
+
+::: post
+test("res properties", () => {
+  expect(typeof res.status).toBe("number");
+  expect(res.body.length).toBeGreaterThan(10);
+  expect(res.size).toBeGreaterThan(res.body.length - 1);
+  expect(res.timeMs).toBeGreaterThan(-1);
+  expect(res.headers.get("content-type")).toBe("application/json; charset=utf-8");
+});
+test("res is read only", () => {
+  let threw = false;
+  try { res.headers.set("X-New", "1"); } catch (error) { threw = true; }
+  expect(threw).toBe(true);
+});
+test("req is read only in post", () => {
+  let threw = false;
+  try { req.url = "http://elsewhere.test"; } catch (error) { threw = true; }
+  expect(threw).toBe(true);
+});

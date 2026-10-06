@@ -1,0 +1,12 @@
+GET {{baseUrl}}/health
+
+::: post
+test("util.*", () => {
+  expect(util.uuid()).toMatch(/^[0-9a-f-]{36}$/);
+  expect(typeof util.now()).toBe("number");
+  expect(util.isoDate()).toMatch(/Z$/);
+  expect(util.randomInt(3, 3)).toBe(3);
+  expect(util.randomString(8).length).toBe(8);
+  expect(util.base64Decode(util.base64Encode("round trip"))).toBe("round trip");
+  expect(util.urlEncode("a b")).toBe("a%20b");
+});

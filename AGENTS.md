@@ -101,6 +101,15 @@ any other icon silently renders empty. On Linux, the window is opened with `Wind
   anything, and `POSTINO_AUTOSEND=<request id>` opens that request (a workspace-relative id, for
   example `auth/login.postino`) and sends it right away.
 
+## Sample suite
+
+`samples/` has a local Python server (standard library only, HTTP and HTTPS with several
+certificate profiles) and a workspace of about 140 requests that exercise every feature. Run it
+with `make sample-server` or `make sample`; details, endpoints and known gaps in
+`docs/sample-suite.md`. `crates/postino-runner/tests/sample_suite.rs` runs the whole suite
+against the server (it skips itself without Python 3). Every request must carry a `test()`, and a
+new feature should get a request there.
+
 ## Design system
 
 Colors, metrics, typography and layout of both themes are in `docs/design-system.md`. Read it before

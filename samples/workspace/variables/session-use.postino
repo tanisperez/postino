@@ -1,0 +1,12 @@
+GET {{baseUrl}}/anything/vars
+
+::: query
+value = {{sessionValue}}
+
+::: post
+test("the value set by an earlier request is visible", () => {
+  expect(res.json().args.value).toBe("set-by-a-script");
+});
+
+::: docs
+Needs `session-set` to have run first.

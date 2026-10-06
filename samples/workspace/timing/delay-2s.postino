@@ -1,0 +1,9 @@
+GET {{baseUrl}}/delay/2000
+
+::: post
+test("a slow response", () => {
+  expect(res.timeMs).toBeGreaterThan(1999);
+});
+
+::: docs
+Long enough to see the spinner and to try Cancel.

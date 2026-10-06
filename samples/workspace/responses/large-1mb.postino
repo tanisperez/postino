@@ -1,0 +1,10 @@
+GET {{baseUrl}}/large
+
+::: query
+size = 1000000
+
+::: post
+test("about 1 MB", () => {
+  expect(res.size).toBeGreaterThan(999000);
+  expect(res.json().items.length).toBeGreaterThan(1000);
+});

@@ -1,0 +1,9 @@
+GET {{tlsNotYetValidUrl}}/tls
+
+::: post
+test("served with the not yet valid certificate", () => {
+  expect(res.json().profile).toBe("not-yet-valid");
+});
+
+::: docs
+Warning: certificate not valid yet.

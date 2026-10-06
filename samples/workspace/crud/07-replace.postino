@@ -1,0 +1,9 @@
+PUT {{baseUrl}}/users/{{userId}}
+
+::: body json
+{ "name": "Ada King", "email": "ada.king@example.com" }
+
+::: post
+test("PUT replaces the user", () => {
+  expect(res.json().name).toBe("Ada King");
+});

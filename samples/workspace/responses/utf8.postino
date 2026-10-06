@@ -1,0 +1,8 @@
+GET {{baseUrl}}/utf8
+
+::: post
+test("UTF-8 decoding", () => {
+  expect(res.body).toContain("日本語");
+  expect(res.body).toContain("🚀");
+  expect(res.size).toBeGreaterThan(res.body.length);
+});

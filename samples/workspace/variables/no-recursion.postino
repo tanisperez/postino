@@ -1,0 +1,12 @@
+GET {{baseUrl}}/anything/vars
+
+::: query
+value = {{nested}}
+
+::: post
+test("interpolation is a single pass", () => {
+  expect(res.json().args.value).toBe("{{userName}}");
+});
+
+::: docs
+`nested` is defined as `{{userName}}` and is not expanded again.

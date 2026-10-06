@@ -1,0 +1,7 @@
+GET {{baseUrl}}/api-key
+X-API-Key: {{apiKey}}
+
+::: post
+test("API key in a header", () => {
+  expect(res.json().via).toBe("header");
+});

@@ -1,0 +1,7 @@
+GET {{baseUrl}}/anything/users/{{username}}/profile
+
+::: post
+test("variables work in the path", () => {
+  expect(res.json().path).toBe("/anything/users/demo/profile");
+  expect(res.json().rest).toBe("/users/demo/profile");
+});

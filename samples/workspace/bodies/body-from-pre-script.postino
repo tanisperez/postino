@@ -1,0 +1,12 @@
+POST {{baseUrl}}/echo
+
+::: body text
+original
+
+::: pre
+req.body = "rewritten by the pre script";
+
+::: post
+test("the pre script changed the body", () => {
+  expect(res.json().body).toBe("rewritten by the pre script");
+});

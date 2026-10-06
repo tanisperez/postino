@@ -1,0 +1,11 @@
+GET {{baseUrl}}/repeated-headers
+
+::: post
+test("repeated headers are visible", () => {
+  expect(res.headers.get("x-repeated")).toContain("one");
+  expect(res.headers.get("set-cookie")).toContain("a=1");
+  expect(res.headers.get("x-mixed-case")).toBe("Value With Spaces");
+});
+
+::: docs
+The server sends X-Repeated three times and Set-Cookie twice.

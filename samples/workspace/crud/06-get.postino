@@ -1,0 +1,6 @@
+GET {{baseUrl}}/users/{{userId}}
+
+::: post
+test("the created user", () => {
+  expect(res.json().name).toBe("Ada Lovelace");
+});

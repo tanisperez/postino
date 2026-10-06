@@ -1,0 +1,12 @@
+POST {{baseUrl}}/echo
+
+::: body form
+username = {{username}}
+password = {{password}}
+remember = on
+
+::: post
+test("form fields", () => {
+  expect(res.json().content_type).toBe("application/x-www-form-urlencoded");
+  expect(res.json().form).toEqual({ username: "demo", password: "demo-password", remember: "on" });
+});

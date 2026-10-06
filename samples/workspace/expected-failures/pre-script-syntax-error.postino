@@ -1,0 +1,7 @@
+GET {{baseUrl}}/health
+
+::: pre
+const = ;
+
+::: docs
+Expected to fail, on purpose. A syntax error is treated like any other pre script exception.

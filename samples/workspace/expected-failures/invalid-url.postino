@@ -1,0 +1,4 @@
+GET not a url
+
+::: docs
+Expected to fail, on purpose. Fails before anything is sent.

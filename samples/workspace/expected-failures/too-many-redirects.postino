@@ -1,0 +1,4 @@
+GET {{baseUrl}}/redirect-loop
+
+::: docs
+Expected to fail, on purpose. The server redirects to itself forever, Postino gives up after 10 hops.

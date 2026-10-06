@@ -1,0 +1,7 @@
+GET {{baseUrl}}/etag/v1
+
+::: post
+test("200 with an ETag", () => {
+  expect(res.status).toBe(200);
+  expect(res.headers.get("etag")).toBe('"v1"');
+});

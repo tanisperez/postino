@@ -1,0 +1,11 @@
+POST {{baseUrl}}/echo
+Content-Type: application/vnd.api+json
+
+::: body json
+{ "data": 1 }
+
+::: post
+test("an explicit Content-Type wins", () => {
+  expect(res.json().content_type).toBe("application/vnd.api+json");
+  expect(res.json().json).toEqual({ data: 1 });
+});

@@ -1,0 +1,23 @@
+GET {{baseUrl}}/anything/vars
+
+::: query
+int = {{ randomInt(5, 5) }}
+random = {{ randomString(12) }}
+b64 = {{ base64Encode("postino") }}
+b64d = {{ base64Decode("cG9zdGlubw==") }}
+enc = {{ urlEncode("a b/c") }}
+fromVar = {{ base64Encode(username) }}
+
+::: post
+test("template functions", () => {
+  const args = res.json().args;
+  expect(args.int).toBe("5");
+  expect(args.random).toMatch(/^[A-Za-z0-9]{12}$/);
+  expect(args.b64).toBe("cG9zdGlubw==");
+  expect(args.b64d).toBe("postino");
+  expect(args.enc).toBe("a%20b%2Fc");
+  expect(args.fromVar).toBe("ZGVtbw==");
+});
+
+::: docs
+A bare identifier argument is looked up as a variable.

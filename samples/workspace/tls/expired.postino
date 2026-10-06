@@ -1,0 +1,9 @@
+GET {{tlsExpiredUrl}}/tls
+
+::: post
+test("served with the expired certificate", () => {
+  expect(res.json().profile).toBe("expired");
+});
+
+::: docs
+Warning: certificate expired.

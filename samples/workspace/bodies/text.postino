@@ -1,0 +1,12 @@
+POST {{baseUrl}}/echo
+
+::: body text
+Line one
+Line two
+
+Line four, with ñ and 日本
+
+::: post
+test("text is sent verbatim", () => {
+  expect(res.json().body).toBe("Line one\nLine two\n\nLine four, with ñ and 日本");
+});

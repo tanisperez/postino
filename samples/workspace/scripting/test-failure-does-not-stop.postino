@@ -1,0 +1,15 @@
+GET {{baseUrl}}/json
+
+::: post
+test("this one passes", () => {
+  expect(res.status).toBe(200);
+});
+test("this one fails on purpose", () => {
+  expect(res.status).toBe(500);
+});
+test("this one still runs", () => {
+  expect(res.json().number).toBe(42);
+});
+
+::: docs
+Expected: two passed, one failed. The run itself is not a failure.

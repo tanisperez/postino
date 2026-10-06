@@ -1,0 +1,14 @@
+GET {{baseUrl}}/anything/headers
+X-Request-Id: {{ uuid() }}
+X-Timestamp: {{ now() }}
+X-Date: {{ isoDate() }}
+X-Basic: {{ base64Encode("user:pass") }}
+
+::: post
+test("functions produced values", () => {
+  const sent = res.json().headers;
+  expect(sent["x-request-id"]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  expect(Number(sent["x-timestamp"])).toBeGreaterThan(1700000000000);
+  expect(sent["x-date"]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+  expect(sent["x-basic"]).toBe("dXNlcjpwYXNz");
+});

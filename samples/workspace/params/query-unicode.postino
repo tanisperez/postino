@@ -1,0 +1,11 @@
+GET {{baseUrl}}/anything/params
+
+::: query
+name = ñandú 日本語 🚀
+ключ = значение
+
+::: post
+test("UTF-8 survives", () => {
+  expect(res.json().args.name).toBe("ñandú 日本語 🚀");
+  expect(res.json().args["ключ"]).toBe("значение");
+});

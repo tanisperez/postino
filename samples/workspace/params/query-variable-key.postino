@@ -1,0 +1,9 @@
+GET {{baseUrl}}/anything/params
+
+::: query
+{{username}} = is-the-key
+
+::: post
+test("keys are interpolated too", () => {
+  expect(res.json().args.demo).toBe("is-the-key");
+});

@@ -1,0 +1,12 @@
+GET {{baseUrl}}/invalid-json
+
+::: post
+test("res.json() throws on a broken body", () => {
+  let failed = false;
+  try {
+    res.json();
+  } catch (error) {
+    failed = true;
+  }
+  expect(failed).toBe(true);
+});

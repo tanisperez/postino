@@ -1,0 +1,7 @@
+GET {{baseUrl}}/api-key
+X-API-Key: wrong
+
+::: post
+test("401 with a wrong key", () => {
+  expect(res.status).toBe(401);
+});

@@ -1,0 +1,9 @@
+POST {{baseUrl}}/users
+
+::: body json
+{ "email": "no-name@example.com" }
+
+::: post
+test("422 without a name", () => {
+  expect(res.status).toBe(422);
+});

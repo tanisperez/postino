@@ -1,0 +1,10 @@
+GET {{baseUrl}}/anything/params
+
+::: query
+flag = 
+empty = 
+
+::: post
+test("keys without a value are sent", () => {
+  expect(res.json().args_list).toEqual([["flag", ""], ["empty", ""]]);
+});

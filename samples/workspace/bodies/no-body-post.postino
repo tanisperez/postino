@@ -1,0 +1,7 @@
+POST {{baseUrl}}/echo
+
+::: post
+test("a POST without a body", () => {
+  expect(res.json().body_bytes).toBe(0);
+  expect(res.json().method).toBe("POST");
+});

@@ -14,3 +14,7 @@ indent_size = 2
 
 [Makefile]
 indent_style = tab
+
+# An empty form or query value is written as "key = " by the serializer, trailing space included.
+[samples/workspace/**.postino]
+trim_trailing_whitespace = false

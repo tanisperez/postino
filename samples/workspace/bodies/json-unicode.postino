@@ -1,0 +1,9 @@
+POST {{baseUrl}}/echo
+
+::: body json
+{ "text": "ñandú 日本語 🚀 \u00e9" }
+
+::: post
+test("UTF-8 and escapes", () => {
+  expect(res.json().json.text).toBe("ñandú 日本語 🚀 é");
+});

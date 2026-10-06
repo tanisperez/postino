@@ -1,0 +1,6 @@
+GET {{baseUrl}}/users/{{userId}}
+
+::: post
+test("it is gone", () => {
+  expect(res.status).toBe(404);
+});

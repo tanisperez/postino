@@ -1,0 +1,7 @@
+GET {{baseUrl}}/anything/headers
+User-Agent: PostinoSamples/1.0
+
+::: post
+test("the default User-Agent can be replaced", () => {
+  expect(res.json().headers["user-agent"]).toBe("PostinoSamples/1.0");
+});

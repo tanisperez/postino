@@ -1,0 +1,10 @@
+GET {{baseUrl}}/anything/params
+
+::: query
+active = yes
+# debug = true
+
+::: post
+test("the disabled entry was not sent", () => {
+  expect(res.json().args).toEqual({ active: "yes" });
+});

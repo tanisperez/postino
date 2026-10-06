@@ -1,0 +1,15 @@
+GET {{baseUrl}}/anything/vars
+
+::: query
+user = {{username}}
+
+::: pre
+env.unset("username");
+
+::: post
+test("after unset the environment file value is back", () => {
+  expect(res.json().args.user).toBe("demo");
+});
+
+::: docs
+Needs nothing, but is only interesting after `session-override-env`.

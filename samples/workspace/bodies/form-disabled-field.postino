@@ -1,0 +1,10 @@
+POST {{baseUrl}}/echo
+
+::: body form
+keep = yes
+# skip = no
+
+::: post
+test("a disabled field is not sent", () => {
+  expect(res.json().form).toEqual({ keep: "yes" });
+});

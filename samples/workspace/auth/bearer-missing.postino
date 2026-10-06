@@ -1,0 +1,6 @@
+GET {{baseUrl}}/bearer
+
+::: post
+test("401 without a token", () => {
+  expect(res.status).toBe(401);
+});

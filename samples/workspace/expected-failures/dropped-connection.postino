@@ -1,0 +1,4 @@
+GET {{baseUrl}}/drop
+
+::: docs
+Expected to fail, on purpose. The server closes the socket without answering.

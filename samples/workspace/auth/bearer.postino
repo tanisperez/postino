@@ -1,0 +1,8 @@
+GET {{baseUrl}}/bearer
+Authorization: Bearer my-static-token
+
+::: post
+test("the token reached the server", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().token).toBe("my-static-token");
+});

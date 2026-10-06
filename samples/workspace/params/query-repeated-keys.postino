@@ -1,0 +1,11 @@
+GET {{baseUrl}}/anything/params
+
+::: query
+tag = red
+tag = green
+tag = blue
+
+::: post
+test("repeated keys keep their order", () => {
+  expect(res.json().args.tag).toEqual(["red", "green", "blue"]);
+});

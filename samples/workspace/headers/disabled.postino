@@ -1,0 +1,9 @@
+GET {{baseUrl}}/anything/headers
+X-Enabled: yes
+# X-Disabled: yes
+
+::: post
+test("only the enabled header is sent", () => {
+  expect(res.json().headers["x-enabled"]).toBe("yes");
+  expect(res.json().headers).not.toHaveProperty("x-disabled");
+});

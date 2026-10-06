@@ -1,0 +1,11 @@
+GET {{baseUrl}}/anything/params
+
+::: query
+user = {{username}}
+greeting = {{greeting}}
+
+::: post
+test("variables are interpolated and encoded", () => {
+  expect(res.json().args.user).toBe("demo");
+  expect(res.json().args.greeting).toBe("hello world");
+});

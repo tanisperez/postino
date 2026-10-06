@@ -1,0 +1,11 @@
+GET {{baseUrl}}/chunked
+
+::: query
+chunks = 4
+delay = 150
+
+::: post
+test("chunks arrive over time", () => {
+  expect(res.timeMs).toBeGreaterThan(449);
+  expect(res.body).toContain("chunk 4 of 4");
+});

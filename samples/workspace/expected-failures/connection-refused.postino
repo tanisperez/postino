@@ -1,0 +1,7 @@
+GET http://127.0.0.1:9/
+
+::: post
+test("never runs", () => {});
+
+::: docs
+Expected to fail, on purpose. Nothing listens on port 9, so sending fails and no post script runs.

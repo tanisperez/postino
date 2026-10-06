@@ -1,0 +1,6 @@
+POST {{baseUrl}}/reset
+
+::: post
+test("data is back to the three seed users", () => {
+  expect(res.status).toBe(200);
+});

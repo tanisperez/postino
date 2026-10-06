@@ -1,0 +1,8 @@
+GET {{baseUrl}}/etag/v1
+If-None-Match: "v1"
+
+::: post
+test("304 and an empty body", () => {
+  expect(res.status).toBe(304);
+  expect(res.size).toBe(0);
+});

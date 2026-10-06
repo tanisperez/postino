@@ -1,0 +1,9 @@
+GET {{baseUrl}}/cookies/delete
+
+::: query
+token = 
+
+::: post
+test("the cookie is expired", () => {
+  expect(res.headers.get("set-cookie")).toContain("Max-Age=0");
+});

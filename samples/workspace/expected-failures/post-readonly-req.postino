@@ -1,0 +1,7 @@
+GET {{baseUrl}}/health
+
+::: post
+req.url = "http://elsewhere.test";
+
+::: docs
+Expected to fail, on purpose. req is read only in a post script.

@@ -1,0 +1,11 @@
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+::: post
+test("the stored token works", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().user).toBe("demo");
+});
+
+::: docs
+Needs `login` to have run in this session.

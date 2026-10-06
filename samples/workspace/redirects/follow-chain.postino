@@ -1,0 +1,10 @@
+GET {{baseUrl}}/redirect/3
+
+::: post
+test("three hops were followed", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().path).toBe("/anything/redirected");
+});
+
+::: docs
+Redirects are followed by default (up to 10), see Settings.

@@ -1,0 +1,7 @@
+GET {{baseUrl}}/bytes/2048
+
+::: post
+test("binary body size", () => {
+  expect(res.size).toBe(2048);
+  expect(res.headers.get("content-type")).toBe("application/octet-stream");
+});

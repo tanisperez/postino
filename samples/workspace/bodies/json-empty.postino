@@ -1,0 +1,12 @@
+POST {{baseUrl}}/echo
+
+::: body json
+
+
+::: post
+test("an empty body of type json sends nothing", () => {
+  expect(res.json().body_bytes).toBe(0);
+});
+
+::: docs
+The body type is kept even when the text is empty.

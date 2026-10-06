@@ -1,0 +1,9 @@
+GET {{baseUrl}}/status/204
+
+::: post
+test("status is 204", () => {
+  expect(res.status).toBe(204);
+});
+test("no body", () => {
+  expect(res.size).toBe(0);
+});

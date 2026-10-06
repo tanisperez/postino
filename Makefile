@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help run build release dist check lint lint-fix format format-check test clean screenshots
+.PHONY: help run build release dist check lint lint-fix format format-check test clean screenshots sample-server sample
 
 help:
 	@echo "Usage: make [target]"
@@ -17,6 +17,8 @@ help:
 	@echo "  test          Run all tests"
 	@echo "  clean         Remove build artifacts"
 	@echo "  screenshots   Regenerate the website screenshots (site/img)"
+	@echo "  sample-server Start the local server of the sample suite (HTTP 8080, HTTPS 8443 to 8447)"
+	@echo "  sample        Start that server and open the app on samples/workspace"
 
 run:
 	cargo run
@@ -62,3 +64,14 @@ clean:
 
 screenshots:
 	site/screenshots/capture.sh
+
+# The sample suite needs Python 3 and nothing else (see docs/sample-suite.md).
+PYTHON ?= python3
+
+sample-server:
+	$(PYTHON) samples/server/server.py
+
+sample:
+	@$(PYTHON) samples/server/server.py > /dev/null & pid=$$!; \
+	trap 'kill $$pid' EXIT INT TERM; \
+	cargo run -- samples/workspace

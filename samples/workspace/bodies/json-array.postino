@@ -1,0 +1,9 @@
+POST {{baseUrl}}/echo
+
+::: body json
+[1, 2, 3, { "four": 4 }]
+
+::: post
+test("a top level array", () => {
+  expect(res.json().json).toEqual([1, 2, 3, { four: 4 }]);
+});

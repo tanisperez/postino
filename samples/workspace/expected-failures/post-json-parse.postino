@@ -1,0 +1,7 @@
+GET {{baseUrl}}/invalid-json
+
+::: post
+res.json();
+
+::: docs
+Expected to fail, on purpose. res.json() on a broken body throws, uncaught.

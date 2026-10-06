@@ -1,0 +1,11 @@
+GET {{baseUrl}}/anything/params
+
+::: query
+q = a b&c=d/e+f%g
+path = /a/b?c#d
+
+::: post
+test("reserved characters are percent-encoded and survive", () => {
+  expect(res.json().args.q).toBe("a b&c=d/e+f%g");
+  expect(res.json().args.path).toBe("/a/b?c#d");
+});

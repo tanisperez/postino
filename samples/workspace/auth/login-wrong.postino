@@ -1,0 +1,10 @@
+POST {{baseUrl}}/auth/login
+
+::: body json
+{ "username": "{{username}}", "password": "wrong" }
+
+::: post
+test("bad credentials", () => {
+  expect(res.status).toBe(401);
+  expect(res.json().error).toContain("invalid");
+});

@@ -1,0 +1,15 @@
+GET {{baseUrl}}/anything/vars
+
+::: query
+user = {{username}}
+
+::: pre
+env.set("username", "overridden");
+
+::: post
+test("a session override beats the environment", () => {
+  expect(res.json().args.user).toBe("overridden");
+});
+
+::: docs
+Overrides `username` for the session. `session-unset` removes the override again.

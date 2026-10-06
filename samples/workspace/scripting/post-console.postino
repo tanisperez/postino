@@ -1,0 +1,13 @@
+GET {{baseUrl}}/json
+
+::: post
+console.log("log", res.status, { size: res.size });
+console.info("info line");
+console.warn("warn line");
+console.error("error line");
+test("the Console tab received four lines", () => {
+  expect(res.status).toBe(200);
+});
+
+::: docs
+Open the Console tab of the response viewer to see the four levels.

@@ -1,0 +1,11 @@
+GET {{baseUrl}}/health
+
+::: pre
+globalThis.leak = (globalThis.leak || 0) + 1;
+vars.set("runs", String(globalThis.leak));
+
+::: post
+test("nothing leaks between runs", () => {
+  expect(vars.get("runs")).toBe("1");
+  expect(typeof globalThis.leak).toBe("undefined");
+});

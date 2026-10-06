@@ -1,0 +1,9 @@
+GET {{baseUrl}}/anything/vars
+
+::: query
+user = {{username}}
+
+::: post
+test("the active environment supplies the value", () => {
+  expect(res.json().args.user).toBe(env.get("username"));
+});

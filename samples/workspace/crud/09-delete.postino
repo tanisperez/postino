@@ -1,0 +1,7 @@
+DELETE {{baseUrl}}/users/{{userId}}
+
+::: post
+test("204 and no body", () => {
+  expect(res.status).toBe(204);
+  expect(res.size).toBe(0);
+});

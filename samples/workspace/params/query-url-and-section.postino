@@ -1,0 +1,9 @@
+GET {{baseUrl}}/anything/params?fromUrl=1
+
+::: query
+fromSection = 2
+
+::: post
+test("both are merged", () => {
+  expect(res.json().query_string).toBe("fromUrl=1&fromSection=2");
+});

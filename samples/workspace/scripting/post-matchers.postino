@@ -1,0 +1,31 @@
+GET {{baseUrl}}/json
+
+::: post
+test("toBe / not.toBe", () => {
+  expect(res.status).toBe(200);
+  expect(res.status).not.toBe(404);
+});
+test("toEqual", () => {
+  expect(res.json().array).toEqual([1, 2, 3]);
+});
+test("toBeTruthy / toBeFalsy", () => {
+  expect(res.json().bool).toBeTruthy();
+  expect(res.json().null).toBeFalsy();
+});
+test("toContain on strings and arrays", () => {
+  expect(res.json().string).toContain("ell");
+  expect(res.json().array).toContain(2);
+  expect(res.json().array).not.toContain(9);
+});
+test("toMatch with a regex and with a string", () => {
+  expect(res.json().string).toMatch(/^h.llo$/);
+  expect(res.json().string).toMatch("^hello");
+});
+test("toBeGreaterThan / toBeLessThan", () => {
+  expect(res.json().number).toBeGreaterThan(41);
+  expect(res.json().number).toBeLessThan(43);
+});
+test("toHaveProperty", () => {
+  expect(res.json()).toHaveProperty("object");
+  expect(res.json()).not.toHaveProperty("nothing");
+});

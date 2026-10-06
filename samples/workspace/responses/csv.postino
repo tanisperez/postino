@@ -1,0 +1,6 @@
+GET {{baseUrl}}/csv
+
+::: post
+test("CSV", () => {
+  expect(res.body.split("\n")[0]).toBe("id,name");
+});

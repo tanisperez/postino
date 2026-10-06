@@ -1,0 +1,6 @@
+GET {{baseUrl}}/status/201
+
+::: post
+test("status is 201", () => {
+  expect(res.status).toBe(201);
+});

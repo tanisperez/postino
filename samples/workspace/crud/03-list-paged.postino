@@ -1,0 +1,12 @@
+GET {{baseUrl}}/users
+
+::: query
+page = 2
+per_page = 2
+
+::: post
+test("second page of two", () => {
+  expect(res.json().page).toBe(2);
+  expect(res.json().data.length).toBe(1);
+  expect(res.json().data[0].name).toBe("Alan Turing");
+});

@@ -1,0 +1,13 @@
+POST {{baseUrl}}/echo
+
+::: body form
+message = a b&c=d+e%f
+name = ñandú 日本
+empty = 
+
+::: post
+test("form encoding round trips", () => {
+  expect(res.json().form.message).toBe("a b&c=d+e%f");
+  expect(res.json().form.name).toBe("ñandú 日本");
+  expect(res.json().form.empty).toBe("");
+});

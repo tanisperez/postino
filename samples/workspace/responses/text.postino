@@ -1,0 +1,6 @@
+GET {{baseUrl}}/text
+
+::: post
+test("plain text", () => {
+  expect(res.body).toBe("Plain text.\nSecond line.\n");
+});

@@ -1,0 +1,11 @@
+GET {{baseUrl}}/redirect-to
+
+::: query
+status = 303
+url = /anything/landed
+
+::: post
+test("303 was followed", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().path).toBe("/anything/landed");
+});

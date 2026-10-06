@@ -1,0 +1,7 @@
+GET {{baseUrl}}/gzip
+Accept-Encoding: gzip
+
+::: post
+test("gzip is decoded", () => {
+  expect(res.json().gzipped).toBe(true);
+});

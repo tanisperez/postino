@@ -1,0 +1,9 @@
+GET {{baseUrl}}/api-key
+
+::: query
+api_key = {{apiKey}}
+
+::: post
+test("API key in the query", () => {
+  expect(res.json().via).toBe("query");
+});

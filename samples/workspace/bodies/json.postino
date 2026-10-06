@@ -1,0 +1,23 @@
+POST {{baseUrl}}/echo
+
+::: body json
+{
+  "name": "{{userName}}",
+  "email": "{{userEmail}}",
+  "age": 36,
+  "active": true,
+  "tags": ["a", "b"],
+  "address": { "city": "A Coruña", "zip": null }
+}
+
+::: post
+test("JSON arrived intact", () => {
+  const sent = res.json();
+  expect(sent.content_type).toBe("application/json");
+  expect(sent.json.name).toBe("Ada Lovelace");
+  expect(sent.json.tags).toEqual(["a", "b"]);
+  expect(sent.json.address).toEqual({ city: "A Coruña", zip: null });
+});
+
+::: docs
+Content-Type defaults to application/json for a json body.

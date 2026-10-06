@@ -1,0 +1,7 @@
+GET {{baseUrl}}/delay/300
+
+::: post
+test("the response took at least 300 ms", () => {
+  expect(res.timeMs).toBeGreaterThan(299);
+  expect(res.json().delayed_ms).toBe(300);
+});

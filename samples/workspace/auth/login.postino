@@ -1,0 +1,21 @@
+POST {{baseUrl}}/auth/login
+X-Request-Id: {{requestId}}
+
+::: body json
+{ "username": "{{username}}", "password": "{{password}}" }
+
+::: pre
+vars.set("requestId", util.uuid());
+
+::: post
+test("login succeeded", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().token).toBeTruthy();
+});
+test("the pre script variable reached the header", () => {
+  expect(req.headers.get("X-Request-Id")).toMatch(/^[0-9a-f-]{36}$/);
+});
+env.set("token", res.json().token);
+
+::: docs
+Stores the token in the session environment. Run it before `me` and the CRUD folder.

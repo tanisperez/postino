@@ -1,0 +1,15 @@
+GET {{baseUrl}}/anything/vars
+
+::: query
+user = {{username}}
+
+::: pre
+vars.set("username", "from-pre-script");
+
+::: post
+test("a request variable beats the environment", () => {
+  expect(res.json().args.user).toBe("from-pre-script");
+});
+
+::: docs
+Order: request variables, then session overrides, then the environment.

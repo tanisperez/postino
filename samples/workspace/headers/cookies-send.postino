@@ -1,0 +1,7 @@
+GET {{baseUrl}}/cookies
+Cookie: session=abc123; theme=dark
+
+::: post
+test("the server parsed the cookies", () => {
+  expect(res.json().cookies).toEqual({ session: "abc123", theme: "dark" });
+});

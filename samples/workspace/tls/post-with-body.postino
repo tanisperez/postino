@@ -1,0 +1,13 @@
+POST {{tlsSelfSignedUrl}}/echo
+
+::: body json
+{ "over": "tls" }
+
+::: post
+test("a body over a retried handshake", () => {
+  expect(res.json().scheme).toBe("https");
+  expect(res.json().json).toEqual({ over: "tls" });
+});
+
+::: docs
+The certificate error aborts the handshake before any byte of the request is written, so retrying a POST is safe.

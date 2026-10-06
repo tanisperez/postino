@@ -1,0 +1,10 @@
+GET {{baseUrl}}/chunked
+
+::: query
+chunks = 5
+
+::: post
+test("chunked transfer", () => {
+  expect(res.body.split("\n").filter(Boolean).length).toBe(5);
+  expect(res.body).toContain("chunk 5 of 5");
+});

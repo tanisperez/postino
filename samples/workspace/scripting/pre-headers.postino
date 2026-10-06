@@ -1,0 +1,13 @@
+GET {{baseUrl}}/anything/scripting
+
+::: pre
+req.headers.set("X-Timestamp", String(util.now()));
+req.headers.set("X-Nonce", util.randomString(16));
+req.headers.set("X-Removed", "will not be sent");
+req.headers.remove("X-Removed");
+
+::: post
+test("headers added by the pre script", () => {
+  expect(res.json().headers["x-nonce"]).toMatch(/^[A-Za-z0-9]{16}$/);
+  expect(res.json().headers).not.toHaveProperty("x-removed");
+});
