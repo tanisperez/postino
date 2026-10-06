@@ -96,6 +96,11 @@ any other icon silently renders empty. On Linux, the window is opened with `Wind
   anything, and `POSTINO_AUTOSEND=<request id>` opens that request (a workspace-relative id, for
   example `auth/login.postino`) and sends it right away.
 
+## Design system
+
+Colors, metrics, typography and layout of both themes are in `docs/design-system.md`. Read it before
+changing any UI, and keep to its rules (colors from `cx.palette()`, sizes from `theme::metrics`).
+
 ## Translations
 
 Plan, glossary and phases in `plans/i18n.md`. Languages: English (source and fallback), Spanish,
