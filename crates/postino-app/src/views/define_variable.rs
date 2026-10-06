@@ -256,12 +256,14 @@ fn render_define_variable_body(
             t!("request.define_variable.variable"),
             Input::new(&name_input)
                 .context_menu(edit_menu(&name_input, cx))
+                .py_0()
                 .w_full(),
         ))
         .child(labeled_field(
             t!("common.value"),
             Input::new(&value_input)
                 .context_menu(edit_menu(&value_input, cx))
+                .py_0()
                 .w_full(),
         ))
         .child(labeled_field(
@@ -279,6 +281,7 @@ fn render_define_variable_body(
                 t!("request.define_variable.new_environment_name"),
                 Input::new(&new_environment_input)
                     .context_menu(edit_menu(&new_environment_input, cx))
+                    .py_0()
                     .w_full()
                     .into_any_element(),
             )

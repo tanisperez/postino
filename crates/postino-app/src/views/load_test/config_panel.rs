@@ -477,6 +477,7 @@ fn render_field(
                 .context_menu(edit_menu(entity, cx))
                 .flex_1()
                 .h(px(CONTROL_HEIGHT))
+                .py_0()
                 .bordered(false)
                 .disabled(disabled)
                 .bg(palette.bg.opacity(0.0)),

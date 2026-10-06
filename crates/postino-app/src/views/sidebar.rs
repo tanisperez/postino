@@ -130,6 +130,7 @@ impl AppView {
                         Input::new(&self.sidebar_filter_input)
                             .context_menu(edit_menu(&self.sidebar_filter_input, cx))
                             .h(px(SIDEBAR_FILTER_HEIGHT))
+                            .py_0()
                             .bordered(false)
                             // Transparent so only the outer pill shows: without this, the `Input`'s
                             // own background paints a second, visible box inside it.

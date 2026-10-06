@@ -233,6 +233,7 @@ impl AppView {
                     Input::new(input)
                         .context_menu(edit_menu(input, cx))
                         .h(px(ENV_ROW_HEIGHT - 2.0))
+                        .py_0()
                         .bordered(false)
                         .bg(palette.bg.opacity(0.0)),
                 ),

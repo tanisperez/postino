@@ -564,7 +564,8 @@ impl AppView {
                 .content(move |content, _, cx| {
                     content.child(
                         Input::new(&input_for_content)
-                            .context_menu(edit_menu(&input_for_content, cx)),
+                            .context_menu(edit_menu(&input_for_content, cx))
+                            .py_0(),
                     )
                 })
                 .footer(

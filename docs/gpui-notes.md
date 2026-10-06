@@ -118,6 +118,16 @@ Open it with `window.open_dialog(cx, |dialog, window, cx| ..)`. It centers itsel
 margin from the window edges. Since 0.7.0 `Root` renders the dialog, sheet and notification
 layers itself, so views must not render them again (see `AGENTS.md`).
 
+## Single-line inputs
+
+An `Input` has a default height of 32 px (`h_8`) and a default vertical padding of 8 px, which
+leaves 16 px for a line that is 20 px tall. The text is clipped to that content box, so the bottom
+of every descender is cut (`Content-Type` reads as `Content-Tvbe`, `application/json` as
+`application/ison`), at any display scale. Always call `.py_0()` on a single-line `Input`, with or
+without a fixed `.h(..)`, or build it with `components::text_field`. Making the box taller does not
+help, only the padding matters. Found in #67; the sample suite request `headers/custom` shows the
+header table, which is the quickest place to check it.
+
 ## Charts
 
 `chart::LineChart` is a **single-series** element whose y scale always starts at 0 and is built

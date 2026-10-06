@@ -886,9 +886,11 @@ impl AppView {
                 KeyValueRow::with_elements(
                     Input::new(&row_entities.key)
                         .context_menu(edit_menu(&row_entities.key, cx))
+                        .py_0()
                         .w_full(),
                     Input::new(&row_entities.value)
                         .context_menu(edit_menu(&row_entities.value, cx))
+                        .py_0()
                         .w_full(),
                 )
                 .enabled(row.enabled)
