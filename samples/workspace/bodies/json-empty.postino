@@ -2,7 +2,6 @@ POST {{baseUrl}}/echo
 
 ::: body json
 
-
 ::: post
 test("an empty body of type json sends nothing", () => {
   expect(res.json().body_bytes).toBe(0);

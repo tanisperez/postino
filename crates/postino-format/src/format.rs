@@ -416,6 +416,9 @@ fn build_sections(request: &Request) -> Vec<(String, Vec<String>)> {
 
 /// Splits a raw multi-line section value (a script or a body's text) back into its lines.
 fn split_raw(text: &str) -> Vec<String> {
+    if text.is_empty() {
+        return Vec::new();
+    }
     text.split('\n').map(str::to_string).collect()
 }
 
@@ -447,6 +450,21 @@ mod tests {
         assert_eq!(request.method, Method::Get);
         assert_eq!(request.url, "https://example.com");
         assert_eq!(serialize(&request), text);
+    }
+
+    #[test]
+    fn empty_body_is_a_heading_with_no_content_lines() {
+        let text = "POST https://example.com\n\n::: body json\n\n::: post\nlog();\n";
+        let request = parse(text).expect("valid request with an empty body");
+        assert_eq!(request.body, Body::Json(String::new()));
+        assert_eq!(serialize(&request), text);
+
+        let last = parse("POST https://example.com\n\n::: body xml\n").expect("valid request");
+        assert_eq!(last.body, Body::Xml(String::new()));
+        assert_eq!(
+            serialize(&last),
+            "POST https://example.com\n\n::: body xml\n"
+        );
     }
 
     #[test]
