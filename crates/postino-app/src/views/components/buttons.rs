@@ -1,5 +1,5 @@
 //! [`PrimaryButton`], [`SecondaryButton`], [`GhostButton`] and [`DangerButton`]: the four button
-//! kinds of `Components.dc.html`'s "Buttons" swatch (`plans/ui-redesign.md` phase 3).
+//! kinds (`plans/ui-redesign.md` phase 3).
 //!
 //! `PrimaryButton`/`SecondaryButton`/`DangerButton` wrap gpui-kit's [`Button`] on its matching
 //! built-in variant (`.primary()`/`.secondary()`/`.danger()`, plus `SecondaryButton`'s own
@@ -222,8 +222,8 @@ impl RenderOnce for SecondaryButton {
     }
 }
 
-/// A low-emphasis action: transparent background, `fg_muted` text, optional icon (`Components
-/// .dc.html`'s "Ghost" swatch, for example the "Format"/"Import" buttons).
+/// A low-emphasis action: transparent background, `fg_muted` text, optional icon (for example
+/// the "Format"/"Import" buttons).
 #[derive(IntoElement)]
 pub struct GhostButton {
     spec: ButtonSpec,

@@ -1,6 +1,5 @@
 //! [`SegmentedControl`] and [`SegmentedItem`]: the Pretty/Raw and JSON/Text/XML/Form/None
-//! switches (`plans/ui-redesign.md` phase 3, design reference `Components.dc.html` "Inputs" and
-//! `Main A.dc.html`'s body-type and Pretty/Raw rows).
+//! switches (`plans/ui-redesign.md` phase 3).
 //!
 //! Custom element: gpui-kit's `Tab`/`TabBar` `.segmented()` variant would need every one of its
 //! resolved colors mapped through `ThemeConfigColors`, and the selected item's shadow the design
@@ -18,8 +17,8 @@ use gpui_kit::*;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{RADIUS_SM, SEGMENTED_CONTROL_INNER_HEIGHT};
 
-/// The selected item's shadow color: opaque black at 12% alpha. `Components.dc.html`'s own
-/// markup writes this shadow as a fixed value, the same in both themes (unlike
+/// The selected item's shadow color: opaque black at 12% alpha. This shadow is a
+/// fixed value, the same in both themes (unlike
 /// [`crate::theme::Palette::shadow`], whose two layers genuinely differ between light and dark),
 /// so it is not a [`crate::theme::Palette`] field. Built as a plain struct literal, not a color
 /// constructor call, to keep it out of `views/`'s color-literal grep check.
@@ -64,7 +63,7 @@ impl SegmentedItem {
 }
 
 /// A segmented control: a `surface` track with a border, one item per option, the selected item
-/// `raised` with a small shadow (`Components.dc.html` "Inputs", the Pretty/Raw and body type
+/// `raised` with a small shadow (the Pretty/Raw and body type
 /// rows).
 #[derive(IntoElement)]
 pub struct SegmentedControl {

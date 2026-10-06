@@ -484,7 +484,7 @@ fn render_field(
                 .bg(palette.bg.opacity(0.0)),
         );
     }
-    // The interface font, not `mono_font` (`Performance.dc.html` draws the unit suffix in the UI
+    // The interface font, not `mono_font` (the unit suffix is drawn in the UI
     // font while the value itself is mono, and `pill`'s own `font_family` above would otherwise
     // cascade to this child too).
     pill = pill.child(

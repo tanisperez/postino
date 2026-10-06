@@ -5,8 +5,8 @@
 //! (`plans/ui-redesign-spikes.md` section 6).
 //!
 //! Built as a `Dialog` with fully custom content: a left nav ("Settings" title, the single
-//! "Appearance" item) and a right column (header, scrollable body, footer), matching
-//! `postino_design_system/Settings.dc.html`. Every control writes straight to
+//! "Appearance" item) and a right column (header, scrollable body, footer), styled per
+//! `docs/design-system.md`. Every control writes straight to
 //! `AppState::settings` and calls [`AppView::apply_settings_live`], so it updates the global
 //! `Theme` and persists to `settings.toml` immediately: there is no "Save" button.
 
@@ -695,17 +695,17 @@ fn render_theme_card(
         ),
     };
     // System's preview is half light, half dark; Light and Dark show their own single mode on
-    // both sides (`Settings.dc.html`'s own `renderVals()`: `[["System",L,D],["Light",L,L],
-    // ["Dark",D,D]]`, the two palettes passed to each card's left and right half).
+    // both sides (System is `[light, dark]`, Light is
+    // `[light, light]`, Dark is `[dark, dark]`: the two palettes passed to each card's left and
+    // right half).
     let (left, right) = match choice {
         ThemeChoice::System => (Palette::light(), Palette::dark()),
         ThemeChoice::Light => (Palette::light(), Palette::light()),
         ThemeChoice::Dark => (Palette::dark(), Palette::dark()),
     };
     // Every card's left half draws its accent line in the dark palette's accent color, regardless
-    // of which theme the card represents: a fixed swatch color `Settings.dc.html` uses for visual
-    // consistency across the three previews, not the current theme mode's own accent (its own
-    // markup hardcodes the same hex in all three `renderVals()` entries).
+    // of which theme the card represents: a fixed swatch color, for visual
+    // consistency across the three previews, not the current theme mode's own accent.
     let accent_line = Palette::dark().accent;
 
     let ring_color = if selected {
@@ -729,7 +729,7 @@ fn render_theme_card(
         radio.border_1()
     };
 
-    // A real border, not a `box-shadow` ring (`Settings.dc.html`'s own `0 0 0 Npx` trick): a
+    // A real border, not a `box-shadow` ring (an `N px` spread shadow): a
     // spread, zero-blur, zero-offset shadow on a `rounded()` + `overflow_hidden()` box rendered
     // as a filled halo covering the box's own content here, not a thin outline as CSS would, so
     // the border achieves the same "ring" look without that.
@@ -1121,7 +1121,7 @@ struct FontPickerSpec<'a> {
     id: &'static str,
     palette: &'a Palette,
     /// The family the trigger renders its own label in, when it differs from the UI font (the
-    /// Editor section's monospace picker, per `Settings.dc.html`), at 12.5px.
+    /// Editor section's monospace picker), at 12.5px.
     mono_style: Option<SharedString>,
     bundled: &'a str,
     current: &'a str,
@@ -1171,8 +1171,7 @@ fn render_font_picker(
     // (`content_style`, `gpui-component-0.6.6/src/button/button.rs:207,289,712`, `pub(crate)`).
     // A single, full-width child of our own, given to `Button` as an ordinary child instead,
     // sidesteps that: `Button`'s row centers *it* (a no-op once it already fills the width), and
-    // this row's own `justify_between()` places the label left and the chevron right, matching
-    // `Settings.dc.html`'s `justify-content:space-between` selects.
+    // this row's own `justify_between()` places the label left and the chevron right, .
     let trigger = trigger.child(
         h_flex()
             .w_full()

@@ -1,5 +1,5 @@
 //! [`UrlBar`]: the method selector plus URL field joined in one bordered box
-//! (`plans/ui-redesign.md` phase 3, design reference `Main A.dc.html`).
+//! (`plans/ui-redesign.md` phase 3).
 //!
 //! Follows the fallback `plans/ui-redesign-spikes.md` section 3 settled on for variable chips in
 //! a single-line input: gpui-component's `Input`/`InputState` cannot style byte ranges (only its

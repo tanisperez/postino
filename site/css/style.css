@@ -1,5 +1,5 @@
 /* Postino website. Colors, type and radii come from the Postino design system
-   (postino_design_system/, crates/postino-app/src/theme/palette.rs). Plain CSS, no build step. */
+   (docs/design-system.md, crates/postino-app/src/theme/palette.rs). Plain CSS, no build step. */
 
 @font-face {
     font-family: "Geist";

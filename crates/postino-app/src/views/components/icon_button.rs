@@ -1,5 +1,5 @@
-//! [`IconButton`]: a small icon-only ghost button (`plans/ui-redesign.md` phase 3, design
-//! reference `Components.dc.html` "Buttons", the 24 and 28 px icon squares).
+//! [`IconButton`]: a small icon-only ghost button (`plans/ui-redesign.md` phase 3), in the
+//! 24 and 28 px sizes.
 //!
 //! Wraps gpui-kit's [`Button`] (ghost variant): its click, hover, disabled and tooltip handling
 //! already work as is; only the icon color is pinned to [`crate::theme::Palette::fg_muted`]

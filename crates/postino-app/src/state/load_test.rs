@@ -70,7 +70,7 @@ pub enum LoadTestFailure {
     Load(String),
 }
 
-/// The default number of virtual users, matching `Performance.dc.html`'s own mock data.
+/// The default number of virtual users.
 pub const DEFAULT_VUS: u32 = 50;
 /// The default run duration in seconds, matching the design.
 pub const DEFAULT_DURATION_SECS: u64 = 60;

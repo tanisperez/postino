@@ -7,10 +7,11 @@
 /// 6), `Palette`/`Snippet`/`Define` (phase 7) and `LoadTest` (phase 8) exist so far.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DebugOpenTarget {
-    /// Renders the components gallery in the main area, mirroring
-    /// `postino_design_system/Components.dc.html`.
+    /// Renders the components gallery in the main area, to check every widget
+    /// against `docs/design-system.md`.
     Components,
-    /// Opens the Settings modal, mirroring `postino_design_system/Settings.dc.html`
+    /// Opens the Settings modal, to check it against
+    /// `docs/design-system.md`
     /// (`plans/ui-redesign.md` phase 6).
     Settings,
     /// Opens the Settings modal on its "Requests" pane.
@@ -29,7 +30,7 @@ pub enum DebugOpenTarget {
     /// (`plans/ui-redesign.md` phase 7 item 3).
     Define,
     /// Opens a load test tab preselecting the first request found in the workspace tree, for
-    /// screenshotting `postino_design_system/Performance.dc.html`'s config panel
+    /// screenshotting the load test config panel
     /// (`plans/ui-redesign.md` phase 8). A no-op when no workspace is open or it has no
     /// requests.
     LoadTest,

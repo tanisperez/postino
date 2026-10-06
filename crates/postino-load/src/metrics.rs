@@ -36,7 +36,7 @@ pub(crate) struct Sample {
 }
 
 /// One point of the throughput and latency time series
-/// (`postino_design_system/Performance.dc.html`, the `rpsPts`/`p95Pts` polylines): one entry per
+/// (the dashboard's polylines): one entry per
 /// second of the run that has fully elapsed.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SecondPoint {

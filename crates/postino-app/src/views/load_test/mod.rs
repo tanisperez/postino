@@ -69,7 +69,7 @@ impl AppView {
     }
 
     /// `POSTINO_OPEN=loadtest`: opens a load test tab preselecting the first request found in the
-    /// workspace tree, for screenshotting `postino_design_system/Performance.dc.html`'s config
+    /// workspace tree, for screenshotting the load test config
     /// panel. A no-op when no workspace is open or it has no requests.
     pub(crate) fn open_load_test_tab_for_first_request(&mut self, cx: &mut Context<Self>) {
         let Some(workspace) = self.state.workspace.as_ref() else {

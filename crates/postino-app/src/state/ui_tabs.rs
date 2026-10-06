@@ -54,7 +54,7 @@ impl RequestTab {
 /// opened. Jumps to [`RequestTab::Body`] when `current` is still the default [`RequestTab::
 /// Params`] and the request has no query params to show there but does have a body, since
 /// `Params` would otherwise land on an empty table (`plans/ui-redesign.md` phase 5, reviewer fix
-/// item D, matching `Main A.dc.html`, which shows `Body` for `POST /auth/login`). Any other
+/// item D, matching the design, which showed `Body` for `POST /auth/login`). Any other
 /// current tab is left alone: the user's own tab choice from a previous request is not
 /// second-guessed.
 pub fn tab_to_show_on_open(current: RequestTab, query_len: usize, has_body: bool) -> RequestTab {

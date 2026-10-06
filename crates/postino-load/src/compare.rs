@@ -1,6 +1,5 @@
 //! [`compare`], turning two [`crate::LoadSnapshot`]s into the "Compare with" rows of the load
-//! test dashboard (`postino_design_system/Performance.dc.html`, the `compare` data,
-//! `plans/ui-redesign.md`, Phase 1d, point 6).
+//! test dashboard (`plans/ui-redesign.md`, Phase 1d, point 6).
 
 use crate::metrics::LoadSnapshot;
 

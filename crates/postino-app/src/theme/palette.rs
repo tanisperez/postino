@@ -2,9 +2,8 @@
 //! `plans/ui-redesign.md` section 2.1, and [`PaletteExt`], the extension trait views use to
 //! reach them.
 //!
-//! Every hex and shadow literal below is copied verbatim from the `--bg:...` custom properties
-//! in `postino_design_system/Postino Screens.dc.html` (the light and dark blocks), never
-//! retyped from memory. [`LIGHT`] and [`DARK`] are the only place those literals are written:
+//! Every hex and shadow literal is written once, in [`LIGHT`] and [`DARK`] below (the values are
+//! listed for readers in `docs/design-system.md`; keep both in sync):
 //! both [`Palette`] (parsed [`Hsla`] fields, read directly by views) and the gpui-kit theme
 //! family JSON built in `theme::mod` (via [`theme_colors_and_highlight`]) are derived from them,
 //! so there is no second, hand-written copy of the color values.
@@ -50,7 +49,7 @@ struct Tokens {
     syn_str: &'static str,
     syn_num: &'static str,
     syn_bool: &'static str,
-    /// The dimmed backdrop behind a modal (`Settings.dc.html`'s `rgba(10,11,16,.45)`), mapped to
+    /// The dimmed backdrop behind a modal (`rgba(10,11,16,.45)`), mapped to
     /// gpui-component's `ThemeConfigColors::overlay` field (`"overlay"` in the theme JSON, read
     /// by `Dialog`'s own `overlay_color()` as the backdrop scrim), a different field from
     /// `overlay` above (`"popover.background"`, the modal/menu surface fill). Same value in both
@@ -209,8 +208,8 @@ pub struct Palette {
     /// Hover background for rows and ghost buttons.
     pub hover: Hsla,
     /// Pressed/active background for rows, icon buttons and other hand-rolled clickable `div`s
-    /// (GitHub #17). Not one of the design's own tokens (`Components.dc.html` shows no `:active`
-    /// swatch), so it is derived rather than a second hex literal to keep in sync by hand:
+    /// (GitHub #17). Not one of the design's own tokens (the design system defines no `:active`
+    /// state), so it is derived rather than a second hex literal to keep in sync by hand:
     /// `hover` blended two-thirds of the way toward `border_strong`, the next step up the same
     /// bg -> surface -> raised -> border -> border_strong progression `hover` already sits in.
     pub pressed: Hsla,
@@ -255,7 +254,7 @@ pub struct Palette {
     /// response code editors (phase 5) get this for free from the theme JSON's own
     /// `highlight.syntax` config ([`theme_colors_and_highlight`]), which gpui-component's own
     /// highlighter already applies; kept here for the rare view that colors a code line by hand
-    /// outside a live editor entity, matching `Main A.dc.html`'s request/response line mock.
+    /// outside a live editor entity.
     #[allow(dead_code)]
     pub syn_key: Hsla,
     /// String syntax highlight color, see [`Self::syn_key`].
@@ -534,8 +533,8 @@ const SELECTION_ALPHA_HEX: &str = "4d";
 const SHADE_STEP: f32 = 0.07;
 
 /// Shifts `color`'s HSL lightness by `delta` (clamped to 0.0..=1.0), keeping hue, saturation and
-/// alpha. There is no design token for a button's hover/pressed fill (`Components.dc.html` shows
-/// no `:hover`/`:active` swatch for the solid buttons), so `Palette::from_tokens` derives one
+/// alpha. There is no design token for a button's hover/pressed fill (the design system defines
+/// no `:hover`/`:active` state for the solid buttons), so `Palette::from_tokens` derives one
 /// from `accent`/`danger` themselves instead of a hand-picked literal: a positive `delta`
 /// (`from_tokens`'s dark theme) reads as "a touch lighter", a negative one (light theme) as "a
 /// touch darker", both the ordinary direction a solid UI color shifts on hover.

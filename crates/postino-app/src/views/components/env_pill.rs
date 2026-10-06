@@ -1,6 +1,5 @@
 //! [`EnvPill`] and [`EnvMenuItem`]: the title bar's environment picker
-//! (`plans/ui-redesign.md` phase 3, design reference `Main A.dc.html`'s title bar and
-//! `Components.dc.html`'s "Menu").
+//! (`plans/ui-redesign.md` phase 3).
 //!
 //! Wraps gpui-kit's [`Button`] (the pill trigger) and [`PopupMenu`]/[`PopupMenuItem::element`]
 //! (the dropdown): both take arbitrary child content, so the dot, check mark and shortcut hint

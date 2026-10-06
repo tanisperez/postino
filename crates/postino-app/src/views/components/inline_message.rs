@@ -1,6 +1,5 @@
 //! [`InlineMessage`]: the warning/danger/success/info strip used instead of a full-width error
-//! banner (`plans/ui-redesign.md` section 1 "Error states", phase 3, design reference
-//! `Components.dc.html` "Inline messages").
+//! banner (`plans/ui-redesign.md` section 1 "Error states", phase 3).
 //!
 //! Custom element: a colored icon plus text plus an optional right-aligned action link, on a
 //! `*-subtle` background, is a plain `div` row colored from [`crate::theme::Palette`].
@@ -28,7 +27,7 @@ pub enum InlineMessageKind {
 }
 
 impl InlineMessageKind {
-    /// The icon this kind shows, matching `Components.dc.html`'s "Inline messages" swatch.
+    /// The icon this kind shows, for each message kind.
     fn icon(self) -> Icon {
         match self {
             InlineMessageKind::Warning => Icon::new(IconName::TriangleAlert),
@@ -39,8 +38,7 @@ impl InlineMessageKind {
     }
 }
 
-/// A colored strip: icon, text, and an optional action link on the right
-/// (`Components.dc.html` "Inline messages").
+/// A colored strip: icon, text, and an optional action link on the right.
 #[derive(IntoElement)]
 pub struct InlineMessage {
     kind: InlineMessageKind,

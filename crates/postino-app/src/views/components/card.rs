@@ -1,5 +1,4 @@
-//! [`Card`]: a raised panel with a border and radius 10 (`plans/ui-redesign.md` phase 3, design
-//! reference `Performance.dc.html`'s dashboard cards).
+//! [`Card`]: a raised panel with a border and radius 10 (`plans/ui-redesign.md` phase 3).
 //!
 //! Custom element: a plain styled `div` wrapper, since a "card" here is just a bordered,
 //! `raised` container with no behavior of its own.
@@ -11,7 +10,7 @@ use gpui_kit::*;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::RADIUS_LG;
 
-/// A `raised`, bordered container, radius 10 (`Performance.dc.html`'s dashboard cards).
+/// A `raised`, bordered container, radius 10, as in `docs/design-system.md`.
 #[derive(IntoElement)]
 pub struct Card {
     children: Vec<AnyElement>,

@@ -269,14 +269,14 @@ fn collect_methods(nodes: &[Node], into: &mut HashMap<String, Method>) {
 
 /// Width of a row's leading icon slot: a folder's chevron, or an empty spacer of the same width
 /// for a request, so a root-level request's method label starts at the same x as a sibling
-/// folder's chevron does (`Main A.dc.html`'s `r.icon` column is always this wide, even when
+/// folder's chevron does (the slot is always this wide, even when
 /// empty, `plans/ui-redesign.md` phase 5, reviewer fix item C).
 const TREE_ROW_ICON_WIDTH: f32 = 13.0;
 
 /// Extra space between a request row's method and its name, on top of the row's 4px gap.
 const TREE_ROW_METHOD_GAP: f32 = 2.0;
 
-/// Renders one visible row of the sidebar tree, matching `Main A.dc.html`'s tree rows
+/// Renders one visible row of the sidebar tree
 /// (`plans/ui-redesign.md` phase 5, reviewer fix item 8): a folder shows a chevron (down when
 /// expanded, right when collapsed) and no folder icon; a request shows no file icon, just the
 /// method at its natural width, a fixed gap from its name (nothing when `method` is `None`, a

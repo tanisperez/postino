@@ -1,5 +1,5 @@
 //! [`KeyValueTable`] and [`KeyValueRow`]: the Params/Headers/Form body editor table
-//! (`plans/ui-redesign.md` phase 3, design reference `Components.dc.html` "Key-value table").
+//! (`plans/ui-redesign.md` phase 3).
 //!
 //! Wraps gpui-kit's [`Checkbox`] for the enabled column; the grid itself (header row, column
 //! widths, the disabled-row strikethrough) is a plain `div` layout colored from
@@ -234,7 +234,7 @@ impl RenderOnce for KeyValueTable {
 }
 
 /// Renders one key or value cell, `flex_grow`-sized by `grow`. A text cell is colored and
-/// struck through when disabled, matching `Components.dc.html`; an element cell (a live `Input`)
+/// struck through when disabled; an element cell (a live `Input`)
 /// keeps its own styling and is only dimmed when disabled, since it cannot be recolored or
 /// struck through generically.
 fn key_value_cell(cell: Cell, grow: f32, text_color: Hsla, enabled: bool) -> AnyElement {

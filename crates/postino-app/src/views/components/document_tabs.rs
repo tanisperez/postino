@@ -1,6 +1,5 @@
 //! [`DocumentTab`] and [`DocumentTabs`]: the open-tab strip above the request editor
-//! (`plans/ui-redesign.md` phase 3, design reference `Components.dc.html`'s tab-strip swatch and
-//! `Main A.dc.html`'s tab strip, behavior per section 2.3 point 3).
+//! (`plans/ui-redesign.md` phase 3).
 //!
 //! Custom element, for the same reason as [`super::underline_tabs::UnderlineTabs`]: the active
 //! tab's inset accent line needs an explicit `BoxShadow`, and the design's colors (transparent

@@ -1,5 +1,5 @@
-//! The `POSTINO_OPEN=components` debug view: every component in this module, in every state
-//! shown in `postino_design_system/Components.dc.html`, for the orchestrator to screenshot and
+//! The `POSTINO_OPEN=components` debug view: every component in this module, in every state, to
+//! check against `docs/design-system.md`, for the orchestrator to screenshot and
 //! compare (`plans/ui-redesign.md` phase 3). Not reachable from any menu.
 
 use std::collections::HashSet;
@@ -24,7 +24,7 @@ use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
 use crate::views::root::AppView;
 
 impl AppView {
-    /// Renders the whole gallery: one section per swatch of `Components.dc.html`, plus the
+    /// Renders the whole gallery: one section per kind of component, plus the
     /// phase 3 table's extra components (`UrlBar`, `EnvPill`, `SectionLabel`, `Card`,
     /// `DocumentTabs`).
     pub(crate) fn render_components_gallery(
@@ -80,8 +80,8 @@ impl AppView {
     }
 }
 
-/// Wraps `content` under a [`SectionLabel`] titled `title`, matching `Components.dc.html`'s
-/// `gap:10px` swatch layout.
+/// Wraps `content` under a [`SectionLabel`] titled `title`, with a 10 px
+/// gap.
 fn section(title: &str, content: impl IntoElement) -> impl IntoElement {
     v_flex()
         .gap_2p5()
@@ -284,8 +284,8 @@ fn render_controls() -> impl IntoElement {
 }
 
 /// The "Menu" swatch: a static reproduction of the environment menu's rows (a checked "No
-/// environment", a hovered "local", and "production" with a shortcut hint), matching
-/// `Components.dc.html`. `EnvPill`'s own dropdown uses the same layout, but only ever renders it
+/// environment", a hovered "local", and "production" with a shortcut hint).
+/// `EnvPill`'s own dropdown uses the same layout, but only ever renders it
 /// while actually open, which a static screenshot cannot show; see this phase's report.
 fn render_menu(palette: &crate::theme::Palette) -> impl IntoElement {
     v_flex()
@@ -382,8 +382,8 @@ fn render_env_pill() -> impl IntoElement {
     ))
 }
 
-/// A [`Card`] with a couple of KPI-like children, matching `Performance.dc.html`'s dashboard
-/// cards well enough to show the container's own look (the real KPI strip is phase 8's).
+/// A [`Card`] with a couple of KPI-like children, close enough to a dashboard
+/// card to show the container's own look (the real KPI strip is phase 8's).
 fn render_card() -> impl IntoElement {
     Card::new().child(SectionLabel::new("Requests/s")).child(
         div()

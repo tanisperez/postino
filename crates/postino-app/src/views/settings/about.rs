@@ -1,5 +1,5 @@
 //! The "About" pane of the Settings modal: the version, the release links and the updater
-//! (`postino_design_system/Navigation Options.dc.html`, variants 3a and 3b). The updater logic is
+//! (the navigation rail plan, `plans/ui-redesign.md`). The updater logic is
 //! `state::update` and `views/update.rs`; this only renders it and forwards the clicks to the same
 //! flows the status bar and the command palette use. Everything it shows is captured once per
 //! frame from [`AppView`] as plain data ([`AboutPane`]), with no IO.

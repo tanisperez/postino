@@ -1,6 +1,5 @@
 //! [`StatusBadge`]: the response status pill shown in the response pane's tab bar
-//! (`plans/ui-redesign.md` phase 3, design reference `Components.dc.html` "Status" and
-//! `Main A.dc.html`'s response tab bar).
+//! (`plans/ui-redesign.md` phase 3).
 //!
 //! Custom element for the dot-plus-text pill (no gpui-kit widget matches its shape); the
 //! `Sending` state wraps gpui-kit's own [`Spinner`] in place of the dot.

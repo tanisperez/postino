@@ -87,11 +87,10 @@ impl AppView {
             let weak = weak.clone();
             let command_state = command_state.clone();
             let search_input = search_input.clone();
-            // Top-anchored rather than dead center (as `Settings.dc.html` centers its modal):
-            // no design mockup exists for the palette (checked `Main A.dc.html`, `Components
-            // .dc.html` and `Postino Screens.dc.html`, none show it), and every well-known
-            // command palette (VS Code, Raycast, the design's own "Ctrl K" search trigger sits
-            // near the title bar) opens near the top of the window, not centered.
+            // Top-anchored rather than dead center (unlike the Settings modal):
+            // the design system does not cover the palette, and every well-known command
+            // palette (VS Code, Raycast, and our own "Ctrl K" search trigger in the title bar)
+            // opens near the top of the window, not centered.
             let viewport_height: f32 = window.viewport_size().height.into();
             let margin_top = (viewport_height * 0.14).max(48.0);
             dialog

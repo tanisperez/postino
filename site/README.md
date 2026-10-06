@@ -5,7 +5,7 @@ no build step. Plan in `plans/releases.md`, section 5.
 
 - `index.html`, `install.html`: the pages.
 - `css/style.css`: every color, radius and font comes from the Postino design system
-  (`postino_design_system/`, `crates/postino-app/src/theme/palette.rs`). Each color token is a
+  (`docs/design-system.md`, `crates/postino-app/src/theme/palette.rs`). Each color token is a
   `light-dark()` pair, picked by `color-scheme`. Every screenshot is in the page twice, `.light`
   and `.dark`, and CSS shows the one for the active theme.
 - `js/theme.js`: the only script. Follows the system theme until the visitor picks one with the

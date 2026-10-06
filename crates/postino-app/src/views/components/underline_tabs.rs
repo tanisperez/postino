@@ -1,6 +1,5 @@
 //! [`UnderlineTabs`] and [`UnderlineTabItem`]: the request editor's Params/Headers/Body/... row
-//! and the response viewer's Body/Headers/Tests/Console row (`plans/ui-redesign.md` phase 3,
-//! design reference `Components.dc.html` "Tabs" and `Main A.dc.html`'s two inner tab rows).
+//! and the response viewer's Body/Headers/Tests/Console row (`plans/ui-redesign.md` phase 3).
 //!
 //! Custom element: the active tab's 2 px accent underline is drawn with an inset `BoxShadow`
 //! (the same CSS `inset 0 -2px 0 accent` trick the design itself uses), which gpui-kit's
@@ -67,7 +66,7 @@ impl UnderlineTabItem {
 }
 
 /// A row of underline tabs: 18 px gaps, a 1 px bottom border, a 2 px accent underline on the
-/// active item (`Components.dc.html` "Tabs"). An optional [`Self::suffix`] (the response tab
+/// active item. An optional [`Self::suffix`] (the response tab
 /// bar's status badge, time and size, `plans/ui-redesign.md` phase 5 reviewer fix item 1) is
 /// pushed to the right of the same bordered row by a flex spacer.
 #[derive(IntoElement)]

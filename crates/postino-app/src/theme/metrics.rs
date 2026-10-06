@@ -80,7 +80,7 @@ pub const ICON_BUTTON_HEADER: f32 = 22.0;
 pub const KEY_VALUE_SIDE_COL_WIDTH: f32 = 30.0;
 /// Width of the column that centers a colored dot in an `EnvMenu` row.
 pub const MENU_DOT_COLUMN_WIDTH: f32 = 13.0;
-/// Height of the title bar's `EnvPill` trigger (`Main A.dc.html`'s title bar).
+/// Height of the title bar's `EnvPill` trigger (see `docs/design-system.md`).
 pub const ENV_PILL_HEIGHT: f32 = 26.0;
-/// Height of the sidebar's filter input (`Main A.dc.html`'s sidebar).
+/// Height of the sidebar's filter input (see `docs/design-system.md`).
 pub const SIDEBAR_FILTER_HEIGHT: f32 = 28.0;

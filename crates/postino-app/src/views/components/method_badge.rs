@@ -1,6 +1,5 @@
 //! [`MethodBadge`]: the colored HTTP method label used in the sidebar tree, open tabs and the
-//! Components gallery (`plans/ui-redesign.md` phase 3, design reference `Components.dc.html`
-//! "Methods" and `Main A.dc.html`'s tree rows and tab strip).
+//! Components gallery (`plans/ui-redesign.md` phase 3).
 //!
 //! Custom element: no gpui-kit widget renders mono, fixed-width, colored text with an optional
 //! tinted background pill, so this is a plain styled `div`, colored only from
@@ -54,8 +53,7 @@ impl MethodBadge {
         }
     }
 
-    /// A `pill` badge for `method`: the same text on a 14%-alpha tinted background, matching
-    /// `Components.dc.html`'s "Methods" swatch.
+    /// A `pill` badge for `method`: the same text on a 14%-alpha tinted background.
     pub fn pill(method: Method) -> Self {
         Self {
             method,

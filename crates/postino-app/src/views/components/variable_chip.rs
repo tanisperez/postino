@@ -1,5 +1,5 @@
 //! [`VariableChip`]: a standalone rendering of a `{{ name }}` marker (`plans/ui-redesign.md`
-//! phase 3, design reference `Components.dc.html` "Inputs"), and [`highlight_style`], the shared
+//! phase 3), and [`highlight_style`], the shared
 //! [`HighlightStyle`] builder [`super::url_bar::UrlBar`] reuses to style the same two variants as
 //! spans inside a longer line of text.
 //!

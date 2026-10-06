@@ -931,8 +931,7 @@ fn body_type_display_label(kind: BodyKind) -> String {
 
 /// Renders a code editor entity if present, or an empty placeholder (only possible transiently,
 /// before the first [`RequestEditorEntities::sync`] call), boxed in a bordered, `raised`
-/// container with line numbers (`plans/ui-redesign.md` phase 5 item 1, `Main A.dc.html`'s
-/// request pane). `fill` makes it grow to the rest of the pane's height (the Body tab, reviewer
+/// container with line numbers (`plans/ui-redesign.md` phase 5 item 1). `fill` makes it grow to the rest of the pane's height (the Body tab, reviewer
 /// fix item B); otherwise (Pre/Post) it keeps the fixed 320 px height used before this phase.
 ///
 /// `fill` uses `Editor::h(relative(1.0))`, not the generic `Styled::flex_1()`/`min_h_0()`:

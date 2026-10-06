@@ -1,5 +1,5 @@
 //! [`SectionLabel`]: the uppercase section heading used for "COLLECTIONS" and every
-//! `Components.dc.html` swatch title (`plans/ui-redesign.md` phase 3).
+//! gallery section title (`plans/ui-redesign.md` phase 3).
 //!
 //! Custom element: a plain styled `div`, since this is just fixed typography with no
 //! interactivity.
@@ -13,7 +13,7 @@ use gpui_kit::*;
 
 use crate::theme::PaletteExt;
 
-/// An uppercase, 11px/600 heading, colored `fg_subtle` (`Components.dc.html`'s section titles,
+/// An uppercase, 11px/600 heading, colored `fg_subtle` (section titles such as
 /// the sidebar's "COLLECTIONS").
 #[derive(IntoElement)]
 pub struct SectionLabel {

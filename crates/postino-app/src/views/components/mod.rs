@@ -3,8 +3,8 @@
 //! [`crate::theme::Palette`] and sizes only from [`crate::theme::metrics`].
 //!
 //! None of these are wired into the real views yet (phases 4 and 5 do that); the
-//! `POSTINO_OPEN=components` debug hook (`gallery`) renders every one of them in every state
-//! shown in `postino_design_system/Components.dc.html`, for visual comparison.
+//! `POSTINO_OPEN=components` debug hook (`gallery`) renders every one of them in every state, to
+//! check against `docs/design-system.md` by eye.
 
 pub mod buttons;
 pub mod card;
