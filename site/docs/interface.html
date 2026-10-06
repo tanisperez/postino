@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>The interface · Postino docs</title>
+    <meta name="description" content="A tour of the Postino window: title bar, activity rail, sidebar, tabs, request editor, response pane, status bar and command palette.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
+    <link rel="canonical" href="https://postino.tanis.codes/docs/interface.html">
+    <link rel="icon" href="../img/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../img/icon-512.png">
+    <link rel="preload" href="../fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="../fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <script src="../js/theme.js"></script>
+    <script src="../js/docs.js" defer></script>
+</head>
+<body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" href="../">
+                <img src="../img/logo.svg" alt="" width="28" height="28">
+                Postino
+            </a>
+            <button class="search-trigger" type="button" aria-label="Search the documentation">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <span class="label">Search docs</span>
+                <kbd>Ctrl K</kbd>
+            </button>
+            <nav class="nav" aria-label="Main">
+                <a class="nav-wide" href="../#features">Features</a>
+                <a href="../install.html">Download</a>
+                <a href="./" aria-current="page">Docs</a>
+                <a class="nav-github" href="https://github.com/tanisperez/postino" aria-label="Postino on GitHub">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    <span>GitHub</span>
+                </a>
+                <button class="theme-toggle" type="button" aria-label="Dark theme" title="Switch between light and dark">
+                    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="docs">
+        <button class="docs-menu" type="button" aria-expanded="false" aria-controls="docs-nav">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            Menu
+        </button>
+        <nav class="docs-nav" id="docs-nav" aria-label="Documentation">
+            <div class="group">
+                <h2>Getting started</h2>
+                <ul>
+                    <li><a href="index.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quick-start.html">Quick start</a></li>
+                    <li><a href="interface.html" aria-current="page">The interface</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Guides</h2>
+                <ul>
+                    <li><a href="workspaces.html">Workspaces and collections</a></li>
+                    <li><a href="requests.html">Building requests</a></li>
+                    <li><a href="responses.html">Reading responses</a></li>
+                    <li><a href="environments.html">Environments and variables</a></li>
+                    <li><a href="template-functions.html">Template functions</a></li>
+                    <li><a href="scripting.html">Scripts and tests</a></li>
+                    <li><a href="load-testing.html">Load testing</a></li>
+                    <li><a href="code-snippets.html">Code snippets</a></li>
+                    <li><a href="postman-import.html">Importing from Postman</a></li>
+                    <li><a href="git.html">Working with git</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Reference</h2>
+                <ul>
+                    <li><a href="keyboard-shortcuts.html">Keyboard shortcuts</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                    <li><a href="file-format.html">File format</a></li>
+                    <li><a href="script-api.html">Script API</a></li>
+                    <li><a href="command-line.html">Command line</a></li>
+                    <li><a href="files-and-folders.html">Files and folders</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Help</h2>
+                <ul>
+                    <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="faq.html">FAQ</a></li>
+                    <li><a href="contributing.html">Contributing</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <main class="docs-main" id="main">
+            <article class="article">
+                <p class="breadcrumb"><a href="./">Docs</a> / Getting started</p>
+<h1>The interface</h1>
+<p class="lead">Postino uses the layout you probably know from other API clients: collections on the left, the request on top and the response below. This page names every part of the window, so the rest of the documentation can refer to them.</p>
+
+<div class="shot">
+    <img class="light" src="../img/hero-light.webp" width="2018" height="1282" loading="lazy" alt="The Postino window: a sidebar with request folders, a GET request to a books API and its JSON response.">
+    <img class="dark" src="../img/hero-dark.webp" width="2018" height="1282" loading="lazy" alt="The Postino window: a sidebar with request folders, a GET request to a books API and its JSON response.">
+</div>
+
+<h2 id="title-bar">Title bar</h2>
+<p>From left to right:</p>
+<ul>
+    <li><strong>Workspace switcher.</strong> Shows the name of the open folder. Click it to reopen one of your last ten workspaces or to choose <strong>Open folder…</strong>.</li>
+    <li><strong>Search.</strong> The box in the middle, <strong>Search requests and actions</strong>, opens the <a href="#command-palette">command palette</a>. Its shortcut is <kbd>Ctrl</kbd> <kbd>K</kbd>.</li>
+    <li><strong>Environment pill.</strong> The active environment, with a colored dot. Click it to switch environments. See <a href="environments.html#switching-environments">switching environments</a>.</li>
+    <li><strong>Settings.</strong> The gear opens <a href="settings.html">Settings</a> (<kbd>Ctrl</kbd> <kbd>,</kbd>).</li>
+</ul>
+<p>On Linux Postino draws its own window chrome, including the minimize, maximize and close buttons at the right of the title bar.</p>
+
+<h2 id="activity-rail">Activity rail</h2>
+<p>The narrow column at the far left switches what the sidebar shows:</p>
+<div class="table"><table>
+    <thead><tr><th>Button</th><th>Sidebar shows</th></tr></thead>
+    <tbody>
+        <tr><td>Collections</td><td>The tree of folders and requests of the workspace.</td></tr>
+        <tr><td>Environments</td><td>The environments of the workspace, which one is active, and a button to create one.</td></tr>
+        <tr><td>Load tests</td><td>The requests and folders you can load test, and the load test runs of this session.</td></tr>
+    </tbody>
+</table></div>
+<p>It works like the activity bar of a code editor: clicking another section switches to it, clicking the active section hides the sidebar, and clicking any button while the sidebar is hidden shows it again.</p>
+
+<h2 id="sidebar">Sidebar</h2>
+<h3 id="collections">Collections</h3>
+<p>The header has buttons to create a <strong>new request</strong> and a <strong>new folder</strong> at the root of the workspace, and the <strong>Import</strong> menu for Postman files. Below it, a <strong>Filter</strong> box narrows the tree as you type: it matches request names and paths, ignores case, and keeps the parent folders of every match visible.</p>
+<p>Each request shows its method in color. Folders come first, then requests, both in natural order, so <code>item2</code> sorts before <code>item10</code>. Right click an entry for its context menu:</p>
+<div class="table"><table>
+    <thead><tr><th>Action</th><th>On a folder</th><th>On a request</th></tr></thead>
+    <tbody>
+        <tr><td>New request</td><td>Creates a request inside the folder</td><td></td></tr>
+        <tr><td>New folder</td><td>Creates a subfolder</td><td></td></tr>
+        <tr><td>Load test…</td><td>Load tests every request in the folder</td><td>Load tests this request</td></tr>
+        <tr><td>Rename</td><td>Renames the folder on disk</td><td>Renames the file on disk</td></tr>
+        <tr><td>Delete</td><td>Deletes the folder and everything in it, after asking</td><td>Deletes the file, after asking</td></tr>
+    </tbody>
+</table></div>
+<p>A file that cannot be parsed is listed as <strong>name (broken)</strong>. See <a href="troubleshooting.html#a-request-shows-as-broken">a request shows as broken</a>.</p>
+<p>The sidebar can be resized by dragging its right edge.</p>
+
+<h3 id="environments">Environments</h3>
+<p>Lists every <code>environments/*.env</code> file of the workspace and marks the active one. Click an environment to open it in the <a href="environments.html#the-environment-editor">environment editor</a>. The header has <strong>New environment</strong> and <strong>Reveal</strong>, which opens the <code>environments/</code> folder in your file manager.</p>
+
+<h3 id="load-tests">Load tests</h3>
+<p>Lists the <strong>Targets</strong> (the requests and folders you can point a load test at) and the <strong>Runs this session</strong>, each with its state: running with the elapsed time, done or stopped with its p95 latency, or failed. See <a href="load-testing.html">Load testing</a>.</p>
+
+<h2 id="tabs">Tabs</h2>
+<p>Every request, environment and load test you open gets a tab. A request tab shows its method and name. A dot instead of the close button means unsaved changes; hover the tab to reveal the close button again.</p>
+<ul>
+    <li><kbd>Ctrl</kbd> <kbd>Tab</kbd> and <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Tab</kbd> move to the next and previous tab.</li>
+    <li><kbd>Ctrl</kbd> <kbd>W</kbd> closes the active tab.</li>
+    <li><kbd>Ctrl</kbd> <kbd>S</kbd> saves the active request or environment.</li>
+</ul>
+<div class="callout warning">
+    <span class="title">Unsaved changes</span>
+    <p>An environment tab asks before discarding unsaved changes. A request tab does not: closing it drops its edits. Save first.</p>
+</div>
+
+<h2 id="request-editor">Request editor</h2>
+<p>The top half of a request tab. The <strong>URL bar</strong> joins the method selector and the URL, and shows <code>{{variables}}</code> as chips. Next to it are the <strong>Send</strong> button and <strong>Code</strong>, which opens the <a href="code-snippets.html">code snippet</a> dialog. Below, six tabs, each with a count when it has content:</p>
+<div class="table"><table>
+    <thead><tr><th>Tab</th><th>Contents</th><th>Stored in the file as</th></tr></thead>
+    <tbody>
+        <tr><td>Params</td><td>Query parameters, a key and value table</td><td><code>::: query</code></td></tr>
+        <tr><td>Headers</td><td>Request headers, a key and value table</td><td>Lines after the request line</td></tr>
+        <tr><td>Body</td><td>JSON, Text, XML, Form or None, with a code editor and a <strong>Format</strong> button</td><td><code>::: body &lt;type&gt;</code></td></tr>
+        <tr><td>Pre-request</td><td>JavaScript run before sending</td><td><code>::: pre</code></td></tr>
+        <tr><td>Post-response</td><td>JavaScript run after the response arrives</td><td><code>::: post</code></td></tr>
+        <tr><td>Docs</td><td>Free notes about the request, in Markdown</td><td><code>::: docs</code></td></tr>
+    </tbody>
+</table></div>
+<p>All of it is explained in <a href="requests.html">Building requests</a>.</p>
+
+<h2 id="response-pane">Response pane</h2>
+<p>The bottom half of a request tab. Before the first send it says <strong>Send the request to see the response</strong>. After a send, the right side shows the status badge (green for 2xx, blue for 3xx, amber for 4xx, red for 5xx), the total time and the body size. The tabs are:</p>
+<ul>
+    <li><strong>Body</strong>, with <strong>Pretty</strong> and <strong>Raw</strong> views, a copy button and a search button.</li>
+    <li><strong>Headers</strong>, with the count of response headers.</li>
+    <li><strong>Tests</strong>, with <code>passed/total</code>, green when every test passed and red otherwise.</li>
+    <li><strong>Console</strong>, with the output of <code>console.log()</code> and friends.</li>
+</ul>
+<p>Warnings, such as unknown variables or an invalid TLS certificate, appear as a strip above the body. See <a href="responses.html">Reading responses</a>.</p>
+
+<h2 id="status-bar">Status bar</h2>
+<p>The thin bar at the bottom shows the workspace path and, when the workspace is inside a git repository, the current branch (or the short commit hash on a detached <code>HEAD</code>). On the right, <strong>Unsaved changes</strong> appears while the active tab is dirty, and a keyboard button opens the shortcuts cheat sheet. When the updater has a new version ready, the status bar also shows <strong>Update ready, restart</strong> and a link to the release notes.</p>
+
+<h2 id="command-palette">Command palette</h2>
+<p>Press <kbd>Ctrl</kbd> <kbd>K</kbd> (<kbd>⌘</kbd> <kbd>K</kbd> on macOS) or click the search box in the title bar. Type a few letters: the palette matches them in order, not necessarily together, so <code>aulo</code> finds <code>auth/login</code>. Matches at the start of words rank higher. Use the arrow keys and <kbd>Enter</kbd> to choose.</p>
+
+<div class="shot">
+    <img class="light" src="../img/palette-light.webp" width="2018" height="1282" loading="lazy" alt="The command palette listing requests and actions.">
+    <img class="dark" src="../img/palette-dark.webp" width="2018" height="1282" loading="lazy" alt="The command palette listing requests and actions.">
+</div>
+
+<p>The palette has three groups:</p>
+<dl>
+    <dt>Requests</dt>
+    <dd>Every request of the workspace, by path, with its method. Choosing one opens it in a tab.</dd>
+    <dt>Environments</dt>
+    <dd><strong>No environment</strong> and every environment, with their shortcuts. Choosing one makes it active.</dd>
+    <dt>Actions</dt>
+    <dd>Send request, Save, New request, New folder, Import Postman collection…, Import Postman environment…, Open Settings, Keyboard shortcuts, Open folder…, New load test, Toggle theme and, in builds with an updater, Check for updates.</dd>
+</dl>
+
+<h2 id="keyboard-shortcuts-cheat-sheet">Keyboard shortcuts cheat sheet</h2>
+<p>Press <kbd>F1</kbd> (<kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>/</kbd> on macOS) or click the keyboard button in the status bar. The full list is in <a href="keyboard-shortcuts.html">Keyboard shortcuts</a>.</p>
+                <p class="page-meta">Found a mistake? <a href="https://github.com/tanisperez/postino/edit/main/site/docs/interface.html">Edit this page on GitHub</a> or <a href="https://github.com/tanisperez/postino/issues">open an issue</a>.</p>
+                <nav class="pager" aria-label="Previous and next page">
+                    <a class="prev" href="quick-start.html"><small>Previous</small>Quick start</a>
+                    <a class="next" href="workspaces.html"><small>Next</small>Workspaces and collections</a>
+                </nav>
+            </article>
+        </main>
+
+        <aside class="docs-toc" aria-label="On this page"></aside>
+    </div>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <span>Postino is open source under the Apache License 2.0.</span>
+            <nav aria-label="Footer">
+                <a href="https://github.com/tanisperez/postino">GitHub</a>
+                <a href="https://github.com/tanisperez/postino/releases">Releases</a>
+                <a href="https://github.com/tanisperez/postino/issues">Report an issue</a>
+                <a href="https://tanis.codes">tanis.codes</a>
+            </nav>
+        </div>
+    </footer>
+
+    <dialog class="search-dialog" aria-label="Search the documentation">
+        <div class="search-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" placeholder="Search the docs" aria-label="Search the docs" autocomplete="off" spellcheck="false">
+            <kbd>Esc</kbd>
+        </div>
+        <ul class="search-results" role="listbox" aria-label="Results"></ul>
+        <div class="search-foot">
+            <span><kbd>↑</kbd><kbd>↓</kbd>to move</span>
+            <span><kbd>↵</kbd>to open</span>
+            <span><kbd>/</kbd>or <kbd>Ctrl K</kbd>to search from any page</span>
+        </div>
+    </dialog>
+</body>
+</html>

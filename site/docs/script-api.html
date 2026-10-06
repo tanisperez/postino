@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Script API · Postino docs</title>
+    <meta name="description" content="Reference of every global available to Postino pre-request and post-response scripts: req, res, vars, env, test, expect, console and util.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
+    <link rel="canonical" href="https://postino.tanis.codes/docs/script-api.html">
+    <link rel="icon" href="../img/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../img/icon-512.png">
+    <link rel="preload" href="../fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="../fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <script src="../js/theme.js"></script>
+    <script src="../js/docs.js" defer></script>
+</head>
+<body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" href="../">
+                <img src="../img/logo.svg" alt="" width="28" height="28">
+                Postino
+            </a>
+            <button class="search-trigger" type="button" aria-label="Search the documentation">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <span class="label">Search docs</span>
+                <kbd>Ctrl K</kbd>
+            </button>
+            <nav class="nav" aria-label="Main">
+                <a class="nav-wide" href="../#features">Features</a>
+                <a href="../install.html">Download</a>
+                <a href="./" aria-current="page">Docs</a>
+                <a class="nav-github" href="https://github.com/tanisperez/postino" aria-label="Postino on GitHub">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    <span>GitHub</span>
+                </a>
+                <button class="theme-toggle" type="button" aria-label="Dark theme" title="Switch between light and dark">
+                    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="docs">
+        <button class="docs-menu" type="button" aria-expanded="false" aria-controls="docs-nav">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            Menu
+        </button>
+        <nav class="docs-nav" id="docs-nav" aria-label="Documentation">
+            <div class="group">
+                <h2>Getting started</h2>
+                <ul>
+                    <li><a href="index.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quick-start.html">Quick start</a></li>
+                    <li><a href="interface.html">The interface</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Guides</h2>
+                <ul>
+                    <li><a href="workspaces.html">Workspaces and collections</a></li>
+                    <li><a href="requests.html">Building requests</a></li>
+                    <li><a href="responses.html">Reading responses</a></li>
+                    <li><a href="environments.html">Environments and variables</a></li>
+                    <li><a href="template-functions.html">Template functions</a></li>
+                    <li><a href="scripting.html">Scripts and tests</a></li>
+                    <li><a href="load-testing.html">Load testing</a></li>
+                    <li><a href="code-snippets.html">Code snippets</a></li>
+                    <li><a href="postman-import.html">Importing from Postman</a></li>
+                    <li><a href="git.html">Working with git</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Reference</h2>
+                <ul>
+                    <li><a href="keyboard-shortcuts.html">Keyboard shortcuts</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                    <li><a href="file-format.html">File format</a></li>
+                    <li><a href="script-api.html" aria-current="page">Script API</a></li>
+                    <li><a href="command-line.html">Command line</a></li>
+                    <li><a href="files-and-folders.html">Files and folders</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Help</h2>
+                <ul>
+                    <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="faq.html">FAQ</a></li>
+                    <li><a href="contributing.html">Contributing</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <main class="docs-main" id="main">
+            <article class="article">
+                <p class="breadcrumb"><a href="./">Docs</a> / Reference</p>
+<h1>Script API</h1>
+<p class="lead">The complete list of globals available to <code>::: pre</code> and <code>::: post</code> scripts, with their exact behavior. For a gentler introduction, read <a href="scripting.html">Scripts and tests</a> first.</p>
+
+<div class="table"><table>
+    <thead><tr><th>Global</th><th>Pre-request</th><th>Post-response</th><th>Purpose</th></tr></thead>
+    <tbody>
+        <tr><td><a href="#req"><code>req</code></a></td><td>Read and write</td><td>Read only</td><td>The request</td></tr>
+        <tr><td><a href="#res"><code>res</code></a></td><td>Not defined</td><td>Read only</td><td>The response</td></tr>
+        <tr><td><a href="#vars"><code>vars</code></a></td><td>Read and write</td><td>Read and write</td><td>Variables of this run</td></tr>
+        <tr><td><a href="#env"><code>env</code></a></td><td>Read and write</td><td>Read and write</td><td>Session and environment variables</td></tr>
+        <tr><td><a href="#test-name-fn"><code>test</code></a></td><td>Yes</td><td>Yes</td><td>Record a test</td></tr>
+        <tr><td><a href="#expect-value"><code>expect</code></a></td><td>Yes</td><td>Yes</td><td>Assertions</td></tr>
+        <tr><td><a href="#console"><code>console</code></a></td><td>Yes</td><td>Yes</td><td>Output to the Console tab</td></tr>
+        <tr><td><a href="#util"><code>util</code></a></td><td>Yes</td><td>Yes</td><td>UUIDs, time, random values, encoders</td></tr>
+    </tbody>
+</table></div>
+
+<h2 id="req"><code>req</code></h2>
+<p>The request. In a pre-request script it is the request about to be sent, before <code>{{ }}</code> markers are replaced. In a post-response script it is the request exactly as it was sent: variables replaced, query string appended and automatic <code>Content-Type</code> included.</p>
+<div class="table"><table>
+    <thead><tr><th>Member</th><th>Type</th><th>Description</th></tr></thead>
+    <tbody>
+        <tr><td><code>req.method</code></td><td>string</td><td>The method, such as <code>"GET"</code>.</td></tr>
+        <tr><td><code>req.url</code></td><td>string</td><td>The URL.</td></tr>
+        <tr><td><code>req.body</code></td><td>string</td><td>The body text. A form body reads as <code>key=value&amp;key2=value2</code>, not yet percent-encoded. A request without a body reads as <code>""</code>.</td></tr>
+        <tr><td><code>req.headers.get(name)</code></td><td>string or <code>undefined</code></td><td>The value of the first enabled header with that name, ignoring case.</td></tr>
+        <tr><td><code>req.headers.set(name, value)</code></td><td></td><td>Replaces the value of the header with that name (ignoring case, keeping its original spelling), or adds it.</td></tr>
+        <tr><td><code>req.headers.remove(name)</code></td><td></td><td>Removes every enabled header with that name, ignoring case.</td></tr>
+    </tbody>
+</table></div>
+<ul>
+    <li>In a pre-request script, assigning <code>req.method</code>, <code>req.url</code> or <code>req.body</code> changes what is sent. Values are converted with <code>String(value)</code>.</li>
+    <li>Assigning <code>req.body</code> on a request whose file has no body section has no effect: the script cannot choose a body type. Add an empty <code>::: body json</code> (or another type) to the file first.</li>
+    <li>Disabled headers are invisible to the script and are kept unchanged in the request.</li>
+    <li>Query parameters, scripts and docs are not visible to scripts. To change a query parameter, edit <code>req.url</code>.</li>
+    <li>In a post-response script, every write throws, for example <code>req.url is read-only in a post script</code> or <code>headers are read-only in a post script</code>.</li>
+</ul>
+
+<h2 id="res"><code>res</code></h2>
+<p>The response. Defined only in post-response scripts.</p>
+<div class="table"><table>
+    <thead><tr><th>Member</th><th>Type</th><th>Description</th></tr></thead>
+    <tbody>
+        <tr><td><code>res.status</code></td><td>number</td><td>The status code, such as <code>200</code>.</td></tr>
+        <tr><td><code>res.headers.get(name)</code></td><td>string or <code>undefined</code></td><td>The value of the first header with that name, ignoring case. <code>set</code> and <code>remove</code> throw.</td></tr>
+        <tr><td><code>res.body</code></td><td>string</td><td>The body as text, decoded as UTF-8. Invalid bytes are replaced.</td></tr>
+        <tr><td><code>res.json()</code></td><td>any</td><td><code>JSON.parse(res.body)</code>. Throws if the body is not valid JSON.</td></tr>
+        <tr><td><code>res.timeMs</code></td><td>number</td><td>Total time in milliseconds, from opening the connection to reading the last byte.</td></tr>
+        <tr><td><code>res.size</code></td><td>number</td><td>Body size in bytes.</td></tr>
+    </tbody>
+</table></div>
+<div class="callout tip">
+    <span class="title">Tip</span>
+    <p><code>res.json()</code> parses the body on every call. In a script that reads many fields, parse once: <code>const body = res.json();</code></p>
+</div>
+
+<h2 id="vars"><code>vars</code></h2>
+<p>Variables that live for one run of one request. They have the highest priority when <code>{{ }}</code> markers are replaced.</p>
+<div class="table"><table>
+    <thead><tr><th>Member</th><th>Description</th></tr></thead>
+    <tbody>
+        <tr><td><code>vars.get(name)</code></td><td>The value, or <code>undefined</code>. Names are case sensitive.</td></tr>
+        <tr><td><code>vars.set(name, value)</code></td><td>Sets a variable. The value is converted with <code>String(value)</code>.</td></tr>
+    </tbody>
+</table></div>
+<p>Variables set in the pre-request script are used to fill the request and are readable in the post-response script of the same run. They are never written to disk and no other request sees them. There is no <code>vars.unset</code>.</p>
+
+<h2 id="env"><code>env</code></h2>
+<p>The session environment: variables set by scripts since Postino started, on top of the active environment's files.</p>
+<div class="table"><table>
+    <thead><tr><th>Member</th><th>Description</th></tr></thead>
+    <tbody>
+        <tr><td><code>env.get(name)</code></td><td>The session value if a script set one, otherwise the value from the active environment (<code>.local.env</code> over <code>.env</code>), otherwise <code>undefined</code>. Names are case sensitive.</td></tr>
+        <tr><td><code>env.set(name, value)</code></td><td>Sets a session variable. The value is converted with <code>String(value)</code>.</td></tr>
+        <tr><td><code>env.unset(name)</code></td><td>Removes the session variable, so the value from the environment files, if any, applies again.</td></tr>
+    </tbody>
+</table></div>
+<ul>
+    <li>Changes are applied after the script finishes, in the order they were made. They are visible to every later request until you quit Postino.</li>
+    <li>They are never written to an <code>.env</code> file. The environment editor lists them as <strong>session</strong>.</li>
+    <li>In a <a href="load-testing.html">load test</a>, each virtual user has its own copy of the session, so a token set by one user's login is used by that same user's next requests.</li>
+</ul>
+
+<h2 id="test-name-fn"><code>test(name, fn)</code></h2>
+<p>Runs <code>fn</code> right away. If it returns, the test passes. If it throws, the test fails with the error's <code>message</code> (or <code>String(error)</code> when something other than an <code>Error</code> is thrown). Either way the script continues with the next statement.</p>
+<div class="code"><pre data-lang="js">test("has a next page cursor", () =&gt; {
+  const cursor = res.json().next;
+  if (!cursor) {
+    throw new Error("no cursor in the response");
+  }
+  env.set("cursor", cursor);
+});</pre></div>
+<p>Tests are synchronous. A function that returns a promise is considered passed when it returns.</p>
+
+<h2 id="expect-value"><code>expect(value)</code></h2>
+<p>Returns a set of matchers. A matcher throws when its condition does not hold, which fails the surrounding <code>test()</code>. <code>expect(value).not</code> returns the same matchers with the condition inverted.</p>
+<div class="table"><table>
+    <thead><tr><th>Matcher</th><th>Passes when</th><th>Failure message</th></tr></thead>
+    <tbody>
+        <tr><td><code>toBe(expected)</code></td><td><code>value === expected</code></td><td><code>expected 404 to be 200</code></td></tr>
+        <tr><td><code>toEqual(expected)</code></td><td><code>JSON.stringify(value) === JSON.stringify(expected)</code></td><td><code>expected {"a":1} to equal {"a":2}</code></td></tr>
+        <tr><td><code>toBeTruthy()</code></td><td><code>Boolean(value)</code> is true</td><td><code>expected "" to be truthy</code></td></tr>
+        <tr><td><code>toBeFalsy()</code></td><td><code>!value</code> is true</td><td><code>expected 1 to be falsy</code></td></tr>
+        <tr><td><code>toContain(item)</code></td><td><code>value</code> is a string containing <code>item</code>, or an array containing it (<code>===</code>)</td><td><code>expected "abc" to contain "z"</code>. Throws <code>toContain needs a string or an array</code> for other types.</td></tr>
+        <tr><td><code>toMatch(pattern)</code></td><td><code>String(value)</code> matches the regular expression, or the string turned into one</td><td><code>expected "x" to match /\d+/</code></td></tr>
+        <tr><td><code>toBeGreaterThan(n)</code></td><td><code>value &gt; n</code></td><td><code>expected 3 to be greater than 5</code></td></tr>
+        <tr><td><code>toBeLessThan(n)</code></td><td><code>value &lt; n</code></td><td><code>expected 900 to be less than 500</code></td></tr>
+        <tr><td><code>toHaveProperty(name)</code></td><td><code>value</code> has an own property <code>name</code></td><td><code>expected {} to have property "id"</code></td></tr>
+    </tbody>
+</table></div>
+<p>With <code>.not</code>, the message includes the word <em>not</em>: <code>expected 200 not to be 200</code>.</p>
+<div class="callout note">
+    <span class="title">Note</span>
+    <p><code>toEqual</code> compares JSON text, so the order of keys matters: <code>{a: 1, b: 2}</code> does not equal <code>{b: 2, a: 1}</code>. Compare fields one by one when the order is not guaranteed.</p>
+</div>
+
+<h2 id="console"><code>console</code></h2>
+<p><code>console.log()</code>, <code>console.info()</code>, <code>console.warn()</code> and <code>console.error()</code> each add one line to the <strong>Console</strong> tab, tagged with the level. Arguments are joined with a space; strings are printed as they are, anything else with <code>JSON.stringify</code>, falling back to <code>String(value)</code>.</p>
+
+<h2 id="util"><code>util</code></h2>
+<p>The <a href="template-functions.html">template functions</a>, callable from code. Same implementation, same results, same error messages.</p>
+<div class="table"><table>
+    <thead><tr><th>Function</th><th>Returns</th></tr></thead>
+    <tbody>
+        <tr><td><code>util.uuid()</code></td><td>string, a random UUID v4</td></tr>
+        <tr><td><code>util.now()</code></td><td>number, milliseconds since the Unix epoch</td></tr>
+        <tr><td><code>util.isoDate()</code></td><td>string, the current UTC time in RFC 3339</td></tr>
+        <tr><td><code>util.randomInt(min, max)</code></td><td>number, an integer between <code>min</code> and <code>max</code>, both included</td></tr>
+        <tr><td><code>util.randomString(len)</code></td><td>string of letters and digits</td></tr>
+        <tr><td><code>util.base64Encode(str)</code></td><td>string</td></tr>
+        <tr><td><code>util.base64Decode(str)</code></td><td>string. Throws on invalid Base64 or non UTF-8 output</td></tr>
+        <tr><td><code>util.urlEncode(str)</code></td><td>string, percent-encoded</td></tr>
+    </tbody>
+</table></div>
+<p>A bad call, such as an unknown function, the wrong number of arguments or the wrong type, throws an <code>Error</code>.</p>
+
+<h2 id="execution-rules">Execution rules</h2>
+<div class="table"><table>
+    <thead><tr><th>Rule</th><th>Detail</th></tr></thead>
+    <tbody>
+        <tr><td>Engine</td><td>QuickJS, standard ECMAScript.</td></tr>
+        <tr><td>Isolation</td><td>A new runtime for every script run. Nothing survives between runs except <code>env</code> changes.</td></tr>
+        <tr><td>Not available</td><td>Network, files, timers, modules, <code>require</code>, <code>import</code>, <code>fetch</code>, <code>setTimeout</code>, <code>crypto</code>.</td></tr>
+        <tr><td>Memory</td><td>32 MiB per run.</td></tr>
+        <tr><td>Time</td><td>5 seconds per run.</td></tr>
+        <tr><td>Empty script</td><td>Skipped without starting the engine.</td></tr>
+        <tr><td>Error in pre-request</td><td>The run stops. Nothing is sent.</td></tr>
+        <tr><td>Error in post-response</td><td>Reported. The response, the tests and the console lines produced so far are kept.</td></tr>
+    </tbody>
+</table></div>
+                <p class="page-meta">Found a mistake? <a href="https://github.com/tanisperez/postino/edit/main/site/docs/script-api.html">Edit this page on GitHub</a> or <a href="https://github.com/tanisperez/postino/issues">open an issue</a>.</p>
+                <nav class="pager" aria-label="Previous and next page">
+                    <a class="prev" href="file-format.html"><small>Previous</small>File format</a>
+                    <a class="next" href="command-line.html"><small>Next</small>Command line</a>
+                </nav>
+            </article>
+        </main>
+
+        <aside class="docs-toc" aria-label="On this page"></aside>
+    </div>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <span>Postino is open source under the Apache License 2.0.</span>
+            <nav aria-label="Footer">
+                <a href="https://github.com/tanisperez/postino">GitHub</a>
+                <a href="https://github.com/tanisperez/postino/releases">Releases</a>
+                <a href="https://github.com/tanisperez/postino/issues">Report an issue</a>
+                <a href="https://tanis.codes">tanis.codes</a>
+            </nav>
+        </div>
+    </footer>
+
+    <dialog class="search-dialog" aria-label="Search the documentation">
+        <div class="search-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" placeholder="Search the docs" aria-label="Search the docs" autocomplete="off" spellcheck="false">
+            <kbd>Esc</kbd>
+        </div>
+        <ul class="search-results" role="listbox" aria-label="Results"></ul>
+        <div class="search-foot">
+            <span><kbd>↑</kbd><kbd>↓</kbd>to move</span>
+            <span><kbd>↵</kbd>to open</span>
+            <span><kbd>/</kbd>or <kbd>Ctrl K</kbd>to search from any page</span>
+        </div>
+    </dialog>
+</body>
+</html>

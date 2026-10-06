@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quick start · Postino docs</title>
+    <meta name="description" content="Open a workspace, create and send your first request, add an environment and a test in Postino.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
+    <link rel="canonical" href="https://postino.tanis.codes/docs/quick-start.html">
+    <link rel="icon" href="../img/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../img/icon-512.png">
+    <link rel="preload" href="../fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="../fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <script src="../js/theme.js"></script>
+    <script src="../js/docs.js" defer></script>
+</head>
+<body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" href="../">
+                <img src="../img/logo.svg" alt="" width="28" height="28">
+                Postino
+            </a>
+            <button class="search-trigger" type="button" aria-label="Search the documentation">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <span class="label">Search docs</span>
+                <kbd>Ctrl K</kbd>
+            </button>
+            <nav class="nav" aria-label="Main">
+                <a class="nav-wide" href="../#features">Features</a>
+                <a href="../install.html">Download</a>
+                <a href="./" aria-current="page">Docs</a>
+                <a class="nav-github" href="https://github.com/tanisperez/postino" aria-label="Postino on GitHub">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    <span>GitHub</span>
+                </a>
+                <button class="theme-toggle" type="button" aria-label="Dark theme" title="Switch between light and dark">
+                    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="docs">
+        <button class="docs-menu" type="button" aria-expanded="false" aria-controls="docs-nav">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            Menu
+        </button>
+        <nav class="docs-nav" id="docs-nav" aria-label="Documentation">
+            <div class="group">
+                <h2>Getting started</h2>
+                <ul>
+                    <li><a href="index.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quick-start.html" aria-current="page">Quick start</a></li>
+                    <li><a href="interface.html">The interface</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Guides</h2>
+                <ul>
+                    <li><a href="workspaces.html">Workspaces and collections</a></li>
+                    <li><a href="requests.html">Building requests</a></li>
+                    <li><a href="responses.html">Reading responses</a></li>
+                    <li><a href="environments.html">Environments and variables</a></li>
+                    <li><a href="template-functions.html">Template functions</a></li>
+                    <li><a href="scripting.html">Scripts and tests</a></li>
+                    <li><a href="load-testing.html">Load testing</a></li>
+                    <li><a href="code-snippets.html">Code snippets</a></li>
+                    <li><a href="postman-import.html">Importing from Postman</a></li>
+                    <li><a href="git.html">Working with git</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Reference</h2>
+                <ul>
+                    <li><a href="keyboard-shortcuts.html">Keyboard shortcuts</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                    <li><a href="file-format.html">File format</a></li>
+                    <li><a href="script-api.html">Script API</a></li>
+                    <li><a href="command-line.html">Command line</a></li>
+                    <li><a href="files-and-folders.html">Files and folders</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Help</h2>
+                <ul>
+                    <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="faq.html">FAQ</a></li>
+                    <li><a href="contributing.html">Contributing</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <main class="docs-main" id="main">
+            <article class="article">
+                <p class="breadcrumb"><a href="./">Docs</a> / Getting started</p>
+<h1>Quick start</h1>
+<p class="lead">This tutorial takes about five minutes. You will open a folder as a workspace, send a request, move its base URL into an environment and check the response with a test.</p>
+
+<h2 id="1-open-a-workspace">1. Open a workspace</h2>
+<p>A workspace is any folder on your disk. A good place is a folder inside the repository of the API you are working on, for example <code>api/requests/</code>, so the requests travel with the code.</p>
+<ol class="steps">
+    <li>Start Postino. The first time, the sidebar says <strong>Open a folder to get started</strong>.</li>
+    <li>Click the workspace switcher, next to the Postino name at the top left of the title bar, choose <strong>Open folder…</strong> and pick a folder. It can be empty.</li>
+    <li>Postino remembers it and opens it again the next time you start the app. The workspace switcher keeps the last ten folders you opened.</li>
+</ol>
+
+<h2 id="2-create-a-request">2. Create a request</h2>
+<ol class="steps">
+    <li>In the sidebar header, click the <strong>New request</strong> button. To create it inside a folder, right click the folder and choose <strong>New request</strong>.</li>
+    <li>Type a name, for example <code>list-users</code>, and press <strong>Create</strong>. Postino writes <code>list-users.postino</code> into the folder and opens it in a tab.</li>
+    <li>A new request starts as <code>GET https://example.com</code>. Replace the URL with an API you can reach, for example <code>https://httpbin.org/get</code>.</li>
+</ol>
+
+<h2 id="3-send-it">3. Send it</h2>
+<p>Click <strong>Send</strong> or press <kbd>Ctrl</kbd> <kbd>Enter</kbd> (<kbd>⌘</kbd> <kbd>Enter</kbd> on macOS). The response pane shows the status, the time and the size, then the body. Switch between <strong>Pretty</strong> and <strong>Raw</strong>, look at the <strong>Headers</strong> tab, and use the search button to find text in a long body.</p>
+<p>The tab shows a dot when it has unsaved changes. Press <kbd>Ctrl</kbd> <kbd>S</kbd> to save. Send always uses what is in the editor, saved or not.</p>
+
+<div class="callout warning">
+    <span class="title">Save before closing</span>
+    <p>Closing a request tab discards its unsaved changes without asking. Save first with <kbd>Ctrl</kbd> <kbd>S</kbd>.</p>
+</div>
+
+<h2 id="4-add-an-environment">4. Add an environment</h2>
+<p>Hard coding the host in every request makes it painful to switch between local, staging and production. Move it into a variable.</p>
+<ol class="steps">
+    <li>Click <strong>Environments</strong> in the activity rail on the left (the second icon) and then <strong>New environment</strong>. Name it <code>local</code> and press <kbd>Enter</kbd>. Postino creates <code>environments/local.env</code>.</li>
+    <li>The environment opens in a tab. Click <strong>Add variable</strong>, name it <code>baseUrl</code> and set its value to <code>https://httpbin.org</code>. Save with <kbd>Ctrl</kbd> <kbd>S</kbd>.</li>
+    <li>Select <code>local</code> in the environment pill at the top right of the title bar, or press <kbd>Ctrl</kbd> <kbd>1</kbd>.</li>
+    <li>Back in your request, change the URL to <code>{{baseUrl}}/get</code>. The variable turns into a chip. An unknown variable shows in red, and clicking it opens the <strong>Define variable</strong> dialog.</li>
+</ol>
+<p>Your workspace now looks like this:</p>
+<div class="code"><div class="code-title"><span class="dot"></span>my-api/</div><pre>my-api/
+├── environments/
+│   └── local.env
+└── list-users.postino</pre></div>
+
+<h2 id="5-add-a-test">5. Add a test</h2>
+<p>Open the <strong>Post-response</strong> tab of the request and write:</p>
+<div class="code"><pre data-lang="js">test("status is 200", () =&gt; {
+  expect(res.status).toBe(200);
+});
+
+test("the response echoes the URL", () =&gt; {
+  expect(res.json().url).toContain("/get");
+});</pre></div>
+<p>Send again. The <strong>Tests</strong> tab of the response shows <code>2/2</code> and the result of each test. A failed test does not stop the others.</p>
+
+<h2 id="6-look-at-the-file">6. Look at the file</h2>
+<p>Open <code>list-users.postino</code> in any text editor. It is short and readable:</p>
+<div class="code"><div class="code-title"><span class="dot"></span>list-users.postino</div><pre data-lang="postino">GET {{baseUrl}}/get
+
+::: post
+test("status is 200", () =&gt; {
+  expect(res.status).toBe(200);
+});
+
+test("the response echoes the URL", () =&gt; {
+  expect(res.json().url).toContain("/get");
+});</pre></div>
+<p>Commit it with the rest of your code. Before you add secrets to an environment, add this line to your <code>.gitignore</code> so <code>.local.env</code> files never reach git:</p>
+<div class="code"><div class="code-title"><span class="dot"></span>.gitignore</div><pre>*.local.env</pre></div>
+
+<h2 id="where-to-go-next">Where to go next</h2>
+<div class="cards">
+    <a href="interface.html"><strong>The interface</strong><span>A tour of every part of the window.</span></a>
+    <a href="requests.html"><strong>Building requests</strong><span>Query parameters, headers, bodies and docs.</span></a>
+    <a href="environments.html"><strong>Environments and variables</strong><span>Secrets, resolution order and the environment editor.</span></a>
+    <a href="scripting.html"><strong>Scripts and tests</strong><span>Log in once and reuse the token in every request.</span></a>
+</div>
+                <p class="page-meta">Found a mistake? <a href="https://github.com/tanisperez/postino/edit/main/site/docs/quick-start.html">Edit this page on GitHub</a> or <a href="https://github.com/tanisperez/postino/issues">open an issue</a>.</p>
+                <nav class="pager" aria-label="Previous and next page">
+                    <a class="prev" href="installation.html"><small>Previous</small>Installation</a>
+                    <a class="next" href="interface.html"><small>Next</small>The interface</a>
+                </nav>
+            </article>
+        </main>
+
+        <aside class="docs-toc" aria-label="On this page"></aside>
+    </div>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <span>Postino is open source under the Apache License 2.0.</span>
+            <nav aria-label="Footer">
+                <a href="https://github.com/tanisperez/postino">GitHub</a>
+                <a href="https://github.com/tanisperez/postino/releases">Releases</a>
+                <a href="https://github.com/tanisperez/postino/issues">Report an issue</a>
+                <a href="https://tanis.codes">tanis.codes</a>
+            </nav>
+        </div>
+    </footer>
+
+    <dialog class="search-dialog" aria-label="Search the documentation">
+        <div class="search-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" placeholder="Search the docs" aria-label="Search the docs" autocomplete="off" spellcheck="false">
+            <kbd>Esc</kbd>
+        </div>
+        <ul class="search-results" role="listbox" aria-label="Results"></ul>
+        <div class="search-foot">
+            <span><kbd>↑</kbd><kbd>↓</kbd>to move</span>
+            <span><kbd>↵</kbd>to open</span>
+            <span><kbd>/</kbd>or <kbd>Ctrl K</kbd>to search from any page</span>
+        </div>
+    </dialog>
+</body>
+</html>

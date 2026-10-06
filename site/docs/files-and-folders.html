@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Files and folders · Postino docs</title>
+    <meta name="description" content="Every file Postino reads and writes, in your workspace and on your system: requests, environments, run history, settings, recent workspaces and logs.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
+    <link rel="canonical" href="https://postino.tanis.codes/docs/files-and-folders.html">
+    <link rel="icon" href="../img/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../img/icon-512.png">
+    <link rel="preload" href="../fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="../fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <script src="../js/theme.js"></script>
+    <script src="../js/docs.js" defer></script>
+</head>
+<body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" href="../">
+                <img src="../img/logo.svg" alt="" width="28" height="28">
+                Postino
+            </a>
+            <button class="search-trigger" type="button" aria-label="Search the documentation">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <span class="label">Search docs</span>
+                <kbd>Ctrl K</kbd>
+            </button>
+            <nav class="nav" aria-label="Main">
+                <a class="nav-wide" href="../#features">Features</a>
+                <a href="../install.html">Download</a>
+                <a href="./" aria-current="page">Docs</a>
+                <a class="nav-github" href="https://github.com/tanisperez/postino" aria-label="Postino on GitHub">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    <span>GitHub</span>
+                </a>
+                <button class="theme-toggle" type="button" aria-label="Dark theme" title="Switch between light and dark">
+                    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="docs">
+        <button class="docs-menu" type="button" aria-expanded="false" aria-controls="docs-nav">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            Menu
+        </button>
+        <nav class="docs-nav" id="docs-nav" aria-label="Documentation">
+            <div class="group">
+                <h2>Getting started</h2>
+                <ul>
+                    <li><a href="index.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quick-start.html">Quick start</a></li>
+                    <li><a href="interface.html">The interface</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Guides</h2>
+                <ul>
+                    <li><a href="workspaces.html">Workspaces and collections</a></li>
+                    <li><a href="requests.html">Building requests</a></li>
+                    <li><a href="responses.html">Reading responses</a></li>
+                    <li><a href="environments.html">Environments and variables</a></li>
+                    <li><a href="template-functions.html">Template functions</a></li>
+                    <li><a href="scripting.html">Scripts and tests</a></li>
+                    <li><a href="load-testing.html">Load testing</a></li>
+                    <li><a href="code-snippets.html">Code snippets</a></li>
+                    <li><a href="postman-import.html">Importing from Postman</a></li>
+                    <li><a href="git.html">Working with git</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Reference</h2>
+                <ul>
+                    <li><a href="keyboard-shortcuts.html">Keyboard shortcuts</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                    <li><a href="file-format.html">File format</a></li>
+                    <li><a href="script-api.html">Script API</a></li>
+                    <li><a href="command-line.html">Command line</a></li>
+                    <li><a href="files-and-folders.html" aria-current="page">Files and folders</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Help</h2>
+                <ul>
+                    <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="faq.html">FAQ</a></li>
+                    <li><a href="contributing.html">Contributing</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <main class="docs-main" id="main">
+            <article class="article">
+                <p class="breadcrumb"><a href="./">Docs</a> / Reference</p>
+<h1>Files and folders</h1>
+<p class="lead">Postino keeps your work in your workspace and its own state in your user folders. Nothing is stored anywhere else, and nothing is sent anywhere.</p>
+
+<h2 id="in-the-workspace">In the workspace</h2>
+<p>These files belong to the project and are meant to be shared, except where noted.</p>
+<div class="table"><table>
+    <thead><tr><th>Path</th><th>Contents</th><th>In git</th></tr></thead>
+    <tbody>
+        <tr><td><code>**/*.postino</code></td><td>One request per file. See <a href="file-format.html">File format</a>.</td><td>Yes</td></tr>
+        <tr><td><code>environments/&lt;name&gt;.env</code></td><td>Shared variables of an environment.</td><td>Yes</td></tr>
+        <tr><td><code>environments/&lt;name&gt;.local.env</code></td><td>Secrets and personal overrides.</td><td><strong>No</strong>, add <code>*.local.env</code> to <code>.gitignore</code></td></tr>
+        <tr><td><code>.postino/runs/NNNN.json</code></td><td>Load test run history, one file per run.</td><td>Your choice</td></tr>
+    </tbody>
+</table></div>
+<p>Postino never writes anything else into the workspace: no settings, no cache, no lock files.</p>
+
+<h2 id="on-your-system">On your system</h2>
+<p>Postino's own state lives in the standard folders of each system.</p>
+<h3 id="configuration">Configuration</h3>
+<div class="table"><table>
+    <thead><tr><th>System</th><th>Folder</th></tr></thead>
+    <tbody>
+        <tr><td>Linux</td><td><code>~/.config/postino/</code> (<code>$XDG_CONFIG_HOME/postino/</code>)</td></tr>
+        <tr><td>macOS</td><td><code>~/Library/Application Support/postino/</code></td></tr>
+        <tr><td>Windows</td><td><code>%APPDATA%\postino\</code></td></tr>
+    </tbody>
+</table></div>
+<div class="table"><table>
+    <thead><tr><th>File</th><th>Contents</th></tr></thead>
+    <tbody>
+        <tr><td><code>settings.toml</code></td><td>Your <a href="settings.html">settings</a>.</td></tr>
+        <tr><td><code>recent-workspaces.txt</code></td><td>The last ten workspaces you opened, one absolute path per line, most recent first.</td></tr>
+        <tr><td><code>last-environments.toml</code></td><td>The active environment of each recent workspace, so it is selected again when you reopen it.</td></tr>
+    </tbody>
+</table></div>
+
+<h3 id="logs">Logs</h3>
+<div class="table"><table>
+    <thead><tr><th>System</th><th>Folder</th></tr></thead>
+    <tbody>
+        <tr><td>Linux</td><td><code>~/.local/state/postino/</code> (<code>$XDG_STATE_HOME/postino/</code>)</td></tr>
+        <tr><td>macOS</td><td><code>~/Library/Logs/Postino/</code></td></tr>
+        <tr><td>Windows</td><td><code>%LOCALAPPDATA%\Postino\logs\</code></td></tr>
+    </tbody>
+</table></div>
+<p>The current log is <code>postino.log</code>. It is rotated at 5 MB, and at most 10 files are kept. Settings, Advanced, Logging shows the path and has a button to open the folder.</p>
+
+<h3 id="updates">Updates</h3>
+<p>On macOS and Windows, the updater downloads new versions to <code>postino/updates/</code> inside the system cache folder (<code>~/Library/Caches/</code> on macOS, <code>%LOCALAPPDATA%</code> on Windows) and verifies them before installing. Settings, About shows the exact path. Nothing is downloaded on Linux.</p>
+
+<h2 id="resetting-postino">Resetting Postino</h2>
+<p>To start from scratch, quit Postino and delete the configuration folder. Your workspaces are not affected. To also remove the logs, delete the logs folder.</p>
+
+<h2 id="network">Network</h2>
+<p>Postino connects to:</p>
+<ul>
+    <li>the servers of the requests you send, when you send them or run a load test;</li>
+    <li>on macOS and Windows builds with the updater, and only if <strong>Check for updates automatically</strong> is on or you check by hand, GitHub, to read the latest release manifest and download an update. No identifiers are sent.</li>
+</ul>
+<p>There is no telemetry, no crash reporting and no account.</p>
+                <p class="page-meta">Found a mistake? <a href="https://github.com/tanisperez/postino/edit/main/site/docs/files-and-folders.html">Edit this page on GitHub</a> or <a href="https://github.com/tanisperez/postino/issues">open an issue</a>.</p>
+                <nav class="pager" aria-label="Previous and next page">
+                    <a class="prev" href="command-line.html"><small>Previous</small>Command line</a>
+                    <a class="next" href="troubleshooting.html"><small>Next</small>Troubleshooting</a>
+                </nav>
+            </article>
+        </main>
+
+        <aside class="docs-toc" aria-label="On this page"></aside>
+    </div>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <span>Postino is open source under the Apache License 2.0.</span>
+            <nav aria-label="Footer">
+                <a href="https://github.com/tanisperez/postino">GitHub</a>
+                <a href="https://github.com/tanisperez/postino/releases">Releases</a>
+                <a href="https://github.com/tanisperez/postino/issues">Report an issue</a>
+                <a href="https://tanis.codes">tanis.codes</a>
+            </nav>
+        </div>
+    </footer>
+
+    <dialog class="search-dialog" aria-label="Search the documentation">
+        <div class="search-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" placeholder="Search the docs" aria-label="Search the docs" autocomplete="off" spellcheck="false">
+            <kbd>Esc</kbd>
+        </div>
+        <ul class="search-results" role="listbox" aria-label="Results"></ul>
+        <div class="search-foot">
+            <span><kbd>↑</kbd><kbd>↓</kbd>to move</span>
+            <span><kbd>↵</kbd>to open</span>
+            <span><kbd>/</kbd>or <kbd>Ctrl K</kbd>to search from any page</span>
+        </div>
+    </dialog>
+</body>
+</html>

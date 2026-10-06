@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Settings · Postino docs</title>
+    <meta name="description" content="Every Postino setting: language, theme, fonts, invalid TLS certificates, maximum response size, log level and updates, and the settings.toml file.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
+    <link rel="canonical" href="https://postino.tanis.codes/docs/settings.html">
+    <link rel="icon" href="../img/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../img/icon-512.png">
+    <link rel="preload" href="../fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="../fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <script src="../js/theme.js"></script>
+    <script src="../js/docs.js" defer></script>
+</head>
+<body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" href="../">
+                <img src="../img/logo.svg" alt="" width="28" height="28">
+                Postino
+            </a>
+            <button class="search-trigger" type="button" aria-label="Search the documentation">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <span class="label">Search docs</span>
+                <kbd>Ctrl K</kbd>
+            </button>
+            <nav class="nav" aria-label="Main">
+                <a class="nav-wide" href="../#features">Features</a>
+                <a href="../install.html">Download</a>
+                <a href="./" aria-current="page">Docs</a>
+                <a class="nav-github" href="https://github.com/tanisperez/postino" aria-label="Postino on GitHub">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    <span>GitHub</span>
+                </a>
+                <button class="theme-toggle" type="button" aria-label="Dark theme" title="Switch between light and dark">
+                    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="docs">
+        <button class="docs-menu" type="button" aria-expanded="false" aria-controls="docs-nav">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            Menu
+        </button>
+        <nav class="docs-nav" id="docs-nav" aria-label="Documentation">
+            <div class="group">
+                <h2>Getting started</h2>
+                <ul>
+                    <li><a href="index.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quick-start.html">Quick start</a></li>
+                    <li><a href="interface.html">The interface</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Guides</h2>
+                <ul>
+                    <li><a href="workspaces.html">Workspaces and collections</a></li>
+                    <li><a href="requests.html">Building requests</a></li>
+                    <li><a href="responses.html">Reading responses</a></li>
+                    <li><a href="environments.html">Environments and variables</a></li>
+                    <li><a href="template-functions.html">Template functions</a></li>
+                    <li><a href="scripting.html">Scripts and tests</a></li>
+                    <li><a href="load-testing.html">Load testing</a></li>
+                    <li><a href="code-snippets.html">Code snippets</a></li>
+                    <li><a href="postman-import.html">Importing from Postman</a></li>
+                    <li><a href="git.html">Working with git</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Reference</h2>
+                <ul>
+                    <li><a href="keyboard-shortcuts.html">Keyboard shortcuts</a></li>
+                    <li><a href="settings.html" aria-current="page">Settings</a></li>
+                    <li><a href="file-format.html">File format</a></li>
+                    <li><a href="script-api.html">Script API</a></li>
+                    <li><a href="command-line.html">Command line</a></li>
+                    <li><a href="files-and-folders.html">Files and folders</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Help</h2>
+                <ul>
+                    <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="faq.html">FAQ</a></li>
+                    <li><a href="contributing.html">Contributing</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <main class="docs-main" id="main">
+            <article class="article">
+                <p class="breadcrumb"><a href="./">Docs</a> / Reference</p>
+<h1>Settings</h1>
+<p class="lead">Open Settings with the gear in the title bar or <kbd>Ctrl</kbd> <kbd>,</kbd> (<kbd>⌘</kbd> <kbd>,</kbd> on macOS). Changes apply immediately and are saved as you make them; there is no Save button.</p>
+
+<div class="shot">
+    <img class="light" src="../img/settings-light.webp" width="2018" height="1282" loading="lazy" alt="The Settings window with appearance options.">
+    <img class="dark" src="../img/settings-dark.webp" width="2018" height="1282" loading="lazy" alt="The Settings window with appearance options.">
+</div>
+
+<p>Settings are grouped in four categories. <strong>Reset to defaults</strong> brings every setting back to its default value.</p>
+
+<h2 id="appearance">Appearance</h2>
+<div class="table"><table>
+    <thead><tr><th>Setting</th><th>Default</th><th>Options</th></tr></thead>
+    <tbody>
+        <tr><td>Language</td><td>Automatic</td><td>Automatic follows your system language. English, Español, Galego, Italiano. English is used for any system language Postino does not have.</td></tr>
+        <tr><td>Theme</td><td>System</td><td>System follows the light or dark setting of your OS and switches live. Light. Dark.</td></tr>
+        <tr><td>Interface font</td><td>Geist</td><td>Geist is bundled, so every platform looks the same. Any font installed on your system can be chosen.</td></tr>
+        <tr><td>Interface font size</td><td>13</td><td>11 to 16, in steps of 1.</td></tr>
+        <tr><td>Editor monospace font</td><td>Geist Mono</td><td>Used in the URL bar, tables, code editors and the response body. Geist Mono is bundled.</td></tr>
+        <tr><td>Editor font size</td><td>12.5</td><td>10 to 18, in steps of 0.5.</td></tr>
+    </tbody>
+</table></div>
+<p>You can also flip between light and dark with <strong>Toggle theme</strong> in the command palette.</p>
+
+<h2 id="requests">Requests</h2>
+<h3 id="tls">TLS</h3>
+<p><strong>Invalid certificates</strong> decides what happens when a server's certificate is self-signed, expired or issued for another host name:</p>
+<div class="table"><table>
+    <thead><tr><th>Option</th><th>Behavior</th></tr></thead>
+    <tbody>
+        <tr><td>Send with warning (default)</td><td>The request is sent without verifying the certificate, and the response shows a warning that explains what was wrong. Handy for local servers with self-signed certificates, while still telling you about the problem.</td></tr>
+        <tr><td>Reject</td><td>The request fails with an error, like a browser would.</td></tr>
+        <tr><td>Don't verify</td><td>The request is sent without verifying the certificate and without any warning.</td></tr>
+    </tbody>
+</table></div>
+<p>A certificate error stops the TLS handshake before any request byte is written, so retrying without verification never sends a request twice.</p>
+
+<h3 id="responses">Responses</h3>
+<p><strong>Maximum size</strong> is the biggest response body Postino reads: 10, 20 (default), 50, 100 or 200 MB, where 1 MB is 1,000,000 bytes. A bigger response fails with an error that names the limit. A big response uses about 30 times its size in memory while it is shown, so raise the limit only as much as you need. In <code>settings.toml</code> you can set any value from 1 to 1000.</p>
+
+<h2 id="advanced">Advanced</h2>
+<h3 id="logging">Logging</h3>
+<p><strong>Log level</strong> controls how much Postino writes to its log file: Off, Error, Warn, Info (default), Debug or Trace. Debug and Trace add detail to diagnose problems. The log file location is shown below the setting, with an <strong>Open folder</strong> button. Files are rotated every 5 MB and the last 10 are kept.</p>
+<p>The <code>POSTINO_LOG</code> environment variable overrides the level at startup. See <a href="command-line.html#environment-variables">Command line</a> and <a href="troubleshooting.html#collecting-a-log">collecting a log</a>.</p>
+<div class="callout note">
+    <span class="title">Privacy</span>
+    <p>Logs never contain request or response bodies, variable values, query strings or the values of sensitive headers such as <code>Authorization</code> or <code>Cookie</code>.</p>
+</div>
+
+<h2 id="about">About</h2>
+<p>Shows the version and links to the release notes. What else it shows depends on how Postino was installed:</p>
+<ul>
+    <li><strong>macOS and Windows builds from the official installers</strong> have the in-app updater. <strong>Check for updates automatically</strong> (on by default) checks once, a few seconds after launch, and never polls in the background. <strong>Check now</strong> checks immediately. When an update has been downloaded and verified, <strong>Restart to update</strong> installs it. Restarting keeps your open tabs; if a tab has unsaved changes, Postino asks first.</li>
+    <li><strong>Linux packages</strong> say that updates come from your package manager.</li>
+    <li><strong>Other builds</strong>, such as one you compiled yourself, say that updates are not available in that build.</li>
+</ul>
+<p>The privacy line states what Postino connects to on its own: nothing at all, or, in builds with the updater, only GitHub to check for updates. That check sends no identifiers.</p>
+
+<h2 id="the-settings-file">The settings file</h2>
+<p>Settings are stored in <code>settings.toml</code> in Postino's configuration folder. The exact path is shown at the bottom of the Settings window, next to <strong>Saved to</strong>.</p>
+<div class="table"><table>
+    <thead><tr><th>System</th><th>Path</th></tr></thead>
+    <tbody>
+        <tr><td>Linux</td><td><code>~/.config/postino/settings.toml</code> (or <code>$XDG_CONFIG_HOME/postino/</code>)</td></tr>
+        <tr><td>macOS</td><td><code>~/Library/Application Support/postino/settings.toml</code></td></tr>
+        <tr><td>Windows</td><td><code>%APPDATA%\postino\settings.toml</code></td></tr>
+    </tbody>
+</table></div>
+<p>You can edit it by hand while Postino is closed. Keys you leave out take their default value, and an invalid value falls back to the default.</p>
+<div class="code"><div class="code-title"><span class="dot"></span>settings.toml</div><pre data-lang="toml">language = "auto"                     # auto, en, es, gl, it
+theme = "system"                      # system, light, dark
+ui_font = "Geist"
+ui_font_size = 13.0                   # 11 to 16
+mono_font = "Geist Mono"
+mono_font_size = 12.5                 # 10 to 18
+invalid_tls_certificates = "warn"     # warn, reject, accept
+max_response_mb = 20                  # 1 to 1000
+log_level = "info"                    # off, error, warn, info, debug, trace
+check_updates = true                  # only used by builds with an updater</pre></div>
+                <p class="page-meta">Found a mistake? <a href="https://github.com/tanisperez/postino/edit/main/site/docs/settings.html">Edit this page on GitHub</a> or <a href="https://github.com/tanisperez/postino/issues">open an issue</a>.</p>
+                <nav class="pager" aria-label="Previous and next page">
+                    <a class="prev" href="keyboard-shortcuts.html"><small>Previous</small>Keyboard shortcuts</a>
+                    <a class="next" href="file-format.html"><small>Next</small>File format</a>
+                </nav>
+            </article>
+        </main>
+
+        <aside class="docs-toc" aria-label="On this page"></aside>
+    </div>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <span>Postino is open source under the Apache License 2.0.</span>
+            <nav aria-label="Footer">
+                <a href="https://github.com/tanisperez/postino">GitHub</a>
+                <a href="https://github.com/tanisperez/postino/releases">Releases</a>
+                <a href="https://github.com/tanisperez/postino/issues">Report an issue</a>
+                <a href="https://tanis.codes">tanis.codes</a>
+            </nav>
+        </div>
+    </footer>
+
+    <dialog class="search-dialog" aria-label="Search the documentation">
+        <div class="search-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" placeholder="Search the docs" aria-label="Search the docs" autocomplete="off" spellcheck="false">
+            <kbd>Esc</kbd>
+        </div>
+        <ul class="search-results" role="listbox" aria-label="Results"></ul>
+        <div class="search-foot">
+            <span><kbd>↑</kbd><kbd>↓</kbd>to move</span>
+            <span><kbd>↵</kbd>to open</span>
+            <span><kbd>/</kbd>or <kbd>Ctrl K</kbd>to search from any page</span>
+        </div>
+    </dialog>
+</body>
+</html>

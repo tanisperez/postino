@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Workspaces and collections · Postino docs</title>
+    <meta name="description" content="How Postino maps folders and files to workspaces, collections and requests, and how to organize, rename and open them.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
+    <link rel="canonical" href="https://postino.tanis.codes/docs/workspaces.html">
+    <link rel="icon" href="../img/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../img/icon-512.png">
+    <link rel="preload" href="../fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="../fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <script src="../js/theme.js"></script>
+    <script src="../js/docs.js" defer></script>
+</head>
+<body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" href="../">
+                <img src="../img/logo.svg" alt="" width="28" height="28">
+                Postino
+            </a>
+            <button class="search-trigger" type="button" aria-label="Search the documentation">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <span class="label">Search docs</span>
+                <kbd>Ctrl K</kbd>
+            </button>
+            <nav class="nav" aria-label="Main">
+                <a class="nav-wide" href="../#features">Features</a>
+                <a href="../install.html">Download</a>
+                <a href="./" aria-current="page">Docs</a>
+                <a class="nav-github" href="https://github.com/tanisperez/postino" aria-label="Postino on GitHub">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    <span>GitHub</span>
+                </a>
+                <button class="theme-toggle" type="button" aria-label="Dark theme" title="Switch between light and dark">
+                    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="docs">
+        <button class="docs-menu" type="button" aria-expanded="false" aria-controls="docs-nav">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            Menu
+        </button>
+        <nav class="docs-nav" id="docs-nav" aria-label="Documentation">
+            <div class="group">
+                <h2>Getting started</h2>
+                <ul>
+                    <li><a href="index.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quick-start.html">Quick start</a></li>
+                    <li><a href="interface.html">The interface</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Guides</h2>
+                <ul>
+                    <li><a href="workspaces.html" aria-current="page">Workspaces and collections</a></li>
+                    <li><a href="requests.html">Building requests</a></li>
+                    <li><a href="responses.html">Reading responses</a></li>
+                    <li><a href="environments.html">Environments and variables</a></li>
+                    <li><a href="template-functions.html">Template functions</a></li>
+                    <li><a href="scripting.html">Scripts and tests</a></li>
+                    <li><a href="load-testing.html">Load testing</a></li>
+                    <li><a href="code-snippets.html">Code snippets</a></li>
+                    <li><a href="postman-import.html">Importing from Postman</a></li>
+                    <li><a href="git.html">Working with git</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Reference</h2>
+                <ul>
+                    <li><a href="keyboard-shortcuts.html">Keyboard shortcuts</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                    <li><a href="file-format.html">File format</a></li>
+                    <li><a href="script-api.html">Script API</a></li>
+                    <li><a href="command-line.html">Command line</a></li>
+                    <li><a href="files-and-folders.html">Files and folders</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Help</h2>
+                <ul>
+                    <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="faq.html">FAQ</a></li>
+                    <li><a href="contributing.html">Contributing</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <main class="docs-main" id="main">
+            <article class="article">
+                <p class="breadcrumb"><a href="./">Docs</a> / Guides</p>
+<h1>Workspaces and collections</h1>
+<p class="lead">Postino has no database. A workspace is a folder, a collection is a subfolder, and a request is a <code>.postino</code> file. Whatever you can do with files, you can do with your requests.</p>
+
+<h2 id="anatomy-of-a-workspace">Anatomy of a workspace</h2>
+<div class="code"><div class="code-title"><span class="dot"></span>shop-api/</div><pre>shop-api/
+├── environments/
+│   ├── local.env
+│   ├── staging.env
+│   └── staging.local.env      # secrets, gitignored
+├── auth/
+│   └── login.postino
+├── orders/
+│   ├── create.postino
+│   ├── list.postino
+│   └── refunds/
+│       └── create.postino
+├── health.postino
+└── .postino/
+    └── runs/                  # load test history
+        └── 0001.json</pre></div>
+<dl>
+    <dt>Workspace</dt>
+    <dd>The folder you open. Its name is shown in the title bar and its path in the status bar.</dd>
+    <dt>Collection</dt>
+    <dd>Any folder inside the workspace. Folders can be nested as deep as you like.</dd>
+    <dt>Request</dt>
+    <dd>A <code>.postino</code> file. Its name in the sidebar is the file name without the extension. See the <a href="file-format.html">file format</a>.</dd>
+    <dt>Environments</dt>
+    <dd>The top-level <code>environments/</code> folder holds <code>.env</code> files instead of requests and is not shown in the collection tree. See <a href="environments.html">Environments and variables</a>.</dd>
+    <dt><code>.postino/</code></dt>
+    <dd>Postino's own data for this workspace. Today it only holds the load test run history in <code>.postino/runs/</code>.</dd>
+</dl>
+
+<h2 id="what-the-sidebar-shows">What the sidebar shows</h2>
+<p>Postino scans the workspace folder and lists every <code>.postino</code> file and every folder, with these rules:</p>
+<ul>
+    <li>Hidden entries, whose name starts with a dot (<code>.git</code>, <code>.postino</code>, <code>.vscode</code>), are skipped at every level.</li>
+    <li>A folder named <code>target</code> is skipped at every level, so a Rust build folder never floods the tree.</li>
+    <li>The top-level <code>environments/</code> folder is skipped. A folder named <code>environments</code> deeper in the tree is a normal collection.</li>
+    <li>Files with another extension are ignored, so the workspace can live inside a code repository next to anything else.</li>
+    <li>Folders are listed before requests. Both are sorted in natural order: <code>step2</code> comes before <code>step10</code>.</li>
+</ul>
+<div class="callout tip">
+    <span class="title">Tip</span>
+    <p>To control the order of requests, prefix their names with numbers: <code>01-login</code>, <code>02-create-order</code>, <code>03-pay</code>. Natural sorting keeps <code>10-</code> after <code>9-</code>.</p>
+</div>
+
+<h2 id="opening-a-workspace">Opening a workspace</h2>
+<ul>
+    <li><strong>From the app:</strong> click the workspace switcher in the title bar and choose <strong>Open folder…</strong>, or one of the recent workspaces listed above it. The command palette has <strong>Open folder…</strong> too.</li>
+    <li><strong>At startup:</strong> Postino reopens the last workspace you used, as long as the folder still exists.</li>
+    <li><strong>From a terminal:</strong> <code>postino path/to/folder</code>. See <a href="command-line.html">Command line</a>.</li>
+    <li><strong>By opening a request file:</strong> double click a <code>.postino</code> file, or pass it on the command line. Postino opens the remembered workspace if the file is inside it, otherwise the file's own folder, and then opens the file in a tab.</li>
+</ul>
+<p>Postino remembers up to ten recent workspaces, and for each one the environment that was active, which is selected again when you reopen it. This memory lives in Postino's configuration folder, not in the workspace, so picking an environment never changes your git diff.</p>
+
+<h2 id="creating-requests-and-folders">Creating requests and folders</h2>
+<p>Use the <strong>New request</strong> and <strong>New folder</strong> buttons in the sidebar header to create them at the root, or right click a folder to create them inside it. You can also run <strong>New request</strong> and <strong>New folder</strong> from the command palette.</p>
+<p>A new request is written to disk right away as <code>GET https://example.com</code>, so it is a valid file from the start.</p>
+<p>Names are made safe for every operating system: control characters and the characters Windows does not allow (<code>&lt; &gt; : " / \ | ? *</code>) become <code>_</code>, trailing dots and spaces are removed, names are cut to 120 characters, and Windows device names such as <code>CON</code> or <code>NUL</code> are changed so the file can be created everywhere. If a file or folder with the same name already exists, Postino reports it and changes nothing.</p>
+
+<h2 id="renaming-moving-and-deleting">Renaming, moving and deleting</h2>
+<ul>
+    <li><strong>Rename</strong> from the context menu renames the file or folder on disk and updates any open tab. A request keeps its <code>.postino</code> extension.</li>
+    <li><strong>Delete</strong> asks for confirmation and then removes the file, or the folder and everything inside it. It does not use the trash: the file is gone. If the workspace is in git, you can still recover it from there.</li>
+    <li><strong>Moving</strong> a request to another folder is not available inside Postino yet. Move the file with your file manager or with <code>git mv</code>; Postino picks up the change the next time the tree is scanned, for example when you create, rename or delete something, or reopen the workspace.</li>
+</ul>
+
+<h2 id="editing-files-outside-postino">Editing files outside Postino</h2>
+<p>Because requests are plain text, you can edit them in any editor, generate them with a script or merge them with git. A few things to keep in mind:</p>
+<ul>
+    <li>Postino does not watch the folder for changes. Reopen the workspace from the workspace switcher to see files created outside the app.</li>
+    <li>When you save a request, Postino writes it in its canonical form: the same content always gives the same bytes, with sections in a fixed order. Hand formatting such as extra blank lines between sections is normalized. See <a href="file-format.html#canonical-serialization">canonical serialization</a>.</li>
+    <li>Files are saved atomically: Postino writes a temporary file and renames it over the old one, so a crash never leaves a half written request.</li>
+</ul>
+
+<h2 id="sharing-a-workspace">Sharing a workspace</h2>
+<p>There is nothing to export. Send the folder, put it on a shared drive or, best of all, commit it to git. See <a href="git.html">Working with git</a> for a recommended layout and <code>.gitignore</code>.</p>
+
+<h2 id="the-sample-workspace">The sample workspace</h2>
+<p>The source repository includes a small workspace in <code>examples/sample-workspace</code> with an <code>auth/login</code> request that stores a token, a <code>users</code> collection and a <code>local</code> environment. It is a good way to see every feature in a few files.</p>
+                <p class="page-meta">Found a mistake? <a href="https://github.com/tanisperez/postino/edit/main/site/docs/workspaces.html">Edit this page on GitHub</a> or <a href="https://github.com/tanisperez/postino/issues">open an issue</a>.</p>
+                <nav class="pager" aria-label="Previous and next page">
+                    <a class="prev" href="interface.html"><small>Previous</small>The interface</a>
+                    <a class="next" href="requests.html"><small>Next</small>Building requests</a>
+                </nav>
+            </article>
+        </main>
+
+        <aside class="docs-toc" aria-label="On this page"></aside>
+    </div>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <span>Postino is open source under the Apache License 2.0.</span>
+            <nav aria-label="Footer">
+                <a href="https://github.com/tanisperez/postino">GitHub</a>
+                <a href="https://github.com/tanisperez/postino/releases">Releases</a>
+                <a href="https://github.com/tanisperez/postino/issues">Report an issue</a>
+                <a href="https://tanis.codes">tanis.codes</a>
+            </nav>
+        </div>
+    </footer>
+
+    <dialog class="search-dialog" aria-label="Search the documentation">
+        <div class="search-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" placeholder="Search the docs" aria-label="Search the docs" autocomplete="off" spellcheck="false">
+            <kbd>Esc</kbd>
+        </div>
+        <ul class="search-results" role="listbox" aria-label="Results"></ul>
+        <div class="search-foot">
+            <span><kbd>↑</kbd><kbd>↓</kbd>to move</span>
+            <span><kbd>↵</kbd>to open</span>
+            <span><kbd>/</kbd>or <kbd>Ctrl K</kbd>to search from any page</span>
+        </div>
+    </dialog>
+</body>
+</html>

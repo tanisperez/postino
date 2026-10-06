@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Troubleshooting · Postino docs</title>
+    <meta name="description" content="Solutions to common Postino problems: broken requests, unknown variables, TLS errors, timeouts, large responses, missing files and collecting a log.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
+    <link rel="canonical" href="https://postino.tanis.codes/docs/troubleshooting.html">
+    <link rel="icon" href="../img/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../img/icon-512.png">
+    <link rel="preload" href="../fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="../fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <script src="../js/theme.js"></script>
+    <script src="../js/docs.js" defer></script>
+</head>
+<body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" href="../">
+                <img src="../img/logo.svg" alt="" width="28" height="28">
+                Postino
+            </a>
+            <button class="search-trigger" type="button" aria-label="Search the documentation">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <span class="label">Search docs</span>
+                <kbd>Ctrl K</kbd>
+            </button>
+            <nav class="nav" aria-label="Main">
+                <a class="nav-wide" href="../#features">Features</a>
+                <a href="../install.html">Download</a>
+                <a href="./" aria-current="page">Docs</a>
+                <a class="nav-github" href="https://github.com/tanisperez/postino" aria-label="Postino on GitHub">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    <span>GitHub</span>
+                </a>
+                <button class="theme-toggle" type="button" aria-label="Dark theme" title="Switch between light and dark">
+                    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="docs">
+        <button class="docs-menu" type="button" aria-expanded="false" aria-controls="docs-nav">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            Menu
+        </button>
+        <nav class="docs-nav" id="docs-nav" aria-label="Documentation">
+            <div class="group">
+                <h2>Getting started</h2>
+                <ul>
+                    <li><a href="index.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quick-start.html">Quick start</a></li>
+                    <li><a href="interface.html">The interface</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Guides</h2>
+                <ul>
+                    <li><a href="workspaces.html">Workspaces and collections</a></li>
+                    <li><a href="requests.html">Building requests</a></li>
+                    <li><a href="responses.html">Reading responses</a></li>
+                    <li><a href="environments.html">Environments and variables</a></li>
+                    <li><a href="template-functions.html">Template functions</a></li>
+                    <li><a href="scripting.html">Scripts and tests</a></li>
+                    <li><a href="load-testing.html">Load testing</a></li>
+                    <li><a href="code-snippets.html">Code snippets</a></li>
+                    <li><a href="postman-import.html">Importing from Postman</a></li>
+                    <li><a href="git.html">Working with git</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Reference</h2>
+                <ul>
+                    <li><a href="keyboard-shortcuts.html">Keyboard shortcuts</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                    <li><a href="file-format.html">File format</a></li>
+                    <li><a href="script-api.html">Script API</a></li>
+                    <li><a href="command-line.html">Command line</a></li>
+                    <li><a href="files-and-folders.html">Files and folders</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Help</h2>
+                <ul>
+                    <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li>
+                    <li><a href="faq.html">FAQ</a></li>
+                    <li><a href="contributing.html">Contributing</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <main class="docs-main" id="main">
+            <article class="article">
+                <p class="breadcrumb"><a href="./">Docs</a> / Help</p>
+<h1>Troubleshooting</h1>
+<p class="lead">Solutions to the problems people run into most often. If yours is not here, <a href="https://github.com/tanisperez/postino/issues">open an issue</a> with a log attached.</p>
+
+<h2 id="a-request-shows-as-broken">A request shows as broken</h2>
+<p>The sidebar lists a file as <strong>name (broken)</strong> when it cannot be parsed. Open it in a text editor and check the <a href="file-format.html#parse-errors">parse errors</a>. The usual causes:</p>
+<ul>
+    <li>A comment in the header block. <code># note</code> right after the request line is read as a disabled header, and fails because it has no colon. Move notes to <code>::: docs</code>.</li>
+    <li>A body without its marker: JSON right after the headers instead of under <code>::: body json</code>.</li>
+    <li>A lowercase method: <code>get</code> instead of <code>GET</code>.</li>
+    <li>A misspelled or capitalized marker: <code>::: Body json</code>, <code>:::pre</code> without the space.</li>
+    <li>Git conflict markers left in the file after a merge.</li>
+</ul>
+
+<h2 id="a-variable-is-sent-as-name">A variable is sent as {{name}}</h2>
+<p>The variable has no value in any layer, so it was sent literally. Check that:</p>
+<ul>
+    <li>the right environment is active in the title bar (not <strong>No environment</strong>);</li>
+    <li>the name matches exactly: variable names are case sensitive;</li>
+    <li>the variable is not only in a <code>.local.env</code> file of another environment;</li>
+    <li>a value set by a script came from a request you already sent in this session: session variables are cleared when Postino quits.</li>
+</ul>
+<p>Click <strong>Define</strong> on the warning to create the variable without leaving the request.</p>
+
+<h2 id="changes-made-outside-postino-do-not-show">Changes made outside Postino do not show</h2>
+<p>Postino does not watch the workspace folder. After a <code>git pull</code>, a checkout or editing files in another editor, reopen the workspace from the workspace switcher. Tabs that are already open keep the content they had; close and reopen them.</p>
+
+<h2 id="i-lost-unsaved-changes">I lost unsaved changes</h2>
+<p>Closing a request tab discards its unsaved changes without asking. A tab with a dot has unsaved changes; save with <kbd>Ctrl</kbd> <kbd>S</kbd> before closing it.</p>
+
+<h2 id="certificate-errors">Certificate errors</h2>
+<p>With the default setting, an invalid certificate only produces a warning. If requests fail with a certificate error, the <a href="settings.html#tls">Invalid certificates</a> setting is <strong>Reject</strong>. For a local server with a self-signed certificate, use <strong>Send with warning</strong>.</p>
+<p>Postino trusts the usual public certificate authorities. It does not read custom CA certificates from your system store yet, so a server signed by a private company CA is treated as invalid.</p>
+
+<h2 id="the-request-times-out">The request times out</h2>
+<p>The timeout is 30 seconds for the whole exchange, including redirects. If the server is reachable from a browser or <code>curl</code> but not from Postino, check whether you need a proxy and set <code>HTTPS_PROXY</code> before starting Postino. See <a href="command-line.html#environment-variables">environment variables</a>.</p>
+
+<h2 id="the-response-is-larger-than-the-limit">The response is larger than the limit</h2>
+<p>Bodies are capped at 20 MB by default. Raise <a href="settings.html#responses">Maximum size</a> in Settings, Requests. Large bodies use a lot of memory while shown, roughly 30 times their size.</p>
+
+<h2 id="a-script-fails">A script fails</h2>
+<ul>
+    <li><strong>Pre-request script failed:</strong> nothing was sent. The message has the JavaScript error. Look at the <strong>Console</strong> tab for your <code>console.log()</code> output.</li>
+    <li><strong>Post-response script failed:</strong> the response is shown anyway. A common cause is <code>res.json()</code> on a body that is not JSON, such as an HTML error page. Check <code>res.status</code> first.</li>
+    <li><strong>Timeouts and memory:</strong> a script that runs for more than 5 seconds or uses more than 32 MiB is stopped. Look for an infinite loop.</li>
+    <li><strong><code>pm is not defined</code>:</strong> the script was imported from Postman. See <a href="scripting.html#moving-scripts-from-postman">moving scripts from Postman</a>.</li>
+    <li><strong><code>req.body</code> has no effect:</strong> the request has no body section. Pick a body type in the Body tab first.</li>
+</ul>
+
+<h2 id="the-app-does-not-open-on-macos-or-windows">The app does not open on macOS or Windows</h2>
+<p>Postino is not code signed yet. See <a href="installation.html#first-launch">first launch of an unsigned build</a>.</p>
+
+<h2 id="the-window-is-blank-or-slow-on-linux">The window is blank or slow on Linux</h2>
+<p>Postino draws with the GPU through Vulkan. Make sure the Vulkan driver for your graphics card is installed (for example <code>mesa-vulkan-drivers</code> on Debian and Ubuntu, <code>vulkan-radeon</code> or <code>vulkan-intel</code> on Arch). Start Postino from a terminal with <code>POSTINO_LOG=debug</code> to see what the graphics layer reports.</p>
+
+<h2 id="collecting-a-log">Collecting a log</h2>
+<ol class="steps">
+    <li>Open Settings, Advanced and set <strong>Log level</strong> to <strong>Debug</strong>, or start Postino with <code>POSTINO_LOG=debug</code>.</li>
+    <li>Reproduce the problem.</li>
+    <li>Click <strong>Open folder</strong> next to the log file path and attach <code>postino.log</code> to your issue.</li>
+    <li>Set the level back to <strong>Info</strong>.</li>
+</ol>
+<p>Logs leave out bodies, variable values, query strings and sensitive header values, but glance over the file before sharing it. The log folders are listed in <a href="files-and-folders.html#logs">Files and folders</a>.</p>
+                <p class="page-meta">Found a mistake? <a href="https://github.com/tanisperez/postino/edit/main/site/docs/troubleshooting.html">Edit this page on GitHub</a> or <a href="https://github.com/tanisperez/postino/issues">open an issue</a>.</p>
+                <nav class="pager" aria-label="Previous and next page">
+                    <a class="prev" href="files-and-folders.html"><small>Previous</small>Files and folders</a>
+                    <a class="next" href="faq.html"><small>Next</small>FAQ</a>
+                </nav>
+            </article>
+        </main>
+
+        <aside class="docs-toc" aria-label="On this page"></aside>
+    </div>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <span>Postino is open source under the Apache License 2.0.</span>
+            <nav aria-label="Footer">
+                <a href="https://github.com/tanisperez/postino">GitHub</a>
+                <a href="https://github.com/tanisperez/postino/releases">Releases</a>
+                <a href="https://github.com/tanisperez/postino/issues">Report an issue</a>
+                <a href="https://tanis.codes">tanis.codes</a>
+            </nav>
+        </div>
+    </footer>
+
+    <dialog class="search-dialog" aria-label="Search the documentation">
+        <div class="search-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" placeholder="Search the docs" aria-label="Search the docs" autocomplete="off" spellcheck="false">
+            <kbd>Esc</kbd>
+        </div>
+        <ul class="search-results" role="listbox" aria-label="Results"></ul>
+        <div class="search-foot">
+            <span><kbd>↑</kbd><kbd>↓</kbd>to move</span>
+            <span><kbd>↵</kbd>to open</span>
+            <span><kbd>/</kbd>or <kbd>Ctrl K</kbd>to search from any page</span>
+        </div>
+    </dialog>
+</body>
+</html>

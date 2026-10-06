@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Scripts and tests · Postino docs</title>
+    <meta name="description" content="Write JavaScript pre-request and post-response scripts in Postino, test responses with test() and expect(), chain requests and move scripts over from Postman.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
+    <link rel="canonical" href="https://postino.tanis.codes/docs/scripting.html">
+    <link rel="icon" href="../img/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../img/icon-512.png">
+    <link rel="preload" href="../fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="../fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <script src="../js/theme.js"></script>
+    <script src="../js/docs.js" defer></script>
+</head>
+<body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" href="../">
+                <img src="../img/logo.svg" alt="" width="28" height="28">
+                Postino
+            </a>
+            <button class="search-trigger" type="button" aria-label="Search the documentation">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <span class="label">Search docs</span>
+                <kbd>Ctrl K</kbd>
+            </button>
+            <nav class="nav" aria-label="Main">
+                <a class="nav-wide" href="../#features">Features</a>
+                <a href="../install.html">Download</a>
+                <a href="./" aria-current="page">Docs</a>
+                <a class="nav-github" href="https://github.com/tanisperez/postino" aria-label="Postino on GitHub">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    <span>GitHub</span>
+                </a>
+                <button class="theme-toggle" type="button" aria-label="Dark theme" title="Switch between light and dark">
+                    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="docs">
+        <button class="docs-menu" type="button" aria-expanded="false" aria-controls="docs-nav">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            Menu
+        </button>
+        <nav class="docs-nav" id="docs-nav" aria-label="Documentation">
+            <div class="group">
+                <h2>Getting started</h2>
+                <ul>
+                    <li><a href="index.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quick-start.html">Quick start</a></li>
+                    <li><a href="interface.html">The interface</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Guides</h2>
+                <ul>
+                    <li><a href="workspaces.html">Workspaces and collections</a></li>
+                    <li><a href="requests.html">Building requests</a></li>
+                    <li><a href="responses.html">Reading responses</a></li>
+                    <li><a href="environments.html">Environments and variables</a></li>
+                    <li><a href="template-functions.html">Template functions</a></li>
+                    <li><a href="scripting.html" aria-current="page">Scripts and tests</a></li>
+                    <li><a href="load-testing.html">Load testing</a></li>
+                    <li><a href="code-snippets.html">Code snippets</a></li>
+                    <li><a href="postman-import.html">Importing from Postman</a></li>
+                    <li><a href="git.html">Working with git</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Reference</h2>
+                <ul>
+                    <li><a href="keyboard-shortcuts.html">Keyboard shortcuts</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                    <li><a href="file-format.html">File format</a></li>
+                    <li><a href="script-api.html">Script API</a></li>
+                    <li><a href="command-line.html">Command line</a></li>
+                    <li><a href="files-and-folders.html">Files and folders</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Help</h2>
+                <ul>
+                    <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="faq.html">FAQ</a></li>
+                    <li><a href="contributing.html">Contributing</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <main class="docs-main" id="main">
+            <article class="article">
+                <p class="breadcrumb"><a href="./">Docs</a> / Guides</p>
+<h1>Scripts and tests</h1>
+<p class="lead">Each request can carry two small JavaScript scripts: one that runs before the request is sent, and one that runs after the response arrives. Use them to prepare data, check responses with tests and pass values from one request to the next.</p>
+
+<div class="shot">
+    <img class="light" src="../img/scripts-light.webp" width="2018" height="1282" loading="lazy" alt="A request with a post response script and its passing tests.">
+    <img class="dark" src="../img/scripts-dark.webp" width="2018" height="1282" loading="lazy" alt="A request with a post response script and its passing tests.">
+</div>
+
+<h2 id="where-scripts-live">Where scripts live</h2>
+<p>Write them in the <strong>Pre-request</strong> and <strong>Post-response</strong> tabs of the request editor. In the file they are the <code>::: pre</code> and <code>::: post</code> sections, so they are versioned and reviewed with the rest of the request.</p>
+<div class="code"><div class="code-title"><span class="dot"></span>orders/create.postino</div><pre data-lang="postino">POST {{baseUrl}}/orders
+Content-Type: application/json
+Idempotency-Key: {{idempotencyKey}}
+
+::: body json
+{ "sku": "BOOK-42", "quantity": 1 }
+
+::: pre
+vars.set("idempotencyKey", util.uuid());
+
+::: post
+test("order created", () =&gt; {
+  expect(res.status).toBe(201);
+  expect(res.json()).toHaveProperty("id");
+});
+env.set("orderId", res.json().id);</pre></div>
+
+<h2 id="when-they-run">When they run</h2>
+<ol class="steps">
+    <li>The <strong>pre-request</strong> script runs first. It sees the request before variables are replaced, and can change its method, URL, headers and body, and set variables with <code>vars.set()</code>.</li>
+    <li>Postino replaces the <code>{{ }}</code> markers and sends the request.</li>
+    <li>The <strong>post-response</strong> script runs with the response in <code>res</code> and the request as it was actually sent in <code>req</code>. It runs tests and can store values for later requests with <code>env.set()</code>.</li>
+</ol>
+<p>An empty script is skipped. An error in the pre-request script stops the run before anything is sent. An error in the post-response script is reported, but the response and the tests that already ran are still shown.</p>
+
+<h2 id="writing-tests">Writing tests</h2>
+<p>A test is a name and a function. Inside it, <code>expect(value)</code> gives you matchers that throw when the check fails:</p>
+<div class="code"><pre data-lang="js">test("status is 2xx", () =&gt; {
+  expect(res.status).toBeGreaterThan(199);
+  expect(res.status).toBeLessThan(300);
+});
+
+test("returns a list of books", () =&gt; {
+  const body = res.json();
+  expect(Array.isArray(body.items)).toBe(true);
+  expect(body.items.length).toBeGreaterThan(0);
+});
+
+test("first book has the expected shape", () =&gt; {
+  const book = res.json().items[0];
+  expect(book).toHaveProperty("isbn");
+  expect(book.title).toMatch(/\w+/);
+  expect(book.tags).toContain("fiction");
+});
+
+test("is JSON", () =&gt; {
+  expect(res.headers.get("content-type")).toContain("application/json");
+});
+
+test("is fast enough", () =&gt; {
+  expect(res.timeMs).toBeLessThan(500);
+});</pre></div>
+<p>Every matcher can be negated with <code>.not</code>: <code>expect(res.status).not.toBe(500)</code>. The full list is in the <a href="script-api.html#expect-value">Script API</a>.</p>
+<ul>
+    <li>A failing test records its error message and the script goes on, so one failure never hides the others.</li>
+    <li>Results appear in the <strong>Tests</strong> tab of the response, with a <code>passed/total</code> count.</li>
+    <li>A test can contain several <code>expect()</code> calls. The first one that fails ends that test.</li>
+    <li>Throwing your own error also fails a test: <code>throw new Error("missing cursor")</code>.</li>
+</ul>
+
+<h2 id="common-recipes">Common recipes</h2>
+
+<h3 id="log-in-once-reuse-the-token">Log in once, reuse the token</h3>
+<p>Store the token in the session from the login request, and reference it in every other request.</p>
+<div class="code"><div class="code-title"><span class="dot"></span>auth/login.postino</div><pre data-lang="postino">POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+::: body json
+{ "username": "{{username}}", "password": "{{password}}" }
+
+::: post
+test("login succeeded", () =&gt; {
+  expect(res.status).toBe(200);
+});
+env.set("token", res.json().token);</pre></div>
+<div class="code"><div class="code-title"><span class="dot"></span>orders/list.postino</div><pre data-lang="postino">GET {{baseUrl}}/orders
+Authorization: Bearer {{token}}</pre></div>
+<p>Session variables last until you quit Postino and are never written to disk, so the token does not end up in git.</p>
+
+<h3 id="chain-requests">Chain requests</h3>
+<p>Save an id from one response and use it in the URL of the next:</p>
+<div class="code"><pre data-lang="js">// post-response of orders/create
+env.set("orderId", res.json().id);</pre></div>
+<div class="code"><div class="code-title"><span class="dot"></span>orders/get.postino</div><pre data-lang="postino">GET {{baseUrl}}/orders/{{orderId}}
+Authorization: Bearer {{token}}</pre></div>
+
+<h3 id="add-a-computed-header">Add a computed header</h3>
+<div class="code"><pre data-lang="js">// pre-request
+req.headers.set("X-Timestamp", String(util.now()));
+req.headers.set("X-Nonce", util.randomString(16));</pre></div>
+
+<h3 id="build-a-body-from-code">Build a body from code</h3>
+<p>The body must exist in the file (any type), then the script can replace its text:</p>
+<div class="code"><pre data-lang="js">// pre-request, with a ::: body json section in the file
+const items = [];
+for (let i = 1; i &lt;= 3; i++) {
+  items.push({ sku: "SKU-" + i, quantity: util.randomInt(1, 5) });
+}
+req.body = JSON.stringify({ items: items, createdAt: util.isoDate() });</pre></div>
+
+<h3 id="keep-a-cookie">Keep a cookie</h3>
+<div class="code"><pre data-lang="js">// post-response of the login request
+const cookie = res.headers.get("Set-Cookie");
+if (cookie) {
+  env.set("session", cookie.split(";")[0]);
+}</pre></div>
+<p>Then send <code>Cookie: {{session}}</code> in later requests.</p>
+
+<h3 id="fall-back-to-a-default-value">Fall back to a default value</h3>
+<div class="code"><pre data-lang="js">// pre-request
+if (!env.get("pageSize")) {
+  vars.set("pageSize", "20");
+}</pre></div>
+<p>Then <code>{{pageSize}}</code> uses the environment value when there is one, and 20 otherwise. <code>env.get()</code> reads the session variables and the active environment's files, in that order; see the <a href="script-api.html#env">Script API</a>.</p>
+
+<h3 id="debug-a-script">Debug a script</h3>
+<p>Print anything with <code>console.log()</code>. The output appears in the <strong>Console</strong> tab of the response, from both scripts:</p>
+<div class="code"><pre data-lang="js">console.log("sending", req.method, req.url);
+console.log("headers", req.headers.get("Authorization") ? "with auth" : "without auth");</pre></div>
+
+<h2 id="the-sandbox">The sandbox</h2>
+<p>Scripts run in <a href="https://bellard.org/quickjs/">QuickJS</a>, a small JavaScript engine with modern syntax: <code>const</code>, arrow functions, template literals, destructuring, classes, <code>JSON</code>, <code>Math</code>, <code>Date</code>, regular expressions and the rest of standard ECMAScript.</p>
+<p>The sandbox has <strong>no</strong> network, file system, timers, modules, <code>require</code>, <code>import</code>, <code>fetch</code>, <code>setTimeout</code> or <code>crypto</code>. A script cannot send another request; to chain requests, run them one after the other and pass values with <code>env.set()</code>.</p>
+<div class="table"><table>
+    <thead><tr><th>Limit</th><th>Value</th></tr></thead>
+    <tbody>
+        <tr><td>Memory</td><td>32 MiB per script run</td></tr>
+        <tr><td>Time</td><td>5 seconds per script run</td></tr>
+        <tr><td>State</td><td>A fresh engine for every run. Nothing carries over from one run to the next except what you store with <code>env.set()</code>.</td></tr>
+    </tbody>
+</table></div>
+<p>The pre-request and post-response scripts each have their own budget. Going over a limit is reported as a script error and never crashes the app.</p>
+
+<h2 id="moving-scripts-from-postman">Moving scripts from Postman</h2>
+<p>When you <a href="postman-import.html">import a Postman collection</a>, request scripts are copied into <code>::: pre</code> and <code>::: post</code>, fully commented out, under the line <code>// Imported from Postman. The pm.* API is not supported, adapt it.</code> This table helps with the translation:</p>
+<div class="table"><table>
+    <thead><tr><th>Postman</th><th>Postino</th></tr></thead>
+    <tbody>
+        <tr><td><code>pm.test(name, fn)</code></td><td><code>test(name, fn)</code></td></tr>
+        <tr><td><code>pm.expect(a).to.equal(b)</code></td><td><code>expect(a).toBe(b)</code></td></tr>
+        <tr><td><code>pm.expect(a).to.eql(b)</code></td><td><code>expect(a).toEqual(b)</code></td></tr>
+        <tr><td><code>pm.expect(a).to.include(b)</code></td><td><code>expect(a).toContain(b)</code></td></tr>
+        <tr><td><code>pm.expect(a).to.have.property(p)</code></td><td><code>expect(a).toHaveProperty(p)</code></td></tr>
+        <tr><td><code>pm.expect(a).to.be.above(b)</code></td><td><code>expect(a).toBeGreaterThan(b)</code></td></tr>
+        <tr><td><code>pm.response.to.have.status(200)</code></td><td><code>expect(res.status).toBe(200)</code></td></tr>
+        <tr><td><code>pm.response.code</code></td><td><code>res.status</code></td></tr>
+        <tr><td><code>pm.response.json()</code></td><td><code>res.json()</code></td></tr>
+        <tr><td><code>pm.response.text()</code></td><td><code>res.body</code></td></tr>
+        <tr><td><code>pm.response.headers.get(name)</code></td><td><code>res.headers.get(name)</code></td></tr>
+        <tr><td><code>pm.response.responseTime</code></td><td><code>res.timeMs</code></td></tr>
+        <tr><td><code>pm.environment.set(k, v)</code>, <code>pm.collectionVariables.set</code>, <code>pm.globals.set</code></td><td><code>env.set(k, v)</code> (session only)</td></tr>
+        <tr><td><code>pm.environment.get(k)</code></td><td><code>env.get(k)</code></td></tr>
+        <tr><td><code>pm.variables.set(k, v)</code></td><td><code>vars.set(k, v)</code></td></tr>
+        <tr><td><code>pm.request.headers.add({ key, value })</code></td><td><code>req.headers.set(key, value)</code></td></tr>
+        <tr><td><code>pm.request.url</code></td><td><code>req.url</code></td></tr>
+        <tr><td><code>pm.sendRequest(...)</code></td><td>Not available. Use a separate request.</td></tr>
+        <tr><td><code>CryptoJS</code>, <code>require(...)</code></td><td>Not available.</td></tr>
+    </tbody>
+</table></div>
+<p>Scripts attached to a Postman collection or folder are not imported, since Postino scripts belong to one request. The import lists each one it skipped.</p>
+                <p class="page-meta">Found a mistake? <a href="https://github.com/tanisperez/postino/edit/main/site/docs/scripting.html">Edit this page on GitHub</a> or <a href="https://github.com/tanisperez/postino/issues">open an issue</a>.</p>
+                <nav class="pager" aria-label="Previous and next page">
+                    <a class="prev" href="template-functions.html"><small>Previous</small>Template functions</a>
+                    <a class="next" href="load-testing.html"><small>Next</small>Load testing</a>
+                </nav>
+            </article>
+        </main>
+
+        <aside class="docs-toc" aria-label="On this page"></aside>
+    </div>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <span>Postino is open source under the Apache License 2.0.</span>
+            <nav aria-label="Footer">
+                <a href="https://github.com/tanisperez/postino">GitHub</a>
+                <a href="https://github.com/tanisperez/postino/releases">Releases</a>
+                <a href="https://github.com/tanisperez/postino/issues">Report an issue</a>
+                <a href="https://tanis.codes">tanis.codes</a>
+            </nav>
+        </div>
+    </footer>
+
+    <dialog class="search-dialog" aria-label="Search the documentation">
+        <div class="search-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" placeholder="Search the docs" aria-label="Search the docs" autocomplete="off" spellcheck="false">
+            <kbd>Esc</kbd>
+        </div>
+        <ul class="search-results" role="listbox" aria-label="Results"></ul>
+        <div class="search-foot">
+            <span><kbd>↑</kbd><kbd>↓</kbd>to move</span>
+            <span><kbd>↵</kbd>to open</span>
+            <span><kbd>/</kbd>or <kbd>Ctrl K</kbd>to search from any page</span>
+        </div>
+    </dialog>
+</body>
+</html>

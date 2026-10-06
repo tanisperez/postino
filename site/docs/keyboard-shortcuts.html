@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Keyboard shortcuts · Postino docs</title>
+    <meta name="description" content="Every keyboard shortcut in Postino for Linux, Windows and macOS: command palette, send, save, tabs and environments.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
+    <link rel="canonical" href="https://postino.tanis.codes/docs/keyboard-shortcuts.html">
+    <link rel="icon" href="../img/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../img/icon-512.png">
+    <link rel="preload" href="../fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="../fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+    <script src="../js/theme.js"></script>
+    <script src="../js/docs.js" defer></script>
+</head>
+<body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" href="../">
+                <img src="../img/logo.svg" alt="" width="28" height="28">
+                Postino
+            </a>
+            <button class="search-trigger" type="button" aria-label="Search the documentation">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <span class="label">Search docs</span>
+                <kbd>Ctrl K</kbd>
+            </button>
+            <nav class="nav" aria-label="Main">
+                <a class="nav-wide" href="../#features">Features</a>
+                <a href="../install.html">Download</a>
+                <a href="./" aria-current="page">Docs</a>
+                <a class="nav-github" href="https://github.com/tanisperez/postino" aria-label="Postino on GitHub">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    <span>GitHub</span>
+                </a>
+                <button class="theme-toggle" type="button" aria-label="Dark theme" title="Switch between light and dark">
+                    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="docs">
+        <button class="docs-menu" type="button" aria-expanded="false" aria-controls="docs-nav">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            Menu
+        </button>
+        <nav class="docs-nav" id="docs-nav" aria-label="Documentation">
+            <div class="group">
+                <h2>Getting started</h2>
+                <ul>
+                    <li><a href="index.html">Introduction</a></li>
+                    <li><a href="installation.html">Installation</a></li>
+                    <li><a href="quick-start.html">Quick start</a></li>
+                    <li><a href="interface.html">The interface</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Guides</h2>
+                <ul>
+                    <li><a href="workspaces.html">Workspaces and collections</a></li>
+                    <li><a href="requests.html">Building requests</a></li>
+                    <li><a href="responses.html">Reading responses</a></li>
+                    <li><a href="environments.html">Environments and variables</a></li>
+                    <li><a href="template-functions.html">Template functions</a></li>
+                    <li><a href="scripting.html">Scripts and tests</a></li>
+                    <li><a href="load-testing.html">Load testing</a></li>
+                    <li><a href="code-snippets.html">Code snippets</a></li>
+                    <li><a href="postman-import.html">Importing from Postman</a></li>
+                    <li><a href="git.html">Working with git</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Reference</h2>
+                <ul>
+                    <li><a href="keyboard-shortcuts.html" aria-current="page">Keyboard shortcuts</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                    <li><a href="file-format.html">File format</a></li>
+                    <li><a href="script-api.html">Script API</a></li>
+                    <li><a href="command-line.html">Command line</a></li>
+                    <li><a href="files-and-folders.html">Files and folders</a></li>
+                </ul>
+            </div>
+            <div class="group">
+                <h2>Help</h2>
+                <ul>
+                    <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                    <li><a href="faq.html">FAQ</a></li>
+                    <li><a href="contributing.html">Contributing</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <main class="docs-main" id="main">
+            <article class="article">
+                <p class="breadcrumb"><a href="./">Docs</a> / Reference</p>
+<h1>Keyboard shortcuts</h1>
+<p class="lead">Postino is built to be used from the keyboard. On macOS, use <kbd>⌘</kbd> wherever Linux and Windows use <kbd>Ctrl</kbd>.</p>
+
+<h2 id="general">General</h2>
+<div class="table"><table>
+    <thead><tr><th>Action</th><th>Linux and Windows</th><th>macOS</th></tr></thead>
+    <tbody>
+        <tr><td>Open the command palette</td><td><kbd>Ctrl</kbd> <kbd>K</kbd></td><td><kbd>⌘</kbd> <kbd>K</kbd></td></tr>
+        <tr><td>Open Settings</td><td><kbd>Ctrl</kbd> <kbd>,</kbd></td><td><kbd>⌘</kbd> <kbd>,</kbd></td></tr>
+        <tr><td>Show keyboard shortcuts</td><td><kbd>F1</kbd></td><td><kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>/</kbd></td></tr>
+        <tr><td>Close the tab</td><td><kbd>Ctrl</kbd> <kbd>W</kbd></td><td><kbd>⌘</kbd> <kbd>W</kbd></td></tr>
+        <tr><td>Next tab</td><td><kbd>Ctrl</kbd> <kbd>Tab</kbd></td><td><kbd>Ctrl</kbd> <kbd>Tab</kbd></td></tr>
+        <tr><td>Previous tab</td><td><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Tab</kbd></td><td><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Tab</kbd></td></tr>
+    </tbody>
+</table></div>
+
+<h2 id="requests">Requests</h2>
+<div class="table"><table>
+    <thead><tr><th>Action</th><th>Linux and Windows</th><th>macOS</th></tr></thead>
+    <tbody>
+        <tr><td>Send the request</td><td><kbd>Ctrl</kbd> <kbd>Enter</kbd></td><td><kbd>⌘</kbd> <kbd>Enter</kbd></td></tr>
+        <tr><td>Save</td><td><kbd>Ctrl</kbd> <kbd>S</kbd></td><td><kbd>⌘</kbd> <kbd>S</kbd></td></tr>
+    </tbody>
+</table></div>
+<p><kbd>Ctrl</kbd> <kbd>S</kbd> also saves an environment open in the environment editor.</p>
+
+<h2 id="environments">Environments</h2>
+<div class="table"><table>
+    <thead><tr><th>Action</th><th>Linux and Windows</th><th>macOS</th></tr></thead>
+    <tbody>
+        <tr><td>Select environment 1 to 9</td><td><kbd>Ctrl</kbd> <kbd>1</kbd> … <kbd>Ctrl</kbd> <kbd>9</kbd></td><td><kbd>⌘</kbd> <kbd>1</kbd> … <kbd>⌘</kbd> <kbd>9</kbd></td></tr>
+        <tr><td>No environment</td><td><kbd>Ctrl</kbd> <kbd>0</kbd></td><td><kbd>⌘</kbd> <kbd>0</kbd></td></tr>
+    </tbody>
+</table></div>
+<p>Environments are numbered in alphabetical order, the same order as the environment picker, which shows each shortcut next to its environment.</p>
+
+<h2 id="command-palette">Command palette</h2>
+<div class="table"><table>
+    <thead><tr><th>Key</th><th>Action</th></tr></thead>
+    <tbody>
+        <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Move through the results</td></tr>
+        <tr><td><kbd>Enter</kbd></td><td>Open the request, switch to the environment or run the action</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close the palette</td></tr>
+    </tbody>
+</table></div>
+
+<h2 id="text-editing">Text editing</h2>
+<p>Inputs and code editors support the usual editing keys of your platform: select all, cut, copy, paste, undo and redo, word navigation with <kbd>Ctrl</kbd> or <kbd>Alt</kbd> and the arrow keys. Right click an input for a menu with <strong>Cut</strong>, <strong>Copy</strong>, <strong>Paste</strong> and <strong>Select all</strong>. In the response body, the search button opens a find bar.</p>
+
+<h2 id="cheat-sheet">Cheat sheet</h2>
+<p>Inside Postino, press <kbd>F1</kbd> (<kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>/</kbd> on macOS) or click the keyboard button in the status bar to see these shortcuts at any time.</p>
+<p>Shortcuts cannot be customized yet.</p>
+                <p class="page-meta">Found a mistake? <a href="https://github.com/tanisperez/postino/edit/main/site/docs/keyboard-shortcuts.html">Edit this page on GitHub</a> or <a href="https://github.com/tanisperez/postino/issues">open an issue</a>.</p>
+                <nav class="pager" aria-label="Previous and next page">
+                    <a class="prev" href="git.html"><small>Previous</small>Working with git</a>
+                    <a class="next" href="settings.html"><small>Next</small>Settings</a>
+                </nav>
+            </article>
+        </main>
+
+        <aside class="docs-toc" aria-label="On this page"></aside>
+    </div>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <span>Postino is open source under the Apache License 2.0.</span>
+            <nav aria-label="Footer">
+                <a href="https://github.com/tanisperez/postino">GitHub</a>
+                <a href="https://github.com/tanisperez/postino/releases">Releases</a>
+                <a href="https://github.com/tanisperez/postino/issues">Report an issue</a>
+                <a href="https://tanis.codes">tanis.codes</a>
+            </nav>
+        </div>
+    </footer>
+
+    <dialog class="search-dialog" aria-label="Search the documentation">
+        <div class="search-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" placeholder="Search the docs" aria-label="Search the docs" autocomplete="off" spellcheck="false">
+            <kbd>Esc</kbd>
+        </div>
+        <ul class="search-results" role="listbox" aria-label="Results"></ul>
+        <div class="search-foot">
+            <span><kbd>↑</kbd><kbd>↓</kbd>to move</span>
+            <span><kbd>↵</kbd>to open</span>
+            <span><kbd>/</kbd>or <kbd>Ctrl K</kbd>to search from any page</span>
+        </div>
+    </dialog>
+</body>
+</html>
