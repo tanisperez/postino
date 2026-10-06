@@ -12,6 +12,7 @@ pub mod env_edit;
 pub mod env_panel;
 pub mod format;
 pub mod import;
+pub mod json_pretty;
 pub mod launch;
 pub mod load_panel;
 pub mod load_test;

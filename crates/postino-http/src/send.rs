@@ -78,7 +78,7 @@ fn finish(
 ) -> Result<Response, HttpError> {
     let status = response.status().as_u16();
     let headers = collect_headers(response.headers());
-    let body = response
+    let mut body = response
         .body_mut()
         .with_config()
         .limit(max_response_size)
@@ -87,6 +87,9 @@ fn finish(
             ureq::Error::BodyExceedsLimit(limit) => HttpError::BodyTooLarge(limit),
             other => map_ureq_error(other),
         })?;
+    // The Vec grew by doubling: give the spare capacity back, a big body is kept for as long as
+    // its response is shown.
+    body.shrink_to_fit();
     let time = started.elapsed();
     let size = body.len();
 

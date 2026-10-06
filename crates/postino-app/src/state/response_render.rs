@@ -92,14 +92,7 @@ pub fn group_warnings(warnings: &[TemplateWarning]) -> Vec<WarningGroup> {
     unknown_group.into_iter().chain(function_groups).collect()
 }
 
-/// Attempts to pretty-print `body` as JSON with two-space indentation. Returns `None` if the
-/// body is not valid UTF-8 or not valid JSON, in which case the caller falls back to
-/// [`body_as_text`].
-pub fn pretty_print_json(body: &[u8]) -> Option<String> {
-    let text = std::str::from_utf8(body).ok()?;
-    let value: serde_json::Value = serde_json::from_str(text).ok()?;
-    serde_json::to_string_pretty(&value).ok()
-}
+pub use super::json_pretty::pretty_print_json;
 
 /// Renders `body` as text for the raw view: valid UTF-8 shown as is, otherwise a short
 /// placeholder noting the byte count (there is no binary/hex viewer).
