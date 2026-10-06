@@ -140,6 +140,21 @@ _version: 2
   es: "No verificar"
   gl: "Non verificar"
   it: "Non verificare"
+"settings.response.title":
+  en: "Responses"
+  es: "Respuestas"
+  gl: "Respostas"
+  it: "Risposte"
+"settings.response.max_size":
+  en: "Maximum size"
+  es: "Tamaño máximo"
+  gl: "Tamaño máximo"
+  it: "Dimensione massima"
+"settings.response.max_size_description":
+  en: "A bigger response fails with an error. A big response uses about 30 times its size in memory."
+  es: "Una respuesta mayor falla con un error. Una respuesta grande usa en memoria unas 30 veces su tamaño."
+  gl: "Unha resposta maior falla cun erro. Unha resposta grande usa en memoria unhas 30 veces o seu tamaño."
+  it: "Una risposta più grande fallisce con un errore. Una risposta grande usa in memoria circa 30 volte la sua dimensione."
 "settings.logging.title":
   en: "Logging"
   es: "Registro"

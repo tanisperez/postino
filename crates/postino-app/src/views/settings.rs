@@ -111,6 +111,7 @@ impl AppView {
         // The next request, normal or load test, reads these options.
         self.send_options.invalid_certificates =
             self.state.settings.invalid_tls_certificates.to_http();
+        self.send_options.max_response_size = self.state.settings.max_response_bytes();
         log::info!("settings changed: {:?}", self.state.settings);
         state::settings::save_settings(&self.state.settings);
         cx.notify();
@@ -152,6 +153,12 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         self.state.settings.invalid_tls_certificates = choice;
+        self.apply_settings_live(window, cx);
+    }
+
+    /// Picks the largest response body that is read.
+    fn set_max_response_mb(&mut self, mb: u32, window: &mut Window, cx: &mut Context<Self>) {
+        self.state.settings.max_response_mb = mb;
         self.apply_settings_live(window, cx);
     }
 
@@ -479,11 +486,11 @@ fn render_body(
                 divider(palette),
                 render_editor_section(weak.clone(), palette, settings, installed, mono_font_family),
             ],
-            SettingsCategory::Requests => vec![render_tls_section(
-                weak.clone(),
-                palette,
-                settings.invalid_tls_certificates,
-            )],
+            SettingsCategory::Requests => vec![
+                render_tls_section(weak.clone(), palette, settings.invalid_tls_certificates),
+                divider(palette),
+                render_response_section(weak.clone(), palette, settings.max_response_mb),
+            ],
             SettingsCategory::Advanced => vec![render_logging_section(
                 weak.clone(),
                 palette,
@@ -962,6 +969,74 @@ fn render_tls_section(
             palette,
             t!("settings.tls.invalid_certificates"),
             Some(t!("settings.tls.invalid_certificates_description")),
+            control,
+        ))
+        .into_any_element()
+}
+
+/// The "Responses" section of the Requests pane: the largest response body that is read.
+fn render_response_section(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    current: u32,
+) -> AnyElement {
+    let trigger = Button::new("settings-max-response")
+        .ghost()
+        .w(px(SELECT_WIDTH))
+        .h(px(CONTROL_HEIGHT))
+        .px(px(10.0))
+        .rounded(px(RADIUS_MD - 1.0))
+        .border_1()
+        .border_color(palette.border_strong)
+        .bg(palette.raised)
+        .text_color(palette.fg)
+        .child(
+            h_flex()
+                .w_full()
+                .items_center()
+                .justify_between()
+                .child(div().child(state::settings::max_response_label(current)))
+                .child(
+                    Icon::new(IconName::ChevronsUpDown)
+                        .small()
+                        .text_color(palette.fg_subtle),
+                ),
+        );
+    // A value written by hand in the file is listed too, so the current choice is always checked.
+    let mut choices = state::settings::MAX_RESPONSE_MB_OPTIONS.to_vec();
+    if !choices.contains(&current) {
+        choices.push(current);
+        choices.sort_unstable();
+    }
+    let control = trigger
+        .dropdown_menu(move |mut menu, _, _| {
+            for &choice in &choices {
+                let target = weak.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(state::settings::max_response_label(choice))
+                        .checked(choice == current)
+                        .on_click(move |_, window, cx| {
+                            let _ = target.update(cx, |view, cx| {
+                                view.set_max_response_mb(choice, window, cx)
+                            });
+                        }),
+                );
+            }
+            menu
+        })
+        .into_any_element();
+
+    v_flex()
+        .gap(px(14.0))
+        .child(
+            div()
+                .font_weight(FontWeight::MEDIUM)
+                .child(t!("settings.response.title")),
+        )
+        .child(labeled_row(
+            palette,
+            t!("settings.response.max_size"),
+            Some(t!("settings.response.max_size_description")),
             control,
         ))
         .into_any_element()

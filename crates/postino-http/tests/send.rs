@@ -316,7 +316,7 @@ fn times_out_when_the_server_is_too_slow() {
 }
 
 #[test]
-fn reads_a_body_above_the_old_10_mib_limit() {
+fn reads_a_body_above_the_old_10_mb_limit() {
     let size = 12 * 1024 * 1024;
     let run = run(
         |url| request_to(Method::Get, url),
@@ -325,7 +325,7 @@ fn reads_a_body_above_the_old_10_mib_limit() {
     );
     let response = run
         .result
-        .expect("a 12 MiB body is below the default limit");
+        .expect("a 12 MiB body is below the default 20 MB limit");
     assert_eq!(response.size, size);
 }
 

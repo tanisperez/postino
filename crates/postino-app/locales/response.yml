@@ -105,6 +105,11 @@ _version: 2
   es: "Falló el envío: %{error}"
   gl: "Fallou o envío: %{error}"
   it: "Invio non riuscito: %{error}"
+"response.stage.body_too_large":
+  en: "The response is larger than the limit of %{limit}. You can raise the limit in Settings, Requests, Responses."
+  es: "La respuesta supera el límite de %{limit}. Puedes subir el límite en Ajustes, Peticiones, Respuestas."
+  gl: "A resposta supera o límite de %{limit}. Podes subir o límite en Axustes, Peticións, Respostas."
+  it: "La risposta supera il limite di %{limit}. Puoi alzare il limite in Impostazioni, Richieste, Risposte."
 "response.stage.post_failed":
   en: "Post-response script failed: %{error}"
   es: "Falló el script posterior: %{error}"

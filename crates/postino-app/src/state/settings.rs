@@ -22,6 +22,13 @@ pub const UI_FONT_SIZE_RANGE: RangeInclusive<f32> = 11.0..=16.0;
 /// Step of the UI font size stepper in the Settings view.
 pub const UI_FONT_SIZE_STEP: f32 = 1.0;
 
+/// The choices offered for [`Settings::max_response_mb`], in MB. A value outside this list that
+/// was written by hand in `settings.toml` is kept as it is.
+pub const MAX_RESPONSE_MB_OPTIONS: [u32; 5] = [10, 20, 50, 100, 200];
+
+/// Valid range of [`Settings::max_response_mb`], in MB.
+pub const MAX_RESPONSE_MB_RANGE: RangeInclusive<u32> = 1..=1000;
+
 /// Valid range of [`Settings::mono_font_size`], in points.
 pub const MONO_FONT_SIZE_RANGE: RangeInclusive<f32> = 10.0..=18.0;
 
@@ -233,6 +240,9 @@ pub struct Settings {
     pub mono_font_size: f32,
     /// What to do with an invalid TLS certificate.
     pub invalid_tls_certificates: InvalidTlsCertificates,
+    /// The largest response body that is read, in MB (1 MB is 1,000,000 bytes, like the sizes the
+    /// app shows), clamped to [`MAX_RESPONSE_MB_RANGE`].
+    pub max_response_mb: u32,
     /// How much is written to the log file.
     pub log_level: LogLevel,
     /// Whether to check for a new version once at startup. Only used by builds that have an
@@ -250,9 +260,23 @@ impl Default for Settings {
             mono_font: "Geist Mono".to_string(),
             mono_font_size: 12.5,
             invalid_tls_certificates: InvalidTlsCertificates::default(),
+            max_response_mb: 20,
             log_level: LogLevel::default(),
             check_updates: true,
         }
+    }
+}
+
+/// The text of a response limit choice: `20 MB`. The unit stays as it is in every language, like
+/// the sizes of a response.
+pub fn max_response_label(mb: u32) -> String {
+    format!("{} MB", super::number::format_integer(u64::from(mb)))
+}
+
+impl Settings {
+    /// [`Self::max_response_mb`] in bytes, for `SendOptions::max_response_size`.
+    pub fn max_response_bytes(&self) -> u64 {
+        u64::from(self.max_response_mb) * 1_000_000
     }
 }
 
@@ -357,6 +381,12 @@ fn parse_settings(content: &str) -> Settings {
         .and_then(toml::Value::as_str)
         .and_then(InvalidTlsCertificates::parse)
         .unwrap_or(defaults.invalid_tls_certificates);
+    let max_response_mb = table
+        .and_then(|table| table.get("max_response_mb"))
+        .and_then(toml::Value::as_integer)
+        .and_then(|mb| u32::try_from(mb).ok())
+        .map(|mb| mb.clamp(*MAX_RESPONSE_MB_RANGE.start(), *MAX_RESPONSE_MB_RANGE.end()))
+        .unwrap_or(defaults.max_response_mb);
     let log_level = table
         .and_then(|table| table.get("log_level"))
         .and_then(toml::Value::as_str)
@@ -376,6 +406,7 @@ fn parse_settings(content: &str) -> Settings {
         mono_font,
         mono_font_size,
         invalid_tls_certificates,
+        max_response_mb,
         log_level,
         check_updates,
     }
@@ -431,6 +462,7 @@ mod tests {
             settings.invalid_tls_certificates,
             InvalidTlsCertificates::Warn
         );
+        assert_eq!(settings.max_response_mb, 20);
         assert_eq!(settings.log_level, LogLevel::Info);
         assert!(settings.check_updates);
     }
@@ -452,6 +484,7 @@ mod tests {
             mono_font: "Fira Code".to_string(),
             mono_font_size: 13.5,
             invalid_tls_certificates: InvalidTlsCertificates::Reject,
+            max_response_mb: 100,
             log_level: LogLevel::Trace,
             check_updates: false,
         };
@@ -503,6 +536,38 @@ mod tests {
         assert_eq!(ThemeChoice::parse("DARK"), Some(ThemeChoice::Dark));
         assert_eq!(ThemeChoice::parse("Light"), Some(ThemeChoice::Light));
         assert_eq!(ThemeChoice::parse("nonsense"), None);
+    }
+
+    #[test]
+    fn max_response_bytes_uses_decimal_megabytes() {
+        let settings = Settings {
+            max_response_mb: 20,
+            ..Settings::default()
+        };
+        assert_eq!(settings.max_response_bytes(), 20_000_000);
+        assert_eq!(max_response_label(20), "20 MB");
+    }
+
+    #[test]
+    fn max_response_mb_is_read_and_clamped() {
+        let parse = |text: &str| parse_settings(text).max_response_mb;
+        assert_eq!(parse("max_response_mb = 50\n"), 50);
+        assert_eq!(
+            parse("max_response_mb = 35\n"),
+            35,
+            "a hand written value is kept"
+        );
+        assert_eq!(parse("max_response_mb = 0\n"), 1);
+        assert_eq!(parse("max_response_mb = 99999\n"), 1000);
+    }
+
+    #[test]
+    fn max_response_mb_falls_back_to_the_default() {
+        let parse = |text: &str| parse_settings(text).max_response_mb;
+        assert_eq!(parse(""), 20);
+        assert_eq!(parse("max_response_mb = -5\n"), 20);
+        assert_eq!(parse("max_response_mb = \"big\"\n"), 20);
+        assert_eq!(parse("max_response_mb = 2.5\n"), 20);
     }
 
     #[test]

@@ -16,10 +16,11 @@ use gpui_kit::*;
 use rust_i18n::t;
 
 use postino_core::{ConsoleLevel, TestResult};
-use postino_runner::{FailedStage, RunResult};
+use postino_runner::{FailedStage, HttpError, RunResult};
 
 use crate::state::locale;
 use crate::state::response_render;
+use crate::state::settings::max_response_label;
 use crate::state::ui_tabs::ResponseTab;
 use crate::theme::PaletteExt;
 use crate::views::components::{
@@ -478,6 +479,11 @@ fn stage_message(stage: &FailedStage) -> String {
         FailedStage::Pre(error) => {
             t!("response.stage.pre_failed", error = error.to_string()).into_owned()
         }
+        FailedStage::Send(HttpError::BodyTooLarge(limit)) => t!(
+            "response.stage.body_too_large",
+            limit = max_response_label(u32::try_from(limit / 1_000_000).unwrap_or(u32::MAX))
+        )
+        .into_owned(),
         FailedStage::Send(error) => {
             t!("response.stage.send_failed", error = error.to_string()).into_owned()
         }

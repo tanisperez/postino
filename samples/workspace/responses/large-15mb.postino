@@ -4,10 +4,10 @@ GET {{baseUrl}}/large
 size = 15000000
 
 ::: post
-test("above the old 10 MiB limit", () => {
+test("above the old 10 MB limit", () => {
   expect(res.status).toBe(200);
   expect(res.size).toBeGreaterThan(14900000);
 });
 
 ::: docs
-A 15 MB body, bigger than the 10 MiB limit that used to make this fail (#35). The limit is now 50 MiB.
+A 15 MB body, bigger than the 10 MB limit that used to make this fail (#35). The default limit is now 20 MB, and Settings, Requests can raise it.

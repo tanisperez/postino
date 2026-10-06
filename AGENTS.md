@@ -160,8 +160,8 @@ Found in the 2026-09-30 investigation (#32, #33, #34). Keep these rules in every
 - Resync an editor (`set_value`) only when that cheap key changes, never by reading its whole
   value and comparing it with the new text on every render.
 - Test with big data, not only `examples/sample-workspace`: a 5 MB JSON response, or the 15 MB
-  `responses/large-15mb` of the sample suite (the response body limit is 50 MiB,
-  `postino_http::DEFAULT_MAX_RESPONSE_SIZE`), measuring main thread CPU while idle and while
+  `responses/large-15mb` of the sample suite (the response body limit is a setting,
+  20 MB by default, `postino_http::DEFAULT_MAX_RESPONSE_SIZE`), measuring main thread CPU while idle and while
   typing, and RSS. A 15 MB JSON body costs about 475 MB of extra RSS, roughly 30 times its size.
 - Expected memory on Linux: about 115 MB RSS at startup in release, of which only about 22 MB is
   the app's own heap; the rest is shared libraries (Mesa, LLVM) and the binary itself. gpui also

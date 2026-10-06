@@ -190,6 +190,7 @@ impl AppView {
 
         let send_options = SendOptions {
             invalid_certificates: settings.invalid_tls_certificates.to_http(),
+            max_response_size: settings.max_response_bytes(),
             ..SendOptions::default()
         };
         let mut view = Self {

@@ -27,7 +27,7 @@ pub enum HttpError {
 
     /// The response body is bigger than [`crate::SendOptions::max_response_size`]. Holds that
     /// limit in bytes.
-    #[error("the response body is larger than the limit of {} MiB", .0 / (1024 * 1024))]
+    #[error("the response body is larger than the limit of {} MB", .0 / 1_000_000)]
     BodyTooLarge(u64),
 
     /// Any other failure while talking to the server: DNS resolution, connecting, TLS,
