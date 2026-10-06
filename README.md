@@ -78,6 +78,8 @@ On Linux and macOS the `Makefile` wraps the usual commands (`make run`, `make re
 
 ## Documentation
 
+The user guide is at <https://postino.tanis.codes/docs/>. Reference documents in this repository:
+
 - [`.postino` file format](docs/format.md): how requests, collections and environments are stored.
 - [Scripting](docs/scripting.md): pre-request and post-response scripts, tests and template
   functions.

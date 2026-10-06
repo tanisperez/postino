@@ -1,0 +1,65 @@
+title: Troubleshooting
+description: Solutions to common Postino problems: broken requests, unknown variables, TLS errors, timeouts, large responses, missing files and collecting a log.
+---
+<h1>Troubleshooting</h1>
+<p class="lead">Solutions to the problems people run into most often. If yours is not here, <a href="https://github.com/tanisperez/postino/issues">open an issue</a> with a log attached.</p>
+
+<h2 id="a-request-shows-as-broken">A request shows as broken</h2>
+<p>The sidebar lists a file as <strong>name (broken)</strong> when it cannot be parsed. Open it in a text editor and check the <a href="file-format.html#parse-errors">parse errors</a>. The usual causes:</p>
+<ul>
+    <li>A comment in the header block. <code># note</code> right after the request line is read as a disabled header, and fails because it has no colon. Move notes to <code>::: docs</code>.</li>
+    <li>A body without its marker: JSON right after the headers instead of under <code>::: body json</code>.</li>
+    <li>A lowercase method: <code>get</code> instead of <code>GET</code>.</li>
+    <li>A misspelled or capitalized marker: <code>::: Body json</code>, <code>:::pre</code> without the space.</li>
+    <li>Git conflict markers left in the file after a merge.</li>
+</ul>
+
+<h2>A variable is sent as {{name}}</h2>
+<p>The variable has no value in any layer, so it was sent literally. Check that:</p>
+<ul>
+    <li>the right environment is active in the title bar (not <strong>No environment</strong>);</li>
+    <li>the name matches exactly: variable names are case sensitive;</li>
+    <li>the variable is not only in a <code>.local.env</code> file of another environment;</li>
+    <li>a value set by a script came from a request you already sent in this session: session variables are cleared when Postino quits.</li>
+</ul>
+<p>Click <strong>Define</strong> on the warning to create the variable without leaving the request.</p>
+
+<h2>Changes made outside Postino do not show</h2>
+<p>Postino does not watch the workspace folder. After a <code>git pull</code>, a checkout or editing files in another editor, reopen the workspace from the workspace switcher. Tabs that are already open keep the content they had; close and reopen them.</p>
+
+<h2>I lost unsaved changes</h2>
+<p>Closing a request tab discards its unsaved changes without asking. A tab with a dot has unsaved changes; save with <kbd>Ctrl</kbd> <kbd>S</kbd> before closing it.</p>
+
+<h2>Certificate errors</h2>
+<p>With the default setting, an invalid certificate only produces a warning. If requests fail with a certificate error, the <a href="settings.html#tls">Invalid certificates</a> setting is <strong>Reject</strong>. For a local server with a self-signed certificate, use <strong>Send with warning</strong>.</p>
+<p>Postino trusts the usual public certificate authorities. It does not read custom CA certificates from your system store yet, so a server signed by a private company CA is treated as invalid.</p>
+
+<h2>The request times out</h2>
+<p>The timeout is 30 seconds for the whole exchange, including redirects. If the server is reachable from a browser or <code>curl</code> but not from Postino, check whether you need a proxy and set <code>HTTPS_PROXY</code> before starting Postino. See <a href="command-line.html#environment-variables">environment variables</a>.</p>
+
+<h2>The response is larger than the limit</h2>
+<p>Bodies are capped at 20 MB by default. Raise <a href="settings.html#responses">Maximum size</a> in Settings, Requests. Large bodies use a lot of memory while shown, roughly 30 times their size.</p>
+
+<h2>A script fails</h2>
+<ul>
+    <li><strong>Pre-request script failed:</strong> nothing was sent. The message has the JavaScript error. Look at the <strong>Console</strong> tab for your <code>console.log()</code> output.</li>
+    <li><strong>Post-response script failed:</strong> the response is shown anyway. A common cause is <code>res.json()</code> on a body that is not JSON, such as an HTML error page. Check <code>res.status</code> first.</li>
+    <li><strong>Timeouts and memory:</strong> a script that runs for more than 5 seconds or uses more than 32 MiB is stopped. Look for an infinite loop.</li>
+    <li><strong><code>pm is not defined</code>:</strong> the script was imported from Postman. See <a href="scripting.html#moving-scripts-from-postman">moving scripts from Postman</a>.</li>
+    <li><strong><code>req.body</code> has no effect:</strong> the request has no body section. Pick a body type in the Body tab first.</li>
+</ul>
+
+<h2>The app does not open on macOS or Windows</h2>
+<p>Postino is not code signed yet. See <a href="installation.html#first-launch">first launch of an unsigned build</a>.</p>
+
+<h2>The window is blank or slow on Linux</h2>
+<p>Postino draws with the GPU through Vulkan. Make sure the Vulkan driver for your graphics card is installed (for example <code>mesa-vulkan-drivers</code> on Debian and Ubuntu, <code>vulkan-radeon</code> or <code>vulkan-intel</code> on Arch). Start Postino from a terminal with <code>POSTINO_LOG=debug</code> to see what the graphics layer reports.</p>
+
+<h2 id="collecting-a-log">Collecting a log</h2>
+<ol class="steps">
+    <li>Open Settings, Advanced and set <strong>Log level</strong> to <strong>Debug</strong>, or start Postino with <code>POSTINO_LOG=debug</code>.</li>
+    <li>Reproduce the problem.</li>
+    <li>Click <strong>Open folder</strong> next to the log file path and attach <code>postino.log</code> to your issue.</li>
+    <li>Set the level back to <strong>Info</strong>.</li>
+</ol>
+<p>Logs leave out bodies, variable values, query strings and sensitive header values, but glance over the file before sharing it. The log folders are listed in <a href="files-and-folders.html#logs">Files and folders</a>.</p>

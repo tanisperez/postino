@@ -1,0 +1,122 @@
+title: Installation
+description: Install Postino on Linux, Windows or macOS from an installer, a package repository, Homebrew, winget or from source.
+---
+<h1>Installation</h1>
+<p class="lead">Postino is a single desktop application with no account and no sign in. Download it for your system, or install it with your package manager to get updates with the rest of your software.</p>
+
+<h2>System requirements</h2>
+<div class="table"><table>
+    <thead><tr><th>System</th><th>Supported</th><th>Packages</th></tr></thead>
+    <tbody>
+        <tr><td>Linux</td><td>x86_64, Wayland or X11, a GPU driver with Vulkan</td><td><code>.deb</code>, <code>.rpm</code>, <code>.tar.gz</code>, APT and DNF repositories, AUR</td></tr>
+        <tr><td>Windows</td><td>Windows 10 and 11, 64 bit</td><td>Installer (<code>-setup.exe</code>), winget</td></tr>
+        <tr><td>macOS</td><td>Apple silicon (M1 and later)</td><td>Disk image (<code>.dmg</code>), Homebrew cask</td></tr>
+    </tbody>
+</table></div>
+<p>Every file is published on the <a href="https://github.com/tanisperez/postino/releases/latest">latest release</a> page on GitHub. The <a href="../install.html">download page</a> links to the right one for each system.</p>
+
+<h2>Linux</h2>
+
+<h3>Debian and Ubuntu (apt)</h3>
+<p>Add the signing key and the repository once, then install. Your usual <code>apt upgrade</code> keeps Postino up to date.</p>
+```shell
+$ sudo curl -fsSLo /etc/apt/keyrings/postino.asc https://postino.tanis.codes/postino.asc
+$ echo "deb [signed-by=/etc/apt/keyrings/postino.asc] https://postino.tanis.codes/apt stable main" \
+    | sudo tee /etc/apt/sources.list.d/postino.list
+$ sudo apt update && sudo apt install postino
+```
+
+<h3>Fedora and openSUSE (dnf, zypper)</h3>
+<p>Add the repository once, then install. The signing key is imported on the first install.</p>
+```shell
+# Fedora
+$ sudo curl -fsSLo /etc/yum.repos.d/postino.repo https://postino.tanis.codes/rpm/postino.repo
+$ sudo dnf install postino
+
+# openSUSE
+$ sudo zypper addrepo https://postino.tanis.codes/rpm/postino.repo
+$ sudo zypper install postino
+```
+
+<h3>Arch Linux (AUR)</h3>
+<p>The AUR package is coming soon. Until then, install the tarball or build the package from a checkout of the repository:</p>
+```shell
+$ git clone https://github.com/tanisperez/postino.git
+$ cd postino/packaging/aur && makepkg -si
+```
+
+<h3>Tarball</h3>
+<p>The <code>.tar.gz</code> uses a <code>/usr</code>-like layout: <code>bin/postino</code>, plus the desktop entry, the MIME type and the icons under <code>share/</code>. Extract it anywhere and run <code>bin/postino</code>, or copy its contents under <code>~/.local</code> to get the menu entry. A tarball install does not update itself: download new versions from the releases page.</p>
+
+<h3>What the Linux packages install</h3>
+<p>The <code>.deb</code>, <code>.rpm</code> and AUR packages install <code>/usr/bin/postino</code>, a desktop entry, the icons and a MIME type for <code>.postino</code> files. Your file manager then opens a <code>.postino</code> file with Postino on a double click.</p>
+
+<h2>Windows</h2>
+<p>Download <code>Postino-…-windows-x86_64-setup.exe</code> and run it. The installer is per user: it installs into <code>%LOCALAPPDATA%\Programs\Postino</code>, needs no administrator rights, adds a Start menu shortcut (and an optional desktop shortcut) and associates <code>.postino</code> files with Postino.</p>
+<p>With winget, from a terminal:</p>
+```shell
+> winget install Postino
+```
+<p>Postino on Windows updates itself. <code>winget upgrade</code> also picks up new versions.</p>
+
+<h2>macOS</h2>
+<p>Download <code>Postino-…-macos-arm64.dmg</code>, open it and drag Postino to Applications. Or use Homebrew:</p>
+```shell
+$ brew install --cask tanisperez/postino/postino
+```
+<p>Postino on macOS updates itself after the first install.</p>
+
+<h2 id="first-launch">First launch of an unsigned build</h2>
+<p>Postino is not code signed yet, so your system asks once before opening it. Updates are not affected.</p>
+<ul>
+    <li><strong>macOS:</strong> if macOS says it cannot verify the developer, open System Settings, Privacy and Security, and choose <strong>Open Anyway</strong>. Or run this once:
+```shell
+$ xattr -dr com.apple.quarantine /Applications/Postino.app
+```
+    </li>
+    <li><strong>Windows:</strong> if SmartScreen shows <strong>Windows protected your PC</strong>, choose <strong>More info</strong> and then <strong>Run anyway</strong>.</li>
+</ul>
+
+<h2>Updates</h2>
+<div class="table"><table>
+    <thead><tr><th>Installed from</th><th>How it updates</th></tr></thead>
+    <tbody>
+        <tr><td>apt, dnf, zypper, AUR</td><td>With your system updates. Postino never updates itself on Linux.</td></tr>
+        <tr><td>Tarball</td><td>Download the new version from the releases page.</td></tr>
+        <tr><td>Windows installer, winget</td><td>In-app updater, or <code>winget upgrade</code>.</td></tr>
+        <tr><td>macOS disk image, Homebrew</td><td>In-app updater.</td></tr>
+        <tr><td>Built from source</td><td>Pull and build again. Local builds have no updater.</td></tr>
+    </tbody>
+</table></div>
+<p>The in-app updater checks once, a few seconds after launch, and never polls in the background. When a new version exists it downloads it, verifies its checksum and shows <strong>Update ready, restart</strong> in the status bar. Nothing is installed until you click it. You can turn the automatic check off in <a href="settings.html#about">Settings, About</a>, and check by hand from the command palette with <strong>Check for updates</strong>.</p>
+
+<h2>Uninstall</h2>
+<ul>
+    <li><strong>Debian and Ubuntu:</strong> <code>sudo apt remove postino</code>, then delete <code>/etc/apt/sources.list.d/postino.list</code> and <code>/etc/apt/keyrings/postino.asc</code> if you no longer want the repository.</li>
+    <li><strong>Fedora:</strong> <code>sudo dnf remove postino</code> and delete <code>/etc/yum.repos.d/postino.repo</code>.</li>
+    <li><strong>Windows:</strong> Settings, Apps, Postino, Uninstall.</li>
+    <li><strong>macOS:</strong> drag Postino from Applications to the Trash, or <code>brew uninstall --cask postino</code>.</li>
+</ul>
+<p>Uninstalling never touches your workspaces. To remove your settings and logs as well, delete the folders listed in <a href="files-and-folders.html">Files and folders</a>.</p>
+
+<h2 id="build-from-source">Build from source</h2>
+<p>Postino builds with the stable Rust toolchain. Install Rust with <a href="https://rustup.rs">rustup</a>; the exact toolchain version is pinned in <code>rust-toolchain.toml</code> and installed on the first build. Then install the system dependencies:</p>
+<ul>
+    <li><strong>Linux</strong> (Debian and Ubuntu package names):
+```shell
+$ sudo apt install build-essential pkg-config cmake libfontconfig-dev libfreetype-dev \
+    libwayland-dev wayland-protocols libxkbcommon-dev libxkbcommon-x11-dev \
+    libx11-xcb-dev libxcb1-dev libvulkan-dev
+```
+    </li>
+    <li><strong>macOS:</strong> Xcode with its command line tools.</li>
+    <li><strong>Windows:</strong> the Visual Studio Build Tools with the "Desktop development with C++" workload.</li>
+</ul>
+<p>Then build and run:</p>
+```shell
+$ git clone https://github.com/tanisperez/postino.git
+$ cd postino
+$ cargo run -- examples/sample-workspace
+$ cargo build --release
+```
+<p>The first command builds a debug binary and opens the bundled sample workspace. The second builds an optimized binary in <code>target/release/postino</code>. A full build of gpui takes a while and several GB of disk space. See <a href="contributing.html">Contributing</a> for the development commands.</p>

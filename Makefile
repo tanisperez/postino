@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help run build release dist check lint lint-fix format format-check test clean screenshots sample-server sample
+.PHONY: help run build release dist check lint lint-fix format format-check test clean screenshots docs site sample-server sample
 
 help:
 	@echo "Usage: make [target]"
@@ -17,6 +17,8 @@ help:
 	@echo "  test          Run all tests"
 	@echo "  clean         Remove build artifacts"
 	@echo "  screenshots   Regenerate the website screenshots (site/img)"
+	@echo "  docs          Build the user documentation (site/docs-src into site/docs)"
+	@echo "  site          Build the documentation and serve the website on http://localhost:8000"
 	@echo "  sample-server Start the local server of the sample suite (HTTP 8080, HTTPS 8443 to 8447)"
 	@echo "  sample        Start that server and open the app on samples/workspace"
 
@@ -62,11 +64,18 @@ test:
 clean:
 	cargo clean
 
+# The docs build and the sample suite need Python 3 and nothing else (see docs/sample-suite.md).
+PYTHON ?= python3
+
 screenshots:
 	site/screenshots/capture.sh
 
-# The sample suite needs Python 3 and nothing else (see docs/sample-suite.md).
-PYTHON ?= python3
+# site/docs is generated, never edited by hand (see site/README.md).
+docs:
+	$(PYTHON) site/docs-src/build.py
+
+site: docs
+	$(PYTHON) -m http.server -d site 8000
 
 sample-server:
 	$(PYTHON) samples/server/server.py

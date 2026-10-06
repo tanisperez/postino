@@ -1,0 +1,83 @@
+title: Code snippets
+description: Turn any Postino request into a curl command, a JavaScript fetch call or a Python requests call with every variable resolved.
+---
+<h1>Code snippets</h1>
+<p class="lead">Turn the request you are working on into code: a <code>curl</code> command for a terminal or a bug report, a JavaScript <code>fetch</code> call or a Python <code>requests</code> call.</p>
+
+<div class="shot">
+    <img class="light" src="../img/snippet-light.webp" width="2018" height="1282" loading="lazy" alt="The code snippet dialog showing a curl command.">
+    <img class="dark" src="../img/snippet-dark.webp" width="2018" height="1282" loading="lazy" alt="The code snippet dialog showing a curl command.">
+</div>
+
+<h2>Generating a snippet</h2>
+<ol class="steps">
+    <li>Open the request.</li>
+    <li>Click <strong>Code</strong>, at the right of the request editor's tabs.</li>
+    <li>Pick <strong>cURL</strong>, <strong>fetch</strong> or <strong>Python</strong>.</li>
+    <li>Click <strong>Copy</strong>. What is copied is exactly what the dialog shows.</li>
+</ol>
+
+<h2>What goes into the snippet</h2>
+<p>The snippet is built from what is in the editor, saved or not, resolved against the active environment and the session variables:</p>
+<ul>
+    <li>Variables and template functions are replaced. A template function such as <code>{{ uuid() }}</code> is evaluated once for the snippet.</li>
+    <li>Enabled query parameters are appended to the URL, percent-encoded.</li>
+    <li>Only enabled headers are included, plus the automatic <code>Content-Type</code> for JSON, XML and form bodies.</li>
+    <li>A form body is written field by field, in the style of each language.</li>
+    <li>Scripts are <strong>not</strong> run. Variables that only a pre-request script would set stay as <code>{{name}}</code> in the snippet, and so does any unknown variable.</li>
+</ul>
+<div class="callout warning">
+    <span class="title">Secrets are included</span>
+    <p>Because variables are resolved, the snippet contains the real values of tokens and passwords from your environment, including <code>.local.env</code>. Check it before pasting it into an issue or a chat.</p>
+</div>
+
+<h2>Examples</h2>
+<p>For this request, with <code>baseUrl</code> set to <code>https://api.example.com</code> and <code>token</code> to <code>abc123</code>:</p>
+```postino title="users/create.postino"
+POST {{baseUrl}}/users
+Authorization: Bearer {{token}}
+
+::: body json
+{ "name": "Ada" }
+```
+<h3>cURL</h3>
+<p>One option per line. <code>-X</code> is left out for <code>GET</code>. Values are single quoted for a POSIX shell. A form body becomes one <code>--data-urlencode</code> per field.</p>
+```text
+curl \
+  -X POST \
+  'https://api.example.com/users' \
+  -H 'Authorization: Bearer abc123' \
+  -H 'Content-Type: application/json' \
+  --data-raw '{ "name": "Ada" }'
+```
+<h3>JavaScript fetch</h3>
+<p>A form body becomes <code>new URLSearchParams({...})</code>.</p>
+```js
+await fetch("https://api.example.com/users", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer abc123",
+    "Content-Type": "application/json",
+  },
+  body: "{ \"name\": \"Ada\" }",
+});
+```
+<h3>Python requests</h3>
+<p>A form body becomes a <code>dict</code> passed as <code>data</code>.</p>
+```text
+import requests
+
+response = requests.request(
+    "POST",
+    "https://api.example.com/users",
+    headers={
+        "Authorization": "Bearer abc123",
+        "Content-Type": "application/json",
+    },
+    data="{ \"name\": \"Ada\" }",
+)
+```
+<div class="callout note">
+    <span class="title">On Windows</span>
+    <p>The cURL snippet uses POSIX shell quoting. Run it in Git Bash or WSL, or adapt the quotes for PowerShell.</p>
+</div>

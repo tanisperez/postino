@@ -1,0 +1,72 @@
+title: Contributing
+description: How to report bugs, build Postino from source, run its tests and find the developer documentation.
+---
+<h1>Contributing</h1>
+<p class="lead">Postino is open source and lives on <a href="https://github.com/tanisperez/postino">GitHub</a>. Bug reports, ideas and feedback are the most useful contributions right now.</p>
+
+<h2>Reporting a bug</h2>
+<p>Open an <a href="https://github.com/tanisperez/postino/issues">issue</a> with:</p>
+<ul>
+    <li>your system and the Postino version (Settings, About);</li>
+    <li>what you did, what you expected and what happened;</li>
+    <li>a request file that shows the problem, with secrets removed;</li>
+    <li>a debug log, see <a href="troubleshooting.html#collecting-a-log">collecting a log</a>.</li>
+</ul>
+
+<h2>Code contributions</h2>
+<div class="callout note">
+    <span class="title">Before you start</span>
+    <p>The terms for external code contributions are still being decided. Open an issue to discuss a change before working on a pull request.</p>
+</div>
+
+<h2>Building and testing</h2>
+<p>See <a href="installation.html#build-from-source">Build from source</a> for the toolchain and system libraries. On Linux and macOS, the <code>Makefile</code> wraps the usual commands:</p>
+<div class="table"><table>
+    <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+    <tbody>
+        <tr><td><code>make run</code></td><td>Builds and runs a debug build</td></tr>
+        <tr><td><code>make release</code></td><td>Builds an optimized binary</td></tr>
+        <tr><td><code>make test</code></td><td>Runs every test of the workspace</td></tr>
+        <tr><td><code>make lint</code></td><td>Runs Clippy</td></tr>
+        <tr><td><code>make format</code></td><td>Formats the code with rustfmt</td></tr>
+        <tr><td><code>make sample-server</code></td><td>Starts the local test server of the sample suite</td></tr>
+        <tr><td><code>make sample</code></td><td>Starts that server and opens the app on the sample suite workspace</td></tr>
+        <tr><td><code>make help</code></td><td>Lists every target</td></tr>
+    </tbody>
+</table></div>
+<p>The tests never touch the internet: HTTP tests run against a local server. The sample suite in <code>samples/</code> has about 140 requests that exercise every feature, each with its own tests.</p>
+
+<h2>Project structure</h2>
+<p>Postino is a Cargo workspace of small crates, with the user interface kept thin:</p>
+<div class="table"><table>
+    <thead><tr><th>Crate</th><th>Responsibility</th></tr></thead>
+    <tbody>
+        <tr><td><code>postino-core</code></td><td>The domain model and <code>{{ }}</code> interpolation</td></tr>
+        <tr><td><code>postino-format</code></td><td>Parsing and writing <code>.postino</code> and <code>.env</code> files, Postman import, code snippets</td></tr>
+        <tr><td><code>postino-workspace</code></td><td>Reading and writing workspaces on disk</td></tr>
+        <tr><td><code>postino-script</code></td><td>The QuickJS script sandbox</td></tr>
+        <tr><td><code>postino-http</code></td><td>Sending requests</td></tr>
+        <tr><td><code>postino-runner</code></td><td>The pipeline: variables, scripts, interpolation, sending</td></tr>
+        <tr><td><code>postino-load</code></td><td>The load test engine and run history</td></tr>
+        <tr><td><code>postino-update</code></td><td>The in-app updater</td></tr>
+        <tr><td><code>postino-app</code></td><td>The gpui desktop application</td></tr>
+    </tbody>
+</table></div>
+
+<h2>Developer documentation</h2>
+<p>The documents for people working on Postino itself live in the repository:</p>
+<ul>
+    <li><a href="https://github.com/tanisperez/postino/blob/main/docs/architecture.md">Architecture</a>: the crates, the pipeline and the reasons behind them.</li>
+    <li><a href="https://github.com/tanisperez/postino/blob/main/docs/design-system.md">Design system</a>: colors, metrics, typography and layout.</li>
+    <li><a href="https://github.com/tanisperez/postino/blob/main/docs/i18n.md">Translations</a>: how to add a string or a language.</li>
+    <li><a href="https://github.com/tanisperez/postino/blob/main/docs/sample-suite.md">Sample suite</a>: the local test server and its requests.</li>
+    <li><a href="https://github.com/tanisperez/postino/blob/main/docs/gpui-notes.md">gpui notes</a>: pitfalls of the UI framework.</li>
+    <li><a href="https://github.com/tanisperez/postino/blob/main/docs/releasing.md">Releasing</a>: how versions are built and published.</li>
+    <li><a href="https://github.com/tanisperez/postino/blob/main/AGENTS.md">AGENTS.md</a>: the project's rules, also read by AI coding agents.</li>
+</ul>
+
+<h2>Translations</h2>
+<p>The interface is available in English, Spanish, Galician and Italian. Strings live in <code>crates/postino-app/locales/</code>, one YAML file per area with every language side by side. The <a href="https://github.com/tanisperez/postino/blob/main/docs/i18n.md">translation guide</a> explains how to add a language.</p>
+
+<h2>This documentation</h2>
+<p>Each page is a plain HTML file in <code>site/docs-src/pages/</code> of the repository. <code>make docs</code> wraps them in the shared layout and <code>make site</code> previews the result on <code>http://localhost:8000</code>. Every page has an <strong>Edit this page on GitHub</strong> link at the bottom that opens its source.</p>

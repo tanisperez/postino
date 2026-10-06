@@ -1,0 +1,75 @@
+title: Introduction
+description: The Postino documentation. Learn how to build, send and test HTTP requests that live as plain text files on your disk.
+---
+<h1>Postino documentation</h1>
+<p class="lead">Postino is a fast, native HTTP client for Linux, Windows and macOS. There is no account and no cloud: every request is a small text file that you can read, diff and commit next to your code.</p>
+
+<div class="cards">
+    <a href="quick-start.html"><strong>Quick start</strong><span>Open a folder, write your first request and send it in five minutes.</span></a>
+    <a href="installation.html"><strong>Installation</strong><span>Installers, package repositories and building from source.</span></a>
+    <a href="file-format.html"><strong>File format</strong><span>The complete specification of <code>.postino</code> and <code>.env</code> files.</span></a>
+    <a href="script-api.html"><strong>Script API</strong><span>Every global available to pre-request and post-response scripts.</span></a>
+</div>
+
+<h2>What Postino is</h2>
+<p>Postino is an API client in the spirit of the tools you may already know: collections on the left, the request on top, the response below. What makes it different is where your work lives.</p>
+<ul>
+    <li><strong>A workspace is a folder.</strong> Any folder on your disk. Postino lists the requests inside it and shows its subfolders as collections.</li>
+    <li><strong>A request is a file.</strong> Each request is one <code>.postino</code> file in a short, readable text format. Change one header and git shows you one changed line.</li>
+    <li><strong>An environment is a file too.</strong> Variables live in <code>environments/&lt;name&gt;.env</code>, and secrets in a separate <code>.local.env</code> file that you keep out of git.</li>
+    <li><strong>Nothing leaves your computer</strong> except the requests you send, and on macOS and Windows an optional update check that carries no identifiers.</li>
+</ul>
+
+```postino title="users/create.postino"
+POST {{baseUrl}}/users
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+::: body json
+{ "name": "Ada Lovelace", "role": "admin" }
+
+::: post
+test("user created", () => {
+  expect(res.status).toBe(201);
+});
+env.set("userId", res.json().id);
+```
+
+<h2>Features at a glance</h2>
+<div class="table"><table>
+    <thead><tr><th>Feature</th><th>What you get</th><th>Read more</th></tr></thead>
+    <tbody>
+        <tr><td>Requests</td><td>Standard and custom methods, query parameters, headers and JSON, XML, text or form bodies. Any entry can be switched off without deleting it.</td><td><a href="requests.html">Building requests</a></td></tr>
+        <tr><td>Responses</td><td>Status, time and size, a pretty or raw body with search, headers, test results and console output.</td><td><a href="responses.html">Reading responses</a></td></tr>
+        <tr><td>Environments</td><td><code>{{variables}}</code> in any part of the request, shared values in <code>.env</code>, secrets in <code>.local.env</code>, a table editor and one shortcut per environment.</td><td><a href="environments.html">Environments and variables</a></td></tr>
+        <tr><td>Template functions</td><td><code>{{ uuid() }}</code>, <code>{{ now() }}</code>, random values and encoders inline, with no script.</td><td><a href="template-functions.html">Template functions</a></td></tr>
+        <tr><td>Scripts and tests</td><td>JavaScript before and after each request, with <code>test()</code> and <code>expect()</code>, in a sandboxed QuickJS engine.</td><td><a href="scripting.html">Scripts and tests</a></td></tr>
+        <tr><td>Load testing</td><td>Virtual users, ramp-up, live throughput and latency percentiles, saved runs you can compare.</td><td><a href="load-testing.html">Load testing</a></td></tr>
+        <tr><td>Code snippets</td><td>Copy any request as <code>curl</code>, JavaScript <code>fetch</code> or Python <code>requests</code>.</td><td><a href="code-snippets.html">Code snippets</a></td></tr>
+        <tr><td>Postman import</td><td>Collections (v2.1 and v2.0) and environment exports become plain files.</td><td><a href="postman-import.html">Importing from Postman</a></td></tr>
+        <tr><td>Keyboard first</td><td>A command palette for every request and action, and shortcuts for sending, saving and switching environments.</td><td><a href="keyboard-shortcuts.html">Keyboard shortcuts</a></td></tr>
+    </tbody>
+</table></div>
+
+<h2>How this documentation is organized</h2>
+<dl>
+    <dt>Getting started</dt>
+    <dd>Install Postino, send a first request and take a tour of the window.</dd>
+    <dt>Guides</dt>
+    <dd>Task oriented pages: organizing a workspace, building requests, using environments, writing tests, running load tests and moving over from Postman.</dd>
+    <dt>Reference</dt>
+    <dd>The precise rules: keyboard shortcuts, every setting, the file formats, the full script API, command line options and where Postino keeps its files.</dd>
+    <dt>Help</dt>
+    <dd>Solutions to common problems, frequently asked questions and how to contribute.</dd>
+</dl>
+
+<div class="callout tip">
+    <span class="title">Tip</span>
+    <p>Press <kbd>/</kbd> or <kbd>Ctrl</kbd> <kbd>K</kbd> on any page of this documentation to search it.</p>
+</div>
+
+<h2>Platforms</h2>
+<p>Postino runs on Linux (x86_64), Windows 10 and 11 (64 bit) and macOS on Apple silicon. It is written in Rust on <a href="https://crates.io/crates/gpui">gpui</a>, the GPU accelerated UI framework behind the Zed editor, so it does not bundle a web browser and stays light on memory.</p>
+
+<h2>License</h2>
+<p>Postino is free and open source under the <a href="https://github.com/tanisperez/postino/blob/main/LICENSE">Apache License 2.0</a>. The file format is documented in the open, so your requests are never locked into the application.</p>

@@ -1,0 +1,150 @@
+title: Environments and variables
+description: Use variables in Postino requests, keep shared values in .env files and secrets in .local.env files, switch environments and edit them in a table.
+---
+<h1>Environments and variables</h1>
+<p class="lead">An environment is a named set of variables, such as <code>local</code>, <code>staging</code> or <code>production</code>. Write <code>{{baseUrl}}</code> in a request once, and switch where it points with one shortcut.</p>
+
+<h2>Using variables</h2>
+<p>Write <code>{{name}}</code> in the URL, a query parameter, a header name or value, a form field or a JSON, XML or text body. Spaces inside the braces are allowed: <code>{{ name }}</code> is the same variable. When the request is sent, each marker is replaced with its value.</p>
+```postino
+GET {{baseUrl}}/accounts/{{accountId}}/orders
+Authorization: Bearer {{token}}
+
+::: query
+since = {{since}}
+```
+<ul>
+    <li>In the URL bar, every variable is drawn as a chip. A variable with no value shows as a red chip.</li>
+    <li>A variable with no value is sent literally, as <code>{{name}}</code>, and the response shows an <strong>Unknown variable</strong> warning. It never stops the request.</li>
+    <li>Variables are replaced in one pass: if the value of <code>outer</code> is <code>{{inner}}</code>, the request contains the text <code>{{inner}}</code>, not the value of <code>inner</code>.</li>
+    <li>A <code>{{</code> with no closing <code>}}</code> is left alone, without a warning.</li>
+    <li>Inside the braces you can also call a <a href="template-functions.html">template function</a>, such as <code>{{ uuid() }}</code>.</li>
+    <li>Scripts are not interpolated: inside <code>::: pre</code> and <code>::: post</code>, read variables with <code>vars.get()</code> and <code>env.get()</code>.</li>
+</ul>
+
+<h2>Environment files</h2>
+<p>Environments live in the <code>environments/</code> folder at the root of the workspace. Each one is up to two files:</p>
+<dl>
+    <dt><code>environments/&lt;name&gt;.env</code></dt>
+    <dd>The shared values: hosts, user names, feature flags. Commit it.</dd>
+    <dt><code>environments/&lt;name&gt;.local.env</code></dt>
+    <dd>Secrets and personal overrides: passwords, tokens, API keys. Its values win over <code>&lt;name&gt;.env</code>. Keep it out of git.</dd>
+</dl>
+```env title="environments/staging.env"
+# Staging, shared by the whole team
+baseUrl=https://staging.api.example.com
+username=qa-bot
+timeout=5000
+```
+```env title="environments/staging.local.env"
+password=correct-horse-battery-staple
+apiKey=sk_test_51H...
+```
+<p>The format is one <code>KEY=value</code> per line. Lines starting with <code>#</code> are comments. The value is everything after the first <code>=</code>, kept exactly as written: no quotes, no escaping and no trimming. The full rules are in the <a href="file-format.html#environment-files">file format reference</a>.</p>
+
+<div class="callout warning">
+    <span class="title">Keep secrets out of git</span>
+    <p>Postino does not edit your <code>.gitignore</code>. Add this line to it once per repository:</p>
+```text title=".gitignore"
+*.local.env
+```
+</div>
+
+<h2>Switching environments</h2>
+<ul>
+    <li>Click the environment pill in the title bar and choose one, or <strong>No environment</strong>.</li>
+    <li>Press <kbd>Ctrl</kbd> <kbd>1</kbd> to <kbd>Ctrl</kbd> <kbd>9</kbd> (<kbd>⌘</kbd> on macOS) for the first nine environments in alphabetical order, and <kbd>Ctrl</kbd> <kbd>0</kbd> for no environment.</li>
+    <li>Use the <strong>Environments</strong> group of the command palette.</li>
+    <li>In the Environments panel, or in an environment's editor, choose <strong>Use this environment</strong>.</li>
+</ul>
+<p>The active environment of each workspace is remembered and selected again when you reopen it. It is stored in Postino's configuration, not in the workspace.</p>
+<h3>Environment colors</h3>
+<p>The dot next to an environment's name gives a hint of how careful you should be. It comes from the name, ignoring case:</p>
+<div class="table"><table>
+    <thead><tr><th>Name contains</th><th>Dot</th><th>Examples</th></tr></thead>
+    <tbody>
+        <tr><td><code>prod</code></td><td>Red</td><td><code>production</code>, <code>prod-eu</code></td></tr>
+        <tr><td><code>stag</code>, <code>test</code>, <code>qa</code> or <code>uat</code></td><td>Amber</td><td><code>staging</code>, <code>test</code>, <code>qa2</code>, <code>uat</code></td></tr>
+        <tr><td>Anything else</td><td>Green</td><td><code>local</code>, <code>dev</code>, <code>docker</code></td></tr>
+        <tr><td>No environment</td><td>Hollow ring</td><td></td></tr>
+    </tbody>
+</table></div>
+
+<h2>Resolution order</h2>
+<p>When Postino replaces <code>{{name}}</code>, it looks in these layers and uses the first one that has the variable:</p>
+<ol class="steps">
+    <li><strong>Pre-request variables.</strong> Set with <code>vars.set()</code> by the pre-request script of this run. They exist only for this one send.</li>
+    <li><strong>Session variables.</strong> Set with <code>env.set()</code> by any script since Postino started. They are shared by every request and disappear when you quit.</li>
+    <li><strong><code>.local.env</code></strong> of the active environment.</li>
+    <li><strong><code>.env</code></strong> of the active environment.</li>
+</ol>
+<p>If no layer has it, the variable is unknown. A disabled entry is skipped as if it were not there. If a file defines the same name twice, the first definition is the one used.</p>
+
+<h2>The environment editor</h2>
+<p>Click an environment in the Environments panel to open it in a tab.</p>
+<div class="shot">
+    <img class="light" src="../img/environments-light.webp" width="2018" height="1282" loading="lazy" alt="The environment editor: the staging variables, two of them stored in the gitignored local file and masked.">
+    <img class="dark" src="../img/environments-dark.webp" width="2018" height="1282" loading="lazy" alt="The environment editor: the staging variables, two of them stored in the gitignored local file and masked.">
+</div>
+<ul>
+    <li><strong>Files.</strong> The header shows the two files of the environment, marked <strong>versioned</strong> (<code>.env</code>) and <strong>gitignored</strong> (<code>.local.env</code>), or <strong>not created</strong> when a file does not exist yet.</li>
+    <li><strong>Scope.</strong> <strong>All</strong> shows the merged view: every variable once, with the <code>.local.env</code> value where it overrides <code>.env</code>, plus the session variables. Or pick one file to see only its rows.</li>
+    <li><strong>Stored in.</strong> Each variable shows the file it lives in. The <strong>Move to the other file</strong> button moves it between <code>.env</code> and <code>.local.env</code> in one click. A <code>.local.env</code> row that hides a <code>.env</code> value says <strong>Overrides the value in …</strong>.</li>
+    <li><strong>Secrets.</strong> Values stored in <code>.local.env</code> are masked. <strong>Show secrets</strong> reveals them.</li>
+    <li><strong>Session values.</strong> Variables set by scripts during this session are listed as <strong>session</strong>, with the note <strong>Set by a script · cleared on quit</strong>.</li>
+    <li><strong>Filter</strong> narrows the list by name. <strong>Add variable</strong> adds a row to <code>.env</code>, and the remove button deletes a row.</li>
+    <li>Press <kbd>Ctrl</kbd> <kbd>S</kbd> to save. Closing a tab with unsaved changes asks first.</li>
+</ul>
+<p>Saving rewrites only the lines you changed: comments, blank lines and the order of everything else stay as they were. The <code>.local.env</code> file is created when you first store a variable in it.</p>
+<p>Saving is refused, with a message, when a row has a value but no name, a name contains <code>=</code> or a line break or starts with <code>#</code>, a value contains a line break, or the same name appears twice in one file.</p>
+
+<h3>Environment actions</h3>
+<p>The <strong>More actions</strong> menu of the editor has:</p>
+<ul>
+    <li><strong>Rename</strong>, which renames both files.</li>
+    <li><strong>Reveal in file manager</strong>, which opens the <code>environments/</code> folder.</li>
+    <li><strong>Delete</strong>, which removes both <code>.env</code> and <code>.local.env</code> after asking. It cannot be undone.</li>
+</ul>
+
+<h2>Creating an environment</h2>
+<ol class="steps">
+    <li>Open the Environments panel from the activity rail.</li>
+    <li>Click <strong>New environment</strong>, type a name and press <kbd>Enter</kbd>.</li>
+    <li>Postino creates <code>environments/&lt;name&gt;.env</code>, creating the folder if needed, and you can start adding variables.</li>
+</ol>
+<p>You can also create the files by hand in any editor. An environment exists as soon as its <code>.env</code> file does.</p>
+
+<h2 id="defining-a-variable-from-a-request">Defining a variable from a request</h2>
+<p>When a request uses a variable that has no value, you do not need to leave the request to define it:</p>
+<ol class="steps">
+    <li>Click the red chip in the URL bar, or <strong>Define</strong> on the <strong>Unknown variable</strong> warning of the response.</li>
+    <li>The <strong>Define variable</strong> dialog asks for the value and the environment. It preselects the active environment, or the first one. Choose <strong>New environment…</strong> to create one on the spot.</li>
+    <li><strong>Store in .local.env (not versioned)</strong> decides where the value goes. It is switched on for you when the name looks like a secret: when it contains <code>token</code>, <code>secret</code>, <code>password</code> or <code>key</code>, ignoring case.</li>
+    <li>Press <strong>Save</strong>. The value is written to the file right away.</li>
+</ol>
+
+<h2>Session variables</h2>
+<p>A post-response script can store a value for later requests with <code>env.set()</code>. The typical case is a login request that keeps the token:</p>
+```js
+env.set("token", res.json().access_token);
+```
+<p>Session variables:</p>
+<ul>
+    <li>take priority over both environment files;</li>
+    <li>are shared by every request until you quit Postino;</li>
+    <li>are never written to an <code>.env</code> file;</li>
+    <li>show in the environment editor as <strong>session</strong>;</li>
+    <li>can be removed with <code>env.unset("token")</code>.</li>
+</ul>
+<p>To keep a value across restarts, copy it into the environment in the editor.</p>
+
+<h2>Request variables</h2>
+<p>A pre-request script can set a variable for the current send only, with <code>vars.set()</code>. It has the highest priority and is gone when the run ends:</p>
+```postino
+POST {{baseUrl}}/payments
+Idempotency-Key: {{requestId}}
+
+::: pre
+vars.set("requestId", util.uuid());
+```
+<p>Postino recognizes <code>vars.set("name", …)</code> calls with a literal name in the pre-request script, so those variables are not flagged as unknown in the URL bar before you send.</p>

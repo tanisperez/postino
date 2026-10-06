@@ -1,0 +1,137 @@
+title: Building requests
+description: Methods, URLs, query parameters, headers, JSON, XML, text and form bodies, docs, sending and cancelling requests in Postino.
+---
+<h1>Building requests</h1>
+<p class="lead">A request is a method, a URL, headers, query parameters, an optional body, two optional scripts and free notes. This page covers each part as you see it in the request editor, and how it is stored in the file.</p>
+
+<h2>Method</h2>
+<p>Click the method at the left of the URL bar to pick <code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>, <code>HEAD</code> or <code>OPTIONS</code>. Each standard method has its own color in the sidebar and the tabs.</p>
+<h3>Custom methods</h3>
+<p>Choose <strong>Custom…</strong> and type any token, such as <code>PURGE</code>, <code>PROPFIND</code> or <code>REPORT</code>. Press <kbd>Enter</kbd> to confirm. A custom method may contain uppercase letters, digits and symbols but no lowercase letter: <code>M3THOD</code> is valid, <code>purge</code> is not. While the token is invalid, <kbd>Enter</kbd> keeps the editor open so you can fix it, and clicking away discards it.</p>
+
+<h2>URL</h2>
+<p>Type the full URL, including the scheme: <code>https://api.example.com/v1/users</code>. Use <code>{{variables}}</code> anywhere in it, typically for the host: <code>{{baseUrl}}/v1/users</code>. Variables are drawn as chips. A chip for a variable that does not resolve in the active environment is red; click it to define the variable. See <a href="environments.html#defining-a-variable-from-a-request">defining a variable from a request</a>.</p>
+<p>The URL may already include a query string (<code>/search?q=books</code>). Entries from the Params tab are appended to it when the request is sent.</p>
+
+<h2>Query parameters</h2>
+<p>The <strong>Params</strong> tab is a table of keys and values. Click <strong>Add</strong> to add a row, the checkbox to switch a row off without deleting it, and the remove button to delete it.</p>
+<ul>
+    <li>Enabled rows are appended to the URL when the request is sent, in table order, with <code>?</code> or <code>&amp;</code> as needed.</li>
+    <li>Keys and values are percent-encoded for you, after variables are replaced. Write <code>q = rust books</code>, and <code>q=rust%20books</code> is sent.</li>
+    <li>A row with a key and no value is sent as <code>key=</code>.</li>
+    <li>Editing the URL by hand does not change the Params table, and the table does not rewrite the URL bar. The two are combined only when sending.</li>
+</ul>
+```postino title="books/search.postino"
+GET {{baseUrl}}/books
+
+::: query
+genre = science-fiction
+limit = 20
+# inStock = true
+```
+<p>In the file, a disabled row is a line starting with <code>#</code>. The request above is sent as <code>GET {{baseUrl}}/books?genre=science-fiction&amp;limit=20</code>.</p>
+
+<h2>Headers</h2>
+<p>The <strong>Headers</strong> tab works like Params: add rows, switch them on and off, remove them. Header names and values can contain variables. In the file, headers are the lines right after the request line, written as <code>Name: value</code>, and a disabled header starts with <code>#</code>:</p>
+```postino
+GET {{baseUrl}}/me
+Accept: application/json
+Authorization: Bearer {{token}}
+# X-Debug: 1
+```
+<p>Headers are sent in the order they appear. The order is kept exactly as written when the file is saved.</p>
+
+<h3>Automatic headers</h3>
+<ul>
+    <li><strong>Content-Type:</strong> when the body is JSON, XML or Form and you have not set a <code>Content-Type</code> header yourself (in any letter case), Postino adds <code>application/json</code>, <code>application/xml</code> or <code>application/x-www-form-urlencoded</code>. A Text body gets no automatic content type: set one if your API needs it.</li>
+    <li>The HTTP client adds the usual transport headers, such as <code>Host</code> and <code>Content-Length</code>.</li>
+</ul>
+
+<h3>Authentication</h3>
+<p>Postino has no separate Auth tab yet. Authentication is a header:</p>
+<div class="table"><table>
+    <thead><tr><th>Scheme</th><th>Header</th></tr></thead>
+    <tbody>
+        <tr><td>Bearer token</td><td><code>Authorization: Bearer {{token}}</code></td></tr>
+        <tr><td>Basic</td><td><code>Authorization: Basic {{ base64Encode("user:password") }}</code></td></tr>
+        <tr><td>API key</td><td><code>X-Api-Key: {{apiKey}}</code>, or whatever header your API expects</td></tr>
+    </tbody>
+</table></div>
+<p>To log in once and reuse the token, see <a href="scripting.html#log-in-once-reuse-the-token">log in once, reuse the token</a>.</p>
+
+<h2>Body</h2>
+<p>The <strong>Body</strong> tab starts with a selector: <strong>JSON</strong>, <strong>Text</strong>, <strong>XML</strong>, <strong>Form</strong> or <strong>None</strong>.</p>
+<div class="table"><table>
+    <thead><tr><th>Type</th><th>Editor</th><th>Sent as</th><th>In the file</th></tr></thead>
+    <tbody>
+        <tr><td>JSON</td><td>Code editor with JSON highlighting and a <strong>Format</strong> button</td><td>The text, <code>Content-Type: application/json</code> by default</td><td><code>::: body json</code></td></tr>
+        <tr><td>Text</td><td>Plain code editor</td><td>The text, no default content type</td><td><code>::: body text</code></td></tr>
+        <tr><td>XML</td><td>Code editor with XML highlighting</td><td>The text, <code>Content-Type: application/xml</code> by default</td><td><code>::: body xml</code></td></tr>
+        <tr><td>Form</td><td>Key and value table</td><td>URL encoded fields, <code>application/x-www-form-urlencoded</code></td><td><code>::: body form</code></td></tr>
+        <tr><td>None</td><td>Nothing</td><td>No body</td><td>No body section</td></tr>
+    </tbody>
+</table></div>
+<ul>
+    <li>Switching between JSON, Text and XML keeps what you typed, so you can switch to Text while a JSON body is not valid yet. Switching to or from Form starts from an empty table, or brings back the previous fields.</li>
+    <li><strong>Format</strong> pretty prints a JSON body with two-space indentation. It is enabled only for JSON bodies.</li>
+    <li>Variables and <a href="template-functions.html">template functions</a> work inside any body. In a JSON body, put them inside strings when the value is a string: <code>"name": "{{userName}}"</code>.</li>
+    <li>Form fields are encoded after variables are replaced. Spaces become <code>+</code>, as servers expect for this content type. Disabled fields are not sent.</li>
+</ul>
+```postino title="users/create.postino"
+POST {{baseUrl}}/users
+
+::: body json
+{
+  "name": "{{userName}}",
+  "email": "{{userEmail}}",
+  "requestId": "{{ uuid() }}"
+}
+```
+```postino title="auth/token.postino"
+POST {{authUrl}}/oauth/token
+
+::: body form
+grant_type = client_credentials
+client_id = {{clientId}}
+client_secret = {{clientSecret}}
+# scope = read write
+```
+<div class="callout note">
+    <span class="title">Not available yet</span>
+    <p>Multipart (<code>multipart/form-data</code>) bodies and file uploads are not supported yet. Postman requests that use them are imported with an empty body and a warning.</p>
+</div>
+
+<h2>Scripts</h2>
+<p>The <strong>Pre-request</strong> tab holds JavaScript that runs before the request is sent; it can change the method, URL, headers and body, and set variables. The <strong>Post-response</strong> tab runs after the response arrives; it can check the response with tests and store values for later requests. Both are covered in <a href="scripting.html">Scripts and tests</a>.</p>
+
+<h2>Docs</h2>
+<p>The <strong>Docs</strong> tab is a free text area for notes: what the endpoint does, the permissions it needs, a link to the API reference. It is stored as Markdown in the <code>::: docs</code> section and never sent. It shows in the file, so it also helps anyone reading the request on GitHub.</p>
+
+<h2>Sending</h2>
+<p>Press <strong>Send</strong> or <kbd>Ctrl</kbd> <kbd>Enter</kbd> (<kbd>⌘</kbd> <kbd>Enter</kbd> on macOS). Postino runs these steps, in order:</p>
+<ol class="steps">
+    <li><strong>Variables.</strong> Collects the active environment and the variables set by scripts during this session.</li>
+    <li><strong>Pre-request script.</strong> Runs it, if any. An error here stops the run and the request is not sent.</li>
+    <li><strong>Interpolation.</strong> Replaces every <code>{{ }}</code> marker in the URL, query, headers and body, and appends the query parameters.</li>
+    <li><strong>HTTP.</strong> Sends the request and reads the response.</li>
+    <li><strong>Post-response script.</strong> Runs it, if any. An error here is reported, but the response is still shown.</li>
+</ol>
+<p>Send uses what is in the editor, even if it is not saved. While the request is in flight, the button turns into <strong>Cancel</strong>. Sending again, or cancelling, drops the request in flight.</p>
+
+<h3>Network behavior</h3>
+<div class="table"><table>
+    <thead><tr><th>Aspect</th><th>Behavior</th></tr></thead>
+    <tbody>
+        <tr><td>Timeout</td><td>30 seconds for the whole exchange, from connecting to reading the last byte, redirects included.</td></tr>
+        <tr><td>Redirects</td><td>Followed automatically, up to 10. The response shown is the final one.</td></tr>
+        <tr><td>Error statuses</td><td>A 4xx or 5xx response is a normal response, shown with its body. Only failures that leave no response at all (bad URL, DNS, connection refused, timeout, too many redirects) are errors.</td></tr>
+        <tr><td>TLS</td><td>HTTPS through rustls. What happens with an invalid certificate is a <a href="settings.html#tls">setting</a>: send with a warning (default), reject, or accept silently.</td></tr>
+        <tr><td>Response size</td><td>Bodies up to 20 MB by default. A bigger one fails with a clear error. The limit is a <a href="settings.html#responses">setting</a>.</td></tr>
+        <tr><td>Compression</td><td>Postino asks for gzip and decompresses the body for you. The size shown is the decompressed size.</td></tr>
+        <tr><td>Cookies</td><td>Not stored between requests. Set a <code>Cookie</code> header, or save a value from <code>Set-Cookie</code> in a post-response script.</td></tr>
+        <tr><td>Proxy</td><td>No proxy setting in the app. The standard environment variables are honored: <code>HTTPS_PROXY</code>, <code>HTTP_PROXY</code>, <code>ALL_PROXY</code> (also in lowercase) and <code>NO_PROXY</code>, read when Postino starts.</td></tr>
+    </tbody>
+</table></div>
+
+<h2>Saving</h2>
+<p>Any change marks the tab with a dot and shows <strong>Unsaved changes</strong> in the status bar. Press <kbd>Ctrl</kbd> <kbd>S</kbd> to write the file. Postino writes the file in its canonical form, so saving a request you did not change produces no diff, and the order of sections is always the same. See the <a href="file-format.html">file format</a>.</p>
