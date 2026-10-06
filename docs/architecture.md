@@ -4,6 +4,10 @@ How Postino is put together and why. For the project rules (working style, perfo
 read `AGENTS.md`; for the file format, `docs/format.md`; for scripting, `docs/scripting.md`; for
 the look of the UI, `docs/design-system.md`.
 
+The original planning documents (MVP, UI redesign, spikes, translations, releases) were removed once
+executed and are kept in git history under the `plans-archive` tag
+(`git show plans-archive:plans/mvp.md`).
+
 ## Principles
 
 - **Plain local files.** One request per file (`.postino`), folders are collections, environments
