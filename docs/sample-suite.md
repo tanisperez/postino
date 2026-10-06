@@ -79,7 +79,7 @@ bearer token from `/auth/login`, `--verbose` logs every request. After startup i
 | `params/` | `::: query`: disabled entries, a literal query in the URL plus a section, reserved characters, Unicode, repeated keys, empty values, variables in keys, values and paths. |
 | `headers/` | Custom, disabled, variable and template function headers, a `User-Agent` override, response headers, repeated headers, `ETag` and `304`, cookies. |
 | `bodies/` | `json`, `text`, `xml` and `form` bodies, disabled form fields, special characters, empty and invalid bodies, a `Content-Type` override, a body rewritten by a pre script. |
-| `responses/` | JSON, XML, HTML, text, CSV, UTF-8, empty, binary, image, gzip, chunked, and 1 MB and 5 MB bodies. |
+| `responses/` | JSON, XML, HTML, text, CSV, UTF-8, empty, binary, image, gzip, chunked, and 1, 5 and 15 MB bodies. |
 | `auth/` | Basic, bearer, API key in a header and in the query, wrong credentials, login that stores a token, and a request that uses it. |
 | `variables/` | The lookup order (request, session, environment), `env.set` and `env.unset`, an unresolved variable, no recursive expansion, every template function. |
 | `scripting/` | Pre scripts changing headers, URL, method and body, every matcher, the `res` and `req` objects, `console`, a failing `test()` that does not stop the others, `util.*`, a fresh runtime per run. |

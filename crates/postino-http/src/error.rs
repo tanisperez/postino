@@ -25,6 +25,11 @@ pub enum HttpError {
     #[error("invalid TLS certificate: {0}")]
     Certificate(String),
 
+    /// The response body is bigger than [`crate::SendOptions::max_response_size`]. Holds that
+    /// limit in bytes.
+    #[error("the response body is larger than the limit of {} MiB", .0 / (1024 * 1024))]
+    BodyTooLarge(u64),
+
     /// Any other failure while talking to the server: DNS resolution, connecting, TLS,
     /// reading or writing the socket, or a malformed HTTP response.
     #[error("network error: {0}")]

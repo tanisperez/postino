@@ -315,6 +315,37 @@ fn times_out_when_the_server_is_too_slow() {
     }
 }
 
+#[test]
+fn reads_a_body_above_the_old_10_mib_limit() {
+    let size = 12 * 1024 * 1024;
+    let run = run(
+        |url| request_to(Method::Get, url),
+        &SendOptions::default(),
+        move |_| StubResponse::new(200).with_body(vec![b'x'; size]),
+    );
+    let response = run
+        .result
+        .expect("a 12 MiB body is below the default limit");
+    assert_eq!(response.size, size);
+}
+
+#[test]
+fn fails_with_a_clear_error_when_the_body_exceeds_the_limit() {
+    let options = SendOptions {
+        max_response_size: 1000,
+        ..SendOptions::default()
+    };
+    let run = run(
+        |url| request_to(Method::Get, url),
+        &options,
+        |_| StubResponse::new(200).with_body(vec![b'x'; 2000]),
+    );
+    match run.result {
+        Err(HttpError::BodyTooLarge(1000)) => {}
+        other => panic!("expected BodyTooLarge, got {other:?}"),
+    }
+}
+
 /// A one-shot HTTPS server with a self-signed certificate for `127.0.0.1`, built on `rustls`
 /// directly since `tiny_http` would need an extra TLS stack. Answers every connection with a 200
 /// and the body `secure`, and records the request line of each request it actually reads.

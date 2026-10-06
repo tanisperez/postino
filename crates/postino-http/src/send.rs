@@ -40,7 +40,7 @@ pub fn send(request: &ResolvedRequest, options: &SendOptions) -> Result<Response
         }
         other => (other.map_err(map_ureq_error)?, None),
     };
-    finish(response, started, tls_warning)
+    finish(response, started, tls_warning, options.max_response_size)
 }
 
 /// Logs the request line and headers at Trace, with sensitive header values redacted and the
@@ -68,15 +68,25 @@ fn run(
     agent.run(request.clone())
 }
 
-/// Reads the whole response body and turns it into a [`Response`].
+/// Reads the whole response body, up to `max_response_size` bytes, and turns it into a
+/// [`Response`].
 fn finish(
     mut response: ureq::http::Response<ureq::Body>,
     started: Instant,
     tls_warning: Option<String>,
+    max_response_size: u64,
 ) -> Result<Response, HttpError> {
     let status = response.status().as_u16();
     let headers = collect_headers(response.headers());
-    let body = response.body_mut().read_to_vec().map_err(map_ureq_error)?;
+    let body = response
+        .body_mut()
+        .with_config()
+        .limit(max_response_size)
+        .read_to_vec()
+        .map_err(|error| match error {
+            ureq::Error::BodyExceedsLimit(limit) => HttpError::BodyTooLarge(limit),
+            other => map_ureq_error(other),
+        })?;
     let time = started.elapsed();
     let size = body.len();
 

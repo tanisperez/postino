@@ -15,5 +15,5 @@ mod send;
 pub mod test_support;
 
 pub use error::HttpError;
-pub use options::{InvalidCertificates, SendOptions};
+pub use options::{DEFAULT_MAX_RESPONSE_SIZE, InvalidCertificates, SendOptions};
 pub use send::send;

@@ -33,7 +33,20 @@ pub struct SendOptions {
     ///
     /// Defaults to [`InvalidCertificates::SendWithWarning`].
     pub invalid_certificates: InvalidCertificates,
+
+    /// The largest response body, in bytes, that is read. A bigger one fails with
+    /// [`crate::HttpError::BodyTooLarge`] instead of filling the memory.
+    ///
+    /// Defaults to [`DEFAULT_MAX_RESPONSE_SIZE`].
+    pub max_response_size: u64,
 }
+
+/// The default [`SendOptions::max_response_size`]: 50 MiB.
+///
+/// Measured on 2026-10-06 (#35): a 15 MB JSON response takes about 475 MB of extra RSS in the
+/// app (the raw bytes, the text, the pretty printed copy and the editor buffer), so memory
+/// grows about 30 times faster than the body. 50 MiB is therefore already around 1.5 GB.
+pub const DEFAULT_MAX_RESPONSE_SIZE: u64 = 50 * 1024 * 1024;
 
 /// What [`crate::send`] does when the server's TLS certificate is invalid.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -49,14 +62,15 @@ pub enum InvalidCertificates {
 }
 
 impl Default for SendOptions {
-    /// Thirty second timeout, redirects followed up to 10 times, and requests to servers with an
-    /// invalid TLS certificate sent anyway with a warning.
+    /// Thirty second timeout, redirects followed up to 10 times, requests to servers with an
+    /// invalid TLS certificate sent anyway with a warning, and response bodies up to 50 MiB.
     fn default() -> Self {
         Self {
             timeout: Duration::from_secs(30),
             follow_redirects: true,
             max_redirects: 10,
             invalid_certificates: InvalidCertificates::SendWithWarning,
+            max_response_size: DEFAULT_MAX_RESPONSE_SIZE,
         }
     }
 }
@@ -76,5 +90,6 @@ mod tests {
             options.invalid_certificates,
             InvalidCertificates::SendWithWarning
         );
+        assert_eq!(options.max_response_size, 50 * 1024 * 1024);
     }
 }
