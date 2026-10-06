@@ -1,0 +1,72 @@
+title: Importing from Postman
+description: Import Postman collections (v2.1 and v2.0) and environment exports into Postino as plain .postino and .env files.
+---
+<h1>Importing from Postman</h1>
+<p class="lead">Bring your Postman collections and environments over and keep working with them as plain files. The import never overwrites anything and tells you exactly what it created and what it could not convert.</p>
+
+<h2>Exporting from Postman</h2>
+<ul>
+    <li><strong>A collection:</strong> in Postman, open the collection's menu, choose <strong>Export</strong> and pick <strong>Collection v2.1</strong>. You get a <code>*.postman_collection.json</code> file.</li>
+    <li><strong>An environment:</strong> open the environment's menu and choose <strong>Export</strong>. You get a <code>*.postman_environment.json</code> file.</li>
+</ul>
+
+<h2>Importing</h2>
+<ol class="steps">
+    <li>Open the workspace you want to import into.</li>
+    <li>In the sidebar header, open the <strong>Import</strong> menu and choose <strong>Postman collection…</strong> or <strong>Postman environment…</strong>. Both are also in the command palette.</li>
+    <li>Pick the exported file.</li>
+    <li>A summary lists the number of files created and any warnings. The new collection appears in the sidebar and the new environment in the environment picker.</li>
+</ol>
+
+<h2>Collections</h2>
+<p>The collection becomes a new folder at the root of the workspace, named after it. If a folder with that name exists, the new one gets a <code>(2)</code>, <code>(3)</code> suffix, so nothing is ever overwritten. Postman folders become subfolders, and each request becomes a <code>.postino</code> file.</p>
+<div class="table"><table>
+    <thead><tr><th>Postman</th><th>Postino</th></tr></thead>
+    <tbody>
+        <tr><td>Folder</td><td>Folder</td></tr>
+        <tr><td>Request</td><td>A <code>.postino</code> file</td></tr>
+        <tr><td>Method</td><td>The method of the request line</td></tr>
+        <tr><td>URL, without its query string</td><td>The URL of the request line</td></tr>
+        <tr><td>Query parameters</td><td>The <code>::: query</code> section</td></tr>
+        <tr><td>Headers, including disabled ones</td><td>Headers; disabled ones as <code>#</code> lines</td></tr>
+        <tr><td>Raw body (JSON, XML or text)</td><td><code>::: body json</code>, <code>xml</code> or <code>text</code>; text when no language is set</td></tr>
+        <tr><td>URL-encoded body</td><td><code>::: body form</code></td></tr>
+        <tr><td>Form-data, file and GraphQL bodies</td><td>An empty body, with a warning</td></tr>
+        <tr><td>Bearer, Basic and API key (header) auth</td><td>The equivalent header</td></tr>
+        <tr><td>Auth set on the collection or a folder</td><td>Copied to every request below that inherits it</td></tr>
+        <tr><td>Description</td><td>The <code>::: docs</code> section</td></tr>
+        <tr><td><code>{{variable}}</code></td><td>Kept as is: the syntax is the same</td></tr>
+        <tr><td>Collection variables</td><td><code>environments/&lt;collection name&gt;.env</code></td></tr>
+        <tr><td>Request pre-request and test scripts</td><td><code>::: pre</code> and <code>::: post</code>, commented out</td></tr>
+        <tr><td>Collection and folder scripts</td><td>Not imported, with a warning for each</td></tr>
+    </tbody>
+</table></div>
+<p>Postman Collection format v2.1 is supported. Files in format v2.0 are accepted when they parse the same way. Fields with no equivalent in Postino are ignored.</p>
+<p>Names are made safe for every operating system: characters Windows does not allow become <code>_</code>, trailing dots and spaces are removed and names are cut to 120 characters. Two requests with the same name in one folder get a <code>(2)</code> suffix.</p>
+
+<h3>Scripts</h3>
+<p>Postman's <code>pm.*</code> API has no direct equivalent, so scripts are not translated. A request's scripts are copied in full but commented out, under a first line that says so:</p>
+```postino
+GET {{baseUrl}}/users
+
+::: post
+// Imported from Postman. The pm.* API is not supported, adapt it.
+// pm.test("Status code is 200", function () {
+//     pm.response.to.have.status(200);
+// });
+```
+<p>Uncomment and adapt them with the <a href="scripting.html#moving-scripts-from-postman">translation table</a>. Scripts set on the collection or a folder are not imported, since Postino scripts belong to one request; each one is reported:</p>
+```text
+folder "Users": a test script is not imported at the folder level, only per request
+```
+
+<h2>Environments</h2>
+<p>A Postman environment export becomes <code>environments/&lt;name&gt;.env</code>. Variables of type <strong>secret</strong> go to <code>environments/&lt;name&gt;.local.env</code> instead, so they stay out of git once you add <code>*.local.env</code> to your <code>.gitignore</code>.</p>
+
+<h2>After importing</h2>
+<ul>
+    <li>Look at the warnings: they list every body, auth and script that needs your attention.</li>
+    <li>Activate the environment, send a few requests and compare with Postman.</li>
+    <li>Port the tests you care about to <code>test()</code> and <code>expect()</code>.</li>
+    <li>Commit the result. From now on, a change to a request is a one line diff.</li>
+</ul>

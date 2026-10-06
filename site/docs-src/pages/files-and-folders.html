@@ -1,0 +1,63 @@
+title: Files and folders
+description: Every file Postino reads and writes, in your workspace and on your system: requests, environments, run history, settings, recent workspaces and logs.
+---
+<h1>Files and folders</h1>
+<p class="lead">Postino keeps your work in your workspace and its own state in your user folders. Nothing is stored anywhere else, and nothing is sent anywhere.</p>
+
+<h2>In the workspace</h2>
+<p>These files belong to the project and are meant to be shared, except where noted.</p>
+<div class="table"><table>
+    <thead><tr><th>Path</th><th>Contents</th><th>In git</th></tr></thead>
+    <tbody>
+        <tr><td><code>**/*.postino</code></td><td>One request per file. See <a href="file-format.html">File format</a>.</td><td>Yes</td></tr>
+        <tr><td><code>environments/&lt;name&gt;.env</code></td><td>Shared variables of an environment.</td><td>Yes</td></tr>
+        <tr><td><code>environments/&lt;name&gt;.local.env</code></td><td>Secrets and personal overrides.</td><td><strong>No</strong>, add <code>*.local.env</code> to <code>.gitignore</code></td></tr>
+        <tr><td><code>.postino/runs/NNNN.json</code></td><td>Load test run history, one file per run.</td><td>Your choice</td></tr>
+    </tbody>
+</table></div>
+<p>Postino never writes anything else into the workspace: no settings, no cache, no lock files.</p>
+
+<h2>On your system</h2>
+<p>Postino's own state lives in the standard folders of each system.</p>
+<h3>Configuration</h3>
+<div class="table"><table>
+    <thead><tr><th>System</th><th>Folder</th></tr></thead>
+    <tbody>
+        <tr><td>Linux</td><td><code>~/.config/postino/</code> (<code>$XDG_CONFIG_HOME/postino/</code>)</td></tr>
+        <tr><td>macOS</td><td><code>~/Library/Application Support/postino/</code></td></tr>
+        <tr><td>Windows</td><td><code>%APPDATA%\postino\</code></td></tr>
+    </tbody>
+</table></div>
+<div class="table"><table>
+    <thead><tr><th>File</th><th>Contents</th></tr></thead>
+    <tbody>
+        <tr><td><code>settings.toml</code></td><td>Your <a href="settings.html">settings</a>.</td></tr>
+        <tr><td><code>recent-workspaces.txt</code></td><td>The last ten workspaces you opened, one absolute path per line, most recent first.</td></tr>
+        <tr><td><code>last-environments.toml</code></td><td>The active environment of each recent workspace, so it is selected again when you reopen it.</td></tr>
+    </tbody>
+</table></div>
+
+<h3>Logs</h3>
+<div class="table"><table>
+    <thead><tr><th>System</th><th>Folder</th></tr></thead>
+    <tbody>
+        <tr><td>Linux</td><td><code>~/.local/state/postino/</code> (<code>$XDG_STATE_HOME/postino/</code>)</td></tr>
+        <tr><td>macOS</td><td><code>~/Library/Logs/Postino/</code></td></tr>
+        <tr><td>Windows</td><td><code>%LOCALAPPDATA%\Postino\logs\</code></td></tr>
+    </tbody>
+</table></div>
+<p>The current log is <code>postino.log</code>. It is rotated at 5 MB, and at most 10 files are kept. Settings, Advanced, Logging shows the path and has a button to open the folder.</p>
+
+<h3>Updates</h3>
+<p>On macOS and Windows, the updater downloads new versions to <code>postino/updates/</code> inside the system cache folder (<code>~/Library/Caches/</code> on macOS, <code>%LOCALAPPDATA%</code> on Windows) and verifies them before installing. Settings, About shows the exact path. Nothing is downloaded on Linux.</p>
+
+<h2>Resetting Postino</h2>
+<p>To start from scratch, quit Postino and delete the configuration folder. Your workspaces are not affected. To also remove the logs, delete the logs folder.</p>
+
+<h2>Network</h2>
+<p>Postino connects to:</p>
+<ul>
+    <li>the servers of the requests you send, when you send them or run a load test;</li>
+    <li>on macOS and Windows builds with the updater, and only if <strong>Check for updates automatically</strong> is on or you check by hand, GitHub, to read the latest release manifest and download an update. No identifiers are sent.</li>
+</ul>
+<p>There is no telemetry, no crash reporting and no account.</p>

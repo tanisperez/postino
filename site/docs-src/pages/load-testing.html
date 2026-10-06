@@ -1,0 +1,91 @@
+title: Load testing
+description: Run load tests against a request or a whole folder in Postino with virtual users, ramp-up and think time, read live throughput and latency, and compare runs.
+---
+<h1>Load testing</h1>
+<p class="lead">Point a load test at one request or a whole folder, choose how many virtual users to run and for how long, and watch throughput and latency live. Every run is saved, so you can compare it with the previous one.</p>
+
+<div class="shot">
+    <img class="light" src="../img/loadtest-light.webp" width="2018" height="1282" loading="lazy" alt="The Load tests panel and a finished load test run with throughput and latency charts.">
+    <img class="dark" src="../img/loadtest-dark.webp" width="2018" height="1282" loading="lazy" alt="The Load tests panel and a finished load test run with throughput and latency charts.">
+</div>
+
+<div class="callout warning">
+    <span class="title">Only test what you own</span>
+    <p>A load test sends a lot of traffic. Run it against your own servers, or with the permission of whoever runs them. Many APIs rate limit or block clients that send too much.</p>
+</div>
+
+<h2>Starting a load test</h2>
+<p>There are three ways to open a load test tab:</p>
+<ul>
+    <li>Right click a request or a folder in the sidebar and choose <strong>Load test…</strong>. The target is picked for you.</li>
+    <li>Open the <strong>Load tests</strong> panel from the activity rail and click <strong>New load test</strong>.</li>
+    <li>Run <strong>New load test</strong> from the command palette.</li>
+</ul>
+<p>Then configure the run and press <strong>Start run</strong>.</p>
+
+<h2>Configuration</h2>
+<div class="table"><table>
+    <thead><tr><th>Field</th><th>Default</th><th>Range</th><th>Meaning</th></tr></thead>
+    <tbody>
+        <tr><td>Target</td><td></td><td></td><td><strong>Request</strong> runs one request. <strong>Collection</strong> runs every request of a folder, in sidebar order.</td></tr>
+        <tr><td>Virtual users</td><td>50</td><td>1 to 500</td><td>How many users send requests at the same time, once the ramp-up is over.</td></tr>
+        <tr><td>Duration</td><td>60 s</td><td>1 s to 24 h</td><td>How long the run lasts, counted from the start, ramp-up included.</td></tr>
+        <tr><td>Ramp-up</td><td>10 s</td><td>0 s to 24 h</td><td>How long it takes to start every virtual user. Users start at even intervals: with 50 users and 10 s, one every 200 ms.</td></tr>
+        <tr><td>Think time</td><td>0 ms</td><td>0 to 600,000 ms</td><td>The pause each virtual user takes after one pass over the target, before starting the next.</td></tr>
+        <tr><td>Stop on errors</td><td>Off</td><td></td><td>Ends the run early when the error rate goes above 5%, once at least 50 requests have completed.</td></tr>
+    </tbody>
+</table></div>
+<p>A value outside its range is brought back into it when the run starts. Load tests use the active environment.</p>
+
+<h2>How a run works</h2>
+<ul>
+    <li>Each virtual user is a separate thread that loops over the target: one request, or every request of the folder in order, then the think time, then again, until the duration is over or you press <strong>Stop run</strong>.</li>
+    <li>Every iteration runs the full pipeline: pre-request script, variables, HTTP, post-response script.</li>
+    <li>Each virtual user has its own copy of the session variables. A collection that starts with a login request whose post-response script calls <code>env.set("token", …)</code> works as expected: each user logs in and uses its own token for the next requests.</li>
+    <li>Stopping takes effect in well under a second, even during a long think time.</li>
+    <li>The run happens on your machine. Your own CPU and network are part of the measurement, so for serious numbers use a machine close to the server.</li>
+</ul>
+
+<h2>Reading the dashboard</h2>
+<p>The dashboard updates live while the run is in progress. Its header shows the run number and state: <strong>Running</strong>, <strong>Finished</strong> (the full duration elapsed), <strong>Stopped</strong> (by hand or by Stop on errors) or <strong>Failed</strong> (the run could not start).</p>
+<dl>
+    <dt>Requests/s</dt>
+    <dd>Throughput: the requests completed during the last full second.</dd>
+    <dt>p50, p95, p99</dt>
+    <dd>Latency percentiles over the whole run. p95 is 120 ms means that 95% of requests took 120 ms or less. Percentiles use the nearest rank method, so every value shown is a latency that actually happened.</dd>
+    <dt>Errors</dt>
+    <dd>The share of requests that failed. A request counts as an error when it timed out, could not be sent, its pre-request script threw, or its status was 400 or higher. Failed tests and post-response script errors are not counted.</dd>
+    <dt>Total</dt>
+    <dd>The number of requests completed.</dd>
+    <dt>Throughput and latency</dt>
+    <dd>A chart with one point per second: requests completed in that second and their p95 latency.</dd>
+    <dt>Latency distribution</dt>
+    <dd>A histogram of all latencies.</dd>
+    <dt>Responses by status</dt>
+    <dd>How many responses came back with each status code, plus <strong>Timeout</strong> and <strong>Failed</strong>.</dd>
+    <dt>Per request</dt>
+    <dd>For a collection, one row per request with its count, p50, p95, p99 and error rate.</dd>
+</dl>
+
+<h2>Comparing runs</h2>
+<p>Use <strong>Compare with</strong> to pick an earlier run. The comparison shows, for Requests/s, p95, p99 and Errors, the previous value, the current one and the change, colored as better or worse:</p>
+<ul>
+    <li>Requests/s and latencies change as a percentage of the previous value.</li>
+    <li>The error rate changes in percentage points: going from 2% to 5% is +3 points.</li>
+    <li>Higher is better for Requests/s; lower is better for p95, p99 and Errors.</li>
+</ul>
+<p>Compare runs with the same configuration, or the difference says more about the settings than about your API.</p>
+
+<h2>Run history</h2>
+<p>Every run is saved as a JSON file in <code>.postino/runs/</code> inside the workspace, numbered <code>0001.json</code>, <code>0002.json</code> and so on. A run file holds when it started, what it targeted, its configuration (without request bodies or secrets) and the final metrics. <strong>Previous runs</strong> lists them, newest first, and opening one shows its dashboard.</p>
+<p>The Load tests panel of the sidebar lists the runs of the current session with their state and p95.</p>
+<p>Whether to commit <code>.postino/runs/</code> is up to you. Committing it keeps a performance history next to the code; ignoring it keeps the repository small. See <a href="git.html">Working with git</a>.</p>
+
+<h2>Tips</h2>
+<ul>
+    <li>Start small: 5 users for 30 seconds tells you whether the setup works before you push harder.</li>
+    <li>Use a ramp-up. Starting hundreds of users at once measures the connection storm, not steady state.</li>
+    <li>A think time of a few hundred milliseconds makes virtual users behave more like real ones.</li>
+    <li>Keep tests in the post-response script cheap: they run on every iteration.</li>
+    <li>Watch the <strong>Responses by status</strong> panel: a fast run full of 429 or 503 responses is not a fast API.</li>
+</ul>

@@ -4,3 +4,6 @@
 *.local.env
 !crates/*/tests/fixtures/*.local.env
 !site/screenshots/workspace/environments/*.local.env
+
+# Generated from site/docs-src by `make docs` and by the website workflow.
+/site/docs/

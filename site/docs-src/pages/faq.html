@@ -1,0 +1,50 @@
+title: FAQ
+description: Frequently asked questions about Postino: accounts, cloud sync, privacy, Postman compatibility, team sharing and what is planned.
+---
+<h1>Frequently asked questions</h1>
+<p class="lead">Short answers to the questions people ask before and after trying Postino.</p>
+
+<h2>Do I need an account?</h2>
+<p>No. There is no account, no sign in and no license key. Install it and open a folder.</p>
+
+<h2>Where are my requests stored?</h2>
+<p>In the folder you opened, as plain text files: one <code>.postino</code> file per request and one <code>.env</code> file per environment. Nothing is stored in a database or in the cloud. See <a href="workspaces.html">Workspaces and collections</a>.</p>
+
+<h2>How do I share requests with my team?</h2>
+<p>Commit the workspace folder to git, ideally in the repository of the API. Everyone who clones it has the same requests and environments, and changes are reviewed in pull requests. Secrets stay in <code>.local.env</code> files that each person keeps locally. See <a href="git.html">Working with git</a>.</p>
+
+<h2>Does Postino send any data anywhere?</h2>
+<p>Only the requests you send. Builds for macOS and Windows also check GitHub for a new version once at startup, without any identifier, and you can turn that off. There is no telemetry and no crash reporting. See <a href="files-and-folders.html#network">Files and folders</a>.</p>
+
+<h2>Can I open my Postman collections?</h2>
+<p>Yes, import them: collections in format v2.1 (and v2.0) and environment exports. Requests, folders, headers, bodies, auth headers and variables are converted. Scripts are copied but commented out, because Postman's <code>pm.*</code> API is different. See <a href="postman-import.html">Importing from Postman</a>.</p>
+
+<h2>Can I use .http files from my editor?</h2>
+<p>No. The <code>.postino</code> format was inspired by <code>.http</code> files, but it is not compatible with them: sections such as <code>::: body json</code> and <code>::: post</code> have no equivalent there. Converting one by hand is quick, since both are plain text.</p>
+
+<h2>Is the file format stable?</h2>
+<p>It is documented in full in the <a href="file-format.html">file format reference</a>, and Postino's test suite checks that every file reads and writes back byte for byte. It is designed to stay readable without Postino.</p>
+
+<h2>Which JavaScript features can scripts use?</h2>
+<p>Standard modern JavaScript on the QuickJS engine, plus the Postino globals (<code>req</code>, <code>res</code>, <code>vars</code>, <code>env</code>, <code>test</code>, <code>expect</code>, <code>console</code>, <code>util</code>). There is no network, file system, timers, modules or <code>crypto</code>. See the <a href="script-api.html">Script API</a>.</p>
+
+<h2>Can a script send another request?</h2>
+<p>No. Run the requests one after the other and pass values between them with <code>env.set()</code>. For a sequence that runs many times, put the requests in a folder and load test it: each virtual user runs them in order.</p>
+
+<h2>Does Postino support GraphQL, WebSockets, gRPC or multipart uploads?</h2>
+<p>Not yet. Postino sends HTTP requests with JSON, XML, text or URL-encoded form bodies. A GraphQL query can be sent as a JSON body to the GraphQL endpoint. Multipart form data, file uploads, WebSockets and gRPC are not supported.</p>
+
+<h2>Is there an OAuth 2.0 helper?</h2>
+<p>Not yet. Get a token with a request to the token endpoint (a <code>::: body form</code> with <code>grant_type</code>, <code>client_id</code> and <code>client_secret</code>), save it with <code>env.set()</code> in the post-response script and send it as <code>Authorization: Bearer {{token}}</code>.</p>
+
+<h2>Can I run my requests in CI?</h2>
+<p>Not yet: Postino is a desktop app and has no headless runner.</p>
+
+<h2>Which languages does the interface speak?</h2>
+<p>English, Spanish, Galician and Italian. By default it follows your system language and falls back to English. Change it in <a href="settings.html">Settings</a>.</p>
+
+<h2>Is it free?</h2>
+<p>Yes. Postino is open source under the Apache License 2.0, free for personal and commercial use.</p>
+
+<h2>How can I help?</h2>
+<p>Report bugs, suggest features and share how you use it on <a href="https://github.com/tanisperez/postino/issues">GitHub</a>. See <a href="contributing.html">Contributing</a>.</p>

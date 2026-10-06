@@ -1,0 +1,71 @@
+title: Working with git
+description: Keep Postino requests in git next to your code: recommended layout, .gitignore, clean diffs, code review and merge conflicts.
+---
+<h1>Working with git</h1>
+<p class="lead">Postino was designed so that requests belong in version control. There is no export step and no sync service: commit the folder, and your team has the same requests, reviewed like any other change.</p>
+
+<h2>Recommended layout</h2>
+<p>Keep the workspace inside the repository of the API it calls:</p>
+```text title="shop/"
+shop/
+├── src/
+├── tests/
+├── api-requests/              # the Postino workspace
+│   ├── environments/
+│   │   ├── local.env
+│   │   ├── staging.env
+│   │   └── staging.local.env  # ignored
+│   ├── auth/
+│   │   └── login.postino
+│   └── orders/
+│       ├── create.postino
+│       └── list.postino
+└── .gitignore
+```
+<p>Requests then change in the same pull request as the endpoint they call, and checking out an old commit gives you the requests that matched that version of the API.</p>
+
+<h2>What to ignore</h2>
+```text title=".gitignore"
+# Secrets and personal overrides of Postino environments
+*.local.env
+
+# Load test history, if you do not want to keep it
+.postino/
+```
+<ul>
+    <li><code>*.local.env</code> must always be ignored: it is where passwords, tokens and keys go. Postino does not add this line for you.</li>
+    <li><code>.postino/</code> holds the load test run history. Commit it if you want to keep performance results with the code, ignore it otherwise.</li>
+    <li>Postino keeps everything else (settings, recent workspaces, the active environment, logs) outside the workspace, so none of it shows up in your diffs. See <a href="files-and-folders.html">Files and folders</a>.</li>
+</ul>
+
+<h2>Why the diffs stay clean</h2>
+<ul>
+    <li><strong>One request per file.</strong> Changing a request touches one file.</li>
+    <li><strong>Line based format.</strong> Each header, query parameter and form field is its own line.</li>
+    <li><strong>Canonical output.</strong> Postino always writes a request the same way: same section order, same spacing, a single trailing newline, <code>\n</code> line endings on every platform. Saving a request you did not change produces no diff at all.</li>
+    <li><strong>Disable instead of delete.</strong> Switching off a header or parameter adds a <code>#</code> at the start of its line, a one character change.</li>
+    <li><strong>Minimal environment edits.</strong> Saving an environment rewrites only the lines you changed; comments and order are kept.</li>
+</ul>
+```text title="git diff"
+ ::: query
+ genre = science-fiction
+-limit = 20
++limit = 50
+ # inStock = true
+```
+
+<h2>Reviewing request changes</h2>
+<p>A <code>.postino</code> file reads well on GitHub, GitLab or any diff tool. Reviewers see the exact method, URL, headers, body and tests, with no JSON noise. Use the <code>::: docs</code> section to explain a request for whoever reads it next.</p>
+
+<h2>Merge conflicts</h2>
+<p>Conflicts in a <code>.postino</code> or <code>.env</code> file are resolved like in any text file. Keep the conflict markers out of the result: a file that still contains <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> does not parse and shows up as <strong>(broken)</strong> in the sidebar until you fix it. Postino reads files as they are on disk, so after a pull, reopen the workspace to see the changes.</p>
+
+<h2>The status bar</h2>
+<p>When the workspace is inside a git repository, the status bar shows the current branch, or the short commit hash on a detached <code>HEAD</code>. Postino only reads <code>.git/HEAD</code> to find it; it never runs git, and never commits, pulls or pushes for you. Worktrees are supported.</p>
+
+<h2>Line endings</h2>
+<p>Postino reads both <code>\n</code> and <code>\r\n</code> and always writes <code>\n</code>. If your repository converts line endings on Windows (<code>core.autocrlf</code>), add this to <code>.gitattributes</code> so files stay identical on every system:</p>
+```text title=".gitattributes"
+*.postino text eol=lf
+*.env text eol=lf
+```

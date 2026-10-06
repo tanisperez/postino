@@ -1,0 +1,195 @@
+title: Scripts and tests
+description: Write JavaScript pre-request and post-response scripts in Postino, test responses with test() and expect(), chain requests and move scripts over from Postman.
+---
+<h1>Scripts and tests</h1>
+<p class="lead">Each request can carry two small JavaScript scripts: one that runs before the request is sent, and one that runs after the response arrives. Use them to prepare data, check responses with tests and pass values from one request to the next.</p>
+
+<div class="shot">
+    <img class="light" src="../img/scripts-light.webp" width="2018" height="1282" loading="lazy" alt="A request with a post response script and its passing tests.">
+    <img class="dark" src="../img/scripts-dark.webp" width="2018" height="1282" loading="lazy" alt="A request with a post response script and its passing tests.">
+</div>
+
+<h2>Where scripts live</h2>
+<p>Write them in the <strong>Pre-request</strong> and <strong>Post-response</strong> tabs of the request editor. In the file they are the <code>::: pre</code> and <code>::: post</code> sections, so they are versioned and reviewed with the rest of the request.</p>
+```postino title="orders/create.postino"
+POST {{baseUrl}}/orders
+Content-Type: application/json
+Idempotency-Key: {{idempotencyKey}}
+
+::: body json
+{ "sku": "BOOK-42", "quantity": 1 }
+
+::: pre
+vars.set("idempotencyKey", util.uuid());
+
+::: post
+test("order created", () => {
+  expect(res.status).toBe(201);
+  expect(res.json()).toHaveProperty("id");
+});
+env.set("orderId", res.json().id);
+```
+
+<h2>When they run</h2>
+<ol class="steps">
+    <li>The <strong>pre-request</strong> script runs first. It sees the request before variables are replaced, and can change its method, URL, headers and body, and set variables with <code>vars.set()</code>.</li>
+    <li>Postino replaces the <code>{{ }}</code> markers and sends the request.</li>
+    <li>The <strong>post-response</strong> script runs with the response in <code>res</code> and the request as it was actually sent in <code>req</code>. It runs tests and can store values for later requests with <code>env.set()</code>.</li>
+</ol>
+<p>An empty script is skipped. An error in the pre-request script stops the run before anything is sent. An error in the post-response script is reported, but the response and the tests that already ran are still shown.</p>
+
+<h2>Writing tests</h2>
+<p>A test is a name and a function. Inside it, <code>expect(value)</code> gives you matchers that throw when the check fails:</p>
+```js
+test("status is 2xx", () => {
+  expect(res.status).toBeGreaterThan(199);
+  expect(res.status).toBeLessThan(300);
+});
+
+test("returns a list of books", () => {
+  const body = res.json();
+  expect(Array.isArray(body.items)).toBe(true);
+  expect(body.items.length).toBeGreaterThan(0);
+});
+
+test("first book has the expected shape", () => {
+  const book = res.json().items[0];
+  expect(book).toHaveProperty("isbn");
+  expect(book.title).toMatch(/\w+/);
+  expect(book.tags).toContain("fiction");
+});
+
+test("is JSON", () => {
+  expect(res.headers.get("content-type")).toContain("application/json");
+});
+
+test("is fast enough", () => {
+  expect(res.timeMs).toBeLessThan(500);
+});
+```
+<p>Every matcher can be negated with <code>.not</code>: <code>expect(res.status).not.toBe(500)</code>. The full list is in the <a href="script-api.html#expect-value">Script API</a>.</p>
+<ul>
+    <li>A failing test records its error message and the script goes on, so one failure never hides the others.</li>
+    <li>Results appear in the <strong>Tests</strong> tab of the response, with a <code>passed/total</code> count.</li>
+    <li>A test can contain several <code>expect()</code> calls. The first one that fails ends that test.</li>
+    <li>Throwing your own error also fails a test: <code>throw new Error("missing cursor")</code>.</li>
+</ul>
+
+<h2>Common recipes</h2>
+
+<h3>Log in once, reuse the token</h3>
+<p>Store the token in the session from the login request, and reference it in every other request.</p>
+```postino title="auth/login.postino"
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+::: body json
+{ "username": "{{username}}", "password": "{{password}}" }
+
+::: post
+test("login succeeded", () => {
+  expect(res.status).toBe(200);
+});
+env.set("token", res.json().token);
+```
+```postino title="orders/list.postino"
+GET {{baseUrl}}/orders
+Authorization: Bearer {{token}}
+```
+<p>Session variables last until you quit Postino and are never written to disk, so the token does not end up in git.</p>
+
+<h3>Chain requests</h3>
+<p>Save an id from one response and use it in the URL of the next:</p>
+```js
+// post-response of orders/create
+env.set("orderId", res.json().id);
+```
+```postino title="orders/get.postino"
+GET {{baseUrl}}/orders/{{orderId}}
+Authorization: Bearer {{token}}
+```
+
+<h3>Add a computed header</h3>
+```js
+// pre-request
+req.headers.set("X-Timestamp", String(util.now()));
+req.headers.set("X-Nonce", util.randomString(16));
+```
+
+<h3>Build a body from code</h3>
+<p>The body must exist in the file (any type), then the script can replace its text:</p>
+```js
+// pre-request, with a ::: body json section in the file
+const items = [];
+for (let i = 1; i <= 3; i++) {
+  items.push({ sku: "SKU-" + i, quantity: util.randomInt(1, 5) });
+}
+req.body = JSON.stringify({ items: items, createdAt: util.isoDate() });
+```
+
+<h3>Keep a cookie</h3>
+```js
+// post-response of the login request
+const cookie = res.headers.get("Set-Cookie");
+if (cookie) {
+  env.set("session", cookie.split(";")[0]);
+}
+```
+<p>Then send <code>Cookie: {{session}}</code> in later requests.</p>
+
+<h3>Fall back to a default value</h3>
+```js
+// pre-request
+if (!env.get("pageSize")) {
+  vars.set("pageSize", "20");
+}
+```
+<p>Then <code>{{pageSize}}</code> uses the environment value when there is one, and 20 otherwise. <code>env.get()</code> reads the session variables and the active environment's files, in that order; see the <a href="script-api.html#env">Script API</a>.</p>
+
+<h3>Debug a script</h3>
+<p>Print anything with <code>console.log()</code>. The output appears in the <strong>Console</strong> tab of the response, from both scripts:</p>
+```js
+console.log("sending", req.method, req.url);
+console.log("headers", req.headers.get("Authorization") ? "with auth" : "without auth");
+```
+
+<h2>The sandbox</h2>
+<p>Scripts run in <a href="https://bellard.org/quickjs/">QuickJS</a>, a small JavaScript engine with modern syntax: <code>const</code>, arrow functions, template literals, destructuring, classes, <code>JSON</code>, <code>Math</code>, <code>Date</code>, regular expressions and the rest of standard ECMAScript.</p>
+<p>The sandbox has <strong>no</strong> network, file system, timers, modules, <code>require</code>, <code>import</code>, <code>fetch</code>, <code>setTimeout</code> or <code>crypto</code>. A script cannot send another request; to chain requests, run them one after the other and pass values with <code>env.set()</code>.</p>
+<div class="table"><table>
+    <thead><tr><th>Limit</th><th>Value</th></tr></thead>
+    <tbody>
+        <tr><td>Memory</td><td>32 MiB per script run</td></tr>
+        <tr><td>Time</td><td>5 seconds per script run</td></tr>
+        <tr><td>State</td><td>A fresh engine for every run. Nothing carries over from one run to the next except what you store with <code>env.set()</code>.</td></tr>
+    </tbody>
+</table></div>
+<p>The pre-request and post-response scripts each have their own budget. Going over a limit is reported as a script error and never crashes the app.</p>
+
+<h2>Moving scripts from Postman</h2>
+<p>When you <a href="postman-import.html">import a Postman collection</a>, request scripts are copied into <code>::: pre</code> and <code>::: post</code>, fully commented out, under the line <code>// Imported from Postman. The pm.* API is not supported, adapt it.</code> This table helps with the translation:</p>
+<div class="table"><table>
+    <thead><tr><th>Postman</th><th>Postino</th></tr></thead>
+    <tbody>
+        <tr><td><code>pm.test(name, fn)</code></td><td><code>test(name, fn)</code></td></tr>
+        <tr><td><code>pm.expect(a).to.equal(b)</code></td><td><code>expect(a).toBe(b)</code></td></tr>
+        <tr><td><code>pm.expect(a).to.eql(b)</code></td><td><code>expect(a).toEqual(b)</code></td></tr>
+        <tr><td><code>pm.expect(a).to.include(b)</code></td><td><code>expect(a).toContain(b)</code></td></tr>
+        <tr><td><code>pm.expect(a).to.have.property(p)</code></td><td><code>expect(a).toHaveProperty(p)</code></td></tr>
+        <tr><td><code>pm.expect(a).to.be.above(b)</code></td><td><code>expect(a).toBeGreaterThan(b)</code></td></tr>
+        <tr><td><code>pm.response.to.have.status(200)</code></td><td><code>expect(res.status).toBe(200)</code></td></tr>
+        <tr><td><code>pm.response.code</code></td><td><code>res.status</code></td></tr>
+        <tr><td><code>pm.response.json()</code></td><td><code>res.json()</code></td></tr>
+        <tr><td><code>pm.response.text()</code></td><td><code>res.body</code></td></tr>
+        <tr><td><code>pm.response.headers.get(name)</code></td><td><code>res.headers.get(name)</code></td></tr>
+        <tr><td><code>pm.response.responseTime</code></td><td><code>res.timeMs</code></td></tr>
+        <tr><td><code>pm.environment.set(k, v)</code>, <code>pm.collectionVariables.set</code>, <code>pm.globals.set</code></td><td><code>env.set(k, v)</code> (session only)</td></tr>
+        <tr><td><code>pm.environment.get(k)</code></td><td><code>env.get(k)</code></td></tr>
+        <tr><td><code>pm.variables.set(k, v)</code></td><td><code>vars.set(k, v)</code></td></tr>
+        <tr><td><code>pm.request.headers.add({ key, value })</code></td><td><code>req.headers.set(key, value)</code></td></tr>
+        <tr><td><code>pm.request.url</code></td><td><code>req.url</code></td></tr>
+        <tr><td><code>pm.sendRequest(...)</code></td><td>Not available. Use a separate request.</td></tr>
+        <tr><td><code>CryptoJS</code>, <code>require(...)</code></td><td>Not available.</td></tr>
+    </tbody>
+</table></div>
+<p>Scripts attached to a Postman collection or folder are not imported, since Postino scripts belong to one request. The import lists each one it skipped.</p>

@@ -1,0 +1,56 @@
+title: Template functions
+description: Generate UUIDs, timestamps, random values and Base64 or URL encoded strings inline in Postino requests with {{ }} template functions.
+---
+<h1>Template functions</h1>
+<p class="lead">Some values change on every send: a request id, a timestamp, a random name. Template functions produce them inline, inside <code>{{ }}</code>, without writing a script.</p>
+
+```postino
+POST {{baseUrl}}/events
+X-Request-Id: {{ uuid() }}
+X-Sent-At: {{ isoDate() }}
+Authorization: Basic {{ base64Encode("api:secret") }}
+
+::: body json
+{
+  "id": "{{ uuid() }}",
+  "timestamp": {{ now() }},
+  "score": {{ randomInt(1, 100) }},
+  "nickname": "user-{{ randomString(6) }}"
+}
+```
+
+<h2>Functions</h2>
+<div class="table"><table>
+    <thead><tr><th>Function</th><th>Arguments</th><th>Returns</th><th>Example result</th></tr></thead>
+    <tbody>
+        <tr><td><code>uuid()</code></td><td>none</td><td>A random UUID, version 4</td><td><code>3f2b8c1e-7a4d-4e8b-9f61-2c5d0a9b7e14</code></td></tr>
+        <tr><td><code>now()</code></td><td>none</td><td>Milliseconds since the Unix epoch</td><td><code>1791302400000</code></td></tr>
+        <tr><td><code>isoDate()</code></td><td>none</td><td>The current UTC time, RFC 3339</td><td><code>2026-10-06T09:30:00Z</code></td></tr>
+        <tr><td><code>randomInt(min, max)</code></td><td>two integers</td><td>A random integer between <code>min</code> and <code>max</code>, both included. If <code>min</code> is greater than <code>max</code>, they are swapped</td><td><code>42</code></td></tr>
+        <tr><td><code>randomString(len)</code></td><td>one integer</td><td>A random string of letters and digits of that length</td><td><code>aZ3kQ9</code></td></tr>
+        <tr><td><code>base64Encode(str)</code></td><td>one string</td><td>Standard Base64 encoding</td><td><code>YXBpOnNlY3JldA==</code></td></tr>
+        <tr><td><code>base64Decode(str)</code></td><td>one string</td><td>The decoded text. Fails if the input is not valid Base64 or does not decode to UTF-8 text</td><td><code>api:secret</code></td></tr>
+        <tr><td><code>urlEncode(str)</code></td><td>one string</td><td>Percent encoding. Letters, digits and <code>- . _ ~</code> are kept as is</td><td><code>a%20b%26c</code></td></tr>
+    </tbody>
+</table></div>
+<p>Each call is evaluated on its own, so <code>{{ uuid() }}</code> written twice gives two different UUIDs. To reuse one value in several places, generate it once in a pre-request script with <code>vars.set("id", util.uuid())</code> and write <code>{{id}}</code> wherever you need it.</p>
+
+<h2>Arguments</h2>
+<p>An argument is one of:</p>
+<ul>
+    <li>A string in double quotes: <code>"user:pass"</code>. Inside it, <code>\"</code> is a quote and <code>\\</code> is a backslash. No other escapes exist.</li>
+    <li>An integer: <code>1</code>, <code>-5</code>.</li>
+    <li>A variable name, without braces or quotes: <code>base64Encode(credentials)</code> uses the value of the variable <code>credentials</code>, looked up in the same <a href="environments.html#resolution-order">layers</a> as <code>{{credentials}}</code>.</li>
+</ul>
+```postino
+GET {{baseUrl}}/search?q={{ urlEncode(searchTerm) }}
+Authorization: Basic {{ base64Encode(basicCredentials) }}
+```
+<p>Here <code>basicCredentials</code> holds <code>user:password</code> in the environment, and <code>searchTerm</code> may contain spaces or symbols.</p>
+<p>Calls cannot be nested and there are no operators: <code>{{ base64Encode(urlEncode("x")) }}</code> and <code>{{ randomInt(1, 10) + 1 }}</code> are not valid. Use a pre-request script for anything more involved.</p>
+
+<h2>Errors</h2>
+<p>An unknown function, the wrong number of arguments, an argument of the wrong type (a string where a number is expected) or an argument that names an unknown variable all behave like an unknown variable: the whole <code>{{ … }}</code> marker is sent exactly as written and the response shows a warning with the reason. A template function never stops a request.</p>
+
+<h2>The same functions in scripts</h2>
+<p>Every function is also available in scripts as <code>util.&lt;name&gt;()</code>: <code>util.uuid()</code>, <code>util.now()</code>, <code>util.base64Encode("text")</code> and so on. They are the same implementation, so they behave identically and their error messages are word for word the same. In scripts, <code>util.now()</code> and <code>util.randomInt()</code> return numbers, the rest return strings. See the <a href="script-api.html#util">Script API</a>.</p>

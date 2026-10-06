@@ -1,0 +1,54 @@
+title: Command line
+description: Start Postino from a terminal with a workspace folder or a request file, and the environment variables it reads at startup.
+---
+<h1>Command line</h1>
+<p class="lead">Postino is a desktop app, but it can be started from a terminal to open a given folder or request, and a few environment variables change how it starts.</p>
+
+<h2>Usage</h2>
+```shell
+$ postino [PATH]
+```
+<p>The binary is <code>postino</code> on Linux (installed to <code>/usr/bin</code> by the packages), <code>postino.exe</code> in <code>%LOCALAPPDATA%\Programs\Postino</code> on Windows, and <code>/Applications/Postino.app/Contents/MacOS/postino</code> on macOS.</p>
+<div class="table"><table>
+    <thead><tr><th>PATH is</th><th>Postino opens</th></tr></thead>
+    <tbody>
+        <tr><td>Missing</td><td>The last workspace you used, if the folder still exists.</td></tr>
+        <tr><td>A folder</td><td>That folder as the workspace.</td></tr>
+        <tr><td>A <code>.postino</code> file</td><td>The remembered workspace if it contains the file, otherwise the file's folder, and then the file in a tab.</td></tr>
+        <tr><td>A path that does not exist</td><td>An error saying the workspace could not be opened.</td></tr>
+    </tbody>
+</table></div>
+```shell
+# Open the requests that live in a repository
+$ postino ~/code/shop/api-requests
+
+# Open one request
+$ postino ~/code/shop/api-requests/orders/create.postino
+```
+<p>Only the first argument is read. Postino is not single instance: running it again, or double clicking a <code>.postino</code> file while it runs, starts a second window process.</p>
+
+<h2 id="environment-variables">Environment variables</h2>
+<div class="table"><table>
+    <thead><tr><th>Variable</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>POSTINO_LOG</code></td><td>The log level for this run: <code>off</code>, <code>error</code>, <code>warn</code>, <code>info</code>, <code>debug</code> or <code>trace</code>. Overrides the setting.</td></tr>
+        <tr><td><code>POSTINO_ENV</code></td><td>The name of an environment (a file name under <code>environments/</code>, without <code>.env</code>) to activate at startup.</td></tr>
+        <tr><td><code>POSTINO_AUTOSEND</code></td><td>The workspace-relative path of a request, such as <code>auth/login.postino</code>, to open and send right away.</td></tr>
+        <tr><td><code>HTTPS_PROXY</code>, <code>HTTP_PROXY</code>, <code>ALL_PROXY</code>, <code>NO_PROXY</code></td><td>A proxy for the requests Postino sends, read at startup. Lowercase names work too.</td></tr>
+    </tbody>
+</table></div>
+<p>Each one does nothing when it is not set.</p>
+```shell
+# Start with debug logging
+$ POSTINO_LOG=debug postino
+
+# Open the sample workspace on the local environment and log in straight away
+$ POSTINO_ENV=local POSTINO_AUTOSEND=auth/login.postino postino examples/sample-workspace
+```
+<p>On Windows, in PowerShell:</p>
+```shell
+> $env:POSTINO_LOG = "debug"; & "$env:LOCALAPPDATA\Programs\Postino\postino.exe"
+```
+
+<h2>Not available yet</h2>
+<p>Postino has no headless mode: it cannot run a collection and print test results in a terminal or a CI pipeline. Because requests are plain files, such a runner can be built on the same file format; follow the project on GitHub for news.</p>

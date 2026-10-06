@@ -1,117 +1,18 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Environments and variables · Postino docs</title>
-    <meta name="description" content="Use variables in Postino requests, keep shared values in .env files and secrets in .local.env files, switch environments and edit them in a table.">
-    <meta name="color-scheme" content="light dark">
-    <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
-    <link rel="canonical" href="https://postino.tanis.codes/docs/environments.html">
-    <link rel="icon" href="../img/logo.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="../img/icon-512.png">
-    <link rel="preload" href="../fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="../fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/docs.css">
-    <script src="../js/theme.js"></script>
-    <script src="../js/docs.js" defer></script>
-</head>
-<body>
-    <a class="skip" href="#main">Skip to content</a>
-
-    <header class="site-header">
-        <div class="wrap">
-            <a class="brand" href="../">
-                <img src="../img/logo.svg" alt="" width="28" height="28">
-                Postino
-            </a>
-            <button class="search-trigger" type="button" aria-label="Search the documentation">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                <span class="label">Search docs</span>
-                <kbd>Ctrl K</kbd>
-            </button>
-            <nav class="nav" aria-label="Main">
-                <a class="nav-wide" href="../#features">Features</a>
-                <a href="../install.html">Download</a>
-                <a href="./" aria-current="page">Docs</a>
-                <a class="nav-github" href="https://github.com/tanisperez/postino" aria-label="Postino on GitHub">
-                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-                    <span>GitHub</span>
-                </a>
-                <button class="theme-toggle" type="button" aria-label="Dark theme" title="Switch between light and dark">
-                    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-                    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
-                </button>
-            </nav>
-        </div>
-    </header>
-
-    <div class="docs">
-        <button class="docs-menu" type="button" aria-expanded="false" aria-controls="docs-nav">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-            Menu
-        </button>
-        <nav class="docs-nav" id="docs-nav" aria-label="Documentation">
-            <div class="group">
-                <h2>Getting started</h2>
-                <ul>
-                    <li><a href="index.html">Introduction</a></li>
-                    <li><a href="installation.html">Installation</a></li>
-                    <li><a href="quick-start.html">Quick start</a></li>
-                    <li><a href="interface.html">The interface</a></li>
-                </ul>
-            </div>
-            <div class="group">
-                <h2>Guides</h2>
-                <ul>
-                    <li><a href="workspaces.html">Workspaces and collections</a></li>
-                    <li><a href="requests.html">Building requests</a></li>
-                    <li><a href="responses.html">Reading responses</a></li>
-                    <li><a href="environments.html" aria-current="page">Environments and variables</a></li>
-                    <li><a href="template-functions.html">Template functions</a></li>
-                    <li><a href="scripting.html">Scripts and tests</a></li>
-                    <li><a href="load-testing.html">Load testing</a></li>
-                    <li><a href="code-snippets.html">Code snippets</a></li>
-                    <li><a href="postman-import.html">Importing from Postman</a></li>
-                    <li><a href="git.html">Working with git</a></li>
-                </ul>
-            </div>
-            <div class="group">
-                <h2>Reference</h2>
-                <ul>
-                    <li><a href="keyboard-shortcuts.html">Keyboard shortcuts</a></li>
-                    <li><a href="settings.html">Settings</a></li>
-                    <li><a href="file-format.html">File format</a></li>
-                    <li><a href="script-api.html">Script API</a></li>
-                    <li><a href="command-line.html">Command line</a></li>
-                    <li><a href="files-and-folders.html">Files and folders</a></li>
-                </ul>
-            </div>
-            <div class="group">
-                <h2>Help</h2>
-                <ul>
-                    <li><a href="troubleshooting.html">Troubleshooting</a></li>
-                    <li><a href="faq.html">FAQ</a></li>
-                    <li><a href="contributing.html">Contributing</a></li>
-                </ul>
-            </div>
-        </nav>
-
-        <main class="docs-main" id="main">
-            <article class="article">
-                <p class="breadcrumb"><a href="./">Docs</a> / Guides</p>
+title: Environments and variables
+description: Use variables in Postino requests, keep shared values in .env files and secrets in .local.env files, switch environments and edit them in a table.
+---
 <h1>Environments and variables</h1>
 <p class="lead">An environment is a named set of variables, such as <code>local</code>, <code>staging</code> or <code>production</code>. Write <code>{{baseUrl}}</code> in a request once, and switch where it points with one shortcut.</p>
 
-<h2 id="using-variables">Using variables</h2>
+<h2>Using variables</h2>
 <p>Write <code>{{name}}</code> in the URL, a query parameter, a header name or value, a form field or a JSON, XML or text body. Spaces inside the braces are allowed: <code>{{ name }}</code> is the same variable. When the request is sent, each marker is replaced with its value.</p>
-<div class="code"><pre data-lang="postino">GET {{baseUrl}}/accounts/{{accountId}}/orders
+```postino
+GET {{baseUrl}}/accounts/{{accountId}}/orders
 Authorization: Bearer {{token}}
 
 ::: query
-since = {{since}}</pre></div>
+since = {{since}}
+```
 <ul>
     <li>In the URL bar, every variable is drawn as a chip. A variable with no value shows as a red chip.</li>
     <li>A variable with no value is sent literally, as <code>{{name}}</code>, and the response shows an <strong>Unknown variable</strong> warning. It never stops the request.</li>
@@ -121,7 +22,7 @@ since = {{since}}</pre></div>
     <li>Scripts are not interpolated: inside <code>::: pre</code> and <code>::: post</code>, read variables with <code>vars.get()</code> and <code>env.get()</code>.</li>
 </ul>
 
-<h2 id="environment-files">Environment files</h2>
+<h2>Environment files</h2>
 <p>Environments live in the <code>environments/</code> folder at the root of the workspace. Each one is up to two files:</p>
 <dl>
     <dt><code>environments/&lt;name&gt;.env</code></dt>
@@ -129,21 +30,27 @@ since = {{since}}</pre></div>
     <dt><code>environments/&lt;name&gt;.local.env</code></dt>
     <dd>Secrets and personal overrides: passwords, tokens, API keys. Its values win over <code>&lt;name&gt;.env</code>. Keep it out of git.</dd>
 </dl>
-<div class="code"><div class="code-title"><span class="dot"></span>environments/staging.env</div><pre data-lang="env"># Staging, shared by the whole team
+```env title="environments/staging.env"
+# Staging, shared by the whole team
 baseUrl=https://staging.api.example.com
 username=qa-bot
-timeout=5000</pre></div>
-<div class="code"><div class="code-title"><span class="dot"></span>environments/staging.local.env</div><pre data-lang="env">password=correct-horse-battery-staple
-apiKey=sk_test_51H...</pre></div>
+timeout=5000
+```
+```env title="environments/staging.local.env"
+password=correct-horse-battery-staple
+apiKey=sk_test_51H...
+```
 <p>The format is one <code>KEY=value</code> per line. Lines starting with <code>#</code> are comments. The value is everything after the first <code>=</code>, kept exactly as written: no quotes, no escaping and no trimming. The full rules are in the <a href="file-format.html#environment-files">file format reference</a>.</p>
 
 <div class="callout warning">
     <span class="title">Keep secrets out of git</span>
     <p>Postino does not edit your <code>.gitignore</code>. Add this line to it once per repository:</p>
-<div class="code"><div class="code-title"><span class="dot"></span>.gitignore</div><pre>*.local.env</pre></div>
+```text title=".gitignore"
+*.local.env
+```
 </div>
 
-<h2 id="switching-environments">Switching environments</h2>
+<h2>Switching environments</h2>
 <ul>
     <li>Click the environment pill in the title bar and choose one, or <strong>No environment</strong>.</li>
     <li>Press <kbd>Ctrl</kbd> <kbd>1</kbd> to <kbd>Ctrl</kbd> <kbd>9</kbd> (<kbd>⌘</kbd> on macOS) for the first nine environments in alphabetical order, and <kbd>Ctrl</kbd> <kbd>0</kbd> for no environment.</li>
@@ -151,7 +58,7 @@ apiKey=sk_test_51H...</pre></div>
     <li>In the Environments panel, or in an environment's editor, choose <strong>Use this environment</strong>.</li>
 </ul>
 <p>The active environment of each workspace is remembered and selected again when you reopen it. It is stored in Postino's configuration, not in the workspace.</p>
-<h3 id="environment-colors">Environment colors</h3>
+<h3>Environment colors</h3>
 <p>The dot next to an environment's name gives a hint of how careful you should be. It comes from the name, ignoring case:</p>
 <div class="table"><table>
     <thead><tr><th>Name contains</th><th>Dot</th><th>Examples</th></tr></thead>
@@ -163,7 +70,7 @@ apiKey=sk_test_51H...</pre></div>
     </tbody>
 </table></div>
 
-<h2 id="resolution-order">Resolution order</h2>
+<h2>Resolution order</h2>
 <p>When Postino replaces <code>{{name}}</code>, it looks in these layers and uses the first one that has the variable:</p>
 <ol class="steps">
     <li><strong>Pre-request variables.</strong> Set with <code>vars.set()</code> by the pre-request script of this run. They exist only for this one send.</li>
@@ -173,7 +80,7 @@ apiKey=sk_test_51H...</pre></div>
 </ol>
 <p>If no layer has it, the variable is unknown. A disabled entry is skipped as if it were not there. If a file defines the same name twice, the first definition is the one used.</p>
 
-<h2 id="the-environment-editor">The environment editor</h2>
+<h2>The environment editor</h2>
 <p>Click an environment in the Environments panel to open it in a tab.</p>
 <div class="shot">
     <img class="light" src="../img/environments-light.webp" width="2018" height="1282" loading="lazy" alt="The environment editor: the staging variables, two of them stored in the gitignored local file and masked.">
@@ -191,7 +98,7 @@ apiKey=sk_test_51H...</pre></div>
 <p>Saving rewrites only the lines you changed: comments, blank lines and the order of everything else stay as they were. The <code>.local.env</code> file is created when you first store a variable in it.</p>
 <p>Saving is refused, with a message, when a row has a value but no name, a name contains <code>=</code> or a line break or starts with <code>#</code>, a value contains a line break, or the same name appears twice in one file.</p>
 
-<h3 id="environment-actions">Environment actions</h3>
+<h3>Environment actions</h3>
 <p>The <strong>More actions</strong> menu of the editor has:</p>
 <ul>
     <li><strong>Rename</strong>, which renames both files.</li>
@@ -199,7 +106,7 @@ apiKey=sk_test_51H...</pre></div>
     <li><strong>Delete</strong>, which removes both <code>.env</code> and <code>.local.env</code> after asking. It cannot be undone.</li>
 </ul>
 
-<h2 id="creating-an-environment">Creating an environment</h2>
+<h2>Creating an environment</h2>
 <ol class="steps">
     <li>Open the Environments panel from the activity rail.</li>
     <li>Click <strong>New environment</strong>, type a name and press <kbd>Enter</kbd>.</li>
@@ -216,9 +123,11 @@ apiKey=sk_test_51H...</pre></div>
     <li>Press <strong>Save</strong>. The value is written to the file right away.</li>
 </ol>
 
-<h2 id="session-variables">Session variables</h2>
+<h2>Session variables</h2>
 <p>A post-response script can store a value for later requests with <code>env.set()</code>. The typical case is a login request that keeps the token:</p>
-<div class="code"><pre data-lang="js">env.set("token", res.json().access_token);</pre></div>
+```js
+env.set("token", res.json().access_token);
+```
 <p>Session variables:</p>
 <ul>
     <li>take priority over both environment files;</li>
@@ -229,49 +138,13 @@ apiKey=sk_test_51H...</pre></div>
 </ul>
 <p>To keep a value across restarts, copy it into the environment in the editor.</p>
 
-<h2 id="request-variables">Request variables</h2>
+<h2>Request variables</h2>
 <p>A pre-request script can set a variable for the current send only, with <code>vars.set()</code>. It has the highest priority and is gone when the run ends:</p>
-<div class="code"><pre data-lang="postino">POST {{baseUrl}}/payments
+```postino
+POST {{baseUrl}}/payments
 Idempotency-Key: {{requestId}}
 
 ::: pre
-vars.set("requestId", util.uuid());</pre></div>
+vars.set("requestId", util.uuid());
+```
 <p>Postino recognizes <code>vars.set("name", …)</code> calls with a literal name in the pre-request script, so those variables are not flagged as unknown in the URL bar before you send.</p>
-                <p class="page-meta">Found a mistake? <a href="https://github.com/tanisperez/postino/edit/main/site/docs/environments.html">Edit this page on GitHub</a> or <a href="https://github.com/tanisperez/postino/issues">open an issue</a>.</p>
-                <nav class="pager" aria-label="Previous and next page">
-                    <a class="prev" href="responses.html"><small>Previous</small>Reading responses</a>
-                    <a class="next" href="template-functions.html"><small>Next</small>Template functions</a>
-                </nav>
-            </article>
-        </main>
-
-        <aside class="docs-toc" aria-label="On this page"></aside>
-    </div>
-
-    <footer class="site-footer">
-        <div class="wrap">
-            <span>Postino is open source under the Apache License 2.0.</span>
-            <nav aria-label="Footer">
-                <a href="https://github.com/tanisperez/postino">GitHub</a>
-                <a href="https://github.com/tanisperez/postino/releases">Releases</a>
-                <a href="https://github.com/tanisperez/postino/issues">Report an issue</a>
-                <a href="https://tanis.codes">tanis.codes</a>
-            </nav>
-        </div>
-    </footer>
-
-    <dialog class="search-dialog" aria-label="Search the documentation">
-        <div class="search-box">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <input type="search" placeholder="Search the docs" aria-label="Search the docs" autocomplete="off" spellcheck="false">
-            <kbd>Esc</kbd>
-        </div>
-        <ul class="search-results" role="listbox" aria-label="Results"></ul>
-        <div class="search-foot">
-            <span><kbd>↑</kbd><kbd>↓</kbd>to move</span>
-            <span><kbd>↵</kbd>to open</span>
-            <span><kbd>/</kbd>or <kbd>Ctrl K</kbd>to search from any page</span>
-        </div>
-    </dialog>
-</body>
-</html>

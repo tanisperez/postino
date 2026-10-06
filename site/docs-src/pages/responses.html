@@ -1,0 +1,68 @@
+title: Reading responses
+description: The Postino response pane: status, time and size, pretty and raw bodies, search, headers, test results, console output, warnings and errors.
+---
+<h1>Reading responses</h1>
+<p class="lead">After a send, the bottom half of the request tab shows what came back: a summary, the body, the headers, the results of your tests and the console output of your scripts.</p>
+
+<h2>Summary</h2>
+<p>At the right of the response tab bar:</p>
+<dl>
+    <dt>Status</dt>
+    <dd>The code and its standard reason phrase, such as <strong>200 OK</strong> or <strong>404 Not Found</strong>. The badge is green for 2xx, blue for 3xx, amber for 4xx and red for 5xx. The reason phrase is the standard one for the code, not the text the server sent.</dd>
+    <dt>Time</dt>
+    <dd>The total time from opening the connection to reading the last byte, including any redirects. Shown in milliseconds below one second and in seconds above.</dd>
+    <dt>Size</dt>
+    <dd>The size of the body, after decompression: bytes below 1000, then kB and MB with one decimal. 1 kB is 1000 bytes.</dd>
+</dl>
+
+<h2>Body</h2>
+<ul>
+    <li><strong>Pretty</strong> shows a JSON body indented and highlighted. Pretty printing works on bodies of any size and is computed once per response, not on every redraw.</li>
+    <li><strong>Raw</strong> shows the body exactly as received. A body that is not JSON is always shown raw.</li>
+    <li>A body that is not valid UTF-8, such as an image, is shown as <code>&lt;N bytes, not valid UTF-8&gt;</code>. There is no hex or image viewer.</li>
+    <li>The <strong>copy</strong> button copies the whole body to the clipboard.</li>
+    <li>The <strong>search</strong> button opens a find bar inside the body, to jump between matches in long responses.</li>
+</ul>
+<p>The body is read only. Responses are kept in memory for the open tab and are not saved to disk.</p>
+
+<h2>Headers</h2>
+<p>Every response header, in the order received, with their count in the tab label. Header names are shown as the server sent them; when you read them from a script, <code>res.headers.get()</code> ignores case.</p>
+
+<h2>Tests</h2>
+<p>The <strong>Tests</strong> tab lists every <code>test()</code> of the post-response script, in order, each with a pass or fail mark and, for a failure, the error message. The tab label shows <code>passed/total</code>, green when all passed and red otherwise. The header summarizes the result, for example <strong>3 of 4 tests passed</strong>.</p>
+<p>A failing test does not stop the script: the remaining tests still run. See <a href="scripting.html#writing-tests">writing tests</a>.</p>
+
+<h2>Console</h2>
+<p>One line per <code>console.log()</code>, <code>console.info()</code>, <code>console.warn()</code> or <code>console.error()</code> call, from the pre-request and the post-response scripts, tagged with its level. Objects are printed as JSON.</p>
+```js
+console.log("received", res.size, "bytes in", res.timeMs, "ms");
+console.warn("rate limit left:", res.headers.get("X-RateLimit-Remaining"));
+console.log({ id: res.json().id, status: res.status });
+```
+
+<h2>Warnings</h2>
+<p>Problems that did not stop the request appear in a strip above the body.</p>
+<dl>
+    <dt>Unknown variable</dt>
+    <dd>A <code>{{name}}</code> marker had no value in any variable layer, so it was sent literally as <code>{{name}}</code>. Several unknown variables are grouped in one line. Click <strong>Define</strong> to create the variable in an environment. See <a href="environments.html#defining-a-variable-from-a-request">defining a variable</a>.</dd>
+    <dt>Template function error</dt>
+    <dd>A <code>{{ function() }}</code> call had an unknown name, the wrong number of arguments or a bad argument. The marker was sent as written and the message explains why. See <a href="template-functions.html#errors">template function errors</a>.</dd>
+    <dt>Invalid TLS certificate</dt>
+    <dd>The server's certificate is self-signed, expired or for another host, and the <a href="settings.html#tls">invalid certificates</a> setting is <strong>Send with warning</strong>. The request was sent without verifying the certificate and the warning says what was wrong with it.</dd>
+</dl>
+
+<h2>Errors</h2>
+<p>When a run fails, the response pane says at which step:</p>
+<div class="table"><table>
+    <thead><tr><th>Message</th><th>What happened</th><th>What is shown</th></tr></thead>
+    <tbody>
+        <tr><td>Pre-request script failed</td><td>The pre-request script threw an error or ran out of time or memory</td><td>The error. Nothing was sent.</td></tr>
+        <tr><td>Sending failed</td><td>No response at all: invalid URL, DNS error, connection refused, timeout, too many redirects, rejected certificate</td><td>The error.</td></tr>
+        <tr><td>Post-response script failed</td><td>The post-response script threw outside a <code>test()</code></td><td>The error, plus the response and every test and console line that ran before the error.</td></tr>
+        <tr><td>Response larger than the limit</td><td>The body is bigger than the <a href="settings.html#responses">maximum size</a></td><td>The limit. Raise it in Settings, Requests, Responses.</td></tr>
+    </tbody>
+</table></div>
+<p>An HTTP error status, such as 404 or 500, is not a failure: it is a normal response with its body, headers and tests.</p>
+
+<h2>Large responses</h2>
+<p>Postino reads bodies up to the configured limit, 20 MB by default. Showing a big body costs memory: a 15 MB JSON response uses roughly 30 times its size while it is displayed, because of the editor and its highlighting. If you work with very large payloads, raise the limit only as much as you need.</p>

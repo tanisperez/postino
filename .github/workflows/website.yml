@@ -36,9 +36,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # site/screenshots holds the screenshot tooling and its demo workspace, not pages.
+      # Generates site/docs/ from site/docs-src/. Fails on a broken link or anchor between pages.
+      - name: Build the documentation
+        run: python3 site/docs-src/build.py
+
+      # site/screenshots holds the screenshot tooling and its demo workspace, and
+      # site/docs-src the sources of site/docs, not pages.
       - name: Assemble the site
-        run: rsync -a --exclude screenshots/ --exclude README.md site/ _site/
+        run: rsync -a --exclude screenshots/ --exclude docs-src/ --exclude README.md site/ _site/
 
       - name: Install the repository tools
         if: env.GPG_PRIVATE_KEY != ''

@@ -1,120 +1,19 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Building requests · Postino docs</title>
-    <meta name="description" content="Methods, URLs, query parameters, headers, JSON, XML, text and form bodies, docs, sending and cancelling requests in Postino.">
-    <meta name="color-scheme" content="light dark">
-    <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
-    <link rel="canonical" href="https://postino.tanis.codes/docs/requests.html">
-    <link rel="icon" href="../img/logo.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="../img/icon-512.png">
-    <link rel="preload" href="../fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="../fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/docs.css">
-    <script src="../js/theme.js"></script>
-    <script src="../js/docs.js" defer></script>
-</head>
-<body>
-    <a class="skip" href="#main">Skip to content</a>
-
-    <header class="site-header">
-        <div class="wrap">
-            <a class="brand" href="../">
-                <img src="../img/logo.svg" alt="" width="28" height="28">
-                Postino
-            </a>
-            <button class="search-trigger" type="button" aria-label="Search the documentation">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                <span class="label">Search docs</span>
-                <kbd>Ctrl K</kbd>
-            </button>
-            <nav class="nav" aria-label="Main">
-                <a class="nav-wide" href="../#features">Features</a>
-                <a href="../install.html">Download</a>
-                <a href="./" aria-current="page">Docs</a>
-                <a class="nav-github" href="https://github.com/tanisperez/postino" aria-label="Postino on GitHub">
-                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-                    <span>GitHub</span>
-                </a>
-                <button class="theme-toggle" type="button" aria-label="Dark theme" title="Switch between light and dark">
-                    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-                    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
-                </button>
-            </nav>
-        </div>
-    </header>
-
-    <div class="docs">
-        <button class="docs-menu" type="button" aria-expanded="false" aria-controls="docs-nav">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-            Menu
-        </button>
-        <nav class="docs-nav" id="docs-nav" aria-label="Documentation">
-            <div class="group">
-                <h2>Getting started</h2>
-                <ul>
-                    <li><a href="index.html">Introduction</a></li>
-                    <li><a href="installation.html">Installation</a></li>
-                    <li><a href="quick-start.html">Quick start</a></li>
-                    <li><a href="interface.html">The interface</a></li>
-                </ul>
-            </div>
-            <div class="group">
-                <h2>Guides</h2>
-                <ul>
-                    <li><a href="workspaces.html">Workspaces and collections</a></li>
-                    <li><a href="requests.html" aria-current="page">Building requests</a></li>
-                    <li><a href="responses.html">Reading responses</a></li>
-                    <li><a href="environments.html">Environments and variables</a></li>
-                    <li><a href="template-functions.html">Template functions</a></li>
-                    <li><a href="scripting.html">Scripts and tests</a></li>
-                    <li><a href="load-testing.html">Load testing</a></li>
-                    <li><a href="code-snippets.html">Code snippets</a></li>
-                    <li><a href="postman-import.html">Importing from Postman</a></li>
-                    <li><a href="git.html">Working with git</a></li>
-                </ul>
-            </div>
-            <div class="group">
-                <h2>Reference</h2>
-                <ul>
-                    <li><a href="keyboard-shortcuts.html">Keyboard shortcuts</a></li>
-                    <li><a href="settings.html">Settings</a></li>
-                    <li><a href="file-format.html">File format</a></li>
-                    <li><a href="script-api.html">Script API</a></li>
-                    <li><a href="command-line.html">Command line</a></li>
-                    <li><a href="files-and-folders.html">Files and folders</a></li>
-                </ul>
-            </div>
-            <div class="group">
-                <h2>Help</h2>
-                <ul>
-                    <li><a href="troubleshooting.html">Troubleshooting</a></li>
-                    <li><a href="faq.html">FAQ</a></li>
-                    <li><a href="contributing.html">Contributing</a></li>
-                </ul>
-            </div>
-        </nav>
-
-        <main class="docs-main" id="main">
-            <article class="article">
-                <p class="breadcrumb"><a href="./">Docs</a> / Guides</p>
+title: Building requests
+description: Methods, URLs, query parameters, headers, JSON, XML, text and form bodies, docs, sending and cancelling requests in Postino.
+---
 <h1>Building requests</h1>
 <p class="lead">A request is a method, a URL, headers, query parameters, an optional body, two optional scripts and free notes. This page covers each part as you see it in the request editor, and how it is stored in the file.</p>
 
-<h2 id="method">Method</h2>
+<h2>Method</h2>
 <p>Click the method at the left of the URL bar to pick <code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>, <code>HEAD</code> or <code>OPTIONS</code>. Each standard method has its own color in the sidebar and the tabs.</p>
-<h3 id="custom-methods">Custom methods</h3>
+<h3>Custom methods</h3>
 <p>Choose <strong>Custom…</strong> and type any token, such as <code>PURGE</code>, <code>PROPFIND</code> or <code>REPORT</code>. Press <kbd>Enter</kbd> to confirm. A custom method may contain uppercase letters, digits and symbols but no lowercase letter: <code>M3THOD</code> is valid, <code>purge</code> is not. While the token is invalid, <kbd>Enter</kbd> keeps the editor open so you can fix it, and clicking away discards it.</p>
 
-<h2 id="url">URL</h2>
+<h2>URL</h2>
 <p>Type the full URL, including the scheme: <code>https://api.example.com/v1/users</code>. Use <code>{{variables}}</code> anywhere in it, typically for the host: <code>{{baseUrl}}/v1/users</code>. Variables are drawn as chips. A chip for a variable that does not resolve in the active environment is red; click it to define the variable. See <a href="environments.html#defining-a-variable-from-a-request">defining a variable from a request</a>.</p>
 <p>The URL may already include a query string (<code>/search?q=books</code>). Entries from the Params tab are appended to it when the request is sent.</p>
 
-<h2 id="query-parameters">Query parameters</h2>
+<h2>Query parameters</h2>
 <p>The <strong>Params</strong> tab is a table of keys and values. Click <strong>Add</strong> to add a row, the checkbox to switch a row off without deleting it, and the remove button to delete it.</p>
 <ul>
     <li>Enabled rows are appended to the URL when the request is sent, in table order, with <code>?</code> or <code>&amp;</code> as needed.</li>
@@ -122,29 +21,33 @@
     <li>A row with a key and no value is sent as <code>key=</code>.</li>
     <li>Editing the URL by hand does not change the Params table, and the table does not rewrite the URL bar. The two are combined only when sending.</li>
 </ul>
-<div class="code"><div class="code-title"><span class="dot"></span>books/search.postino</div><pre data-lang="postino">GET {{baseUrl}}/books
+```postino title="books/search.postino"
+GET {{baseUrl}}/books
 
 ::: query
 genre = science-fiction
 limit = 20
-# inStock = true</pre></div>
+# inStock = true
+```
 <p>In the file, a disabled row is a line starting with <code>#</code>. The request above is sent as <code>GET {{baseUrl}}/books?genre=science-fiction&amp;limit=20</code>.</p>
 
-<h2 id="headers">Headers</h2>
+<h2>Headers</h2>
 <p>The <strong>Headers</strong> tab works like Params: add rows, switch them on and off, remove them. Header names and values can contain variables. In the file, headers are the lines right after the request line, written as <code>Name: value</code>, and a disabled header starts with <code>#</code>:</p>
-<div class="code"><pre data-lang="postino">GET {{baseUrl}}/me
+```postino
+GET {{baseUrl}}/me
 Accept: application/json
 Authorization: Bearer {{token}}
-# X-Debug: 1</pre></div>
+# X-Debug: 1
+```
 <p>Headers are sent in the order they appear. The order is kept exactly as written when the file is saved.</p>
 
-<h3 id="automatic-headers">Automatic headers</h3>
+<h3>Automatic headers</h3>
 <ul>
     <li><strong>Content-Type:</strong> when the body is JSON, XML or Form and you have not set a <code>Content-Type</code> header yourself (in any letter case), Postino adds <code>application/json</code>, <code>application/xml</code> or <code>application/x-www-form-urlencoded</code>. A Text body gets no automatic content type: set one if your API needs it.</li>
     <li>The HTTP client adds the usual transport headers, such as <code>Host</code> and <code>Content-Length</code>.</li>
 </ul>
 
-<h3 id="authentication">Authentication</h3>
+<h3>Authentication</h3>
 <p>Postino has no separate Auth tab yet. Authentication is a header:</p>
 <div class="table"><table>
     <thead><tr><th>Scheme</th><th>Header</th></tr></thead>
@@ -156,7 +59,7 @@ Authorization: Bearer {{token}}
 </table></div>
 <p>To log in once and reuse the token, see <a href="scripting.html#log-in-once-reuse-the-token">log in once, reuse the token</a>.</p>
 
-<h2 id="body">Body</h2>
+<h2>Body</h2>
 <p>The <strong>Body</strong> tab starts with a selector: <strong>JSON</strong>, <strong>Text</strong>, <strong>XML</strong>, <strong>Form</strong> or <strong>None</strong>.</p>
 <div class="table"><table>
     <thead><tr><th>Type</th><th>Editor</th><th>Sent as</th><th>In the file</th></tr></thead>
@@ -174,33 +77,37 @@ Authorization: Bearer {{token}}
     <li>Variables and <a href="template-functions.html">template functions</a> work inside any body. In a JSON body, put them inside strings when the value is a string: <code>"name": "{{userName}}"</code>.</li>
     <li>Form fields are encoded after variables are replaced. Spaces become <code>+</code>, as servers expect for this content type. Disabled fields are not sent.</li>
 </ul>
-<div class="code"><div class="code-title"><span class="dot"></span>users/create.postino</div><pre data-lang="postino">POST {{baseUrl}}/users
+```postino title="users/create.postino"
+POST {{baseUrl}}/users
 
 ::: body json
 {
   "name": "{{userName}}",
   "email": "{{userEmail}}",
   "requestId": "{{ uuid() }}"
-}</pre></div>
-<div class="code"><div class="code-title"><span class="dot"></span>auth/token.postino</div><pre data-lang="postino">POST {{authUrl}}/oauth/token
+}
+```
+```postino title="auth/token.postino"
+POST {{authUrl}}/oauth/token
 
 ::: body form
 grant_type = client_credentials
 client_id = {{clientId}}
 client_secret = {{clientSecret}}
-# scope = read write</pre></div>
+# scope = read write
+```
 <div class="callout note">
     <span class="title">Not available yet</span>
     <p>Multipart (<code>multipart/form-data</code>) bodies and file uploads are not supported yet. Postman requests that use them are imported with an empty body and a warning.</p>
 </div>
 
-<h2 id="scripts">Scripts</h2>
+<h2>Scripts</h2>
 <p>The <strong>Pre-request</strong> tab holds JavaScript that runs before the request is sent; it can change the method, URL, headers and body, and set variables. The <strong>Post-response</strong> tab runs after the response arrives; it can check the response with tests and store values for later requests. Both are covered in <a href="scripting.html">Scripts and tests</a>.</p>
 
-<h2 id="docs">Docs</h2>
+<h2>Docs</h2>
 <p>The <strong>Docs</strong> tab is a free text area for notes: what the endpoint does, the permissions it needs, a link to the API reference. It is stored as Markdown in the <code>::: docs</code> section and never sent. It shows in the file, so it also helps anyone reading the request on GitHub.</p>
 
-<h2 id="sending">Sending</h2>
+<h2>Sending</h2>
 <p>Press <strong>Send</strong> or <kbd>Ctrl</kbd> <kbd>Enter</kbd> (<kbd>⌘</kbd> <kbd>Enter</kbd> on macOS). Postino runs these steps, in order:</p>
 <ol class="steps">
     <li><strong>Variables.</strong> Collects the active environment and the variables set by scripts during this session.</li>
@@ -211,7 +118,7 @@ client_secret = {{clientSecret}}
 </ol>
 <p>Send uses what is in the editor, even if it is not saved. While the request is in flight, the button turns into <strong>Cancel</strong>. Sending again, or cancelling, drops the request in flight.</p>
 
-<h3 id="network-behavior">Network behavior</h3>
+<h3>Network behavior</h3>
 <div class="table"><table>
     <thead><tr><th>Aspect</th><th>Behavior</th></tr></thead>
     <tbody>
@@ -226,43 +133,5 @@ client_secret = {{clientSecret}}
     </tbody>
 </table></div>
 
-<h2 id="saving">Saving</h2>
+<h2>Saving</h2>
 <p>Any change marks the tab with a dot and shows <strong>Unsaved changes</strong> in the status bar. Press <kbd>Ctrl</kbd> <kbd>S</kbd> to write the file. Postino writes the file in its canonical form, so saving a request you did not change produces no diff, and the order of sections is always the same. See the <a href="file-format.html">file format</a>.</p>
-                <p class="page-meta">Found a mistake? <a href="https://github.com/tanisperez/postino/edit/main/site/docs/requests.html">Edit this page on GitHub</a> or <a href="https://github.com/tanisperez/postino/issues">open an issue</a>.</p>
-                <nav class="pager" aria-label="Previous and next page">
-                    <a class="prev" href="workspaces.html"><small>Previous</small>Workspaces and collections</a>
-                    <a class="next" href="responses.html"><small>Next</small>Reading responses</a>
-                </nav>
-            </article>
-        </main>
-
-        <aside class="docs-toc" aria-label="On this page"></aside>
-    </div>
-
-    <footer class="site-footer">
-        <div class="wrap">
-            <span>Postino is open source under the Apache License 2.0.</span>
-            <nav aria-label="Footer">
-                <a href="https://github.com/tanisperez/postino">GitHub</a>
-                <a href="https://github.com/tanisperez/postino/releases">Releases</a>
-                <a href="https://github.com/tanisperez/postino/issues">Report an issue</a>
-                <a href="https://tanis.codes">tanis.codes</a>
-            </nav>
-        </div>
-    </footer>
-
-    <dialog class="search-dialog" aria-label="Search the documentation">
-        <div class="search-box">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <input type="search" placeholder="Search the docs" aria-label="Search the docs" autocomplete="off" spellcheck="false">
-            <kbd>Esc</kbd>
-        </div>
-        <ul class="search-results" role="listbox" aria-label="Results"></ul>
-        <div class="search-foot">
-            <span><kbd>↑</kbd><kbd>↓</kbd>to move</span>
-            <span><kbd>↵</kbd>to open</span>
-            <span><kbd>/</kbd>or <kbd>Ctrl K</kbd>to search from any page</span>
-        </div>
-    </dialog>
-</body>
-</html>

@@ -194,17 +194,19 @@ Considered and left for later:
 
 ## The website
 
-`postino.tanis.codes` is the landing page, the install page and the APT and DNF repos, served by
-GitHub Pages.
+`postino.tanis.codes` is the landing page, the install page, the user documentation and the APT
+and DNF repos, served by GitHub Pages.
 
-- Plain static HTML and CSS under `site/`, no JavaScript and no build tool, so a feature and its
-  screenshot and text change in the same pull request.
+- Plain static HTML, CSS and a little JavaScript under `site/`, no dependencies, so a feature and
+  its screenshot and text change in the same pull request. The only build step is
+  `site/docs-src/build.py` (Python standard library), which the workflow runs to generate
+  `site/docs/` and which fails the deploy on a broken link (`site/README.md`).
 - Styled with the design system (`docs/design-system.md`): its color tokens as CSS custom
   properties, light and dark through `prefers-color-scheme`, Geist and Geist Mono served from the
   site (SIL OFL 1.1).
 - Pages: the landing page (features, each with a screenshot) and the install page (one download
-  button per OS, then the `apt`, `dnf`, `yay`, `brew` and `winget` commands). The docs link to
-  `docs/` on GitHub.
+  button per OS, then the `apt`, `dnf`, `yay`, `brew` and `winget` commands) and the user documentation under
+  `/docs/`, with a search built in the browser. The developer documents stay in `docs/` on GitHub.
 - Screenshots are generated, not taken by hand: a script opens the sample workspace, drives the
   app and saves each screen in light and dark, as WebP only, with fixed width and height to avoid
   layout shifts. They are regenerated when the UI changes visibly, not on every release.
