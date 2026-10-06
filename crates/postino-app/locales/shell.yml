@@ -1,4 +1,4 @@
-# Window shell: title bar, status bar, sidebar, tabs, import, command palette. Glossary and rules: plans/i18n.md
+# Window shell: title bar, status bar, sidebar, tabs, import, command palette. Glossary and rules: docs/i18n.md
 _version: 2
 "shell.title_bar.no_workspace":
   en: "Open a folder"

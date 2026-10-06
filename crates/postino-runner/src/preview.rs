@@ -1,8 +1,7 @@
 //! [`preview`], a variables-only resolution of a request: no pre/post script runs and nothing is
-//! sent over the network. Used by the UI to show a live preview of the request (underlining
-//! unknown variables as the user types) and by the code snippet generator, which needs a
-//! [`postino_core::ResolvedRequest`] without running arbitrary scripts or touching the network
-//! (`plans/ui-redesign.md`, phase 1a).
+//! sent over the network. Used by the UI to show a live preview of the request (underlining unknown
+//! variables as the user types) and by the code snippet generator, which needs a
+//! [`postino_core::ResolvedRequest`] without running arbitrary scripts or touching the network.
 
 use std::collections::HashSet;
 

@@ -1,5 +1,5 @@
-//! Remembers recently opened workspace folders in the OS config directory, most recent first
-//! (`plans/ui-redesign.md`, section 1 "Recent workspaces"), so the app can offer to reopen one
+//! Remembers recently opened workspace folders in the OS config directory, most recent first,
+//! so the app can offer to reopen one
 //! automatically at startup and show them in the workspace switcher menu. Also remembers each
 //! recent workspace's last active environment, restored when it is opened again.
 

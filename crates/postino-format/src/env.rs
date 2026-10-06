@@ -1,4 +1,4 @@
-//! Parsing and serialization of `.env` environment files (`plans/mvp.md`, section 3.4).
+//! Parsing and serialization of `.env` environment files.
 //!
 //! An `.env` file holds one flat list of variables: `KEY=value` per line, split on the first
 //! `=`. This module only deals with the content of a single file; merging `<name>.local.env`
@@ -29,7 +29,7 @@ pub enum EnvParseErrorKind {
 /// Both `\n` and `\r\n` line endings are accepted. Blank lines are ignored, and a line whose
 /// first non-space character is `#` is a comment and is also ignored. Every other line is split
 /// on the first `=`: the key is trimmed, the value is kept verbatim (no trimming, no quoting, no
-/// escapes, no interpolation between variables, per `plans/mvp.md` section 3.4). The returned
+/// escapes, no interpolation between variables, see `docs/format.md`). The returned
 /// entries always have `enabled: true`, the `.env` format has no concept of a disabled entry.
 pub fn parse(text: &str) -> Result<Vec<KeyValue>, EnvParseError> {
     let normalized = text.replace("\r\n", "\n");
@@ -69,8 +69,8 @@ pub fn serialize(variables: &[KeyValue]) -> String {
 }
 
 /// A single line of an `.env` file that keeps comments and blank lines, used to edit a file
-/// without losing anything [`parse`]/[`serialize`] would drop (`plans/ui-redesign.md`, phase 1c:
-/// "preserving the order and comments of other lines"). Those two functions above stay as they
+/// without losing anything [`parse`]/[`serialize`] would drop (preserving the order and comments of other
+/// lines). Those two functions above stay as they
 /// are, they are enough for reading an environment to resolve variables, where comments do not
 /// matter.
 #[derive(Debug, Clone, PartialEq, Eq)]

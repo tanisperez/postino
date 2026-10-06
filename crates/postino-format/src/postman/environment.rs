@@ -1,5 +1,5 @@
 //! Mapping a standalone Postman environment export (`*.postman_environment.json`) into an
-//! [`ImportedEnvironment`], `plans/mvp.md` section 6, phase 7.
+//! [`ImportedEnvironment`].
 
 use postino_core::KeyValue;
 
@@ -27,8 +27,8 @@ pub struct ImportedEnvironment {
 
 /// Parses the text of a Postman environment export into an [`ImportedEnvironment`].
 ///
-/// A disabled value (`"enabled": false`) is left out entirely: the `.env` format has no concept
-/// of a disabled entry (`plans/mvp.md` section 3.4), so keeping it would silently turn it on.
+/// A disabled value (`"enabled": false`) is left out entirely: the `.env` format has no concept of
+/// a disabled entry, so keeping it would silently turn it on.
 pub fn parse_environment(text: &str) -> Result<ImportedEnvironment, PostmanError> {
     let raw: RawEnvironment =
         serde_json::from_str(text).map_err(PostmanError::InvalidEnvironmentJson)?;

@@ -1,5 +1,5 @@
 //! Raw serde models of the Postman Collection v2.1 JSON shape (v2.0 files parse the same, since
-//! this only reads the fields we map, `plans/mvp.md` section 6, phase 7).
+//! this only reads the fields we map).
 //!
 //! These types exist purely to be deserialized with `serde_json`, nothing else. The mapping into
 //! [`crate::postman::ImportPlan`] and friends happens in `collection.rs` and `environment.rs`,
@@ -18,8 +18,8 @@ pub(super) struct RawCollection {
     pub(super) auth: Option<RawAuth>,
     #[serde(default)]
     pub(super) variable: Vec<RawVariable>,
-    /// Collection-level `prerequest`/`test` scripts. Never imported (`plans/mvp.md` section 6,
-    /// phase 7 only maps per-request scripts), but their presence is reported as a warning.
+    /// Collection-level `prerequest`/`test` scripts. Never imported (only per-request
+    /// scripts are), but their presence is reported as a warning.
     #[serde(default)]
     pub(super) event: Option<Vec<RawEvent>>,
 }

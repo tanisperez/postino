@@ -1,5 +1,4 @@
-//! Integration tests for [`postino_workspace::Workspace`]'s Postman import, `plans/mvp.md`
-//! section 6, phase 7. `tests/fixtures/postman_collection.json` has a nested folder, a duplicate
+//! Integration tests for [`postino_workspace::Workspace`]'s Postman import. `tests/fixtures/postman_collection.json` has a nested folder, a duplicate
 //! request name (two "Login" requests in the same folder), a `formdata` body (unsupported, must
 //! warn) and a collection variable. `tests/fixtures/postman_environment.json` has one plain
 //! value and one secret value.

@@ -1,5 +1,4 @@
-//! Configuration for a load test run: the requests to send and how hard to hit them
-//! (`plans/ui-redesign.md`, Phase 1d, point 1).
+//! Configuration for a load test run: the requests to send and how hard to hit them.
 
 use std::time::Duration;
 
@@ -7,9 +6,9 @@ use postino_core::Request;
 
 /// One request a load test loops over.
 ///
-/// A single request is one target; a collection is every request of a folder, in tree order
-/// (`plans/ui-redesign.md`, Phase 1d, point 1). Building that list from a workspace is the
-/// caller's job (`postino-app`), this crate only runs whatever [`LoadTarget`]s it is given.
+/// A single request is one target; a collection is every request of a folder, in tree order.
+/// Building that list from a workspace is the caller's job (`postino-app`), this crate only runs
+/// whatever [`LoadTarget`]s it is given.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoadTarget {
     /// A short identifier for this target, used to label its samples in
@@ -33,7 +32,7 @@ impl LoadTarget {
     }
 }
 
-/// The configuration of a load test run (`plans/ui-redesign.md`, Phase 1d, point 1).
+/// The configuration of a load test run.
 ///
 /// `PartialEq` only, not `Eq`: `stop_on_error_rate` is an `f64`.
 #[derive(Debug, Clone, PartialEq)]

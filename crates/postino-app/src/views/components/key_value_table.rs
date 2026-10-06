@@ -1,5 +1,4 @@
-//! [`KeyValueTable`] and [`KeyValueRow`]: the Params/Headers/Form body editor table
-//! (`plans/ui-redesign.md` phase 3).
+//! [`KeyValueTable`] and [`KeyValueRow`]: the Params/Headers/Form body editor table.
 //!
 //! Wraps gpui-kit's [`Checkbox`] for the enabled column; the grid itself (header row, column
 //! widths, the disabled-row strikethrough) is a plain `div` layout colored from
@@ -7,7 +6,7 @@
 //! fixed four-column grid with a trailing "Add" row, not a scrollable data table).
 //!
 //! A row's key/value cell is either plain text ([`KeyValueRow::new`], used by the components
-//! gallery) or an arbitrary element ([`KeyValueRow::with_elements`]), which is how phase 5 wires
+//! gallery) or an arbitrary element ([`KeyValueRow::with_elements`]), which is how the request editor wires
 //! this table to the request editor's live `Input` entities: the disabled-row strikethrough only
 //! applies to the text variant, since a caller-supplied element (an `Input`) owns its own text
 //! styling.

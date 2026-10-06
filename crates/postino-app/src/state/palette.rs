@@ -1,5 +1,4 @@
-//! Plain data behind the command palette (`Ctrl K`/`Cmd K`, `plans/ui-redesign.md` section 2.3
-//! point 1 and phase 7): the items it can show, and the fuzzy matching used to filter and rank
+//! Plain data behind the command palette (`Ctrl K`/`Cmd K`): the items it can show, and the fuzzy matching used to filter and rank
 //! them as the user types. `views/command_palette.rs` renders this; this module only holds the
 //! data and the matching logic, so both are unit tested without a window.
 

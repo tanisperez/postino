@@ -2,7 +2,7 @@
 //!
 //! Application state lives in [`crate::state`], kept free of `gpui` types. These modules render
 //! that state and turn user input (clicks, key bindings) into calls back into
-//! [`root::AppView`], the single top-level view that owns the state for this phase.
+//! [`root::AppView`], the single top-level view that owns the app state.
 
 pub mod command_palette;
 pub mod components;

@@ -1,9 +1,8 @@
-//! Plain state behind the load test tab (`plans/ui-redesign.md` phase 8): what it targets, its
-//! editable configuration fields (with plain-Rust parsing and clamping), and everything needed
-//! to render its dashboard. `views/load_test/` renders this and owns the actual running
-//! [`postino_load::LoadRun`] and its periodic refresh, the same split `views/send.rs` uses for
-//! sending a single request (`state/` stays free of `gpui` types and of workspace file IO, so it
-//! is unit-tested directly).
+//! Plain state behind the load test tab: what it targets, its editable configuration fields (with
+//! plain-Rust parsing and clamping), and everything needed to render its dashboard.
+//! `views/load_test/` renders this and owns the actual running [`postino_load::LoadRun`] and its
+//! periodic refresh, the same split `views/send.rs` uses for sending a single request (`state/`
+//! stays free of `gpui` types and of workspace file IO, so it is unit-tested directly).
 
 use postino_core::Method;
 use postino_load::LoadSnapshot;
@@ -12,9 +11,8 @@ use postino_workspace::Node;
 
 use super::number::{format_decimal, format_signed_decimal};
 
-/// What a load test tab targets (`plans/ui-redesign.md` phase 1d point 1): a single request, or
-/// every request of a folder ("collection"), in tree order. Both variants carry the target's
-/// workspace id.
+/// What a load test tab targets: a single request, or every request of a folder ("collection"), in
+/// tree order. Both variants carry the target's workspace id.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoadTestTarget {
     /// A single request, by its workspace id (for example `"auth/login.postino"`).
@@ -33,9 +31,8 @@ pub enum TargetKind {
     Collection,
 }
 
-/// The state of a load test run, shown as the dashboard header's badge
-/// (`plans/ui-redesign.md` phase 8 item 4: "Running in accent, Finished in success, Stopped in
-/// warning, Failed in danger").
+/// The state of a load test run, shown as the dashboard header's badge: running
+/// in accent, finished in success, stopped in warning, failed in danger.
 #[derive(Debug, Clone, PartialEq)]
 pub enum LoadTestStatus {
     /// No run has started yet for this tab (or a previous run's history entry is being viewed,
@@ -78,8 +75,8 @@ pub const DEFAULT_DURATION_SECS: u64 = 60;
 pub const DEFAULT_RAMP_UP_SECS: u64 = 10;
 /// The default think time in milliseconds, matching the design ("0" per iteration).
 pub const DEFAULT_THINK_TIME_MS: u64 = 0;
-/// The error rate threshold used when "Stop on errors" is on (`plans/ui-redesign.md` phase 8
-/// item 3: "When error rate > 5%").
+/// The error rate threshold used when "Stop on errors" is on (an error rate
+/// above 5%).
 pub const STOP_ON_ERROR_RATE: f64 = 0.05;
 
 /// Smallest number of virtual users accepted, per `postino_load::LoadConfig::vus`'s documented
@@ -136,9 +133,9 @@ pub fn clamp_think_time_ms(raw: &str) -> u64 {
     parse_clamped(raw, 0, THINK_TIME_MS_MAX, DEFAULT_THINK_TIME_MS)
 }
 
-/// The raw text of the config panel's numeric inputs (`plans/ui-redesign.md` phase 8 item 3),
-/// kept as typed so a field never fights the user mid-edit; [`Self::resolved`] parses and clamps
-/// them only when a value is actually needed (starting a run, showing the ramp-up hint).
+/// The raw text of the config panel's numeric inputs, kept as typed so a field never fights the
+/// user mid-edit; [`Self::resolved`] parses and clamps them only when a value is actually needed
+/// (starting a run, showing the ramp-up hint).
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoadTestConfigInputs {
     /// The "Virtual users" field's current text.
@@ -196,8 +193,7 @@ pub struct ResolvedLoadTestConfig {
     pub stop_on_error_rate: Option<f64>,
 }
 
-/// A load test tab's state (`plans/ui-redesign.md` phase 8): held as
-/// `crate::state::tabs::TabKind::LoadTest` inside an open tab.
+/// A load test tab's state: held as `crate::state::tabs::TabKind::LoadTest` inside an open tab.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoadTestTab {
     /// Which kind of target the segmented control shows as selected.
@@ -216,7 +212,7 @@ pub struct LoadTestTab {
     /// The current run's status.
     pub status: LoadTestStatus,
     /// The run number assigned when a run starts, or when a history entry is being viewed
-    /// (`plans/ui-redesign.md` phase 1d point 5: 1-based, matching the saved file name).
+    /// (1-based, matching the saved file name).
     pub run_number: Option<u32>,
     /// The metrics to show: live while running, final once finished or stopped, or a past run's
     /// when viewing history. `None` before the first run.

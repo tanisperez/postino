@@ -1,6 +1,6 @@
-//! The sidebar: a header with "new request" / "new folder" / "import" icon buttons, a filter
-//! input and the workspace's collection tree (`plans/ui-redesign.md` section 2.3 point 2). Right-clicking a tree row still opens the
-//! rename/delete/new request/new folder context menu (`plans/mvp.md`, phase 8).
+//! The sidebar: a header with "new request" / "new folder" / "import" icon buttons, a filter input
+//! and the workspace's collection tree. Right-clicking a tree row still opens the rename/delete/new
+//! request/new folder context menu.
 
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -30,8 +30,8 @@ use crate::views::components::{
 
 use super::root::AppView;
 
-/// The extension every request file uses (`plans/mvp.md`, section 3.2), used here only to tell a
-/// request row from a folder row when rendering.
+/// The extension every request file uses, used here only to tell a request row from a folder row
+/// when rendering.
 const REQUEST_EXTENSION: &str = ".postino";
 
 impl AppView {
@@ -131,9 +131,8 @@ impl AppView {
                             .context_menu(edit_menu(&self.sidebar_filter_input, cx))
                             .h(px(SIDEBAR_FILTER_HEIGHT))
                             .bordered(false)
-                            // Transparent so only the outer pill shows: without this, the
-                            // `Input`'s own background paints a second, visible box inside it
-                            // (`plans/ui-redesign.md` phase 5, reviewer fix item 9).
+                            // Transparent so only the outer pill shows: without this, the `Input`'s
+                            // own background paints a second, visible box inside it.
                             .bg(palette.bg.opacity(0.0)),
                     ),
             )
@@ -218,7 +217,7 @@ fn build_tree_item(node: &Node, expansion: Option<&HashMap<String, bool>>) -> Tr
 
 /// Turns the workspace's collection tree into the `TreeItem`s shown while the sidebar filter is
 /// non-empty: only the ids `state::sidebar_filter::visible_ids` returns, every included folder
-/// forced expanded so a match is never hidden (`plans/ui-redesign.md` section 2.3 point 2).
+/// forced expanded so a match is never hidden.
 pub(crate) fn build_filtered_tree_items(nodes: &[Node], query: &str) -> Vec<TreeItem> {
     let visible = state::sidebar_filter::visible_ids(nodes, query);
     build_filtered_items(nodes, &visible)
@@ -252,8 +251,8 @@ fn request_label(request: &RequestEntry) -> String {
 
 /// Collects every request's method by id, for [`render_tree_row`] to look up: `TreeItem` (built by
 /// [`build_tree_item`]/[`build_filtered_item`]) has no field for it, so the tree row renderer
-/// looks it up from this side map instead (`plans/ui-redesign.md` section 2.3 point 2: "method
-/// label 34 wide for requests").
+/// looks it up from this side map instead (the method
+/// label is 34 px wide for requests).
 fn collect_methods(nodes: &[Node], into: &mut HashMap<String, Method>) {
     for node in nodes {
         match node {
@@ -270,22 +269,21 @@ fn collect_methods(nodes: &[Node], into: &mut HashMap<String, Method>) {
 /// Width of a row's leading icon slot: a folder's chevron, or an empty spacer of the same width
 /// for a request, so a root-level request's method label starts at the same x as a sibling
 /// folder's chevron does (the slot is always this wide, even when
-/// empty, `plans/ui-redesign.md` phase 5, reviewer fix item C).
+/// empty).
 const TREE_ROW_ICON_WIDTH: f32 = 13.0;
 
 /// Extra space between a request row's method and its name, on top of the row's 4px gap.
 const TREE_ROW_METHOD_GAP: f32 = 2.0;
 
-/// Renders one visible row of the sidebar tree
-/// (`plans/ui-redesign.md` phase 5, reviewer fix item 8): a folder shows a chevron (down when
-/// expanded, right when collapsed) and no folder icon; a request shows no file icon, just the
-/// method at its natural width, a fixed gap from its name (nothing when `method` is `None`, a
-/// broken request), and the label built by
-/// [`build_tree_item`]/[`build_filtered_item`] (already carrying the "(broken)" marker when it
-/// applies), indented 16 px per depth level. The row itself is exactly [`TREE_ROW_HEIGHT`] tall:
-/// `ListItem`'s own default padding is overridden below, since it would otherwise add to that
-/// height. Selected rows get `accent_text` label color (the `accent_subtle` background and the
-/// `hover` background come from `ListItem`'s own theme mapping, set up in phase 2).
+/// Renders one visible row of the sidebar tree: a folder shows a chevron (down when expanded, right
+/// when collapsed) and no folder icon; a request shows no file icon, just the method at its natural
+/// width, a fixed gap from its name (nothing when `method` is `None`, a broken request), and the
+/// label built by [`build_tree_item`]/[`build_filtered_item`] (already carrying the "(broken)"
+/// marker when it applies), indented 16 px per depth level. The row itself is exactly
+/// [`TREE_ROW_HEIGHT`] tall: `ListItem`'s own default padding is overridden below, since it would
+/// otherwise add to that height. Selected rows get `accent_text` label color (the `accent_subtle`
+/// background and the `hover` background come from `ListItem`'s own theme mapping, set up in
+/// `theme`).
 fn render_tree_row(
     entry: &TreeEntry,
     selected: bool,
@@ -532,8 +530,7 @@ fn open_name_dialog(
 }
 
 /// Opens the dialog asking for a new request's name, inside `parent` (the workspace root when
-/// `None`). Also called from the open-tabs bar's trailing "+" button (`plans/ui-redesign.md`
-/// section 2.3 point 3).
+/// `None`). Also called from the open-tabs bar's trailing "+" button.
 pub(crate) fn open_new_request_dialog(
     view: WeakEntity<AppView>,
     parent: Option<String>,
@@ -555,8 +552,8 @@ pub(crate) fn open_new_request_dialog(
     );
 }
 
-/// Opens the dialog asking for a new folder's name, inside `parent`. Also called from the
-/// command palette's "New folder" action (`plans/ui-redesign.md` phase 7 item 1).
+/// Opens the dialog asking for a new folder's name, inside `parent`. Also called from the command
+/// palette's "New folder" action.
 pub(crate) fn open_new_folder_dialog(
     view: WeakEntity<AppView>,
     parent: Option<String>,

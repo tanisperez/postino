@@ -1,5 +1,5 @@
 //! A file name sanitization helper shared by [`crate::Workspace`] (new requests and folders) and
-//! the Postman importer (`plans/mvp.md`, section 6, phases 3 and 7).
+//! the Postman importer.
 
 /// Device names reserved by Windows, checked case-insensitively. A file or folder named exactly
 /// one of these (ignoring case) cannot be created on Windows, regardless of extension.
@@ -11,7 +11,7 @@ const WINDOWS_RESERVED_NAMES: &[&str] = &[
 /// Characters not allowed in a file or folder name on Windows, plus control characters.
 const FORBIDDEN_CHARACTERS: &str = "<>:\"/\\|?*";
 
-/// The maximum length, in characters, of a sanitized name (`plans/mvp.md`, section 6, phase 3).
+/// The maximum length, in characters, of a sanitized name.
 const MAX_NAME_LENGTH: usize = 120;
 
 /// The fallback name used when sanitizing leaves nothing usable, for example because the input

@@ -1,10 +1,9 @@
-//! Named layout constants for `plans/ui-redesign.md` section 2.2 (heights, widths, radii). Views
+//! Named layout constants (heights, widths, radii, listed in `docs/design-system.md`). Views
 //! read sizes only from here, never as a literal, so every size in the app traces back to one
 //! place, the same rule the palette (`theme::palette`) follows for color.
 //!
-//! Nothing in this crate calls these yet: the shell and components that lay themselves out with
-//! them are built in phases 3 and 4. Until then they are unused, so this file allows dead code
-//! for itself rather than leaving the constants half-wired or deleting work phase 3 needs.
+//! Some constants are kept for sizes the design defines even when no view reads them yet, so
+//! this file allows dead code for itself.
 #![allow(dead_code)]
 
 /// Height of the title bar.

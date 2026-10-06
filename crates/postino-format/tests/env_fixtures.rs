@@ -1,4 +1,4 @@
-//! Fixture-based tests for `.env` environment file parsing (`plans/mvp.md`, section 3.4).
+//! Fixture-based tests for `.env` environment file parsing.
 #![allow(clippy::expect_used)]
 
 use postino_core::KeyValue;

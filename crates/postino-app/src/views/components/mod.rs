@@ -1,9 +1,8 @@
-//! Reusable, styled components (`plans/ui-redesign.md` phase 3): one file per component, each a
-//! `RenderOnce` struct with builder methods, reading colors only from
-//! [`crate::theme::Palette`] and sizes only from [`crate::theme::metrics`].
+//! Reusable, styled components: one file per component, each a `RenderOnce` struct with builder
+//! methods, reading colors only from [`crate::theme::Palette`] and sizes only from
+//! [`crate::theme::metrics`].
 //!
-//! None of these are wired into the real views yet (phases 4 and 5 do that); the
-//! `POSTINO_OPEN=components` debug hook (`gallery`) renders every one of them in every state, to
+//! The `POSTINO_OPEN=components` debug hook (`gallery`) renders every one of them in every state, to
 //! check against `docs/design-system.md` by eye.
 
 pub mod buttons;

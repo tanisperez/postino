@@ -12,7 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = { workspace = true }
-# Only the tree-sitter grammars the request/response/script editors actually highlight (Phase 9):
+# Only the tree-sitter grammars the request/response/script editors actually highlight:
 # JSON and XML bodies, JavaScript pre/post scripts. "tree-sitter-html" is the closest available
 # grammar to XML in this version of gpui-component (there is no dedicated XML grammar), used as a
 # readable approximation for `::: body xml`. Both features pull in the base "tree-sitter" feature,

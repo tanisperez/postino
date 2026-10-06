@@ -94,12 +94,12 @@ pub fn set_body_text(request: &mut Request, text: String) {
 }
 
 /// Whether `token` is a valid custom HTTP method for the `.postino` file format: non-empty and
-/// without a lowercase ASCII letter, the same rule `postino_format`'s parser enforces on a
-/// request line's method token (`crates/postino-format/src/format.rs`'s `InvalidMethod` check).
-/// Not imported from there directly: that check is private to the parser, and duplicating one
-/// boolean condition here is simpler than exposing it as a new public API only this inline
-/// method editor needs. Used by the request editor's "Custom..." method input
-/// (`plans/ui-redesign.md` phase 5, reviewer fix item 6) to decide whether to commit an edit.
+/// without a lowercase ASCII letter, the same rule `postino_format`'s parser enforces on a request
+/// line's method token (`crates/postino-format/src/format.rs`'s `InvalidMethod` check). Not
+/// imported from there directly: that check is private to the parser, and duplicating one boolean
+/// condition here is simpler than exposing it as a new public API only this inline method editor
+/// needs. Used by the request editor's "Custom..." method input to decide whether to commit an
+/// edit.
 pub fn is_valid_custom_method_token(token: &str) -> bool {
     !token.is_empty() && !token.chars().any(|c| c.is_ascii_lowercase())
 }
@@ -128,7 +128,7 @@ pub fn remove_row(rows: &mut Vec<KeyValue>, index: usize) {
 /// Rebuilds `request.url`'s query string from `request.query`, keeping everything before the
 /// first `?` unchanged. Only enabled rows with a non-empty key are included, in table order.
 ///
-/// This is the one direction of the Params/URL sync `plans/mvp.md` Phase 9 asks for: the Params
+/// This is the one direction of the Params/URL sync: the Params
 /// table is the source of truth, and editing it rewrites the URL bar. Editing the URL bar
 /// directly does not rewrite the table back, on purpose: the URL is free text and may contain a
 /// `{{ }}` marker spanning what would otherwise be several parameters (for example

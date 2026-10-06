@@ -1,6 +1,5 @@
 //! Postino, the desktop HTTP client. Binary entry point: initializes `gpui`, the theme, the main
-//! window, and opens the workspace given on the command line or remembered from the last run
-//! (`plans/mvp.md`, phase 8).
+//! window, and opens the workspace given on the command line or remembered from the last run.
 
 // A GUI application on Windows: never open a console window behind the main window.
 #![cfg_attr(windows, windows_subsystem = "windows")]
@@ -86,7 +85,7 @@ fn main() {
     // window controls, checkboxes) renders as empty space. `gpui_kit::assets::Assets` only
     // embeds the small curated subset generated from `default-icons.txt`
     // (`gpui-kit-assets-0.6.6/src/native_assets.rs`); `AllAssets` embeds the complete Lucide
-    // catalog (`gpui_kit::assets::IconName`, 1830 icons) that `plans/ui-redesign.md`'s design
+    // catalog (`gpui_kit::assets::IconName`, 1830 icons) that the design
     // uses (`gauge`, `wand-sparkles`, `send-horizontal`, ...), a strict superset of the curated
     // one, so switching to it does not affect any icon that already worked.
     let app = gpui_kit::application().with_assets(gpui_kit::assets::AllAssets);
@@ -100,12 +99,11 @@ fn main() {
         bind_keys(cx);
         theme::install(cx, &settings);
 
-        // Centered at 1440x900 logical, capped to 90% of the display's visible bounds
-        // (`plans/ui-redesign.md` phase 5, reviewer fix item 10): `WindowBounds::centered`
-        // only caps at 100% of the display (`Bounds::centered`'s own `size.min(&visible_
-        // bounds.size)`), which is not tight enough to keep the title bar, status bar and
-        // sidebar footer on screen on a display where 1440x900 is close to the full visible
-        // area.
+        // Centered at 1440x900 logical, capped to 90% of the display's visible bounds:
+        // `WindowBounds::centered` only caps at 100% of the display (`Bounds::centered`'s own
+        // `size.min(&visible_bounds.size)`), which is not tight enough to keep the title bar,
+        // status bar and sidebar footer on screen on a display where 1440x900 is close to the full
+        // visible area.
         //
         // `cx.primary_display()` (and `cx.displays()`) can legitimately return nothing here:
         // confirmed with temporary logging on this session's KDE Plasma/Wayland setup, where
@@ -183,14 +181,13 @@ fn main() {
                     })
                     .detach();
 
-                // Always listen for OS appearance changes, live, regardless of the theme
-                // choice at startup: the Settings view (`plans/ui-redesign.md` phase 6) can
-                // switch the choice at any time afterwards, and "System" must start following
-                // the OS the moment it is picked, even if the app launched in Light or Dark.
-                // Checking the *current* setting on every OS change (instead of only
-                // attaching this observer when `theme_choice == System`) is what lets Light
-                // and Dark stop following it without detaching anything: the observer simply
-                // no-ops while they are active.
+                // Always listen for OS appearance changes, live, regardless of the theme choice at
+                // startup: the Settings view can switch the choice at any time afterwards, and
+                // "System" must start following the OS the moment it is picked, even if the app
+                // launched in Light or Dark. Checking the *current* setting on every OS change
+                // (instead of only attaching this observer when `theme_choice == System`) is what
+                // lets Light and Dark stop following it without detaching anything: the observer
+                // simply no-ops while they are active.
                 let weak = view.downgrade();
                 window
                     .observe_window_appearance(move |window, cx| {

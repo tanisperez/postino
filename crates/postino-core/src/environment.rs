@@ -3,8 +3,8 @@
 use crate::key_value::KeyValue;
 
 /// A named environment: the variables loaded from `environments/<name>.env`, merged with the
-/// optional `<name>.local.env` (see `plans/mvp.md`, section 3.4). Loading and merging happen in
-/// `postino-workspace`, this type just holds the result.
+/// optional `<name>.local.env`. Loading and merging happen in `postino-workspace`, this type just
+/// holds the result.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Environment {
     /// The environment name, the file name without `.env`.

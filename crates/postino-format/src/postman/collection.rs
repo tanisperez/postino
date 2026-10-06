@@ -1,5 +1,5 @@
 //! Mapping a Postman collection (v2.1, v2.0 accepted when it parses the same) into an
-//! [`ImportPlan`], `plans/mvp.md` section 6, phase 7.
+//! [`ImportPlan`]. The mapping is described in `docs/postman-import.md`.
 
 use postino_core::{Body, KeyValue, Method, Request};
 
@@ -10,9 +10,8 @@ use super::model::{
 };
 use super::value::value_to_text;
 
-/// The fixed first line written on top of every imported script, `plans/mvp.md` section 6,
-/// phase 7: Postman's `pm.*` API has no equivalent in Postino, so the script body is commented
-/// out rather than translated.
+/// The fixed first line written on top of every imported script: Postman's `pm.*`
+/// API has no equivalent in Postino, so the script body is commented out rather than translated.
 const IMPORT_SCRIPT_HEADER: &str =
     "// Imported from Postman. The pm.* API is not supported, adapt it.";
 
@@ -81,8 +80,8 @@ pub fn parse_collection(text: &str) -> Result<ImportPlan, PostmanError> {
 /// requests, resolving auth inheritance as it goes.
 ///
 /// `inherited_auth` is the auth block that applies to a request in this list when the request
-/// itself has no auth of its own or explicitly uses `"inherit"` (`plans/mvp.md` section 6,
-/// phase 7). `path` is a human readable location, used to prefix warnings.
+/// itself has no auth of its own or explicitly uses `"inherit"`. `path` is a human readable
+/// location, used to prefix warnings.
 fn map_items(
     items: &[RawItem],
     inherited_auth: Option<&RawAuth>,
@@ -120,7 +119,7 @@ fn map_items(
 
 /// Warns about a `prerequest`/`test` event found at the collection or folder level.
 ///
-/// `plans/mvp.md` section 6, phase 7 only maps per-request scripts: a collection- or
+/// Only per-request scripts are imported: a collection- or
 /// folder-level script has no single request to attach to, so it is never imported. This only
 /// records that it was dropped, naming `level` (`"collection"` or `"folder"`) and `name`, so the
 /// user knows some code was left behind.
@@ -143,9 +142,8 @@ fn warn_about_dropped_events(
 }
 
 /// Resolves which auth block applies to a request: its own, unless it is absent or explicitly
-/// `"inherit"`, in which case the collection/folder level auth applies instead
-/// (`plans/mvp.md` section 6, phase 7: "collection and folder level auth inherited by requests
-/// that use inherit or no auth").
+/// `"inherit"`, in which case the collection/folder level auth applies instead.
+/// Collection and folder level auth is inherited by requests that use `inherit` or no auth.
 fn effective_auth<'a>(
     own_auth: Option<&'a RawAuth>,
     inherited_auth: Option<&'a RawAuth>,
@@ -212,7 +210,7 @@ fn parse_method(token: &str) -> Method {
 }
 
 /// Maps a `url`, splitting the query string out of `raw` and combining it with the structured
-/// `query` array, `plans/mvp.md` section 6, phase 7: "url.raw without query plus url.query".
+/// `query` array: `url.raw` without its query string, plus `url.query`.
 fn map_url(
     url: Option<&RawUrl>,
     path: &str,
@@ -285,8 +283,8 @@ fn parse_query_string(query: &str) -> Vec<KeyValue> {
         .collect()
 }
 
-/// Maps an `auth` block into the headers it implies (`plans/mvp.md` section 6, phase 7: bearer,
-/// basic and apikey in header location become headers).
+/// Maps an `auth` block into the headers it implies: bearer,
+/// basic and apikey in header location become headers.
 fn auth_headers(auth: &RawAuth, path: &str, warnings: &mut Vec<String>) -> Vec<KeyValue> {
     match auth.kind.as_str() {
         "bearer" => {
@@ -347,7 +345,7 @@ fn find_param(
         .map(|param| value_to_text(param.value.as_ref(), context, warnings))
 }
 
-/// Maps a `body` object into a Postino [`Body`], `plans/mvp.md` section 6, phase 7.
+/// Maps a `body` object into a Postino [`Body`].
 fn map_body(body: Option<&RawBody>, path: &str, warnings: &mut Vec<String>) -> Body {
     let Some(body) = body else {
         return Body::None;
@@ -398,10 +396,10 @@ fn map_raw_body(body: &RawBody) -> Body {
     }
 }
 
-/// Builds the `pre` or `post` script for the events whose `listen` matches `kind`
-/// (`"prerequest"` or `"test"`), commented out line by line with the fixed header
-/// (`plans/mvp.md` section 6, phase 7). Returns an empty string when there is no such event, or
-/// its script has no lines, so the section is omitted when the request is serialized.
+/// Builds the `pre` or `post` script for the events whose `listen` matches `kind` (`"prerequest"`
+/// or `"test"`), commented out line by line with the fixed header. Returns an empty string when
+/// there is no such event, or its script has no lines, so the section is omitted when the request
+/// is serialized.
 fn map_script(events: &[RawEvent], kind: &str) -> String {
     let lines: Vec<String> = events
         .iter()

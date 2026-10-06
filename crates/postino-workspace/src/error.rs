@@ -11,7 +11,7 @@ pub enum WorkspaceError {
 
     /// An id is empty, absolute, or would escape the workspace root, for example because it
     /// contains a `..` component. Ids must be plain relative paths made of normal components
-    /// (`plans/mvp.md`, section 6, phase 3: "reject paths that escape it").
+    /// (paths that escape the workspace are rejected).
     #[error("{0:?} is not a valid workspace id")]
     InvalidId(String),
 

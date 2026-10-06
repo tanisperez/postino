@@ -1,7 +1,6 @@
-//! The status bar at the bottom of the main window (`plans/ui-redesign.md` section 2.3 point 6):
-//! the workspace path with a `hard-drive` icon and, inside a git repository, the branch with a
-//! `git-branch` icon in the accent color, a spacer, "Unsaved changes" when the active tab is
-//! dirty, and "UTF-8".
+//! The status bar at the bottom of the main window: the workspace path with a `hard-drive` icon
+//! and, inside a git repository, the branch with a `git-branch` icon in the accent color, a spacer,
+//! "Unsaved changes" when the active tab is dirty, and "UTF-8".
 
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;

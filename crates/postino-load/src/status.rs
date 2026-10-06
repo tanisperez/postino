@@ -16,8 +16,7 @@ pub enum StatusKey {
 }
 
 impl StatusKey {
-    /// Whether a sample classified as `self` counts as an error, per
-    /// `plans/ui-redesign.md`, Phase 1d, point 3: no response at all
+    /// Whether a sample classified as `self` counts as an error, no response at all
     /// ([`StatusKey::Timeout`], [`StatusKey::Failed`]), or an HTTP status of 400 or above.
     #[must_use]
     pub fn is_error(&self) -> bool {

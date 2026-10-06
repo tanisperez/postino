@@ -1,6 +1,6 @@
 //! Plain Rust application state: everything the app remembers besides what `gpui` itself tracks
 //! (focus, layout, animation state, ...). Kept free of `gpui` types so it is unit-tested without
-//! a window (`plans/mvp.md`, phase 8: "unit-tested without gpui"). `views/` wraps this in `gpui`
+//! a window. `views/` wraps this in `gpui`
 //! entities and renders it.
 
 pub mod about;
@@ -50,13 +50,13 @@ pub struct AppState {
     pub tabs: TabsState,
     /// The name of the active environment, `None` for "No environment".
     pub active_environment: Option<String>,
-    /// Environment overrides scripts have set during this session (`plans/mvp.md`, section 3.5,
-    /// layer 2). Carried across requests so, for example, a login token a post script sets with
+    /// Environment overrides scripts have set during this session (the second
+    /// variable layer in `docs/format.md`). Carried across requests so, for example, a login token a post script sets with
     /// `env.set` is visible to the next request. The MVP never writes this to disk.
     pub session_env: SessionEnv,
-    /// The current appearance settings (`plans/ui-redesign.md` phase 6): theme choice and fonts.
-    /// Loaded once at startup (`main.rs`) and from then on only changed by the Settings view,
-    /// which also persists every change to `settings.toml`.
+    /// The current appearance settings: theme choice and fonts. Loaded once at startup (`main.rs`)
+    /// and from then on only changed by the Settings view, which also persists every change to
+    /// `settings.toml`.
     pub settings: Settings,
     /// The in-app updater: the downloaded update waiting for a restart, if any.
     pub update: update::UpdateState,

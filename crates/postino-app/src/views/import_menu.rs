@@ -1,6 +1,6 @@
-//! The "Import" dropdown in the sidebar's header: Postman collection and environment import, with the
-//! result shown in an in-app dialog (`plans/mvp.md`, Phase 9). The actual import call goes
-//! through `state::import`, the same functions its own unit tests exercise.
+//! The "Import" dropdown in the sidebar's header: Postman collection and environment import, with
+//! the result shown in an in-app dialog. The actual import call goes through `state::import`, the
+//! same functions its own unit tests exercise.
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
@@ -68,10 +68,9 @@ impl AppView {
 }
 
 /// Opens a native file picker for a Postman export, imports the chosen file into the open
-/// workspace, refreshes the sidebar, and shows the import report in an in-app dialog (or a
-/// failure in the usual error banner). Also called from the command palette's "Import Postman
-/// collection..."/"Import Postman environment..." actions (`plans/ui-redesign.md` phase 7 item
-/// 1).
+/// workspace, refreshes the sidebar, and shows the import report in an in-app dialog (or a failure
+/// in the usual error banner). Also called from the command palette's "Import Postman
+/// collection..."/"Import Postman environment..." actions.
 pub(crate) fn pick_and_import(
     view: WeakEntity<AppView>,
     kind: ImportKind,

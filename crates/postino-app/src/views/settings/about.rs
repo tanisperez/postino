@@ -1,8 +1,7 @@
-//! The "About" pane of the Settings modal: the version, the release links and the updater
-//! (the navigation rail plan, `plans/ui-redesign.md`). The updater logic is
-//! `state::update` and `views/update.rs`; this only renders it and forwards the clicks to the same
-//! flows the status bar and the command palette use. Everything it shows is captured once per
-//! frame from [`AppView`] as plain data ([`AboutPane`]), with no IO.
+//! The "About" pane of the Settings modal: the version, the release links and the updater. The
+//! updater logic is `state::update` and `views/update.rs`; this only renders it and forwards the
+//! clicks to the same flows the status bar and the command palette use. Everything it shows is
+//! captured once per frame from [`AppView`] as plain data ([`AboutPane`]), with no IO.
 
 use gpui_kit::component::switch::Switch;
 use gpui_kit::component::*;

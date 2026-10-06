@@ -1,5 +1,4 @@
-//! [`DocumentTab`] and [`DocumentTabs`]: the open-tab strip above the request editor
-//! (`plans/ui-redesign.md` phase 3).
+//! [`DocumentTab`] and [`DocumentTabs`]: the open-tab strip above the request editor.
 //!
 //! Custom element, for the same reason as [`super::underline_tabs::UnderlineTabs`]: the active
 //! tab's inset accent line needs an explicit `BoxShadow`, and the design's colors (transparent
@@ -112,7 +111,7 @@ impl DocumentTab {
     }
 
     /// Sets a hover tooltip, for example the request's full workspace-relative id (the tab's own
-    /// label is only its file stem, `plans/ui-redesign.md` section 2.3 point 3).
+    /// label is only its file stem).
     pub fn tooltip(mut self, tooltip: impl Into<SharedString>) -> Self {
         self.tooltip = Some(tooltip.into());
         self

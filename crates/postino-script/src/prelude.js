@@ -1,6 +1,6 @@
 "use strict";
 
-// Embedded prelude for the Postino script sandbox (see plans/mvp.md, section 4).
+// Embedded prelude for the Postino script sandbox.
 //
 // This file builds the whole JavaScript-facing API (req, res, vars, env, test, expect,
 // console) on top of a single plain data object, `globalThis.__input`, set by Rust before this

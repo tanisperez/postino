@@ -1,10 +1,9 @@
-//! [`SegmentedControl`] and [`SegmentedItem`]: the Pretty/Raw and JSON/Text/XML/Form/None
-//! switches (`plans/ui-redesign.md` phase 3).
+//! [`SegmentedControl`] and [`SegmentedItem`]: the Pretty/Raw and JSON/Text/XML/Form/None switches.
 //!
 //! Custom element: gpui-kit's `Tab`/`TabBar` `.segmented()` variant would need every one of its
 //! resolved colors mapped through `ThemeConfigColors`, and the selected item's shadow the design
 //! uses is a small, fixed `rgba(0,0,0,.12)` value with no equivalent `ThemeConfigColors` field
-//! (`plans/ui-redesign-spikes.md` section 1.1 lists no shadow field at all), so this is built as
+//! (`ThemeConfigColors` has no shadow field at all, see `docs/gpui-notes.md`), so this is built as
 //! plain `div`s colored from [`crate::theme::Palette`], with the one shadow value written here
 //! directly (not a semantic palette token, same footing as the design's own radius constants).
 

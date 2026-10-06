@@ -1,4 +1,4 @@
-//! Mapping tests for `postino_format::postman`, `plans/mvp.md` section 6, phase 7.
+//! Mapping tests for `postino_format::postman` (see `docs/postman-import.md`).
 //!
 //! `tests/fixtures/postman_collection.json` is a realistic collection: nested folders, every
 //! body mode, auth inheritance (collection, folder and per-request `inherit`/`noauth`),

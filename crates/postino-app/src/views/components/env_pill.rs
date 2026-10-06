@@ -1,5 +1,4 @@
-//! [`EnvPill`] and [`EnvMenuItem`]: the title bar's environment picker
-//! (`plans/ui-redesign.md` phase 3).
+//! [`EnvPill`] and [`EnvMenuItem`]: the title bar's environment picker.
 //!
 //! Wraps gpui-kit's [`Button`] (the pill trigger) and [`PopupMenu`]/[`PopupMenuItem::element`]
 //! (the dropdown): both take arbitrary child content, so the dot, check mark and shortcut hint
@@ -66,7 +65,7 @@ impl EnvMenuItem {
     }
 
     /// Sets the click handler.
-    #[allow(dead_code)] // wired by phase 4, once EnvPill backs the real environment picker
+    #[allow(dead_code)] // The environment picker handles clicks through its own menu.
     pub fn on_click(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_click = Some(Rc::new(handler));
         self

@@ -1,4 +1,4 @@
-//! [`Card`]: a raised panel with a border and radius 10 (`plans/ui-redesign.md` phase 3).
+//! [`Card`]: a raised panel with a border and radius 10.
 //!
 //! Custom element: a plain styled `div` wrapper, since a "card" here is just a bordered,
 //! `raised` container with no behavior of its own.

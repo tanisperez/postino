@@ -41,8 +41,8 @@ pub struct Folder {
     pub id: String,
     /// The folder name (the directory name).
     pub name: String,
-    /// The folder's direct children, already sorted: folders first, then requests, natural sort
-    /// by name within each group (`plans/mvp.md`, section 3.2, grammar rule 8).
+    /// The folder's direct children, already sorted: folders first, then requests, natural sort by
+    /// name within each group.
     pub children: Vec<Node>,
 }
 

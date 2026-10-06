@@ -1,6 +1,5 @@
-//! The load test tab's left config panel (`plans/ui-redesign.md` phase 8 item 3): the target
-//! segmented control and picker, the numeric fields, the "Stop on errors" switch, and the
-//! Start/Stop run button.
+//! The load test tab's left config panel: the target segmented control and picker, the numeric
+//! fields, the "Stop on errors" switch, and the Start/Stop run button.
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::input::{Input, InputEvent, InputState};
@@ -22,7 +21,7 @@ use crate::views::components::{
 
 use crate::views::root::AppView;
 
-/// Width of the config panel (`plans/ui-redesign.md` phase 8 item 3: "280 wide").
+/// Width of the config panel (280 px).
 const PANEL_WIDTH: f32 = 280.0;
 
 /// The `gpui` entities behind a load test tab's editable numeric fields, rebuilt only when the
@@ -141,10 +140,9 @@ impl AppView {
 
         // Split in two: a scrollable fields area (`flex_1().min_h_0().overflow_y_scroll()`) and a
         // `flex_none` footer holding the Start/Stop button and the note below it. Previously
-        // everything (including the button) was one `v_flex` with a `div().flex_1()` spacer
-        // pushing the button down; with no scroll anywhere, a short window simply clipped the
-        // button and note below the visible area instead of keeping them reachable
-        // (`plans/ui-redesign.md` phase 8's responsiveness fix).
+        // everything (including the button) was one `v_flex` with a `div().flex_1()` spacer pushing
+        // the button down; with no scroll anywhere, a short window simply clipped the button and
+        // note below the visible area instead of keeping them reachable.
         v_flex()
             .flex_none()
             .w(px(PANEL_WIDTH))
@@ -547,7 +545,7 @@ fn render_stop_on_error_row(
 }
 
 /// The primary "Start run" button, replaced by a danger-text "Stop run" secondary button while
-/// running (`plans/ui-redesign.md` phase 8 item 3).
+/// running.
 fn render_start_stop_button(
     weak: WeakEntity<AppView>,
     tab_id: &str,

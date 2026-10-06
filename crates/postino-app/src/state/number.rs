@@ -1,6 +1,6 @@
-//! Numbers written for the active language (`plans/i18n.md`, phase 4): decimal and grouping
-//! separators from CLDR data through `icu_decimal`. `1,234.5` in English, `1234,5` and
-//! `12.345,5` in Spanish, and so on. Unit symbols stay as the caller writes them.
+//! Numbers written for the active language: decimal and grouping separators from CLDR data through
+//! `icu_decimal`. `1,234.5` in English, `1234,5` and `12.345,5` in Spanish, and so on. Unit symbols
+//! stay as the caller writes them.
 //!
 //! The rounding is Rust's own (`{:.N}`), so the digits are exactly the ones the UI showed
 //! before; the formatted text is then handed to ICU only to place the separators. The formatter

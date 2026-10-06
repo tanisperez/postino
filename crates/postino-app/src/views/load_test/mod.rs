@@ -1,10 +1,9 @@
-//! The load test tab (`plans/ui-redesign.md` phase 8): left config panel
-//! (`views/load_test/config_panel.rs`), right dashboard (`views/load_test/dashboard.rs`), and
-//! starting/stopping/finishing the actual `postino_load::LoadRun` in the background
-//! (`views/load_test/run.rs`). This file owns opening a tab (from the command palette, a sidebar
-//! context menu, or the `POSTINO_OPEN=loadtest` debug hook), its tab-strip label, and the single
-//! `edit_load_test` helper every other file in this module funnels edits through, mirroring
-//! `views/request_editor.rs`'s `edit_active_request`.
+//! The load test tab: left config panel (`views/load_test/config_panel.rs`), right dashboard
+//! (`views/load_test/dashboard.rs`), and starting/stopping/finishing the actual
+//! `postino_load::LoadRun` in the background (`views/load_test/run.rs`). This file owns opening a
+//! tab (from the command palette, a sidebar context menu, or the `POSTINO_OPEN=loadtest` debug
+//! hook), its tab-strip label, and the single `edit_load_test` helper every other file in this
+//! module funnels edits through, mirroring `views/request_editor.rs`'s `edit_active_request`.
 
 pub(crate) mod config_panel;
 pub(crate) mod dashboard;
@@ -22,8 +21,8 @@ use crate::state::load_test::{self, LoadTestTab, LoadTestTarget};
 
 use super::root::AppView;
 
-/// The open-tabs bar label for a load test tab (`plans/ui-redesign.md` phase 8 item 2): `"Load
-/// test"` before a target is picked, `"Load test \u{b7} <name>"` once one is.
+/// The open-tabs bar label for a load test tab: `"Load test"` before a target is picked, `"Load
+/// test \u{b7} <name>"` once one is.
 #[must_use]
 pub(crate) fn tab_label(load_test: &LoadTestTab) -> String {
     if load_test.target_label.is_empty() {
@@ -39,7 +38,7 @@ pub(crate) fn tab_label(load_test: &LoadTestTab) -> String {
 
 impl AppView {
     /// Opens a fresh load test tab with no preselected target (the command palette's "New load
-    /// test" action, `plans/ui-redesign.md` phase 8 item 2).
+    /// test" action).
     pub(crate) fn open_new_load_test_tab(&mut self, cx: &mut Context<Self>) {
         self.open_load_test_tab(LoadTestTab::unset(), cx);
     }
@@ -126,9 +125,9 @@ impl AppView {
             .is_some_and(LoadTestTab::is_running)
     }
 
-    /// Switches the target segmented control between Request and Collection
-    /// (`plans/ui-redesign.md` phase 8 item 3). Clears the current target if it does not match
-    /// the newly picked kind, since a request id is not a valid collection id and vice versa.
+    /// Switches the target segmented control between Request and Collection. Clears the current
+    /// target if it does not match the newly picked kind, since a request id is not a valid
+    /// collection id and vice versa.
     pub(crate) fn set_load_test_target_kind(
         &mut self,
         tab_id: &str,
@@ -161,8 +160,8 @@ impl AppView {
         });
     }
 
-    /// Picks a specific target from the config panel's target picker dropdown
-    /// (`plans/ui-redesign.md` phase 8 item 3), and refreshes the run history for it.
+    /// Picks a specific target from the config panel's target picker dropdown, and refreshes the
+    /// run history for it.
     pub(crate) fn pick_load_test_target(
         &mut self,
         tab_id: &str,
@@ -187,7 +186,7 @@ impl AppView {
         self.refresh_load_test_history(tab_id, cx);
     }
 
-    /// Sets the "Virtual users" field's raw text (`plans/ui-redesign.md` phase 8 item 3).
+    /// Sets the "Virtual users" field's raw text.
     pub(crate) fn set_load_test_vus(
         &mut self,
         tab_id: &str,
@@ -260,8 +259,7 @@ impl AppView {
         });
     }
 
-    /// Picks a run from the "Compare with" dropdown and loads its full snapshot
-    /// (`plans/ui-redesign.md` phase 8 item 4).
+    /// Picks a run from the "Compare with" dropdown and loads its full snapshot.
     pub(crate) fn set_load_test_compare_with(
         &mut self,
         tab_id: &str,
@@ -305,7 +303,7 @@ impl AppView {
     }
 
     /// Loads a past run and shows it in the dashboard, as if it had just finished
-    /// (`plans/ui-redesign.md` phase 8 item 4: the history list's "click to view"). A no-op while
+    /// (the history list's "click to view"). A no-op while
     /// a run is in progress for this tab, so clicking a history row can never clobber a live run.
     pub(crate) fn view_load_test_history(
         &mut self,
@@ -354,9 +352,9 @@ impl AppView {
         self.refresh_load_test_compare_snapshot(tab_id, cx);
     }
 
-    /// Renders the active tab's load test view: the config panel on the left, the dashboard on
-    /// the right (`plans/ui-redesign.md` phase 8 items 3 and 4). Only called while the active tab
-    /// is a [`TabKind::LoadTest`] (`views/root.rs::render_main_area`).
+    /// Renders the active tab's load test view: the config panel on the left, the dashboard on the
+    /// right. Only called while the active tab is a [`TabKind::LoadTest`]
+    /// (`views/root.rs::render_main_area`).
     pub(crate) fn render_load_test_tab(
         &mut self,
         window: &mut Window,

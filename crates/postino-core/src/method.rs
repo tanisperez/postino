@@ -6,9 +6,9 @@ use std::str::FromStr;
 
 /// The HTTP method of a [`crate::Request`].
 ///
-/// The common methods are individual variants. Any other token, uppercase by convention, is
-/// kept verbatim in [`Method::Custom`] so a request file can use a nonstandard method without
-/// failing to parse (see `plans/mvp.md`, section 3.2).
+/// The common methods are individual variants. Any other token, uppercase by convention, is kept
+/// verbatim in [`Method::Custom`] so a request file can use a nonstandard method without failing to
+/// parse.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Method {
     /// `GET`

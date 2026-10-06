@@ -1,5 +1,5 @@
 //! The request editor panel: method + URL bar, Send/Cancel, and the Params, Headers, Body,
-//! Pre-request, Post-response and Docs tabs (`plans/mvp.md`, Phase 9).
+//! Pre-request, Post-response and Docs tabs.
 //!
 //! `gpui` entities for the editable fields (the URL input, the key-value table rows, the body
 //! and script code editors, the docs textarea) are expensive to keep in sync by hand on every
@@ -214,11 +214,10 @@ fn make_script_editor(
 pub(crate) struct RequestEditorEntities {
     built_for: Option<BuildKey>,
     url: Option<Entity<InputState>>,
-    /// The inline `Input` for typing a custom method token (`plans/ui-redesign.md` phase 5,
-    /// reviewer fix item 6), shown by [`UrlBar`] in place of the dropdown while
-    /// [`AppView::editing_method`] is `true`. Its value is seeded once, when editing begins
-    /// ([`AppView::begin_editing_custom_method`]), not resynced here on every render: unlike the
-    /// URL, `request.method` deliberately does not change on every keystroke while editing (see
+    /// The inline `Input` for typing a custom method token, shown by [`UrlBar`] in place of the
+    /// dropdown while [`AppView::editing_method`] is `true`. Its value is seeded once, when editing
+    /// begins ([`AppView::begin_editing_custom_method`]), not resynced here on every render: unlike
+    /// the URL, `request.method` deliberately does not change on every keystroke while editing (see
     /// that method's doc comment), so an unconditional resync would fight the user's typing.
     method_input: Option<Entity<InputState>>,
     headers: KeyValueTableEntities,
@@ -401,8 +400,8 @@ fn rows_for_mut(request: &mut Request, kind: RowKind) -> Option<&mut Vec<KeyValu
 impl AppView {
     /// Applies `f` to the request of the tab with id `tab_id`, marks it dirty, and re-renders.
     /// The single place every request edit funnels through, so typing, a checkbox and a row
-    /// button all mark the tab dirty the same way (`plans/mvp.md` Phase 9: "any edit marks the
-    /// tab dirty").
+    /// button all mark the tab dirty the same way (any edit marks the
+    /// tab dirty).
     pub(crate) fn edit_active_request(
         &mut self,
         tab_id: &str,
@@ -424,11 +423,11 @@ impl AppView {
     }
 
     /// Enters custom-method edit mode: seeds `method_input` with `prefill` (the current custom
-    /// token, or empty for a fresh "Custom..." pick, see [`UrlBar`]'s own "Custom..." handler)
-    /// and shows it in place of the method dropdown. Deliberately does not write `prefill` into
+    /// token, or empty for a fresh "Custom..." pick, see [`UrlBar`]'s own "Custom..." handler) and
+    /// shows it in place of the method dropdown. Deliberately does not write `prefill` into
     /// `request.method` yet: only a valid, confirmed edit does that (`commit_custom_method`), so
     /// opening the editor and clicking away without typing anything never leaves an empty custom
-    /// method behind (`plans/ui-redesign.md` phase 5, reviewer fix item 6).
+    /// method behind.
     pub(crate) fn begin_editing_custom_method(
         &mut self,
         prefill: String,
@@ -554,11 +553,11 @@ impl AppView {
             // of which should leave a stale custom-method editor open.
             self.editing_method = false;
         }
-        // See `plans/ui-redesign.md` phase 5 item 2: computed fresh on every render rather than
+        // Computed fresh on every render rather than
         // from a separate `InputState` subscription, since every edit that could change it
         // (URL, query, headers, body) already goes through `edit_active_request`, which calls
         // `cx.notify()` and so triggers exactly this render. Names the pre script sets with
-        // `vars.set(...)` are treated as defined too (reviewer fix item 4a): `preview` never
+        // `vars.set(...)` are treated as defined too too: `preview` never
         // runs the script, so it cannot see them resolve for real the way an actual send would.
         let known_from_script = script_heuristics::vars_set_names(&request.pre_script);
         let unknown_names = self
@@ -574,11 +573,11 @@ impl AppView {
             .unwrap_or_default();
 
         // The Body tab's code editor (JSON/Text/XML) scrolls its own content and needs a real,
-        // determinate height to fill (`plans/ui-redesign.md` phase 5, reviewer fix item B): an
-        // ancestor `overflow_y_scroll()` container instead measures its child's intrinsic
-        // height, which collapses a `flex_1` editor to a couple of lines. Params/Headers/Form
-        // (a `KeyValueTable`), Pre/Post (a fixed-height editor, unaffected either way) and Docs
-        // are plain content with no scrolling of their own, so they still need it here.
+        // determinate height to fill: an ancestor `overflow_y_scroll()` container instead measures
+        // its child's intrinsic height, which collapses a `flex_1` editor to a couple of lines.
+        // Params/Headers/Form (a `KeyValueTable`), Pre/Post (a fixed-height editor, unaffected
+        // either way) and Docs are plain content with no scrolling of their own, so they still need
+        // it here.
         let body_uses_code_editor = self.active_request_tab == RequestTab::Body
             && matches!(request.body, Body::Json(_) | Body::Text(_) | Body::Xml(_));
         let content = div().id("request-editor-content").flex_1().min_h_0();
@@ -644,8 +643,7 @@ impl AppView {
                 }
             });
         })
-        // Opens the Define dialog for a danger (unknown) chip, per `plans/ui-redesign.md`
-        // phase 5 item 4 and phase 7 item 3. A defined (accent) chip's click is a no-op: only a
+        // Opens the Define dialog for a danger (unknown) chip. A defined (accent) chip's click is a no-op: only a
         // chip actually in `unknown_names` (the same set that colors it danger) opens anything.
         .on_chip_click(move |name, window, cx| {
             if chip_unknown_names.contains(&name) {
@@ -702,9 +700,9 @@ impl AppView {
             .into_any_element()
     }
 
-    /// Renders the Params/Headers/Body/Pre-request/Post-response/Docs tab bar, with the enabled
-    /// row count next to Params and Headers (`plans/ui-redesign.md` phase 5 item 1), and a
-    /// "Code" ghost button at the right that opens the snippet dialog (phase 7 item 2).
+    /// Renders the Params/Headers/Body/Pre-request/Post-response/Docs tab bar, with the enabled row
+    /// count next to Params and Headers, and a "Code" ghost button at the right that opens the
+    /// snippet dialog.
     fn render_request_tab_bar(&self, request: &Request, cx: &Context<Self>) -> AnyElement {
         let weak = cx.weak_entity();
         let active = self.active_request_tab;
@@ -919,9 +917,8 @@ impl AppView {
 
 /// The body type segmented control's display label: `BodyKind::label()`'s own text, except for
 /// `Form`, where the design's segmented control shows the bare word "Form" rather than
-/// `BodyKind::label()`'s fuller `"Form (urlencoded)"` (used elsewhere, for example the old body
-/// type menu this phase replaced). A display-only override, not a change to `BodyKind::label()`
-/// itself (`plans/ui-redesign.md` phase 5, reviewer fix item 7).
+/// `BodyKind::label()`'s fuller `"Form (urlencoded)"` (used elsewhere). A display-only override, not a change to `BodyKind::label()`
+/// itself.
 fn body_type_display_label(kind: BodyKind) -> String {
     match kind {
         BodyKind::Form => t!("request.body.form").into_owned(),
@@ -930,9 +927,9 @@ fn body_type_display_label(kind: BodyKind) -> String {
 }
 
 /// Renders a code editor entity if present, or an empty placeholder (only possible transiently,
-/// before the first [`RequestEditorEntities::sync`] call), boxed in a bordered, `raised`
-/// container with line numbers (`plans/ui-redesign.md` phase 5 item 1). `fill` makes it grow to the rest of the pane's height (the Body tab, reviewer
-/// fix item B); otherwise (Pre/Post) it keeps the fixed 320 px height used before this phase.
+/// before the first [`RequestEditorEntities::sync`] call), boxed in a bordered, `raised` container
+/// with line numbers. `fill` makes it grow to the rest of the pane's height (the Body tab);
+/// otherwise (Pre/Post) it keeps a fixed 320 px height.
 ///
 /// `fill` uses `Editor::h(relative(1.0))`, not the generic `Styled::flex_1()`/`min_h_0()`:
 /// `Editor` has its own inherent `h(impl Into<DefiniteLength>)` (a `gpui-component` widget that
@@ -966,8 +963,7 @@ fn render_editor_or_placeholder(
     }
 }
 
-/// Renders a centered, muted placeholder message filling the panel (`plans/ui-redesign.md`
-/// phase 5 item 5, 13/400 `fg_muted`).
+/// Renders a centered, muted placeholder message filling the panel (13/400 `fg_muted`).
 fn placeholder(cx: &Context<AppView>, message: impl Into<SharedString>) -> AnyElement {
     let palette = cx.palette();
     v_flex()

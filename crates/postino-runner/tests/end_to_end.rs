@@ -1,5 +1,5 @@
 //! End-to-end tests for `postino_runner::Runner`, against a local `tiny_http` server and the
-//! real `QuickJsEngine`. See `plans/mvp.md`, section 6, "Phase 6".
+//! real `QuickJsEngine`. See `docs/architecture.md` for the pipeline.
 //!
 //! No test here ever touches the internet: every server is bound to `127.0.0.1` on an
 //! OS-assigned port by `postino_http::test_support::TestServer`.

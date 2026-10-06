@@ -1,5 +1,5 @@
 //! Importing Postman collections (v2.1, v2.0 accepted when it parses the same) and Postman
-//! environment exports, `plans/mvp.md` section 6, phase 7.
+//! environment exports (see `docs/postman-import.md`).
 //!
 //! This module is pure, like the rest of `postino-format`: it only turns JSON text into plain
 //! in-memory data ([`ImportPlan`], [`ImportedEnvironment`]), it never touches the filesystem.

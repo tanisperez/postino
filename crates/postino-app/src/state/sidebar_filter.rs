@@ -1,6 +1,6 @@
-//! Sidebar filter: which tree entries a filter query matches (`plans/ui-redesign.md` section 2.3
-//! point 2). Pure logic over `postino_workspace::Node`, so it is unit-tested without `gpui`;
-//! `views/sidebar.rs` turns the result into the `TreeItem`s the tree actually renders.
+//! Sidebar filter: which tree entries a filter query matches. Pure logic over
+//! `postino_workspace::Node`, so it is unit-tested without `gpui`; `views/sidebar.rs` turns the
+//! result into the `TreeItem`s the tree actually renders.
 
 use std::collections::HashSet;
 

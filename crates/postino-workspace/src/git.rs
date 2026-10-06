@@ -1,7 +1,6 @@
 //! Finds the git branch (or short commit hash when detached) of a workspace, without a git
 //! dependency: it only reads `.git/HEAD`, and for a worktree the `.git` file that points at the
-//! real git directory, the same files the `git` binary itself would read for this
-//! (`plans/ui-redesign.md`, section 1 "Recent workspaces" footer and phase 1c).
+//! real git directory, the same files the `git` binary itself would read for this.
 
 use std::fs;
 use std::path::{Path, PathBuf};

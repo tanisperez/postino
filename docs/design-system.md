@@ -190,4 +190,10 @@ change breaks that rule.
 The original mockups (Claude Design HTML files in `postino_design_system/`: Postino Screens,
 Postino Design System, Main A and B, Components, Settings, Navigation Options, Performance,
 Current UI) are kept only in git history, under the tag `design-mockups` (`git checkout design-mockups -- postino_design_system`).
-The decisions behind the redesign are in `plans/ui-redesign.md`.
+
+Decisions taken in the redesign: the main screen is the "flat panes" direction (request above,
+response below, panels separated by borders, no shadows); the other direction explored (a
+boxed layout with its own error panel) was discarded. Errors and warnings are `InlineMessage`
+strips (warning, danger, success, with a "Define" action on unknown variables), never a
+full-width red banner. Auth and OAuth 2.0 had no screen designed and are tracked as issues #14
+and #15.

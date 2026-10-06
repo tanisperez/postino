@@ -1,11 +1,11 @@
-//! [`SessionEnv`], the in-memory environment overrides of `plans/mvp.md`, section 3.5, layer 2.
+//! [`SessionEnv`], the in-memory environment overrides, the second variable layer of `docs/format.md`.
 
 use postino_core::{Environment, KeyValue};
 use postino_script::EnvChange;
 
 /// The environment overrides a script creates at runtime with `env.set`/`env.unset`
-/// (`plans/mvp.md`, section 3.5, layer 2: "runtime environment overrides set by scripts, in
-/// memory for the app session").
+/// (the second variable layer of `docs/format.md`),
+/// kept in memory for the app session.
 ///
 /// Kept only in memory for as long as the value lives: the MVP never writes these back to an
 /// environment file. One `SessionEnv` is meant to be shared across every [`crate::Runner::run`]
@@ -56,7 +56,7 @@ impl SessionEnv {
 
     /// `environment`'s variables with every session override applied on top (an override wins
     /// over an environment variable with the same key), in the shape a script's `env.get` sees
-    /// (`plans/mvp.md`, section 4: "the active environment, merged with any session overrides").
+    /// (the active environment merged with any session overrides, see `docs/scripting.md`).
     #[must_use]
     pub fn merged_with(&self, environment: &Environment) -> Vec<KeyValue> {
         let mut merged = environment.variables.clone();

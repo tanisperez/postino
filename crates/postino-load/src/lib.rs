@@ -1,5 +1,5 @@
 //! The load test engine: run a request or a collection with N virtual users, aggregate live
-//! metrics, and keep a run history (`plans/ui-redesign.md`, Phase 1d).
+//! metrics, and keep a run history.
 //!
 //! [`LoadRun::start`] is the entry point: given a [`LoadConfig`], the active
 //! [`postino_core::Environment`], a [`postino_runner::SessionEnv`] and a shared
@@ -37,9 +37,8 @@
 //!
 //! Each virtual user owns its own [`postino_runner::SessionEnv`] (cloned once from the one
 //! [`LoadRun::start`] was given), never shared with another virtual user: this is what makes "a
-//! login token a post script sets flows to the next request of the same virtual user"
-//! (`plans/ui-redesign.md`, Phase 1d, point 2) work without any locking at all, since only one
-//! thread ever touches it.
+//! login token a post script sets flows to the next request of the same virtual user" work without
+//! any locking at all, since only one thread ever touches it.
 #![warn(missing_docs)]
 
 mod compare;

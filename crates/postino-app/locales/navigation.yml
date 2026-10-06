@@ -1,4 +1,4 @@
-# Navigation rail and its side panels (environments, load tests). Glossary and rules: plans/i18n.md
+# Navigation rail and its side panels (environments, load tests). Glossary and rules: docs/i18n.md
 _version: 2
 "navigation.rail.collections":
   en: "Collections"

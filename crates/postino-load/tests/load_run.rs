@@ -3,7 +3,7 @@
 //!
 //! No test here ever touches the internet: every server is bound to `127.0.0.1` on an
 //! OS-assigned port by `postino_http::test_support::TestServer`. Every test finishes in well
-//! under 3 seconds, per `plans/ui-redesign.md`, Phase 1d's acceptance criteria.
+//! under 3 seconds.
 // `expect()` is the normal way to fail a test with a clear message; allowed crate-wide since
 // this whole file is test code.
 #![allow(clippy::expect_used)]

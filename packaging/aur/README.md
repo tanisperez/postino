@@ -11,4 +11,4 @@ entry, the icons, the MIME definition and the licenses.
 
 Once there is an account: add the SSH key as a secret and push `PKGBUILD` plus `.SRCINFO`
 (`makepkg --printsrcinfo`) to `ssh://aur@aur.archlinux.org/postino-bin.git` from the `distribute`
-job of `release.yml` (`plans/releases.md`, section 5).
+job of `release.yml` (`docs/releasing.md`).

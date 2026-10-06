@@ -1,6 +1,5 @@
-//! Fixture-based round-trip tests for the `.postino` format (`plans/mvp.md`, section 3.3):
-//! `serialize(parse(text)) == text` for every canonically formatted fixture file in
-//! `tests/fixtures`.
+//! Fixture-based round-trip tests for the `.postino` format: `serialize(parse(text)) == text` for
+//! every canonically formatted fixture file in `tests/fixtures`.
 #![allow(clippy::expect_used)]
 
 use postino_format::{parse, serialize};

@@ -1,5 +1,5 @@
 //! Maps an environment name to the color category shown in the UI: the dot in the title bar's
-//! environment pill and menu (`plans/ui-redesign.md`, section 2.1 "Environment dot colors").
+//! environment pill and menu (see `docs/design-system.md`).
 
 /// Which color category an environment's dot should use, derived from its name. "No
 /// environment" is not covered here: the view draws a hollow ring for it instead of a color.
@@ -16,8 +16,7 @@ pub enum EnvColor {
 /// The name fragments, checked case-insensitively, that make an environment's dot [`EnvColor::Warning`].
 const WARNING_NEEDLES: [&str; 4] = ["stag", "test", "qa", "uat"];
 
-/// Derives the [`EnvColor`] of an environment from its name, case-insensitive
-/// (`plans/ui-redesign.md`, section 2.1).
+/// Derives the [`EnvColor`] of an environment from its name, case-insensitive.
 pub fn env_color(name: &str) -> EnvColor {
     let lower = name.to_ascii_lowercase();
     if lower.contains("prod") {

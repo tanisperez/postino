@@ -1,9 +1,9 @@
-//! The Code snippet dialog (`plans/ui-redesign.md` phase 7 item 2): opened from the "Code" ghost
-//! button at the right of the request editor's inner tabs row (`views/request_editor.rs`).
-//! Shows the active tab's request, resolved against the current environment
-//! (`postino_runner::preview`, never running a script or sending), as a copyable cURL, `fetch`
-//! or Python snippet (`postino_format::snippet::render_snippet`). Unresolved `{{name}}` markers
-//! are kept literally, exactly as `render_snippet` already leaves them.
+//! The Code snippet dialog: opened from the "Code" ghost button at the right of the request
+//! editor's inner tabs row (`views/request_editor.rs`). Shows the active tab's request, resolved
+//! against the current environment (`postino_runner::preview`, never running a script or sending),
+//! as a copyable cURL, `fetch` or Python snippet (`postino_format::snippet::render_snippet`).
+//! Unresolved `{{name}}` markers are kept literally, exactly as `render_snippet` already leaves
+//! them.
 
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;

@@ -1,6 +1,6 @@
 //! Application settings, persisted to `<config dir>/postino/settings.toml`
-//! (`plans/ui-redesign.md`, section 1 "Settings file") and applied live: there is no explicit
-//! "Save" action, every change made through the Settings view (wired in a later phase) writes
+//! and applied live: there is no explicit
+//! "Save" action, every change made through the Settings view writes
 //! the file immediately.
 
 use std::fs;
@@ -16,20 +16,19 @@ use super::locale::LanguageChoice;
 /// The path, relative to the OS config directory, of the settings file.
 const SETTINGS_FILE: &str = "postino/settings.toml";
 
-/// Valid range of [`Settings::ui_font_size`], in points (`plans/ui-redesign.md`, section 1).
+/// Valid range of [`Settings::ui_font_size`], in points.
 pub const UI_FONT_SIZE_RANGE: RangeInclusive<f32> = 11.0..=16.0;
 
-/// Step of the UI font size stepper in the Settings view (`plans/ui-redesign.md` phase 6 item 4).
+/// Step of the UI font size stepper in the Settings view.
 pub const UI_FONT_SIZE_STEP: f32 = 1.0;
 
 /// Valid range of [`Settings::mono_font_size`], in points.
 pub const MONO_FONT_SIZE_RANGE: RangeInclusive<f32> = 10.0..=18.0;
 
-/// Step of the monospace font size stepper in the Settings view (`plans/ui-redesign.md` phase 6
-/// item 5).
+/// Step of the monospace font size stepper in the Settings view.
 pub const MONO_FONT_SIZE_STEP: f32 = 0.5;
 
-/// Which theme mode the app follows, chosen in Settings, "Appearance" (wired in phase 6).
+/// Which theme mode the app follows, chosen in Settings, "Appearance".
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ThemeChoice {
@@ -275,25 +274,22 @@ pub fn save_settings(settings: &Settings) {
     }
 }
 
-/// The real path of the settings file, `None` when the OS config directory is unknown. Used by
-/// the Settings view's "Saved to" line (`plans/ui-redesign.md` phase 6 item 2), shortened with
-/// `~` by `state::format::shorten_path`.
+/// The real path of the settings file, `None` when the OS config directory is unknown. Used by the
+/// Settings view's "Saved to" line, shortened with `~` by `state::format::shorten_path`.
 pub fn settings_path() -> Option<PathBuf> {
     dirs::config_dir().map(|base| base.join(SETTINGS_FILE))
 }
 
 /// Steps `current` by `step` (positive or negative), clamped to `range`. Used by the Settings
-/// view's font size steppers (`plans/ui-redesign.md` phase 6 items 4 and 5): the `-`/`+` buttons
-/// pass `-step`/`step` of [`UI_FONT_SIZE_STEP`] or [`MONO_FONT_SIZE_STEP`], with
-/// [`UI_FONT_SIZE_RANGE`] or [`MONO_FONT_SIZE_RANGE`].
+/// view's font size steppers: the `-`/`+` buttons pass `-step`/`step` of [`UI_FONT_SIZE_STEP`] or
+/// [`MONO_FONT_SIZE_STEP`], with [`UI_FONT_SIZE_RANGE`] or [`MONO_FONT_SIZE_RANGE`].
 pub fn step_size(current: f32, step: f32, range: RangeInclusive<f32>) -> f32 {
     (current + step).clamp(*range.start(), *range.end())
 }
 
 /// Builds the options for a font picker: `bundled` first, always, then every other entry of
 /// `installed` (as returned by `cx.text_system().all_font_names()`, already sorted), skipping the
-/// bundled family's own name if it repeats there and de-duplicating (`plans/ui-redesign.md` phase
-/// 6 items 4 and 5).
+/// bundled family's own name if it repeats there and de-duplicating.
 pub fn font_options(bundled: &str, installed: &[String]) -> Vec<String> {
     let mut options = vec![bundled.to_string()];
     for name in installed {

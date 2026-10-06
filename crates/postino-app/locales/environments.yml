@@ -1,4 +1,4 @@
-# Environment editor tab (GitHub #65). Glossary and rules: plans/i18n.md
+# Environment editor tab (GitHub #65). Glossary and rules: docs/i18n.md
 _version: 2
 "environments.tab_label":
   en: "Env \u00b7 %{name}"

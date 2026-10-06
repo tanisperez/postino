@@ -1,5 +1,5 @@
 //! [`InlineMessage`]: the warning/danger/success/info strip used instead of a full-width error
-//! banner (`plans/ui-redesign.md` section 1 "Error states", phase 3).
+//! banner (see `docs/design-system.md`).
 //!
 //! Custom element: a colored icon plus text plus an optional right-aligned action link, on a
 //! `*-subtle` background, is a plain `div` row colored from [`crate::theme::Palette`].

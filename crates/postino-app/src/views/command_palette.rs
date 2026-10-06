@@ -1,18 +1,16 @@
-//! The command palette (`Ctrl K` / `Cmd K`, and the title bar's search trigger,
-//! `plans/ui-redesign.md` phase 7 item 1): a centered overlay listing every open request,
+//! The command palette (`Ctrl K` / `Cmd K`, and the title bar's search trigger): a centered overlay listing every open request,
 //! environment and built-in action, fuzzy-filtered as the user types.
 //!
-//! Built on gpui-component's `Command` (`plans/ui-redesign-spikes.md` section 5) with its own
-//! local matching turned off (`filterable(false)`): every item this module hands it is kept as
-//! given, already ranked and grouped by `state::palette::fuzzy_filter`. The palette's own
-//! `CommandState` entity is a real child of the render tree (`Command::render` returns it), so
-//! gpui redraws it on its own whenever the query changes; this module's content closure simply
-//! reads that query fresh on every repaint (the same "re-read on every repaint" pattern
-//! `views/settings.rs` documents) and rebuilds the filtered, grouped item list from it. Because
-//! we never use `Command::item`/`.items()` (only `.group()`, always all three, even when a group
-//! ends up empty), a matched item's `IndexPath.section` is always 0 for Requests, 1 for
-//! Environments, 2 for Actions, which is what lets `on_confirm` map straight back into
-//! `PaletteItemKind` without any extra bookkeeping.
+//! Built on gpui-component's `Command` with its own local matching turned off
+//! (`filterable(false)`): every item this module hands it is kept as given, already ranked and
+//! grouped by `state::palette::fuzzy_filter`. The palette's own `CommandState` entity is a real
+//! child of the render tree (`Command::render` returns it), so gpui redraws it on its own whenever
+//! the query changes; this module's content closure simply reads that query fresh on every repaint
+//! (the same "re-read on every repaint" pattern `views/settings.rs` documents) and rebuilds the
+//! filtered, grouped item list from it. Because we never use `Command::item`/`.items()` (only
+//! `.group()`, always all three, even when a group ends up empty), a matched item's
+//! `IndexPath.section` is always 0 for Requests, 1 for Environments, 2 for Actions, which is what
+//! lets `on_confirm` map straight back into `PaletteItemKind` without any extra bookkeeping.
 
 use gpui_kit::component::command::{Command, CommandGroup, CommandItem, CommandState};
 use gpui_kit::component::input::{Input, InputEvent, InputState};

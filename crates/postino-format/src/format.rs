@@ -1,13 +1,12 @@
 //! The `.postino` request file format: parser and serializer.
 //!
-//! See `plans/mvp.md`, section 3.2, for the grammar this module implements, and section 3.1 for
-//! a full example. [`parse`] turns file text into a [`Request`], [`serialize`] turns a
+//! See `docs/format.md` for the grammar this module implements and a full example. [`parse`] turns file text into a [`Request`], [`serialize`] turns a
 //! [`Request`] back into canonically formatted text, and `serialize(parse(text)) == text` for
 //! every canonically formatted file (section 3.3).
 
 use postino_core::{Body, KeyValue, Method, Request};
 
-/// The section marker prefix, `plans/mvp.md` section 3.2, grammar rule 4.
+/// The section marker prefix.
 const SECTION_PREFIX: &str = "::: ";
 
 /// An error found while parsing a `.postino` file, with the 1-based line number where it was
@@ -58,7 +57,7 @@ pub enum ParseErrorKind {
 
 /// Parses the text of a `.postino` file into a [`Request`].
 ///
-/// Both `\n` and `\r\n` line endings are accepted. See `plans/mvp.md`, section 3.2, for the full
+/// Both `\n` and `\r\n` line endings are accepted. See `docs/format.md` for the full
 /// grammar.
 pub fn parse(text: &str) -> Result<Request, ParseError> {
     let normalized = text.replace("\r\n", "\n");
@@ -167,8 +166,7 @@ fn skip_blank(lines: &[&str], mut index: usize) -> usize {
     index
 }
 
-/// Drops trailing blank lines from a captured section content slice (`plans/mvp.md`, section
-/// 3.2, grammar rule 5).
+/// Drops trailing blank lines from a captured section content slice.
 fn trim_trailing_blank<'a>(lines: &'a [&'a str]) -> &'a [&'a str] {
     let mut end = lines.len();
     while end > 0 && lines[end - 1].trim().is_empty() {
@@ -332,7 +330,7 @@ fn escape_line(line: &str) -> String {
 /// Whether `line`, once its leading backslashes are stripped, starts with the section marker
 /// prefix `::: `. This is the shared condition behind [`escape_line`] and [`unescape_line`]: it
 /// matches an unescaped marker (`"::: foo"`) as well as any already-escaped one
-/// (`"\::: foo"`, `"\\::: foo"`, ...), `plans/mvp.md` section 3.2, grammar rule 5.
+/// (`"\::: foo"`, `"\\::: foo"`, ...), see the escaping rule in `docs/format.md`.
 fn starts_with_section_marker_ignoring_backslashes(line: &str) -> bool {
     line.trim_start_matches('\\').starts_with(SECTION_PREFIX)
 }
@@ -340,8 +338,8 @@ fn starts_with_section_marker_ignoring_backslashes(line: &str) -> bool {
 /// Serializes a [`Request`] into the canonical `.postino` text form.
 ///
 /// The output always uses `\n` line endings and ends with a single trailing `\n`. Sections are
-/// written in the canonical order `query`, `body`, `pre`, `post`, `docs`; empty sections
-/// (`plans/mvp.md`, section 3.2, grammar rule 6) are omitted.
+/// written in the canonical order `query`, `body`, `pre`, `post`, `docs`; empty sections are
+/// omitted.
 pub fn serialize(request: &Request) -> String {
     let mut out = String::new();
     out.push_str(&request.method.to_string());

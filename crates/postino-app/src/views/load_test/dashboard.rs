@@ -1,7 +1,6 @@
-//! The load test tab's right dashboard (`plans/ui-redesign.md` phase 8 item 4): the empty state
-//! and history list before a first run, and, once a snapshot exists, the header, KPI strip,
-//! throughput/latency chart, latency distribution, status breakdown, per-request table and
-//! "Compare with" panel.
+//! The load test tab's right dashboard: the empty state and history list before a first run, and,
+//! once a snapshot exists, the header, KPI strip, throughput/latency chart, latency distribution,
+//! status breakdown, per-request table and "Compare with" panel.
 
 use std::time::Duration;
 
@@ -34,19 +33,18 @@ use crate::views::root::AppView;
 const CHART_HEIGHT: f32 = 150.0;
 const HISTOGRAM_HEIGHT: f32 = 110.0;
 /// A latency, in milliseconds, at or above which a latency distribution bar (and a per-request
-/// error rate) switches from `accent_text`/normal to `warning` (`plans/ui-redesign.md` phase 8
-/// item 4).
+/// error rate) switches from `accent_text`/normal to `warning`.
 const HISTOGRAM_WARNING_MS: usize = 110;
 /// The histogram bucket width, in milliseconds (`postino_load::LoadSnapshot::histogram`'s docs).
 const HISTOGRAM_BUCKET_MS: usize = 10;
-/// Base width (flex basis) of one half of a two-column dashboard row (latency distribution +
-/// status breakdown, per-request table + compare with): when two do not fit side by side,
-/// `flex_wrap` (not a window-width measurement) stacks them vertically instead of squashing them,
-/// and each then grows to the row's width. A basis rather than a minimum width, so a pane
-/// narrower than this still shrinks the column instead of overflowing (`plans/ui-redesign.md` phase 8's responsiveness fix).
+/// Base width (flex basis) of one half of a two-column dashboard row (latency distribution + status
+/// breakdown, per-request table + compare with): when two do not fit side by side, `flex_wrap` (not
+/// a window-width measurement) stacks them vertically instead of squashing them, and each then
+/// grows to the row's width. A basis rather than a minimum width, so a pane narrower than this
+/// still shrinks the column instead of overflowing.
 const TWO_COLUMN_MIN_WIDTH: f32 = 320.0;
 /// A per-request error rate at or above which its "Errors" cell turns `warning`
-/// (`plans/ui-redesign.md` phase 8 item 4: "Errors (warning when above 1%)").
+/// (1%).
 const PER_REQUEST_WARNING_ERROR_RATE: f64 = 0.01;
 
 impl AppView {
@@ -117,9 +115,9 @@ impl AppView {
     }
 }
 
-/// The empty state before a first run: an explanatory placeholder, plus a Failed run's reason
-/// (`plans/ui-redesign.md` phase 8 item 4), plus the target's run history if any (`click to
-/// view` is wired by the history rows' own click handler, see [`render_history_list`]).
+/// The empty state before a first run: an explanatory placeholder, plus a Failed run's reason, plus
+/// the target's run history if any (`click to view` is wired by the history rows' own click
+/// handler, see [`render_history_list`]).
 fn render_empty_state(
     weak: WeakEntity<AppView>,
     tab_id: &str,
@@ -184,8 +182,7 @@ fn run_with_day(number: u32, started_at_unix: u64, now: i64) -> String {
     )
 }
 
-/// The history list of previous runs for this tab's target, click to view
-/// (`plans/ui-redesign.md` phase 8 item 4).
+/// The history list of previous runs for this tab's target, click to view.
 fn render_history_list(
     weak: WeakEntity<AppView>,
     tab_id: &str,
@@ -317,8 +314,8 @@ fn render_header(
         .into_any_element()
 }
 
-/// The status badge's label and colors, per `plans/ui-redesign.md` phase 8 item 4: "Running in
-/// accent, Finished in success, Stopped in warning, Failed in danger".
+/// The status badge's label and colors, : running in
+/// accent, finished in success, stopped in warning, failed in danger.
 fn status_badge_colors(palette: &Palette, status: &LoadTestStatus) -> (String, Hsla, Hsla) {
     let (label, fg, bg) = match status {
         LoadTestStatus::NotStarted => (
@@ -383,10 +380,10 @@ fn format_compare_value(label: &str, value: f64) -> String {
 /// than by measuring the window.
 const KPI_CELL_MIN_WIDTH: f32 = 96.0;
 
-/// The KPI strip: Requests/s, p50, p95, p99, Errors, Total (`plans/ui-redesign.md` phase 8 item
-/// 4). Two groups of three cells: side by side in a single row when wide, stacked as 3 + 3 when
-/// narrow. The container paints the `border` color through a 1 px gap between the groups (and
-/// its own 1 px border), so the separator is right in both layouts.
+/// The KPI strip: Requests/s, p50, p95, p99, Errors, Total. Two groups of three cells: side by side
+/// in a single row when wide, stacked as 3 + 3 when narrow. The container paints the `border` color
+/// through a 1 px gap between the groups (and its own 1 px border), so the separator is right in
+/// both layouts.
 fn render_kpi_strip(palette: &Palette, snapshot: &LoadSnapshot) -> AnyElement {
     let kpis: [(String, String, &str, bool); 6] = [
         (
@@ -490,7 +487,7 @@ fn render_kpi_strip(palette: &Palette, snapshot: &LoadSnapshot) -> AnyElement {
 
 /// The throughput and latency card: two polylines (Requests/s in `accent_text`, p95 in
 /// `warning`), each normalized to its own max (`LineChart`'s y-scale always starts at 0 and fits
-/// its own data, `plans/ui-redesign-spikes.md` section 7), four horizontal grid lines, and time
+/// its own data, see `docs/gpui-notes.md`), four horizontal grid lines, and time
 /// labels from `0` to the run's configured duration.
 fn render_throughput_card(
     palette: &Palette,
@@ -601,8 +598,8 @@ fn legend_item(palette: &Palette, color: Hsla, label: String) -> AnyElement {
         .into_any_element()
 }
 
-/// The latency distribution: 26 bars from the histogram, `accent_text`, bars at 110 ms and above
-/// in `warning` (`plans/ui-redesign.md` phase 8 item 4).
+/// The latency distribution: 26 bars from the histogram, `accent_text`, bars at 110 ms and above in
+/// `warning`.
 fn render_latency_distribution(palette: &Palette, snapshot: &LoadSnapshot) -> AnyElement {
     let max = snapshot.histogram.iter().copied().max().unwrap_or(0).max(1);
 
@@ -723,7 +720,7 @@ fn render_status_breakdown(
 }
 
 /// The per-request table and "Compare with" panel, side by side (hidden if there is no previous
-/// run for this target, `plans/ui-redesign.md` phase 8 item 4).
+/// run for this target).
 fn render_bottom_row(
     weak: WeakEntity<AppView>,
     tab_id: &str,
@@ -783,8 +780,7 @@ fn render_bottom_row(
 
 /// Fixed width of one of the per-request table's numeric columns (Count, p50, p95, p99, Errors):
 /// wide enough for their widest realistic value ("999 ms") without letting them shrink into each
-/// other at a narrow window, which `flex_grow` alone (with no floor) allowed
-/// (`plans/ui-redesign.md` phase 8's responsiveness fix).
+/// other at a narrow window, which `flex_grow` alone (with no floor) allowed.
 const PER_REQUEST_NUMERIC_COL_WIDTH: f32 = 64.0;
 /// Horizontal gap between the per-request table's columns.
 const PER_REQUEST_COL_GAP: f32 = 10.0;
@@ -957,8 +953,7 @@ fn target_row_label(load_test: &LoadTestTab, index: usize) -> (Option<Method>, S
 }
 
 /// The "Compare with" panel: a dropdown of previous runs of the same target, and rows for
-/// Requests/s, p95, p99 and Errors with previous, current and a colored delta
-/// (`plans/ui-redesign.md` phase 8 item 4).
+/// Requests/s, p95, p99 and Errors with previous, current and a colored delta.
 fn render_compare_with(
     weak: WeakEntity<AppView>,
     tab_id: &str,

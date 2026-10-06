@@ -1,5 +1,4 @@
-//! [`IconButton`]: a small icon-only ghost button (`plans/ui-redesign.md` phase 3), in the
-//! 24 and 28 px sizes.
+//! [`IconButton`]: a small icon-only ghost button, in the 24 and 28 px sizes.
 //!
 //! Wraps gpui-kit's [`Button`] (ghost variant): its click, hover, disabled and tooltip handling
 //! already work as is; only the icon color is pinned to [`crate::theme::Palette::fg_muted`]
@@ -14,7 +13,7 @@ use gpui_kit::*;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::ICON_BUTTON_LG;
 
-/// An icon-only ghost button, `plans/ui-redesign.md` section 2.2's 24 or 28 px square.
+/// An icon-only ghost button, a 24 or 28 px square.
 #[derive(IntoElement)]
 pub struct IconButton {
     id: ElementId,
