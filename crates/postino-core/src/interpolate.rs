@@ -1,10 +1,9 @@
-//! Variable interpolation of `{{ }}` markers, `plans/mvp.md` sections 3.5 and 3.6.
+//! Variable interpolation of `{{ }}` markers (see `docs/format.md`).
 
 use crate::functions::{self, Arg, FunctionError};
 use crate::key_value::KeyValue;
 
-/// The three layers of variables looked up when resolving a `{{name}}` marker, first hit wins
-/// (`plans/mvp.md`, section 3.5):
+/// The three layers of variables looked up when resolving a `{{name}}` marker, first hit wins:
 ///
 /// 1. `request_vars`, set by the pre script for this execution only;
 /// 2. `session_env`, runtime overrides set by scripts, kept for the app session;
@@ -41,7 +40,7 @@ impl<'a> VarScope<'a> {
 
 /// A problem found while interpolating a `{{ }}` marker.
 ///
-/// Per `plans/mvp.md`, sections 3.5 and 3.6, none of these abort interpolation: the offending
+/// None of these abort interpolation (see `docs/format.md`): the offending
 /// marker is left untouched in the output and the warning is reported alongside the result.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum TemplateWarning {
@@ -120,7 +119,7 @@ pub enum VariableKind {
 /// A `{{ }}` marker found in a piece of text, without resolving it.
 ///
 /// Used by the UI to style variable chips: an unstyled range of `text` around each marker,
-/// underlined when the name is not a known variable (`plans/ui-redesign.md`, phase 1a).
+/// underlined when the name is not a known variable.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VariableSpan {
     /// The byte range of the whole marker, including the `{{` and `}}` delimiters.

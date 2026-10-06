@@ -1,15 +1,15 @@
-//! Open tabs: requests being edited, environment editors and load test tabs (`plans/ui-redesign.md` phase 8 item 1),
-//! in which order, which one is active, and whether each has unsaved changes. No `gpui` types
-//! here, so this is unit-tested directly.
+//! Open tabs: requests being edited, environment editors and load test tabs, in which order, which
+//! one is active, and whether each has unsaved changes. No `gpui` types here, so this is
+//! unit-tested directly.
 
 use postino_core::Request;
 
 use super::env_edit::{self, EnvEditTab};
 use super::load_test::LoadTestTab;
 
-/// What one open tab shows: a request being edited, an environment being edited, or a load test
-/// in progress or finished. Dirty state and saving apply to [`TabKind::Request`] and
-/// [`TabKind::Environment`] (`plans/ui-redesign.md` phase 8 item 1, GitHub #65).
+/// What one open tab shows: a request being edited, an environment being edited, or a load test in
+/// progress or finished. Dirty state and saving apply to [`TabKind::Request`] and
+/// [`TabKind::Environment`].
 #[derive(Debug, Clone, PartialEq)]
 pub enum TabKind {
     /// A request open for editing.
@@ -174,9 +174,9 @@ impl TabsState {
         }
     }
 
-    /// Opens a new load test tab and makes it active (`plans/ui-redesign.md` phase 8 item 2).
-    /// Always a fresh tab, never deduplicated: unlike a request, several load test tabs can
-    /// target the same request or collection at once. Returns the tab's id and index.
+    /// Opens a new load test tab and makes it active. Always a fresh tab, never deduplicated:
+    /// unlike a request, several load test tabs can target the same request or collection at once.
+    /// Returns the tab's id and index.
     pub fn open_load_test(&mut self, load_test: LoadTestTab) -> (String, usize) {
         let id = format!("load-test:{}", self.next_load_test_id);
         self.next_load_test_id += 1;
@@ -276,7 +276,7 @@ impl TabsState {
 
     /// Marks the tab at `index` as having unsaved changes. Does nothing if out of range. Called
     /// by every editing operation in `state::request_edit` once it has applied its change to the
-    /// tab's `Request` (Phase 9: "any edit marks the tab dirty").
+    /// tab's `Request` (any edit marks the tab dirty).
     pub fn mark_dirty(&mut self, index: usize) {
         if let Some(tab) = self.open.get_mut(index) {
             tab.dirty = true;

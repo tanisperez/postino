@@ -1,6 +1,5 @@
 //! [`LoadRun`], a load test in progress: one OS thread per virtual user, a shared metrics
-//! aggregator, and the controls the UI needs (`plans/ui-redesign.md`, Phase 1d, point 2). See
-//! the crate docs for the concurrency model.
+//! aggregator, and the controls the UI needs. See the crate docs for the concurrency model.
 
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
@@ -262,8 +261,7 @@ fn response_latency(result: &RunResult, wall_time: Duration) -> Duration {
         .map_or(wall_time, |response| response.time)
 }
 
-/// Turns the outcome of one [`Runner::run`] call into a [`Sample`], applying the error rule of
-/// `plans/ui-redesign.md`, Phase 1d, point 3: no response at all (a send failure, a timeout, or a
+/// Turns the outcome of one [`Runner::run`] call into a [`Sample`], applying the error rule: no response at all (a send failure, a timeout, or a
 /// pre-request script failure) or a status of 400 or above.
 ///
 /// A post-response script failure is deliberately not treated as an error here: the response was

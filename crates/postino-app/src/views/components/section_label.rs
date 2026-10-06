@@ -1,12 +1,12 @@
-//! [`SectionLabel`]: the uppercase section heading used for "COLLECTIONS" and every
-//! gallery section title (`plans/ui-redesign.md` phase 3).
+//! [`SectionLabel`]: the uppercase section heading used for "COLLECTIONS" and every gallery section
+//! title.
 //!
 //! Custom element: a plain styled `div`, since this is just fixed typography with no
 //! interactivity.
 //!
 //! Deviation: the design's 0.06em letter-spacing ("tracking") has no equivalent in gpui's text
 //! style (`gpui-pre-0.3.6/src/style.rs` has no letter-spacing field), so this renders without
-//! it; see this phase's report.
+//! it.
 
 use gpui_kit::prelude::*;
 use gpui_kit::*;

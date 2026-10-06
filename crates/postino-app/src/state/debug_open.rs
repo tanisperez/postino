@@ -1,18 +1,14 @@
-//! Parses the `POSTINO_OPEN` debug hook's value (`plans/ui-redesign-spikes.md` section 10), the
-//! same style as `views/root.rs`'s existing `apply_debug_autosend`: a hidden hook for the
-//! orchestrator to screenshot a specific UI state at startup, not a supported feature, not
-//! surfaced in any menu.
+//! Parses the `POSTINO_OPEN` debug hook's value, the same style as `views/root.rs`'s existing
+//! `apply_debug_autosend`: a hidden hook to screenshot a specific UI state at
+//! startup, not a supported feature, not surfaced in any menu.
 
-/// A UI state `POSTINO_OPEN` can request at startup. `Components` (phase 3), `Settings` (phase
-/// 6), `Palette`/`Snippet`/`Define` (phase 7) and `LoadTest` (phase 8) exist so far.
+/// A UI state `POSTINO_OPEN` can request at startup.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DebugOpenTarget {
     /// Renders the components gallery in the main area, to check every widget
     /// against `docs/design-system.md`.
     Components,
-    /// Opens the Settings modal, to check it against
-    /// `docs/design-system.md`
-    /// (`plans/ui-redesign.md` phase 6).
+    /// Opens the Settings modal, to check it against `docs/design-system.md`.
     Settings,
     /// Opens the Settings modal on its "Requests" pane.
     SettingsRequests,
@@ -20,18 +16,15 @@ pub enum DebugOpenTarget {
     SettingsAdvanced,
     /// Opens the Settings modal on its "About" pane.
     SettingsAbout,
-    /// Opens the command palette (`plans/ui-redesign.md` phase 7 item 1).
+    /// Opens the command palette.
     Palette,
-    /// Opens the Code snippet dialog for the active tab's request (`plans/ui-redesign.md` phase
-    /// 7 item 2). A no-op (like every `POSTINO_OPEN` target with nothing to show) when no tab is
-    /// open.
+    /// Opens the Code snippet dialog for the active tab's request. A no-op (like every
+    /// `POSTINO_OPEN` target with nothing to show) when no tab is open.
     Snippet,
-    /// Opens the Define variable dialog, prefilled with the name `"exampleVar"`
-    /// (`plans/ui-redesign.md` phase 7 item 3).
+    /// Opens the Define variable dialog, prefilled with the name `"exampleVar"`.
     Define,
     /// Opens a load test tab preselecting the first request found in the workspace tree, for
-    /// screenshotting the load test config panel
-    /// (`plans/ui-redesign.md` phase 8). A no-op when no workspace is open or it has no
+    /// screenshotting the load test config panel. A no-op when no workspace is open or it has no
     /// requests.
     LoadTest,
 }

@@ -1,5 +1,5 @@
 //! [`MethodBadge`]: the colored HTTP method label used in the sidebar tree, open tabs and the
-//! Components gallery (`plans/ui-redesign.md` phase 3).
+//! Components gallery.
 //!
 //! Custom element: no gpui-kit widget renders mono, fixed-width, colored text with an optional
 //! tinted background pill, so this is a plain styled `div`, colored only from
@@ -26,8 +26,7 @@ enum MethodBadgeVariant {
     Pill,
 }
 
-/// A colored HTTP method label, in the `label` or `pill` variant of
-/// `plans/ui-redesign.md` phase 3's component table.
+/// A colored HTTP method label, in the `label` or `pill` variant.
 #[derive(IntoElement)]
 pub struct MethodBadge {
     method: Method,

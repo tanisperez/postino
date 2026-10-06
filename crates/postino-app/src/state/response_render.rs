@@ -1,7 +1,7 @@
-//! Pure formatting helpers for the response viewer (`views/response_view.rs`): pretty-printing
-//! the body and formatting size and time. Status coloring now comes from
-//! [`crate::theme::Palette::status_colors`] (`plans/ui-redesign.md` phase 5), which classifies a
-//! status code the same way this module used to.
+//! Pure formatting helpers for the response viewer (`views/response_view.rs`): pretty-printing the
+//! body and formatting size and time. Status coloring now comes from
+//! [`crate::theme::Palette::status_colors`], which classifies a status code the same way this
+//! module used to.
 //!
 //! Kept free of `gpui` types so every rule is unit-tested directly.
 
@@ -14,8 +14,7 @@ use super::locale;
 use super::number::{format_decimal, format_integer};
 
 /// The standard reason phrase for a status code (`"OK"` for 200, `"Not Found"` for 404, ...),
-/// for the response status badge label ("200 OK", "404 Not Found", `plans/ui-redesign.md` phase
-/// 5, reviewer fix item 2). `postino_core::Response` carries no reason phrase from the wire
+/// for the response status badge label ("200 OK", "404 Not Found"). `postino_core::Response` carries no reason phrase from the wire
 /// (`ureq`/the `http` crate normalize away the raw status line), so this is always the standard
 /// phrase for the code; a code this table does not cover returns `None`, and the caller then
 /// shows the bare code, as before.
@@ -53,8 +52,7 @@ pub fn reason_phrase(status: u16) -> Option<&'static str> {
     })
 }
 
-/// One row for the response pane's warnings strip (`plans/ui-redesign.md` phase 5, reviewer fix
-/// items 4 and 5).
+/// One row for the response pane's warnings strip.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WarningGroup {
     /// A single unknown variable.
@@ -104,7 +102,7 @@ pub fn pretty_print_json(body: &[u8]) -> Option<String> {
 }
 
 /// Renders `body` as text for the raw view: valid UTF-8 shown as is, otherwise a short
-/// placeholder noting the byte count (Phase 9 has no binary/hex viewer).
+/// placeholder noting the byte count (there is no binary/hex viewer).
 pub fn body_as_text(body: &[u8]) -> String {
     match std::str::from_utf8(body) {
         Ok(text) => text.to_string(),

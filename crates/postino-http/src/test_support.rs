@@ -2,7 +2,7 @@
 //!
 //! Only compiled when the `test-support` feature is on (the default). It is used by this
 //! crate's own integration tests under `tests/`, and is exposed publicly so other crates in the
-//! workspace (for example `postino-runner`, in a later phase) can depend on `postino-http` with
+//! workspace (for example `postino-runner`) can depend on `postino-http` with
 //! `features = ["test-support"]` and reuse the same helper instead of writing their own.
 //!
 //! # Example

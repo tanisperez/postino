@@ -1,5 +1,4 @@
-//! Turning a resolved request into copyable code, for the "Code" snippet generator
-//! (`plans/ui-redesign.md`, phase 1b).
+//! Turning a resolved request into copyable code, for the "Code" snippet generator.
 //!
 //! The input is a [`ResolvedRequest`] (typically produced by `postino_runner::preview`), already
 //! interpolated. A `{{ }}` marker left over from an undefined variable is not special-cased: it

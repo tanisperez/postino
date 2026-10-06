@@ -232,9 +232,8 @@ impl Workspace {
     }
 
     /// Loads the environment `name`, merging `environments/<name>.local.env` over
-    /// `environments/<name>.env`: a variable present in both keeps its position from the base
-    /// file but takes its value from the local file (`plans/mvp.md`, section 3.4). At least one
-    /// of the two files must exist.
+    /// `environments/<name>.env`: a variable present in both keeps its position from the base file
+    /// but takes its value from the local file. At least one of the two files must exist.
     pub fn load_environment(&self, name: &str) -> Result<Environment, WorkspaceError> {
         validate_relative_path(name)
             .map_err(|_| WorkspaceError::EnvironmentNotFound(name.to_string()))?;
@@ -353,7 +352,7 @@ impl Workspace {
 }
 
 /// A blank request used as the content of a newly created `.postino` file. `Request::default`
-/// alone would not do: its empty URL does not parse back (`plans/mvp.md`, section 3.2 requires a
+/// alone would not do: its empty URL does not parse back (`docs/format.md` requires a
 /// non-empty URL), so the new file would immediately show up as broken.
 fn new_request() -> Request {
     Request {

@@ -1,7 +1,6 @@
 //! The environment picker shown in the title bar: [`EnvPill`]/[`EnvMenuItem`] listing the
 //! workspace's `environments/*.env` files plus "No environment", with `Ctrl 1..9`/`Ctrl 0`
-//! shortcuts (`Cmd` on macOS) for the first nine environments (`plans/ui-redesign.md` section
-//! 2.3 point 1 and phase 4 item 1).
+//! shortcuts (`Cmd` on macOS) for the first nine environments.
 
 use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
@@ -21,8 +20,8 @@ const MODIFIER_KEY: &str = "Cmd";
 #[cfg(not(target_os = "macos"))]
 const MODIFIER_KEY: &str = "Ctrl";
 
-/// How many environments get a `Ctrl 1..9` shortcut (`plans/ui-redesign.md` phase 4 item 1: "the
-/// first nine environments").
+/// How many environments get a `Ctrl 1..9` shortcut (the
+/// first nine environments).
 const SHORTCUT_COUNT: usize = 9;
 
 impl AppView {

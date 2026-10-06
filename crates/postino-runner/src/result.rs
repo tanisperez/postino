@@ -29,7 +29,7 @@ pub struct RunResult {
     pub failed_stage: Option<FailedStage>,
 }
 
-/// The pipeline stage that stopped a run from completing normally (`plans/mvp.md`, section 6).
+/// The pipeline stage that stopped a run from completing normally.
 ///
 /// Interpolation itself is never a failing stage: an unresolved marker is reported as a warning
 /// on [`RunResult::warnings`] instead, and the run continues.

@@ -1,13 +1,12 @@
-//! [`VariableChip`]: a standalone rendering of a `{{ name }}` marker (`plans/ui-redesign.md`
-//! phase 3), and [`highlight_style`], the shared
-//! [`HighlightStyle`] builder [`super::url_bar::UrlBar`] reuses to style the same two variants as
-//! spans inside a longer line of text.
+//! [`VariableChip`]: a standalone rendering of a `{{ name }}` marker, and [`highlight_style`], the
+//! shared [`HighlightStyle`] builder [`super::url_bar::UrlBar`] reuses to style the same two
+//! variants as spans inside a longer line of text.
 //!
 //! Custom element: a defined variable is a small `accent_subtle` chip (an ordinary styled
 //! `div`), but an undefined one needs a wavy underline, which a plain `div`'s `Styled::underline`
 //! cannot draw (it is a solid underline only); [`gpui::StyledText`] with a
-//! [`gpui::UnderlineStyle`] can, exactly the fallback `plans/ui-redesign-spikes.md` section 3
-//! settled on.
+//! [`gpui::UnderlineStyle`] can, exactly the fallback described in
+//! `docs/gpui-notes.md`.
 
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;

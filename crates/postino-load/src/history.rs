@@ -1,10 +1,8 @@
-//! Run history: one JSON file per load test run, saved under `<workspace>/.postino/runs/`
-//! (`plans/ui-redesign.md`, Phase 1d, point 5).
+//! Run history: one JSON file per load test run, saved under `<workspace>/.postino/runs/`.
 //!
-//! This is a documented exception to "`postino-workspace` owns the filesystem"
-//! (`plans/ui-redesign.md`, section 3): `postino-load` does its own IO here to avoid a
-//! `postino-workspace -> postino-load -> postino-runner` dependency edge, which would break the
-//! acyclic dependency graph of `AGENTS.md`.
+//! This is a documented exception to "`postino-workspace` owns the filesystem": `postino-load` does
+//! its own IO here to avoid a `postino-workspace -> postino-load -> postino-runner` dependency
+//! edge, which would break the acyclic dependency graph of `AGENTS.md`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -54,7 +52,7 @@ pub enum HistoryError {
 }
 
 /// A [`LoadConfig`] without the actual [`postino_core::Request`] values, for storing alongside a
-/// [`RunRecord`] (`plans/ui-redesign.md`, Phase 1d, point 5: "config summary"). This avoids
+/// [`RunRecord`] (a config summary). This avoids
 /// needing `serde` support on `postino-core`'s domain types just to persist history.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LoadConfigSummary {
@@ -89,7 +87,7 @@ impl From<&LoadConfig> for LoadConfigSummary {
 /// A single run's saved history entry.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RunRecord {
-    /// The run number, matching its file name (`plans/ui-redesign.md`, Phase 1d, point 5: 4
+    /// The run number, matching its file name (4
     /// digits, zero padded).
     pub number: u32,
     /// When the run started, as Unix seconds.
@@ -398,7 +396,7 @@ mod tests {
     #[test]
     fn a_run_file_saved_before_stopped_early_and_target_labels_existed_still_loads() {
         let dir = tempdir().expect("temp dir");
-        // The exact shape `save` wrote before this phase's fields existed: everything
+        // The exact shape `save` wrote before its newer fields existed: everything
         // `RunRecord` still has, nothing it gained since.
         let mut value = serde_json::to_value(sample_record(1)).expect("serialize");
         let object = value

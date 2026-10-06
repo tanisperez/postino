@@ -1,13 +1,11 @@
-//! [`UrlBar`]: the method selector plus URL field joined in one bordered box
-//! (`plans/ui-redesign.md` phase 3).
+//! [`UrlBar`]: the method selector plus URL field joined in one bordered box.
 //!
-//! Follows the fallback `plans/ui-redesign-spikes.md` section 3 settled on for variable chips in
-//! a single-line input: gpui-component's `Input`/`InputState` cannot style byte ranges (only its
+//! Variable chips in a single-line input need a fallback (see `docs/gpui-notes.md`): gpui-component's `Input`/`InputState` cannot style byte ranges (only its
 //! multi-line, language-aware `Editor` can), so `UrlBar` renders a row of plain text and
 //! [`VariableChip`] spans while the field is not focused, and swaps to a live `Input` bound to
 //! the caller's own `Entity<InputState>` once it is. Wiring `UrlBar` into the real request
 //! editor (creating that entity, subscribing to its change events, calling
-//! `postino_runner::preview` on every edit) is phase 5's job; this component only renders and
+//! `postino_runner::preview` on every edit) is the request editor's job; this component only renders and
 //! forwards clicks.
 
 use std::collections::HashSet;
@@ -42,8 +40,8 @@ const STANDARD_METHODS: [Method; 7] = [
     Method::Options,
 ];
 
-/// The method selector joined to a URL field, with variable chips styled per
-/// `plans/ui-redesign.md` section 2.1: `accent` for a defined `{{var}}`, `danger` with a wavy
+/// The method selector joined to a URL field, with variable chips styled as
+/// described in `docs/design-system.md`: `accent` for a defined `{{var}}`, `danger` with a wavy
 /// underline for an unknown one.
 #[derive(IntoElement)]
 pub struct UrlBar {
@@ -55,15 +53,15 @@ pub struct UrlBar {
     /// this set (and not a function call) renders as defined.
     unknown_names: HashSet<String>,
     input_state: Entity<InputState>,
-    /// When set, replaces the method dropdown with a live `Input` bound to this entity, for
-    /// typing a custom method token (`plans/ui-redesign.md` phase 5, reviewer fix item 6).
+    /// When set, replaces the method dropdown with a live `Input` bound to this entity, for typing
+    /// a custom method token.
     editing_method: Option<Entity<InputState>>,
     on_method_change: Option<MethodHandler>,
     on_chip_click: Option<TextHandler>,
     /// Fired when the URL text changes. `UrlBar` is a `RenderOnce` (no `Context<Self>`), so it
     /// cannot subscribe to `input_state`'s own change events itself; the owning view would need
-    /// to do that subscription and call this callback from there. Phase 5 (`views/request_editor
-    /// .rs`) does not use this: it already subscribes to the URL `InputState` directly (as it
+    /// to do that subscription and call this callback from there. The request editor (`views/request_editor.rs`)
+    /// does not use this: it already subscribes to the URL `InputState` directly (as it
     /// does for its other inputs) to write edits back into the request, and recomputes the live
     /// variable preview from scratch on every render instead, which is simpler and gives the
     /// same result. Kept on the builder in case a future caller needs the narrower callback.
@@ -123,8 +121,8 @@ impl UrlBar {
     }
 
     /// Sets the handler for clicking a variable chip, called with the variable's name.
-    /// `views/request_editor.rs` only wires this for a danger (undefined) chip, opening the
-    /// Define dialog (`plans/ui-redesign.md` phase 5 item 4, phase 7 item 3).
+    /// `views/request_editor.rs` only wires this for a danger (undefined) chip, opening the Define
+    /// dialog.
     pub fn on_chip_click(
         mut self,
         handler: impl Fn(String, &mut Window, &mut App) + 'static,

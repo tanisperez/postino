@@ -1,5 +1,5 @@
 //! [`PrimaryButton`], [`SecondaryButton`], [`GhostButton`] and [`DangerButton`]: the four button
-//! kinds (`plans/ui-redesign.md` phase 3).
+//! kinds.
 //!
 //! `PrimaryButton`/`SecondaryButton`/`DangerButton` wrap gpui-kit's [`Button`] on its matching
 //! built-in variant (`.primary()`/`.secondary()`/`.danger()`, plus `SecondaryButton`'s own
@@ -33,8 +33,7 @@ use gpui_kit::*;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
 
-/// Opacity applied to a disabled button (`plans/ui-redesign.md` phase 3, "disabled at 45%
-/// opacity").
+/// Opacity applied to a disabled button (45%).
 const DISABLED_OPACITY: f32 = 0.45;
 
 /// Builder state shared by the four button kinds in this file. Not public: each kind exposes its

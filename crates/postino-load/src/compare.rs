@@ -1,5 +1,5 @@
-//! [`compare`], turning two [`crate::LoadSnapshot`]s into the "Compare with" rows of the load
-//! test dashboard (`plans/ui-redesign.md`, Phase 1d, point 6).
+//! [`compare`], turning two [`crate::LoadSnapshot`]s into the "Compare with" rows of the load test
+//! dashboard.
 
 use crate::metrics::LoadSnapshot;
 
@@ -32,8 +32,8 @@ pub struct Delta {
     pub is_improvement: bool,
 }
 
-/// Compares `current` against `previous`, one [`Delta`] each for Requests/s, p95, p99 and
-/// Errors, in that order (`plans/ui-redesign.md`, Phase 1d, point 6).
+/// Compares `current` against `previous`, one [`Delta`] each for Requests/s, p95, p99 and Errors,
+/// in that order.
 ///
 /// "Requests/s" compares [`LoadSnapshot::rps`] (the last fully elapsed second of each run, the
 /// steadiest single reading available); "p95" and "p99" compare the run-wide percentiles, not a
@@ -74,8 +74,8 @@ fn lower_is_better(label: &'static str, previous: f64, current: f64) -> Delta {
 }
 
 /// The error rate delta, in percentage points rather than a percent change, since the metric
-/// itself is already a fraction (`plans/ui-redesign.md`, Phase 1d, point 6: "errors delta in
-/// percentage points").
+/// itself is already a fraction (errors delta in
+/// percentage points).
 fn error_rate_delta(previous: f64, current: f64) -> Delta {
     Delta {
         label: "Errors",

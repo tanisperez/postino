@@ -3,7 +3,7 @@
 //! This crate has no filesystem or network access. It defines the plain data types shared by
 //! every other crate (`Method`, `Request`, `Environment`, `Response`, ...), the `{{ }}` variable
 //! interpolation rules and the built-in template functions (`uuid()`, `now()`, ...) described in
-//! `plans/mvp.md`, sections 3.5, 3.6 and 5.
+//! `docs/format.md`.
 #![warn(missing_docs)]
 
 mod body;

@@ -1,4 +1,4 @@
-//! The built-in template functions of `plans/mvp.md`, section 3.6: `uuid()`, `now()`,
+//! The built-in template functions (see `docs/format.md`): `uuid()`, `now()`,
 //! `isoDate()`, `randomInt(min, max)`, `randomString(len)`, `base64Encode(str)`,
 //! `base64Decode(str)`, `urlEncode(str)`.
 //!
@@ -53,8 +53,7 @@ pub enum FunctionError {
 ///
 /// This is the dispatcher used by `{{ name(arg, ...) }}` markers. It never panics: an unknown
 /// function, a wrong number of arguments or an argument of the wrong type all return a
-/// [`FunctionError`], which `postino-core::interpolate` turns into a warning rather than an
-/// error (see `plans/mvp.md`, section 3.6).
+/// [`FunctionError`], which `postino-core::interpolate` turns into a warning rather than an error.
 pub fn call(name: &str, args: &[Arg]) -> Result<String, FunctionError> {
     match name {
         "uuid" => {
@@ -157,8 +156,7 @@ pub fn now_millis() -> u128 {
 /// The current UTC time as an RFC 3339 timestamp, for example `"2026-09-25T13:11:00Z"`.
 ///
 /// Implemented by hand with a small, well known civil calendar algorithm (see
-/// [`civil_from_days`]) instead of adding a date and time dependency, since none is listed in
-/// `plans/mvp.md`.
+/// [`civil_from_days`]) instead of adding a date and time dependency.
 pub fn iso_date() -> String {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)

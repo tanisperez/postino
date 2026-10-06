@@ -1,5 +1,5 @@
 //! Live metrics for a load test: the [`Aggregator`] every sample is fed into, and the
-//! [`LoadSnapshot`] read out of it (`plans/ui-redesign.md`, Phase 1d, point 4).
+//! [`LoadSnapshot`] read out of it.
 //!
 //! # Percentile method
 //!
@@ -28,10 +28,9 @@ pub(crate) struct Sample {
     pub latency_us: u32,
     /// How the sample is classified for the status breakdown.
     pub status: StatusKey,
-    /// Whether this sample counts as an error (`plans/ui-redesign.md`, Phase 1d, point 3). Kept
-    /// alongside `status` instead of recomputed from it, since a caller may have a status of
-    /// [`StatusKey::Code`] with a value below 400 alongside a script failure that is still not
-    /// counted as an error, see [`StatusKey::is_error`].
+    /// Whether this sample counts as an error. Kept alongside `status` instead of recomputed from
+    /// it, since a caller may have a status of [`StatusKey::Code`] with a value below 400 alongside
+    /// a script failure that is still not counted as an error, see [`StatusKey::is_error`].
     pub is_error: bool,
 }
 
@@ -62,8 +61,7 @@ pub struct TargetStats {
     pub error_rate: f64,
 }
 
-/// A point-in-time read of a load test's metrics: live while it runs, final once it stops
-/// (`plans/ui-redesign.md`, Phase 1d, point 4).
+/// A point-in-time read of a load test's metrics: live while it runs, final once it stops.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LoadSnapshot {
     /// How long the run has been going for. On the final snapshot of a finished (not stopped
@@ -451,7 +449,7 @@ mod tests {
         assert_eq!(snapshot.series[1].p95, 0);
     }
 
-    /// Reproduces the bug reported after phase 8: every sample landed in second 0 (a run that
+    /// Reproduces a bug where every sample landed in second 0 (a run that
     /// clearly had throughput throughout), but by the time every virtual user thread is joined,
     /// `elapsed` has ticked into a new, idle second (`crate::run::run_supervisor`'s own join wait,
     /// since `stop` does not abort a request already in flight). [`Aggregator::snapshot`]'s "last

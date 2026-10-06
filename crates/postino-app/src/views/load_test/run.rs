@@ -1,7 +1,7 @@
-//! Starting, stopping and finishing a load test run (`plans/ui-redesign.md` phase 8 items 5 and
-//! 6), and the periodic 250 ms refresh while it is in progress. Mirrors `views/send.rs`'s split
-//! between the actual pipeline (here, `postino_load::LoadRun`) and driving it off the UI thread,
-//! so a 50 VU run never blocks rendering.
+//! Starting, stopping and finishing a load test run, and the periodic 250 ms refresh while it is in
+//! progress. Mirrors `views/send.rs`'s split between the actual pipeline (here,
+//! `postino_load::LoadRun`) and driving it off the UI thread, so a 50 VU run never blocks
+//! rendering.
 //!
 //! Known engine caveat (`postino-load`'s own crate docs): `LoadRun::stop` does not abort
 //! in-flight requests, so `LoadRun::join` can block until every virtual user's current request
@@ -19,8 +19,7 @@ use postino_runner::Runner;
 use crate::state::load_test::{self, LoadTestFailure, LoadTestStatus, LoadTestTarget};
 use crate::views::root::AppView;
 
-/// How often the dashboard refreshes while a run is in progress
-/// (`plans/ui-redesign-spikes.md` question 8).
+/// How often the dashboard refreshes while a run is in progress.
 const TICK_INTERVAL: Duration = Duration::from_millis(250);
 
 /// A load test run in progress: the engine handle, the data needed to save its
@@ -83,10 +82,9 @@ impl AppView {
             .collect()
     }
 
-    /// Starts a load test run for `tab_id` (`plans/ui-redesign.md` phase 8 item 5). A no-op if a
-    /// run is already in progress for this tab. On a setup failure (no target, an empty
-    /// collection, a request that fails to load), records [`LoadTestStatus::Failed`] instead of
-    /// starting anything.
+    /// Starts a load test run for `tab_id`. A no-op if a run is already in progress for this tab.
+    /// On a setup failure (no target, an empty collection, a request that fails to load), records
+    /// [`LoadTestStatus::Failed`] instead of starting anything.
     pub(crate) fn start_load_test(&mut self, tab_id: String, cx: &mut Context<Self>) {
         if self.load_runs.contains_key(&tab_id) {
             return;
@@ -226,9 +224,8 @@ impl AppView {
         still_running
     }
 
-    /// Records the final status and snapshot, saves the run to `.postino/runs/`
-    /// (`plans/ui-redesign.md` phase 1d point 5), and refreshes the tab's history list so the
-    /// "Compare with" panel picks it up.
+    /// Records the final status and snapshot, saves the run to `.postino/runs/`, and refreshes the
+    /// tab's history list so the "Compare with" panel picks it up.
     fn finish_load_test(
         &mut self,
         tab_id: &str,
@@ -294,10 +291,10 @@ impl AppView {
         }
         self.refresh_load_test_history(tab_id, cx);
 
-        // Defaults "Compare with" to the latest *other* run of the same target
-        // (`plans/ui-redesign.md` phase 8 item 4), not simply `run_number - 1`: run numbers are
-        // shared across every target in the workspace (`postino_load::history::next_number`), so
-        // the previous sequential number might belong to a different target entirely.
+        // Defaults "Compare with" to the latest *other* run of the same target, not simply
+        // `run_number - 1`: run numbers are shared across every target in the workspace
+        // (`postino_load::history::next_number`), so the previous sequential number might belong to
+        // a different target entirely.
         let previous = self
             .state
             .tabs
@@ -315,7 +312,7 @@ impl AppView {
         self.refresh_load_test_compare_snapshot(tab_id, cx);
     }
 
-    /// Refreshes `tab_id`'s cached history list (`plans/ui-redesign.md` phase 8 item 4: the
+    /// Refreshes `tab_id`'s cached history list (the
     /// history list and the "Compare with" dropdown), filtered to runs of the same target label.
     pub(crate) fn refresh_load_test_history(&mut self, tab_id: &str, cx: &mut Context<Self>) {
         let Some(root) = self
@@ -337,7 +334,7 @@ impl AppView {
     }
 
     /// Asks the run in progress for `tab_id` to stop as soon as possible
-    /// (`plans/ui-redesign.md` phase 8 item 3's "Stop run" button, and item 6: closing a tab with
+    /// (the "Stop run" button, and closing a tab with
     /// a running test). A no-op if no run is in progress. The tick loop started by
     /// [`Self::start_load_test`] notices within one [`TICK_INTERVAL`] and finalizes the run; this
     /// method itself never blocks.

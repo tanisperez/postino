@@ -1,6 +1,6 @@
 //! The `POSTINO_OPEN=components` debug view: every component in this module, in every state, to
-//! check against `docs/design-system.md`, for the orchestrator to screenshot and
-//! compare (`plans/ui-redesign.md` phase 3). Not reachable from any menu.
+//! check against `docs/design-system.md`, to screenshot and compare. Not
+//! reachable from any menu.
 
 use std::collections::HashSet;
 
@@ -25,7 +25,7 @@ use crate::views::root::AppView;
 
 impl AppView {
     /// Renders the whole gallery: one section per kind of component, plus the
-    /// phase 3 table's extra components (`UrlBar`, `EnvPill`, `SectionLabel`, `Card`,
+    /// extra components (`UrlBar`, `EnvPill`, `SectionLabel`, `Card`,
     /// `DocumentTabs`).
     pub(crate) fn render_components_gallery(
         &mut self,
@@ -286,7 +286,7 @@ fn render_controls() -> impl IntoElement {
 /// The "Menu" swatch: a static reproduction of the environment menu's rows (a checked "No
 /// environment", a hovered "local", and "production" with a shortcut hint).
 /// `EnvPill`'s own dropdown uses the same layout, but only ever renders it
-/// while actually open, which a static screenshot cannot show; see this phase's report.
+/// while actually open, which a static screenshot cannot show.
 fn render_menu(palette: &crate::theme::Palette) -> impl IntoElement {
     v_flex()
         .p_1()
@@ -371,7 +371,7 @@ fn render_env_pill() -> impl IntoElement {
     // `EnvPill` wraps gpui-kit's `Popover`/`dropdown_menu`, whose trigger wrapper stretches to
     // fill a column flex parent's cross axis regardless of the trigger's own width styling (no
     // public style hook reaches that wrapper); it never stretches in the title bar's own row
-    // layout (phase 4), so this `max_w` is only to keep the gallery's demo pill compact.
+    // layout, so this `max_w` is only to keep the gallery's demo pill compact.
     div().max_w(px(220.0)).child(EnvPill::new(
         "gallery-env-pill",
         vec![
@@ -383,7 +383,7 @@ fn render_env_pill() -> impl IntoElement {
 }
 
 /// A [`Card`] with a couple of KPI-like children, close enough to a dashboard
-/// card to show the container's own look (the real KPI strip is phase 8's).
+/// card to show the container's own look (the real KPI strip is in the load test dashboard).
 fn render_card() -> impl IntoElement {
     Card::new().child(SectionLabel::new("Requests/s")).child(
         div()

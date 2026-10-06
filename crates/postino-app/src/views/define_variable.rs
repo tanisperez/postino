@@ -1,10 +1,9 @@
-//! The Define variable dialog (`plans/ui-redesign.md` phase 7 item 3): opened from a response
-//! pane "Define" warning action (`views/response_view.rs`) or a click on a danger chip in the
-//! URL (`views/request_editor.rs`, through `UrlBar::on_chip_click`). Asks for the variable's
-//! value and which environment to write it to, then calls
-//! [`postino_workspace::Workspace::set_environment_var`]. Reuses `views/settings.rs`'s dialog
-//! patterns (a plain `Dialog` with custom content, a font-picker-style dropdown for the
-//! environment select).
+//! The Define variable dialog: opened from a response pane "Define" warning action
+//! (`views/response_view.rs`) or a click on a danger chip in the URL (`views/request_editor.rs`,
+//! through `UrlBar::on_chip_click`). Asks for the variable's value and which environment to write
+//! it to, then calls [`postino_workspace::Workspace::set_environment_var`]. Reuses
+//! `views/settings.rs`'s dialog patterns (a plain `Dialog` with custom content, a font-picker-style
+//! dropdown for the environment select).
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::dialog::DialogButtonProps;
@@ -47,8 +46,8 @@ pub(crate) struct DefineVariableState {
 }
 
 impl AppView {
-    /// Opens the Define variable dialog for `name` (`plans/ui-redesign.md` phase 7 item 3). A
-    /// no-op when a dialog is already open, or when there is no workspace to write into.
+    /// Opens the Define variable dialog for `name`. A no-op when a dialog is already open, or when
+    /// there is no workspace to write into.
     pub(crate) fn open_define_variable_dialog(
         &mut self,
         name: String,

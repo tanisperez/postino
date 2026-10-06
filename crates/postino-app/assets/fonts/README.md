@@ -10,7 +10,7 @@ binary with `include_bytes!` and registered at startup (`crates/postino-app/src/
   archive).
 
 Files kept here, static TTFs from the archive's `Geist/ttf/` and `GeistMono/ttf/` folders (the
-weights the UI type scale in `plans/ui-redesign.md` section 2.2 actually uses; the archive also
+weights the UI type scale (`docs/design-system.md`) actually uses; the archive also
 ships Thin, ExtraLight, Light, ExtraBold, Black and italics for both families, plus a separate
 `GeistPixel` family, none of which Postino uses, so they are not copied here):
 

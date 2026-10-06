@@ -1,4 +1,4 @@
-# Request editor, Define variable and Code snippet dialogs, environment picker. Glossary and rules: plans/i18n.md
+# Request editor, Define variable and Code snippet dialogs, environment picker. Glossary and rules: docs/i18n.md
 _version: 2
 "request.send":
   en: "Send"

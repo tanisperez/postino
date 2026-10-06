@@ -1,4 +1,4 @@
-//! [`AppView`]: the single top-level `gpui` view for this phase. It owns the plain
+//! [`AppView`]: the single top-level `gpui` view. It owns the plain
 //! [`AppState`](crate::state::AppState), the `gpui`-specific bits that have to live alongside it
 //! (the sidebar's tree state), and lays out the title bar, sidebar and main area. Other `views/`
 //! modules add methods to [`AppView`] (`impl AppView` blocks split across files) so each panel's
@@ -70,15 +70,13 @@ pub struct AppView {
     /// successful operation clears it. `gpui` has no blocking error dialogs in this app by
     /// design (`AGENTS.md`: no native blocking dialogs), so failures show inline instead.
     pub(crate) workspace_error: Option<String>,
-    /// The `gpui` entities behind the request editor's editable fields (Phase 9). See
+    /// The `gpui` entities behind the request editor's editable fields. See
     /// `views/request_editor.rs`.
     pub(crate) request_editor: RequestEditorEntities,
-    /// The response viewer's read-only body editor entity (`plans/ui-redesign.md` phase 5). See
-    /// `views/response_view.rs`.
+    /// The response viewer's read-only body editor entity. See `views/response_view.rs`.
     pub(crate) response_editor: ResponseEditorEntities,
-    /// Whether the method selector shows the inline custom-method `Input` instead of the
-    /// dropdown (`plans/ui-redesign.md` phase 5, reviewer fix item 6). See
-    /// `views/request_editor.rs`'s `begin_editing_custom_method`/`commit_custom_method`.
+    /// Whether the method selector shows the inline custom-method `Input` instead of the dropdown.
+    /// See `views/request_editor.rs`'s `begin_editing_custom_method`/`commit_custom_method`.
     pub(crate) editing_method: bool,
     /// Which request editor tab (Params, Headers, ...) is active. Shared across every open tab
     /// for simplicity: switching tabs keeps the same editor tab selected, which matches how most
@@ -88,7 +86,7 @@ pub struct AppView {
     pub(crate) active_response_tab: ResponseTab,
     /// Whether the response Body tab shows the raw body instead of the pretty-printed one.
     pub(crate) response_raw: bool,
-    /// The request currently being sent, if any (Phase 9). See `views/send.rs`.
+    /// The request currently being sent, if any. See `views/send.rs`.
     pub(crate) sending: Option<SendingTask>,
     /// The last [`RunResult`] for each tab id that has been sent at least once.
     pub(crate) responses: HashMap<String, RunResult>,
@@ -112,25 +110,22 @@ pub struct AppView {
     /// (`views/components/gallery.rs`). Created lazily by [`Self::apply_debug_open`], never on a
     /// normal launch.
     pub(crate) gallery_url_input: Option<Entity<InputState>>,
-    /// The sidebar filter's live text input (`plans/ui-redesign.md` section 2.3 point 2).
-    /// Subscribed once in [`Self::new`]; edits call [`Self::on_sidebar_filter_changed`].
+    /// The sidebar filter's live text input. Subscribed once in [`Self::new`]; edits call
+    /// [`Self::on_sidebar_filter_changed`].
     pub(crate) sidebar_filter_input: Entity<InputState>,
     /// The sidebar tree's per-folder expand state, captured right before the filter went from
     /// empty to non-empty, so clearing the filter can restore it instead of resetting every
     /// folder to expanded. `None` while the filter is empty.
     pub(crate) sidebar_filter_pre_expansion: Option<HashMap<String, bool>>,
-    /// The Code snippet dialog's currently selected language (`plans/ui-redesign.md` phase 7
-    /// item 2). Kept here (rather than local to the dialog) because it must survive the
-    /// dialog's `content` closure being re-invoked on every repaint: see
-    /// `views/snippet_dialog.rs`'s module doc comment.
+    /// The Code snippet dialog's currently selected language. Kept here (rather than local to the
+    /// dialog) because it must survive the dialog's `content` closure being re-invoked on every
+    /// repaint: see `views/snippet_dialog.rs`'s module doc comment.
     pub(crate) snippet_language: SnippetLanguage,
-    /// The Define variable dialog's live entities and in-progress choices, `Some` only while
-    /// that dialog is open (`plans/ui-redesign.md` phase 7 item 3). See
-    /// `views/define_variable.rs`.
+    /// The Define variable dialog's live entities and in-progress choices, `Some` only while that
+    /// dialog is open. See `views/define_variable.rs`.
     pub(crate) define_variable: Option<DefineVariableState>,
-    /// The `gpui` entities behind whichever load test tab is active (`plans/ui-redesign.md`
-    /// phase 8): its config panel's numeric inputs and target picker. See
-    /// `views/load_test/config_panel.rs`.
+    /// The `gpui` entities behind whichever load test tab is active: its config panel's numeric
+    /// inputs and target picker. See `views/load_test/config_panel.rs`.
     pub(crate) load_test_entities: crate::views::load_test::LoadTestEntities,
     /// The running (or just-finished) `postino_load::LoadRun` behind every load test tab that has
     /// been started at least once, keyed by tab id. Unlike [`Self::request_editor`]/
@@ -252,11 +247,10 @@ impl AppView {
         view
     }
 
-    /// `POSTINO_OPEN=<target>` opens a specific UI state at startup, for the orchestrator to
-    /// screenshot after a UI phase (`plans/ui-redesign-spikes.md` section 10). A no-op when
-    /// unset or unrecognized, same convention as [`Self::apply_debug_autosend`]: not a supported
-    /// feature, not surfaced in any menu. Recognized targets are listed on
-    /// [`crate::state::debug_open::DebugOpenTarget`].
+    /// `POSTINO_OPEN=<target>` opens a specific UI state at startup, to
+    /// screenshot a UI state. A no-op when unset or unrecognized, same convention as
+    /// [`Self::apply_debug_autosend`]: not a supported feature, not surfaced in any menu.
+    /// Recognized targets are listed on [`crate::state::debug_open::DebugOpenTarget`].
     fn apply_debug_open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Ok(value) = std::env::var("POSTINO_OPEN") else {
             return;
@@ -328,10 +322,10 @@ impl AppView {
         cx.notify();
     }
 
-    /// Hidden debug hooks for end-to-end checks, since there is no tool to simulate clicks in
-    /// this app (Phase 9's manual verification, `plans/mvp.md`). Both are no-ops when unset, so
-    /// they never affect a normal launch; they exist for `make run`/manual testing, not as a
-    /// supported feature, so neither is surfaced in any menu or documented outside this comment.
+    /// Hidden debug hooks for end-to-end checks, since there is no tool to simulate clicks in this
+    /// app. Both are no-ops when unset, so they never affect a normal launch; they exist for `make
+    /// run`/manual testing, not as a supported feature, so neither is surfaced in any menu or
+    /// documented outside this comment.
     ///
     /// - `POSTINO_ENV=<name>` selects an environment before sending, matching a name under
     ///   `environments/` in the opened workspace.
@@ -480,10 +474,9 @@ impl AppView {
         self.load_targets.rebuild(nodes);
     }
 
-    /// Called on every edit to [`Self::sidebar_filter_input`]. Narrows the tree while the filter
-    /// is non-empty (capturing the current expand state once, on the empty-to-non-empty
-    /// transition); restores that captured expand state when the filter goes back to empty
-    /// (`plans/ui-redesign.md` section 2.3 point 2).
+    /// Called on every edit to [`Self::sidebar_filter_input`]. Narrows the tree while the filter is
+    /// non-empty (capturing the current expand state once, on the empty-to-non-empty transition);
+    /// restores that captured expand state when the filter goes back to empty.
     pub(crate) fn on_sidebar_filter_changed(&mut self, cx: &mut Context<Self>) {
         let query = self.sidebar_filter_input.read(cx).value().to_string();
         let items = if query.trim().is_empty() {
@@ -540,8 +533,7 @@ impl AppView {
         match workspace.load_request(&id) {
             Ok(request) => {
                 // Only a genuinely new tab gets the `Body`-tab heuristic below: re-selecting an
-                // already open one keeps whatever tab the user last looked at, same as before
-                // (`plans/ui-redesign.md` phase 5, reviewer fix item D).
+                // already open one keeps whatever tab the user last looked at, same as before.
                 let is_new_tab = self.state.tabs.index_of(&id).is_none();
                 let query_len = request.query.len();
                 let has_body = !matches!(request.body, Body::None);
@@ -563,10 +555,9 @@ impl AppView {
         cx.notify();
     }
 
-    /// Closes the tab at `index`. Stops any load test still running in it first
-    /// (`plans/ui-redesign.md` phase 8 item 6): dropping its `LoadRunHandle` (see
-    /// `views/load_test/run.rs`) cancels the periodic refresh task and detaches the run's
-    /// supervisor thread, which exits shortly after observing the stop signal.
+    /// Closes the tab at `index`. Stops any load test still running in it first: dropping its
+    /// `LoadRunHandle` (see `views/load_test/run.rs`) cancels the periodic refresh task and
+    /// detaches the run's supervisor thread, which exits shortly after observing the stop signal.
     pub(crate) fn close_tab(&mut self, index: usize, cx: &mut Context<Self>) {
         if let Some(tab_id) = self
             .state
@@ -583,10 +574,10 @@ impl AppView {
         cx.notify();
     }
 
-    /// Saves the active tab's request to disk with `postino-format`'s canonical serialization,
-    /// via [`postino_workspace::Workspace::save_request`]. Bound to `Ctrl+S` / `Cmd+S`. A no-op
-    /// when the active tab is a load test: dirty state and saving only apply to requests
-    /// (`plans/ui-redesign.md` phase 8 item 1), so `Ctrl+S` on that tab does nothing harmful.
+    /// Saves the active tab's request to disk with `postino-format`'s canonical serialization, via
+    /// [`postino_workspace::Workspace::save_request`]. Bound to `Ctrl+S` / `Cmd+S`. A no-op when
+    /// the active tab is a load test: dirty state and saving only apply to requests, so `Ctrl+S` on
+    /// that tab does nothing harmful.
     pub(crate) fn save_active_tab(&mut self, cx: &mut Context<Self>) {
         let Some(active_index) = self.state.tabs.active_index() else {
             return;
@@ -720,11 +711,10 @@ impl AppView {
     }
 
     /// Re-applies every translated string that is cached outside `render` after the UI language
-    /// changed (`plans/i18n.md`, section 3.3). Today that means `InputState` placeholders, set
-    /// once at construction: each view that owns inputs exposes a
-    /// `relocalize(&mut self, window, cx)` that calls `InputState::set_placeholder` again, and
-    /// this method forwards to them. Called by the Settings view before it refreshes the windows,
-    /// with the new locale already applied.
+    /// changed. Today that means `InputState` placeholders, set once at construction: each view
+    /// that owns inputs exposes a `relocalize(&mut self, window, cx)` that calls
+    /// `InputState::set_placeholder` again, and this method forwards to them. Called by the
+    /// Settings view before it refreshes the windows, with the new locale already applied.
     pub(crate) fn relocalize(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.relocalize_sidebar(window, cx);
         self.relocalize_request_editor(window, cx);
@@ -740,7 +730,7 @@ impl AppView {
     }
 
     /// Handles the `Ctrl ,` / `Cmd ,` key binding (see `main.rs`'s `bind_keys`), and the title
-    /// bar's settings gear (`views/title_bar.rs`) and the command palette (phase 7) call
+    /// bar's settings gear (`views/title_bar.rs`) and the command palette call
     /// [`Self::open_settings`] directly.
     fn on_open_settings_action(
         &mut self,
@@ -828,9 +818,9 @@ impl AppView {
         cx.notify();
     }
 
-    /// Selects the `one_based_index`-th environment (1..=9) of the open workspace, for the
-    /// `Ctrl 1..9` / `Cmd 1..9` shortcuts (`plans/ui-redesign.md` phase 4 item 1). A no-op when
-    /// there is no workspace open or fewer than `one_based_index` environments.
+    /// Selects the `one_based_index`-th environment (1..=9) of the open workspace, for the `Ctrl
+    /// 1..9` / `Cmd 1..9` shortcuts. A no-op when there is no workspace open or fewer than
+    /// `one_based_index` environments.
     pub(crate) fn select_environment_by_shortcut(
         &mut self,
         one_based_index: usize,
@@ -954,14 +944,13 @@ impl AppView {
     ) -> AnyElement {
         // `ResizablePanelGroup` (`h_resizable`) sizes itself with `size_full()`, which only
         // resolves correctly if ITS OWN parent hands it a determinate height. The top-level
-        // `Render` impl's `v_flex` used to add this `child(body)` with no `flex_1`/`min_h_0` of
-        // its own, so `body` took its content's natural (unconstrained) height instead of "the
-        // window height minus the title bar and status bar" - overflowing the window and pushing
-        // the status bar (and, one level down, the sidebar footer, whose own already-correct
+        // `Render` impl's `v_flex` used to add this `child(body)` with no `flex_1`/`min_h_0` of its
+        // own, so `body` took its content's natural (unconstrained) height instead of "the window
+        // height minus the title bar and status bar" - overflowing the window and pushing the
+        // status bar (and, one level down, the sidebar footer, whose own already-correct
         // `flex_1`/`min_h_0` chain never got a real height to shrink within either) out of the
-        // visible area (`plans/ui-redesign.md` phase 5, reviewer fix round 3 item 1). `min_h_0`
-        // is what actually allows this to shrink below its content size instead of just growing;
-        // `flex_1` alone is not enough in a vertical flex chain.
+        // visible area. `min_h_0` is what actually allows this to shrink below its content size
+        // instead of just growing; `flex_1` alone is not enough in a vertical flex chain.
         let sidebar_visible = self.nav.sidebar_visible();
         let sidebar = if sidebar_visible {
             self.render_side_panel(weak.clone(), cx)
@@ -1021,7 +1010,7 @@ impl AppView {
             v_resizable("postino-main")
                 .child(
                     resizable_panel()
-                        // 1.1 : 1 initial split (`plans/ui-redesign.md` phase 5 item 1).
+                        // 1.1: 1 initial split.
                         .size(px(462.0))
                         .child(self.render_request_editor(window, cx)),
                 )
@@ -1051,9 +1040,9 @@ impl AppView {
             .into_any_element()
     }
 
-    /// Renders the open-tabs bar (`plans/ui-redesign.md` section 2.3 point 3): a [`DocumentTab`]
-    /// per open request, with a dirty marker and a close button, and a trailing "+" that opens
-    /// the same new-request dialog as the sidebar header.
+    /// Renders the open-tabs bar: a [`DocumentTab`] per open request, with a dirty marker and a
+    /// close button, and a trailing "+" that opens the same new-request dialog as the sidebar
+    /// header.
     fn render_tabs_bar(&mut self, weak: WeakEntity<Self>, cx: &mut Context<Self>) -> AnyElement {
         if self.state.tabs.open_tabs().is_empty() {
             return div().into_any_element();

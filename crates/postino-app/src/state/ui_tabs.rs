@@ -1,4 +1,4 @@
-//! The inner tabs of the request editor and response viewer panels (`plans/mvp.md`, Phase 9).
+//! The inner tabs of the request editor and response viewer panels.
 //!
 //! These are plain, `Copy` enums so the currently selected tab can be stored directly on
 //! [`crate::views::AppView`] without any `gpui` type.
@@ -53,8 +53,8 @@ impl RequestTab {
 /// `crate::views::root::AppView::active_request_tab`'s doc comment) and the request being
 /// opened. Jumps to [`RequestTab::Body`] when `current` is still the default [`RequestTab::
 /// Params`] and the request has no query params to show there but does have a body, since
-/// `Params` would otherwise land on an empty table (`plans/ui-redesign.md` phase 5, reviewer fix
-/// item D, matching the design, which showed `Body` for `POST /auth/login`). Any other
+/// `Params` would otherwise land on an empty table (a `POST` with a body opens on
+/// `Body`). Any other
 /// current tab is left alone: the user's own tab choice from a previous request is not
 /// second-guessed.
 pub fn tab_to_show_on_open(current: RequestTab, query_len: usize, has_body: bool) -> RequestTab {

@@ -1,4 +1,4 @@
-# In-app updater (macOS and Windows builds from GitHub). Glossary and rules: plans/i18n.md
+# In-app updater (macOS and Windows builds from GitHub). Glossary and rules: docs/i18n.md
 _version: 2
 "update.setting.title":
   en: "Updates"

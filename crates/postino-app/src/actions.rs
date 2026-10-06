@@ -12,10 +12,9 @@ actions!(
     [
         /// Saves the active tab's request to disk (`Ctrl+S` / `Cmd+S`).
         SaveActiveTab,
-        /// Sends the active tab's request (`Ctrl+Enter` / `Cmd+Enter`), `plans/mvp.md` Phase 9.
+        /// Sends the active tab's request (`Ctrl+Enter` / `Cmd+Enter`).
         SendActiveTab,
-        /// Selects the workspace's 1st environment (`Ctrl 1` / `Cmd 1`), `plans/ui-redesign.md`
-        /// phase 4 item 1.
+        /// Selects the workspace's 1st environment (`Ctrl 1` / `Cmd 1`).
         SelectEnvironment1,
         /// Selects the workspace's 2nd environment (`Ctrl 2` / `Cmd 2`).
         SelectEnvironment2,
@@ -35,9 +34,9 @@ actions!(
         SelectEnvironment9,
         /// Selects "No environment" (`Ctrl 0` / `Cmd 0`).
         SelectNoEnvironment,
-        /// Opens the Settings modal (`Ctrl ,` / `Cmd ,`), `plans/ui-redesign.md` phase 6 item 1.
+        /// Opens the Settings modal (`Ctrl ,` / `Cmd ,`).
         OpenSettings,
-        /// Opens the command palette (`Ctrl K` / `Cmd K`), `plans/ui-redesign.md` phase 7 item 1.
+        /// Opens the command palette (`Ctrl K` / `Cmd K`).
         OpenCommandPalette,
         /// Opens the keyboard shortcuts cheat sheet (`F1`, or `Cmd+Shift+/` on macOS).
         OpenShortcuts,

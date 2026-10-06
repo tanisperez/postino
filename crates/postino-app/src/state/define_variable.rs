@@ -1,8 +1,7 @@
-//! Plain logic behind the Define variable dialog (`plans/ui-redesign.md` phase 7 item 3): the
-//! secret-name heuristic that defaults the "Store in .local.env" switch on, and which
-//! environment the dialog preselects when it opens. `views/define_variable.rs` renders the
-//! dialog and owns its `gpui` entities; this module holds only what can be unit tested without a
-//! window.
+//! Plain logic behind the Define variable dialog: the secret-name heuristic that defaults the
+//! "Store in .local.env" switch on, and which environment the dialog preselects when it opens.
+//! `views/define_variable.rs` renders the dialog and owns its `gpui` entities; this module holds
+//! only what can be unit tested without a window.
 
 /// Case-insensitive substrings that mark a variable name as likely sensitive. Defining a
 /// variable whose name contains one of these defaults the "Store in .local.env (not versioned)"

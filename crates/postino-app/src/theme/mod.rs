@@ -1,10 +1,10 @@
 //! Postino's visual foundations: the color palette, layout metrics, the bundled fonts, and the
-//! gpui-kit theme family built from the palette (`plans/ui-redesign.md` phase 2).
+//! gpui-kit theme family built from the palette.
 //!
-//! [`install`] does the startup work: register the fonts, build the "Postino Light"/"Postino
-//! Dark" theme family JSON from [`palette::Palette`]'s own tokens, and load it into gpui-kit's
+//! [`install`] does the startup work: register the fonts, build the "Postino Light"/"Postino Dark"
+//! theme family JSON from [`palette::Palette`]'s own tokens, and load it into gpui-kit's
 //! `ThemeRegistry` so `Theme::change`/`Theme::sync_system_appearance` resolve to it instead of
-//! gpui-component's built-in default (`plans/ui-redesign-spikes.md` section 1).
+//! gpui-component's built-in default.
 
 pub mod metrics;
 pub mod palette;
@@ -25,8 +25,8 @@ const LIGHT_THEME_NAME: &str = "Postino Light";
 /// Name of the dark theme registered with gpui-kit's `ThemeRegistry`.
 const DARK_THEME_NAME: &str = "Postino Dark";
 
-/// General radius for gpui-kit's own stock widgets (inputs, buttons), matching the design's
-/// radius scale (`plans/ui-redesign.md` section 2.2).
+/// General radius for gpui-kit's own stock widgets (inputs, buttons), matching the design's radius
+/// scale.
 const GENERAL_RADIUS: u64 = 8;
 /// Large-element radius (dialogs, notifications), matching the design's modal radius.
 const LARGE_RADIUS: u64 = 14;
@@ -61,13 +61,13 @@ pub fn install(cx: &mut App, settings: &Settings) {
 }
 
 /// Rebuilds the "Postino Light"/"Postino Dark" `ThemeConfig`s from `settings` and assigns them as
-/// the active `Theme`'s light/dark themes, live (`plans/ui-redesign.md` phase 6 item 6: every
+/// the active `Theme`'s light/dark themes, live (every
 /// Settings change updates the global `Theme` immediately). Unlike [`install`] (called once at
 /// startup), this does not go through `ThemeRegistry::load_themes_from_str`: that call silently
-/// no-ops when a theme name it already knows is loaded again (`plans/ui-redesign-spikes.md`
-/// section 1), which would make a font or size change in Settings invisible. Parsing each mode's
-/// `ThemeConfig` JSON directly and assigning it to `Theme::global_mut(cx).light_theme`/
-/// `.dark_theme` sidesteps that: `Theme::change` always re-reads those two fields.
+/// no-ops when a theme name it already knows is loaded again, which would make a font or size
+/// change in Settings invisible. Parsing each mode's `ThemeConfig` JSON directly and assigning it
+/// to `Theme::global_mut(cx).light_theme`/ `.dark_theme` sidesteps that: `Theme::change` always
+/// re-reads those two fields.
 ///
 /// The caller still has to call `Theme::change`/`Theme::sync_system_appearance` afterwards to
 /// actually repaint the window with the new config (this function only updates what those calls
@@ -91,10 +91,10 @@ pub fn apply_settings(cx: &mut App, settings: &Settings) {
     theme.dark_theme = Rc::new(dark);
 }
 
-/// Registers the bundled Geist and Geist Mono TTFs with `cx`'s text system
-/// (`plans/ui-redesign-spikes.md` section 2). A failure here (the platform text system rejecting
-/// well-formed, bundled font bytes) is not worth aborting startup over: the app still runs, just
-/// falling back to gpui's own font resolution for the UI and mono families.
+/// Registers the bundled Geist and Geist Mono TTFs with `cx`'s text system. A failure here (the
+/// platform text system rejecting well-formed, bundled font bytes) is not worth aborting startup
+/// over: the app still runs, just falling back to gpui's own font resolution for the UI and mono
+/// families.
 fn register_fonts(cx: &App) {
     let fonts: Vec<Cow<'static, [u8]>> = vec![
         Cow::Borrowed(include_bytes!("../../assets/fonts/Geist-Regular.ttf").as_slice()),

@@ -1,9 +1,8 @@
-//! The title bar (`plans/ui-redesign.md` section 2.3 point 1): the "P" logo, "Postino", the
-//! workspace switcher, the search trigger, the environment pill and the settings gear. The
-//! Import menu lives in the sidebar's header, next to "new folder". The window controls at the far right are drawn automatically by gpui-kit's
-//! `TitleBar` (`plans/ui-redesign-spikes.md` section 9), so nothing here adds them. The search
-//! trigger opens the command palette (`views/command_palette.rs`); the settings gear opens
-//! Settings (`views/settings.rs`).
+//! The title bar: the "P" logo, "Postino", the workspace switcher, the search trigger, the
+//! environment pill and the settings gear. The Import menu lives in the sidebar's header, next to
+//! "new folder". The window controls at the far right are drawn automatically by gpui-kit's
+//! `TitleBar`, so nothing here adds them. The search trigger opens the command palette
+//! (`views/command_palette.rs`); the settings gear opens Settings (`views/settings.rs`).
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
@@ -197,8 +196,7 @@ fn render_logo(palette: &Palette) -> impl IntoElement {
         .child("P")
 }
 
-/// The centered search trigger: opens the command palette (`views/command_palette.rs`,
-/// `plans/ui-redesign.md` phase 7 item 1).
+/// The centered search trigger: opens the command palette (`views/command_palette.rs`).
 fn render_search_trigger(
     weak: WeakEntity<AppView>,
     palette: &Palette,
@@ -234,8 +232,7 @@ fn render_search_trigger(
         })
 }
 
-/// The settings gear: opens the Settings modal (`views/settings.rs`, `plans/ui-redesign.md`
-/// phase 6).
+/// The settings gear: opens the Settings modal (`views/settings.rs`).
 fn render_settings_gear(weak: WeakEntity<AppView>, palette: &Palette) -> impl IntoElement {
     div()
         .id("title-bar-settings-gear")

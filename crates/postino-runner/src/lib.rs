@@ -1,7 +1,7 @@
 //! The request execution pipeline: build the variable scope, run the pre script, interpolate,
 //! send the request, run the post script, and collect the result.
 //!
-//! See `plans/mvp.md`, section 6. The single entry point is [`Runner::run`], which never fails:
+//! See `docs/architecture.md` for the pipeline. The single entry point is [`Runner::run`], which never fails:
 //! every kind of failure is reported inside the returned [`RunResult`] instead of a top-level
 //! `Result` (see [`RunResult::failed_stage`]).
 #![warn(missing_docs)]

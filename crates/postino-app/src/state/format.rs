@@ -1,6 +1,5 @@
 //! Small formatting helpers for numbers and paths shown in the UI: human-readable sizes and
-//! durations, home-relative paths, and relative day labels (`plans/ui-redesign.md`, section 2.3
-//! point 2 "timings, sizes, hints" and section 1 "Recent workspaces").
+//! durations, home-relative paths, and relative day labels.
 
 use std::path::{MAIN_SEPARATOR, Path, PathBuf};
 use std::time::Duration;
@@ -96,7 +95,7 @@ pub fn elide_path(path: &str, max_chars: usize) -> String {
 
 /// The label shown in the open-tabs bar for an open request tab: the file stem (its name without
 /// the `.postino` extension), for example `"login"` for `"auth/login.postino"`. The full id is
-/// shown in the tab's tooltip instead (`plans/ui-redesign.md` section 2.3 point 3).
+/// shown in the tab's tooltip instead.
 pub fn tab_label(id: &str) -> &str {
     let name = id.rsplit('/').next().unwrap_or(id);
     name.strip_suffix(".postino").unwrap_or(name)

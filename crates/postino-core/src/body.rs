@@ -4,8 +4,8 @@ use crate::key_value::KeyValue;
 
 /// The body of a [`crate::Request`], as edited before interpolation.
 ///
-/// Mirrors the `body <type>` section of the `.postino` format (`plans/mvp.md`, section 3.2):
-/// `json`, `text` and `xml` are raw text, `form` is a list of urlencoded fields.
+/// Mirrors the `body <type>` section of the `.postino` format: `json`, `text` and `xml` are raw
+/// text, `form` is a list of urlencoded fields.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Body {
     /// No body.

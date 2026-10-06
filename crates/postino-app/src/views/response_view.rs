@@ -1,6 +1,5 @@
 //! The response viewer panel: status, time and size, the Body/Headers/Tests/Console tabs, and a
-//! warnings strip for missing variables and script errors (`plans/mvp.md`, Phase 9;
-//! `plans/ui-redesign.md` phase 5).
+//! warnings strip for missing variables and script errors.
 //!
 //! The response body is the one field with a persistent `gpui` entity of its own (a read-only
 //! [`EditorState`], see [`ResponseEditorEntities`]), so it can show line numbers and a working
@@ -38,13 +37,12 @@ const SEND_KEY_HINT: &str = "Cmd+\u{21b5}";
 #[cfg(not(target_os = "macos"))]
 const SEND_KEY_HINT: &str = "Ctrl+\u{21b5}";
 
-/// The live, read-only `EditorState` behind the response body view (`plans/ui-redesign.md`
-/// phase 5 item 3): a code editor, not a plain block of text, so it gets the design's line
-/// numbers and, wired in [`AppView::render_response_body_tab`], a working find bar
-/// (`EditorState::open_search`, which works on a readonly editor same as a writable one).
-/// Rebuilt when the active tab, the raw/pretty toggle or the JSON syntax highlighting changes;
-/// the shown text is unconditionally resynced afterwards, the same pattern
-/// `RequestEditorEntities` uses for its own editors.
+/// The live, read-only `EditorState` behind the response body view: a code editor, not a plain
+/// block of text, so it gets the design's line numbers and, wired in
+/// [`AppView::render_response_body_tab`], a working find bar (`EditorState::open_search`, which
+/// works on a readonly editor same as a writable one). Rebuilt when the active tab, the raw/pretty
+/// toggle or the JSON syntax highlighting changes; the shown text is unconditionally resynced
+/// afterwards, the same pattern `RequestEditorEntities` uses for its own editors.
 #[derive(Default)]
 pub(crate) struct ResponseEditorEntities {
     built_for: Option<(String, bool)>,
@@ -140,11 +138,11 @@ impl AppView {
         // to take `&mut self` for the Body tab's read-only editor entity.
         let warnings = self.render_warnings_strip(&tab_id, cx);
         let tab_bar = self.render_response_tab_bar(&tab_id, cx);
-        // The Body tab's read-only `Editor` scrolls its own content and needs a real,
-        // determinate height to fill (`plans/ui-redesign.md` phase 5, reviewer fix item B): an
-        // ancestor `overflow_y_scroll()` container instead measures its child's intrinsic
-        // height, which collapses a `flex_1` editor to a couple of lines. Headers/Tests/Console
-        // are plain lists with no scrolling of their own, so they still need it here.
+        // The Body tab's read-only `Editor` scrolls its own content and needs a real, determinate
+        // height to fill: an ancestor `overflow_y_scroll()` container instead measures its child's
+        // intrinsic height, which collapses a `flex_1` editor to a couple of lines.
+        // Headers/Tests/Console are plain lists with no scrolling of their own, so they still need
+        // it here.
         let content = div().id("response-content").flex_1().min_h_0();
         let content = if self.active_response_tab == ResponseTab::Body {
             content
@@ -161,9 +159,9 @@ impl AppView {
     }
 
     /// Renders the status badge, time and size, shown as the tab bar's trailing suffix
-    /// (`plans/ui-redesign.md` phase 5, reviewer fix item 1: on the right of the same 36 px
+    /// (on the right of the same 36 px
     /// bordered row as the tabs, not a separate row above them). The badge's label includes the
-    /// reason phrase (`state::response_render::reason_phrase`, reviewer fix item 2).
+    /// reason phrase (`state::response_render::reason_phrase`).
     fn render_status_suffix(&self, tab_id: &str, cx: &Context<Self>) -> AnyElement {
         let palette = cx.palette();
         // `render_response_view` already checked this tab has a result before calling here.
@@ -202,9 +200,8 @@ impl AppView {
         row.into_any_element()
     }
 
-    /// Renders the Body/Headers/Tests/Console tab bar, with the header count, the tests
-    /// pass/fail count colored `success`/`danger` (`plans/ui-redesign.md` phase 5 item 1 and
-    /// item 4), and the status badge/time/size on the right (reviewer fix item 1).
+    /// Renders the Body/Headers/Tests/Console tab bar, with the header count, the tests pass/fail
+    /// count colored `success`/`danger`, and the status badge/time/size on the right.
     fn render_response_tab_bar(&self, tab_id: &str, cx: &Context<Self>) -> AnyElement {
         let weak = cx.weak_entity();
         let palette = cx.palette();
@@ -271,8 +268,7 @@ impl AppView {
     }
 
     /// Renders the response body: a Pretty/Raw segmented control plus `copy` and `search` icon
-    /// buttons on the right (`plans/ui-redesign.md` phase 5 item 3), then the body in a
-    /// read-only, line-numbered code editor.
+    /// buttons on the right, then the body in a read-only, line-numbered code editor.
     fn render_response_body_tab(
         &mut self,
         tab_id: &str,
@@ -367,8 +363,7 @@ impl AppView {
         // `Editor` needs a concrete height from its own inherent `h()` (pixels or a relative
         // fraction of its parent) to lay out its line-based content; the generic `flex_1()` /
         // `min_h_0()` leaves that unset and the editor sizes to its content instead of the space
-        // the wrapping `flex_1`/`min_h_0` div below makes available (`plans/ui-redesign.md`
-        // phase 5, reviewer fix round 3 item 2; see `views/request_editor.rs`'s
+        // the wrapping `flex_1`/`min_h_0` div below makes available (see `views/request_editor.rs`'s
         // `render_editor_or_placeholder` doc comment for the `gpui-component` precedent).
         let body: AnyElement = match &self.response_editor.editor {
             Some(editor) => Editor::new(editor)
@@ -385,19 +380,18 @@ impl AppView {
             .into_any_element()
     }
 
-    /// Renders the warnings strip above the response body, using [`InlineMessage`]
-    /// (`plans/ui-redesign.md` phase 5 item 4): one warning row per unknown variable from the
-    /// live `preview` (before sending and after, since it always reflects the request's current
-    /// text, not necessarily what was last sent), one warning row per function-call error, and
-    /// one danger row for a failed pipeline stage. `None` when there is nothing to show.
+    /// Renders the warnings strip above the response body, using [`InlineMessage`]: one warning row
+    /// per unknown variable from the live `preview` (before sending and after, since it always
+    /// reflects the request's current text, not necessarily what was last sent), one warning row
+    /// per function-call error, and one danger row for a failed pipeline stage. `None` when there
+    /// is nothing to show.
     ///
-    /// Uses the actual [`RunResult::warnings`] of the last send, not the live preview: unlike
-    /// the URL chips (which have no real run to look at until the request is sent, and so keep
-    /// using the preview plus the `vars.set` heuristic), this method is only ever reached once a
-    /// result exists (`render_response_view` returns the "not sent yet" placeholder before it).
-    /// At that point the real pipeline already ran the pre script for real, so a variable it set
-    /// with `vars.set(...)` is correctly resolved here with no heuristic needed
-    /// (`plans/ui-redesign.md` phase 5, reviewer fix item 4b).
+    /// Uses the actual [`RunResult::warnings`] of the last send, not the live preview: unlike the
+    /// URL chips (which have no real run to look at until the request is sent, and so keep using
+    /// the preview plus the `vars.set` heuristic), this method is only ever reached once a result
+    /// exists (`render_response_view` returns the "not sent yet" placeholder before it). At that
+    /// point the real pipeline already ran the pre script for real, so a variable it set with
+    /// `vars.set(...)` is correctly resolved here with no heuristic needed.
     fn render_warnings_strip(&self, tab_id: &str, cx: &Context<Self>) -> Option<AnyElement> {
         let result = self.responses.get(tab_id)?;
         let weak = cx.weak_entity();
@@ -423,8 +417,7 @@ impl AppView {
                     let define_weak = weak.clone();
                     // Only the first name is offered: the dialog defines one variable at a
                     // time, and the design gives this row a single "Define" action, not one per
-                    // name (`plans/ui-redesign.md` phase 7 item 3 wires "the Define action", not
-                    // a per-name list here). The rest stay listed in the message itself.
+                    // name. The rest stay listed in the message itself.
                     let first_name = names.first().cloned();
                     InlineMessage::new(
                         InlineMessageKind::Warning,
@@ -528,9 +521,8 @@ fn render_headers_tab(result: &RunResult, cx: &Context<AppView>) -> AnyElement {
         .into_any_element()
 }
 
-/// Renders the `test()` results: a pass/fail summary strip
-/// (`plans/ui-redesign.md` phase 5 item 4), then a pass/fail icon, the test name, and its
-/// failure message for each test.
+/// Renders the `test()` results: a pass/fail summary strip, then a pass/fail icon, the test name,
+/// and its failure message for each test.
 fn render_tests_tab(result: &RunResult, cx: &Context<AppView>) -> AnyElement {
     let palette = cx.palette();
     if result.tests.is_empty() {
@@ -621,8 +613,8 @@ fn render_console_tab(result: &RunResult, cx: &Context<AppView>) -> AnyElement {
         .into_any_element()
 }
 
-/// Renders a centered, muted placeholder message filling the panel, with an optional trailing
-/// mono key hint (`plans/ui-redesign.md` phase 5 item 5).
+/// Renders a centered, muted placeholder message filling the panel, with an optional trailing mono
+/// key hint.
 fn placeholder(cx: &Context<AppView>, message: &str, key_hint: Option<&str>) -> AnyElement {
     let palette = cx.palette();
     let mono_font = cx.theme().mono_font_family.clone();

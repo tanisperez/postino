@@ -1,13 +1,13 @@
 //! Plain owned data types exchanged with a [`crate::ScriptEngine`].
 //!
 //! Every type here is ordinary Rust data (no `rquickjs` type appears in this module, or anywhere
-//! else in this crate's public API), matching `plans/mvp.md`, section 4. Headers, request
+//! else in this crate's public API), matching `docs/scripting.md`. Headers, request
 //! variables and environment overrides all reuse [`postino_core::KeyValue`], the same type used
 //! for headers throughout `postino-core`.
 
 use postino_core::{ConsoleLine, KeyValue, TestResult};
 
-/// The request as seen by a script: the `req` global of `plans/mvp.md`, section 4.
+/// The request as seen by a script: the `req` global of `docs/scripting.md`.
 ///
 /// This mirrors only the fields a script can see or change (`method`, `url`, `headers`,
 /// `body`), not the full `postino_core::Request` (which also carries `query`, the scripts
@@ -27,7 +27,7 @@ pub struct ScriptRequest {
     pub body: String,
 }
 
-/// The response as seen by a `post` script: the `res` global of `plans/mvp.md`, section 4.
+/// The response as seen by a `post` script: the `res` global of `docs/scripting.md`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScriptResponse {
     /// The HTTP status code.
@@ -105,7 +105,7 @@ pub struct PostContext {
 
 /// The result of running a `::: post` script.
 ///
-/// Per `plans/mvp.md`, section 4, an uncaught exception in a post script does not abort the run:
+/// An uncaught exception in a post script does not abort the run (`docs/scripting.md`):
 /// the response is still shown. So, unlike [`crate::ScriptEngine::run_pre`], `run_post` only
 /// returns `Err` for an engine-level failure (the wall-time or memory limit was hit, or the
 /// engine itself could not start). A plain uncaught exception from the script is instead reported

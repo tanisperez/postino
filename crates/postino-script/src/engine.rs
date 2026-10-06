@@ -3,8 +3,8 @@
 use crate::error::ScriptError;
 use crate::types::{PostContext, PostOutcome, PreContext, PreOutcome};
 
-/// Runs the `::: pre` and `::: post` JavaScript sections of a `.postino` request, per
-/// `plans/mvp.md`, section 4.
+/// Runs the `::: pre` and `::: post` JavaScript sections of a `.postino` request, (see
+/// `docs/scripting.md`).
 ///
 /// Implementations must be sandboxed: no network, no filesystem, no timers, no process access,
 /// only the request, the response, variables, the environment, tests and the `util` library.

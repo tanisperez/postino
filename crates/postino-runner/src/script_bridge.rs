@@ -1,6 +1,6 @@
 //! Conversions between `postino-core`'s `Request`/`Response`/`ResolvedRequest` types and the
 //! plain `postino-script` types a `::: pre`/`::: post` script sees, plus the "apply mutations
-//! back" side of that trip. See `plans/mvp.md`, section 4, for the script API.
+//! back" side of that trip. See `docs/scripting.md` for the script API.
 //!
 //! A script only sees and can change `method`, `url`, `headers` and `body` (never `query`, the
 //! scripts themselves or `docs`), and only ever sees *enabled* headers and form fields: a
@@ -30,8 +30,8 @@ pub(crate) fn to_script_request(request: &Request) -> ScriptRequest {
 }
 
 /// Builds the `req` a post script sees from the [`ResolvedRequest`] that was actually sent, so
-/// `req` reflects reality rather than the pre-interpolation source (`plans/mvp.md`, section 4:
-/// "In post it is read-only and reflects what was actually sent").
+/// `req` reflects reality rather than the pre-interpolation source (`req` is read-only in a post
+/// script and reflects what was actually sent, see `docs/scripting.md`).
 pub(crate) fn resolved_to_script_request(resolved: &ResolvedRequest) -> ScriptRequest {
     ScriptRequest {
         method: resolved.method.to_string(),

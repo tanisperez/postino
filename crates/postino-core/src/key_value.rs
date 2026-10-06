@@ -2,10 +2,9 @@
 
 /// A name-value pair with an enabled flag.
 ///
-/// Used for request headers, query parameters and form fields, all of which can be disabled in
-/// a `.postino` file with a leading `#` (see `plans/mvp.md`, section 3.2). It is also reused for
-/// environment variables, where `enabled` is always `true`: the `.env` format has no concept of
-/// a disabled entry.
+/// Used for request headers, query parameters and form fields, all of which can be disabled in a
+/// `.postino` file with a leading `#`. It is also reused for environment variables, where `enabled`
+/// is always `true`: the `.env` format has no concept of a disabled entry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeyValue {
     /// The entry name (header name, query key, form field name or variable name).

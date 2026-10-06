@@ -1,5 +1,4 @@
-//! Sending the active tab's request through `postino-runner` on `gpui`'s background executor
-//! (`plans/mvp.md`, Phase 9).
+//! Sending the active tab's request through `postino-runner` on `gpui`'s background executor.
 //!
 //! The pipeline itself (pre script, interpolation, HTTP, post script) is exactly
 //! [`postino_runner::Runner::run`]; this module's only job is to run it off the main thread so
@@ -21,8 +20,7 @@ use super::root::AppView;
 /// Dropping the `Task` cancels the pipeline immediately: `gpui-pre`'s `Task` is documented as
 /// "If you drop a task it will be cancelled immediately", unlike `.detach()`, which lets it run
 /// to completion. [`AppView::cancel_send`] relies on exactly this by replacing this struct (and
-/// therefore its `Task`) with `None`, per `plans/mvp.md` Phase 9: "allows cancel (drop the result
-/// if cancelled)".
+/// therefore its `Task`) with `None`: cancelling drops the result.
 pub(crate) struct SendingTask {
     /// The id of the tab whose request is being sent.
     pub(crate) tab_id: String,
@@ -49,9 +47,9 @@ impl AppView {
     }
 
     /// The active tab's request resolved against the active environment and the session
-    /// environment, without running its scripts or sending it (`plans/ui-redesign.md` phase 5
-    /// item 2). `None` when no tab is open. Cheap enough to call on every render: it only
-    /// interpolates `{{ }}` markers, it never runs a script or opens a socket.
+    /// environment, without running its scripts or sending it. `None` when no tab is open. Cheap
+    /// enough to call on every render: it only interpolates `{{ }}` markers, it never runs a script
+    /// or opens a socket.
     pub(crate) fn current_preview(&self) -> Option<Preview> {
         let tab = self.state.tabs.active()?;
         let request = tab.request()?;
@@ -97,8 +95,8 @@ impl AppView {
                 })
                 .await;
             // Back on the main thread: fold the script-updated session environment back into
-            // the single, per-session `SessionEnv` (`plans/mvp.md`: "one SessionEnv per app
-            // session"), record the result, and clear `sending` unless a newer send has already
+            // the single, per-session `SessionEnv` (one `SessionEnv` per app
+            // session), record the result, and clear `sending` unless a newer send has already
             // replaced it (which would mean this one was superseded, not cancelled, since a
             // dropped task never reaches this point at all).
             let _ = this.update(cx, |view, cx| {

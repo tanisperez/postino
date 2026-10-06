@@ -1,7 +1,6 @@
 //! A syntactic heuristic for names a pre script defines with `vars.set(...)`, used so the live
 //! variable preview (`postino_runner::preview`, which never runs a script) does not flag them as
-//! unknown before the request has actually been sent (`plans/ui-redesign.md` phase 5, reviewer
-//! fix item 4).
+//! unknown before the request has actually been sent.
 //!
 //! This is deliberately not a JS parser: it only looks for `vars.set(` followed by a single- or
 //! double-quoted string literal as the first argument, with no escape handling. That is enough

@@ -1,7 +1,6 @@
 //! Turning a [`Request`] into a [`ResolvedRequest`] ready to send: interpolating every `{{ }}`
 //! marker, keeping only enabled headers, query and form entries, appending the query string to
-//! the URL and setting a default `Content-Type` when the body implies one. See `plans/mvp.md`,
-//! sections 3.5 and 5.
+//! the URL and setting a default `Content-Type` when the body implies one.
 
 use postino_core::{
     Body, KeyValue, Request, ResolvedBody, ResolvedField, ResolvedRequest, TemplateWarning,
@@ -9,8 +8,8 @@ use postino_core::{
 };
 
 /// Interpolates `request` into a [`ResolvedRequest`], collecting every [`TemplateWarning`] found
-/// along the way. This never fails: an unresolved marker is left as is in the output and
-/// reported as a warning instead (`plans/mvp.md`, section 3.5).
+/// along the way. This never fails: an unresolved marker is left as is in the output and reported
+/// as a warning instead.
 pub(crate) fn resolve(
     request: &Request,
     scope: &VarScope,
@@ -167,8 +166,8 @@ fn apply_default_content_type(mut headers: Vec<ResolvedField>, body: &Body) -> V
     headers
 }
 
-/// The default `Content-Type` for a body type, or `None` if it should not get one. Per
-/// `plans/mvp.md`, section 6, only `json`, `xml` and `form` bodies get a default; `text` does
+/// The default `Content-Type` for a body type, or `None` if it should not get one. Only
+/// `json`, `xml` and `form` bodies get a default; `text` does
 /// not, since there is no single sensible guess for its content type.
 fn default_content_type(body: &Body) -> Option<&'static str> {
     match body {

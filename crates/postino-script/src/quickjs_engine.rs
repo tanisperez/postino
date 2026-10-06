@@ -19,10 +19,10 @@ use crate::types::{EnvChange, PostContext, PostOutcome, PreContext, PreOutcome, 
 /// `src/prelude.js`.
 const PRELUDE_JS: &str = include_str!("prelude.js");
 
-/// The QuickJS memory limit for a single script run, per `plans/mvp.md`, section 4: 32 MiB.
+/// The QuickJS memory limit for a single script run, 32 MiB (see `docs/scripting.md`).
 const MEMORY_LIMIT_BYTES: usize = 32 * 1024 * 1024;
 
-/// The wall-clock time limit for a single script run, per `plans/mvp.md`, section 4: 5 seconds.
+/// The wall-clock time limit for a single script run, 5 seconds (see `docs/scripting.md`).
 const TIME_LIMIT: Duration = Duration::from_secs(5);
 
 /// The real [`ScriptEngine`], backed by the QuickJS engine through `rquickjs`.
@@ -309,7 +309,7 @@ fn engine_error(ctx: &Ctx<'_>, error: JsError) -> ScriptError {
     ScriptError::Engine(error.to_string())
 }
 
-/// Installs the native `util` object (`plans/mvp.md`, section 3.6 and 4) as a global.
+/// Installs the native `util` object as a global.
 ///
 /// Every function forwards to [`postino_core::functions::call`], the very same dispatcher used
 /// by `{{ name(args) }}` template interpolation, so both levels always behave identically,

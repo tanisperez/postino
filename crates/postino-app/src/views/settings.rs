@@ -1,8 +1,7 @@
-//! The Settings modal (`plans/ui-redesign.md` phase 6): opened from the title bar gear
-//! (`views/title_bar.rs`), the command palette (phase 7 only needs to expose the action) and
-//! `Ctrl ,` / `Cmd ,` (`main.rs`'s `bind_keys`, `actions::OpenSettings`). Closed with the `x`,
-//! Escape, or a click on the dimmed backdrop, all handled by gpui-component's own `Dialog`
-//! (`plans/ui-redesign-spikes.md` section 6).
+//! The Settings modal: opened from the title bar gear (`views/title_bar.rs`), the command palette
+//! and `Ctrl ,` / `Cmd ,` (`main.rs`'s `bind_keys`,
+//! `actions::OpenSettings`). Closed with the `x`, Escape, or a click on the dimmed backdrop, all
+//! handled by gpui-component's own `Dialog`.
 //!
 //! Built as a `Dialog` with fully custom content: a left nav ("Settings" title, the single
 //! "Appearance" item) and a right column (header, scrollable body, footer), styled per
@@ -50,9 +49,8 @@ const SELECT_WIDTH: f32 = 220.0;
 const STEPPER_VALUE_WIDTH: f32 = 64.0;
 
 impl AppView {
-    /// Opens the Settings modal (`plans/ui-redesign.md` phase 6 item 1). A no-op when one is
-    /// already open, so the gear and `Ctrl ,` / `Cmd ,` never stack a second modal on top
-    /// (GitHub #18).
+    /// Opens the Settings modal. A no-op when one is already open, so the gear and `Ctrl ,` / `Cmd
+    /// ,` never stack a second modal on top (GitHub #18).
     pub(crate) fn open_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if window.has_active_dialog(cx) {
             return;
@@ -100,10 +98,9 @@ impl AppView {
         });
     }
 
-    /// Applies `self.state.settings` to the live `Theme` (colors, fonts and sizes) and to the
-    /// theme mode, refreshes `window`, and persists the file (`plans/ui-redesign.md` phase 6 item
-    /// 6). Called after every control in the Settings view changes a value; there is no separate
-    /// "Save" action.
+    /// Applies `self.state.settings` to the live `Theme` (colors, fonts and sizes) and to the theme
+    /// mode, refreshes `window`, and persists the file. Called after every control in the Settings
+    /// view changes a value; there is no separate "Save" action.
     fn apply_settings_live(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         theme::apply_settings(cx, &self.state.settings);
         match self.state.settings.theme {
@@ -171,8 +168,7 @@ impl AppView {
         self.apply_settings_live(window, cx);
     }
 
-    /// Toggles between the light and dark theme (the command palette's "Toggle theme" action,
-    /// `plans/ui-redesign.md` phase 7 item 1): picks the opposite of whichever mode is currently
+    /// Toggles between the light and dark theme (the command palette's "Toggle theme" action): picks the opposite of whichever mode is currently
     /// showing, so it also does the sensible thing from "System" (moving to whichever of Light or
     /// Dark the OS is not currently showing). Always lands on an explicit choice, like clicking a
     /// theme card, so "System" stops following the OS once toggled.
@@ -185,7 +181,7 @@ impl AppView {
         self.set_theme_choice(next, window, cx);
     }
 
-    /// Picks a theme card (`plans/ui-redesign.md` phase 6 item 3).
+    /// Picks a theme card.
     fn set_theme_choice(
         &mut self,
         choice: ThemeChoice,
@@ -196,13 +192,13 @@ impl AppView {
         self.apply_settings_live(window, cx);
     }
 
-    /// Picks the UI font family (`plans/ui-redesign.md` phase 6 item 4).
+    /// Picks the UI font family.
     fn set_ui_font(&mut self, font: String, window: &mut Window, cx: &mut Context<Self>) {
         self.state.settings.ui_font = font;
         self.apply_settings_live(window, cx);
     }
 
-    /// Steps the UI font size by `delta` (`plans/ui-redesign.md` phase 6 item 4).
+    /// Steps the UI font size by `delta`.
     fn step_ui_font_size(&mut self, delta: f32, window: &mut Window, cx: &mut Context<Self>) {
         self.state.settings.ui_font_size = state::settings::step_size(
             self.state.settings.ui_font_size,
@@ -212,13 +208,13 @@ impl AppView {
         self.apply_settings_live(window, cx);
     }
 
-    /// Picks the monospace font family (`plans/ui-redesign.md` phase 6 item 5).
+    /// Picks the monospace font family.
     fn set_mono_font(&mut self, font: String, window: &mut Window, cx: &mut Context<Self>) {
         self.state.settings.mono_font = font;
         self.apply_settings_live(window, cx);
     }
 
-    /// Steps the monospace font size by `delta` (`plans/ui-redesign.md` phase 6 item 5).
+    /// Steps the monospace font size by `delta`.
     fn step_mono_font_size(&mut self, delta: f32, window: &mut Window, cx: &mut Context<Self>) {
         self.state.settings.mono_font_size = state::settings::step_size(
             self.state.settings.mono_font_size,
@@ -228,7 +224,7 @@ impl AppView {
         self.apply_settings_live(window, cx);
     }
 
-    /// Restores `Settings::default()` (`plans/ui-redesign.md` phase 6 item 6, "Reset to
+    /// Restores `Settings::default()` ("Reset to
     /// defaults").
     fn reset_settings_to_defaults(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.state.settings = Settings::default();
@@ -1213,7 +1209,7 @@ fn render_font_picker(
         .into_any_element()
 }
 
-/// A `-`/`N px`/`+` stepper (`plans/ui-redesign.md` phase 6 items 4 and 5).
+/// A `-`/`N px`/`+` stepper.
 fn render_size_stepper(
     id_prefix: &'static str,
     weak: WeakEntity<AppView>,
@@ -1284,7 +1280,7 @@ fn stepper_button(
 }
 
 /// The Editor section's live preview line: a syntax-highlighted JSON snippet in the chosen
-/// monospace font and size (`plans/ui-redesign.md` phase 6 item 5).
+/// monospace font and size.
 fn render_json_preview(palette: &Palette, mono_font_family: SharedString, size: f32) -> AnyElement {
     div()
         .border_1()

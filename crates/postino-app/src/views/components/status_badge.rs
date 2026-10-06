@@ -1,5 +1,4 @@
-//! [`StatusBadge`]: the response status pill shown in the response pane's tab bar
-//! (`plans/ui-redesign.md` phase 3).
+//! [`StatusBadge`]: the response status pill shown in the response pane's tab bar.
 //!
 //! Custom element for the dot-plus-text pill (no gpui-kit widget matches its shape); the
 //! `Sending` state wraps gpui-kit's own [`Spinner`] in place of the dot.
@@ -24,8 +23,8 @@ pub enum StatusState {
 }
 
 /// The response status badge: a colored dot (or spinner, while [`StatusState::Sending`]) plus a
-/// text label, on a `*-subtle` background, matching `plans/ui-redesign.md` section 2.1's status
-/// color mapping ([`crate::theme::Palette::status_colors`]).
+/// text label, on a `*-subtle` background, matching the status
+/// color mapping in `docs/design-system.md` ([`crate::theme::Palette::status_colors`]).
 #[derive(IntoElement)]
 pub struct StatusBadge {
     state: StatusState,

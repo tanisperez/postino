@@ -14,13 +14,12 @@ use crate::{ENVIRONMENTS_FOLDER, REQUEST_EXTENSION};
 /// into a sorted list of tree nodes.
 ///
 /// Hidden entries (name starting with `.`) and a directory named `target` are skipped at every
-/// level. The top-level `environments/` folder is skipped too, since it holds environments
-/// rather than a collection (`plans/mvp.md`, section 3.4); a nested folder named `environments`
-/// deeper in the tree is treated as a plain collection folder.
+/// level. The top-level `environments/` folder is skipped too, since it holds environments rather
+/// than a collection; a nested folder named `environments` deeper in the tree is treated as a plain
+/// collection folder.
 ///
 /// A `.postino` file that fails to read or parse is still listed, as a [`RequestEntry`] with
-/// `broken` set to a readable message, so one bad file never breaks the whole scan
-/// (`plans/mvp.md`, section 6, phase 3).
+/// `broken` set to a readable message, so one bad file never breaks the whole scan.
 pub(crate) fn scan_folder(
     root: &Path,
     dir: &Path,

@@ -1,4 +1,4 @@
-//! [`Runner`], the request execution pipeline of `plans/mvp.md`, section 6: build the variable
+//! [`Runner`], the request execution pipeline (see `docs/architecture.md`): build the variable
 //! scope, run the pre script, interpolate, send the request, run the post script, and collect a
 //! complete [`RunResult`] for the UI.
 

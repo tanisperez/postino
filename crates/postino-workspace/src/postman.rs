@@ -1,4 +1,4 @@
-//! Writing a Postman import plan into a [`Workspace`], `plans/mvp.md` section 6, phase 7.
+//! Writing a Postman import plan into a [`Workspace`] (see `docs/postman-import.md`).
 //!
 //! `postino_format::postman` only turns Postman JSON into plain in-memory data. This module is
 //! the part that actually touches the filesystem: creating the new collection folder, writing
@@ -16,8 +16,8 @@ use crate::sanitize::sanitize_file_name;
 use crate::workspace::atomic_write;
 use crate::{ENVIRONMENTS_FOLDER, REQUEST_EXTENSION, Workspace};
 
-/// The result of a Postman import: every file that was written, and every warning collected
-/// while mapping the source JSON (`plans/mvp.md` section 6, phase 7).
+/// The result of a Postman import: every file that was written, and every warning collected while
+/// mapping the source JSON.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ImportReport {
     /// The workspace ids of the files written by the import (requests and environment files).
@@ -28,7 +28,7 @@ pub struct ImportReport {
 }
 
 impl Workspace {
-    /// Imports a Postman collection export (`plans/mvp.md` section 6, phase 7).
+    /// Imports a Postman collection export.
     ///
     /// Writes a new top-level folder named after the collection (sanitized with
     /// [`crate::sanitize_file_name`], with a ` (2)`, ` (3)`, ... suffix if a folder or file of
@@ -65,8 +65,7 @@ impl Workspace {
         })
     }
 
-    /// Imports a standalone Postman environment export (`*.postman_environment.json`,
-    /// `plans/mvp.md` section 6, phase 7).
+    /// Imports a standalone Postman environment export (`*.postman_environment.json`).
     ///
     /// Writes `environments/<name>.env` for the plain values and, if there are any,
     /// `environments/<name>.local.env` for the ones of type `"secret"`. `name` is sanitized and

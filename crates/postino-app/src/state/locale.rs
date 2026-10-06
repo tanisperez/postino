@@ -1,7 +1,6 @@
-//! The UI language (`plans/i18n.md`): which languages exist, how a system locale tag maps to
-//! one, how the `language` setting resolves to a concrete language, and the plural helper.
-//! Plain Rust, no `gpui`. The translations themselves live in `crates/postino-app/locales/`
-//! and are looked up with `t!`.
+//! The UI language: which languages exist, how a system locale tag maps to one, how the `language`
+//! setting resolves to a concrete language, and the plural helper. Plain Rust, no `gpui`. The
+//! translations themselves live in `crates/postino-app/locales/` and are looked up with `t!`.
 //!
 //! The locale is process wide (`rust_i18n::set_locale`), so no test may call [`apply`]: tests
 //! that need a language pass `locale = "xx"` to `t!` instead.
@@ -152,7 +151,7 @@ pub fn apply(language: Language) {
 
 /// The key of the plural form to use for `count`: `<key>.one` for exactly one, `<key>.other`
 /// otherwise. Enough for English, Spanish, Galician and Italian.
-#[allow(dead_code)] // No plural string exists yet, the next phase adds them.
+#[allow(dead_code)] // No plural string exists yet.
 pub fn plural_key(key: &str, count: usize) -> String {
     let form = if count == 1 { "one" } else { "other" };
     format!("{key}.{form}")
@@ -160,7 +159,7 @@ pub fn plural_key(key: &str, count: usize) -> String {
 
 /// The translation of the plural keys `<key>.one` and `<key>.other` for `count`, with `count`
 /// available in the text as `%{count}`.
-#[allow(dead_code)] // No plural string exists yet, the next phase adds them.
+#[allow(dead_code)] // No plural string exists yet.
 pub fn plural(key: &str, count: usize) -> String {
     let key = plural_key(key, count);
     rust_i18n::t!(key.as_str(), count = count).to_string()

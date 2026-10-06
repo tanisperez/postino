@@ -2,13 +2,13 @@
 //! files. Pure, no filesystem or network access: every function takes and returns plain strings
 //! or `postino-core` types, and the caller (`postino-workspace`) does the actual file IO.
 //!
-//! See `plans/mvp.md`, section 3, for the full format specification.
+//! See `docs/format.md` for the full format specification.
 //!
-//! The `postman` module (Postman collection import, section 6 phase 7) maps Postman collection
+//! The `postman` module (Postman collection import, see `docs/postman-import.md`) maps Postman collection
 //! and environment exports into the same `postino-core` types, pure JSON in, plain data out.
 //!
-//! The `snippet` module (`plans/ui-redesign.md`, phase 1b) turns a resolved request into
-//! copyable code (curl, JavaScript `fetch`, Python `requests`) for the UI's "Code" action.
+//! The `snippet` module turns a resolved request into copyable code (curl, JavaScript `fetch`,
+//! Python `requests`) for the UI's "Code" action.
 #![warn(missing_docs)]
 
 mod format;

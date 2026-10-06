@@ -1,4 +1,4 @@
-//! Postman import, wired to the workspace (`plans/mvp.md`, Phase 9's "Import" menu entries).
+//! Postman import, wired to the workspace (the "Import" menu entries).
 //!
 //! These are thin wrappers around [`Workspace::import_postman_collection`] and
 //! [`Workspace::import_postman_environment`], kept here so the menu handlers in
