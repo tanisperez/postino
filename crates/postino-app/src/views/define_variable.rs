@@ -6,7 +6,6 @@
 //! dropdown for the environment select).
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
-use gpui_kit::component::dialog::DialogButtonProps;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::switch::Switch;
@@ -18,7 +17,7 @@ use rust_i18n::t;
 use crate::state::define_variable;
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
 use crate::theme::{Palette, PaletteExt};
-use crate::views::components::edit_menu;
+use crate::views::components::{PrimaryButton, SecondaryButton, edit_menu};
 
 use super::root::AppView;
 
@@ -95,11 +94,11 @@ impl AppView {
             // outer closure only callable once, which the `Fn` bound rejects.
             let content_weak = weak.clone();
             let ok_weak = weak.clone();
+            let save_weak = weak.clone();
             let close_weak = weak.clone();
             dialog
                 .title(t!("request.define_variable.title"))
                 .w(px(DIALOG_WIDTH))
-                .button_props(DialogButtonProps::default().ok_text(t!("common.save")))
                 .content(move |content, window, cx| {
                     content.min_h_0().child(render_define_variable_body(
                         content_weak.clone(),
@@ -107,10 +106,34 @@ impl AppView {
                         cx,
                     ))
                 })
+                // Enter in an input saves too. The dialog stays open while there is nothing to
+                // save yet (an empty name or environment).
                 .on_ok(move |_, _, cx| {
-                    let _ = ok_weak.update(cx, |view, cx| view.save_define_variable(cx));
-                    true
+                    ok_weak
+                        .update(cx, |view, cx| view.save_define_variable(cx))
+                        .unwrap_or(true)
                 })
+                .footer(
+                    h_flex()
+                        .justify_end()
+                        .gap(px(8.0))
+                        .child(
+                            SecondaryButton::new("define-variable-cancel", t!("common.cancel"))
+                                .on_click(|_, window, cx| window.close_dialog(cx)),
+                        )
+                        .child(
+                            PrimaryButton::new("define-variable-save", t!("common.save")).on_click(
+                                move |_, window, cx| {
+                                    let saved = save_weak
+                                        .update(cx, |view, cx| view.save_define_variable(cx))
+                                        .unwrap_or(true);
+                                    if saved {
+                                        window.close_dialog(cx);
+                                    }
+                                },
+                            ),
+                        ),
+                )
                 .on_close(move |_, _, cx| {
                     let _ = close_weak.update(cx, |view, _cx| view.define_variable = None);
                 })
@@ -140,12 +163,13 @@ impl AppView {
 
     /// Writes the dialog's current name/value/environment/local choice with
     /// [`postino_workspace::Workspace::set_environment_var`], makes the target environment the
-    /// active one if none was active, and clears the error banner. Silently does nothing if the
-    /// name or the target environment is empty, matching `views/sidebar.rs`'s new
-    /// request/folder dialogs.
-    fn save_define_variable(&mut self, cx: &mut Context<Self>) {
+    /// active one if none was active, and clears the error banner. Does nothing if the name or the
+    /// target environment is empty, matching `views/sidebar.rs`'s new request/folder dialogs.
+    ///
+    /// Returns whether the dialog may close: `false` only when there was nothing to save yet.
+    fn save_define_variable(&mut self, cx: &mut Context<Self>) -> bool {
         let Some(state) = &self.define_variable else {
-            return;
+            return true;
         };
         let name = state.name_input.read(cx).value().trim().to_string();
         let value = state.value_input.read(cx).value().to_string();
@@ -161,10 +185,10 @@ impl AppView {
         };
         let store_local = state.store_local;
         if name.is_empty() || target_env.is_empty() {
-            return;
+            return false;
         }
         let Some(workspace) = self.state.workspace.as_ref() else {
-            return;
+            return true;
         };
         match workspace.set_environment_var(&target_env, &name, &value, store_local) {
             Ok(()) => {
@@ -180,6 +204,7 @@ impl AppView {
             }
         }
         cx.notify();
+        true
     }
 }
 
