@@ -29,6 +29,7 @@ pub mod settings;
 pub mod shortcuts;
 pub mod sidebar_filter;
 mod tabs;
+pub mod tree_expansion;
 pub mod ui_tabs;
 pub mod update;
 pub mod workspace_log;

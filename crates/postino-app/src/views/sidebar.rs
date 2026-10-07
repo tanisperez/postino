@@ -188,26 +188,19 @@ fn render_header(
 }
 
 /// Turns the workspace's collection tree into the `TreeItem`s the sidebar's `Tree` renders,
-/// unfiltered. `expansion`, when given, restores each folder's expand flag from a snapshot taken
-/// before the sidebar filter went from empty to non-empty (`AppView::on_sidebar_filter_changed`);
-/// `None` expands every folder, matching the workspace's normal, filter-free behavior.
-pub(crate) fn build_tree_items(
-    nodes: &[Node],
-    expansion: Option<&HashMap<String, bool>>,
-) -> Vec<TreeItem> {
+/// unfiltered. `expansion` holds each folder's expand flag (see `state::tree_expansion`); a folder
+/// missing from it is collapsed, so a freshly opened workspace shows only its top level.
+pub(crate) fn build_tree_items(nodes: &[Node], expansion: &HashMap<String, bool>) -> Vec<TreeItem> {
     nodes
         .iter()
         .map(|node| build_tree_item(node, expansion))
         .collect()
 }
 
-fn build_tree_item(node: &Node, expansion: Option<&HashMap<String, bool>>) -> TreeItem {
+fn build_tree_item(node: &Node, expansion: &HashMap<String, bool>) -> TreeItem {
     match node {
         Node::Folder(folder) => {
-            let expanded = expansion
-                .and_then(|map| map.get(&folder.id))
-                .copied()
-                .unwrap_or(true);
+            let expanded = expansion.get(&folder.id).copied().unwrap_or(false);
             TreeItem::new(folder.id.clone(), folder.name.clone())
                 .children(build_tree_items(&folder.children, expansion))
                 .expanded(expanded)

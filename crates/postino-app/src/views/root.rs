@@ -416,6 +416,10 @@ impl AppView {
         self.sidebar_filter_input.update(cx, |state, cx| {
             state.set_value(String::new(), window, cx);
         });
+        // The live tree belongs to the previous workspace: drop it so no expand flag carries
+        // over and every folder of the new one starts collapsed.
+        self.tree_state
+            .update(cx, |state, cx| state.set_items(Vec::new(), cx));
         self.refresh_tree(cx);
         cx.notify();
     }
@@ -463,8 +467,28 @@ impl AppView {
     /// sidebar filter's current text. Call after any operation that changes the workspace (save,
     /// create, rename, delete).
     pub(crate) fn refresh_tree(&mut self, cx: &mut Context<Self>) {
+        self.refresh_tree_with(cx, |_| {});
+    }
+
+    /// Like [`Self::refresh_tree`], but `edit` first adjusts the folders' expand flags (reveal a
+    /// new entry, follow a renamed folder). Folders keep the state they had; new ones are collapsed.
+    pub(crate) fn refresh_tree_with(
+        &mut self,
+        cx: &mut Context<Self>,
+        edit: impl FnOnce(&mut HashMap<String, bool>),
+    ) {
         let query = self.sidebar_filter_input.read(cx).value().to_string();
-        let items = self.tree_items_for_query(&query, None);
+        // While the filter is on, the live tree is forced open: the real flags are the ones
+        // captured when the filter started.
+        let mut expansion = match self.sidebar_filter_pre_expansion.take() {
+            Some(captured) => captured,
+            None => self.snapshot_tree_expansion(cx),
+        };
+        edit(&mut expansion);
+        let items = self.tree_items_for_query(&query, &expansion);
+        if !query.trim().is_empty() {
+            self.sidebar_filter_pre_expansion = Some(expansion);
+        }
         self.tree_state
             .update(cx, |state, cx| state.set_items(items, cx));
         let nodes = self
@@ -481,25 +505,28 @@ impl AppView {
     pub(crate) fn on_sidebar_filter_changed(&mut self, cx: &mut Context<Self>) {
         let query = self.sidebar_filter_input.read(cx).value().to_string();
         let items = if query.trim().is_empty() {
-            let expansion = self.sidebar_filter_pre_expansion.take();
-            self.tree_items_for_query(&query, expansion.as_ref())
+            let expansion = match self.sidebar_filter_pre_expansion.take() {
+                Some(captured) => captured,
+                None => self.snapshot_tree_expansion(cx),
+            };
+            self.tree_items_for_query(&query, &expansion)
         } else {
             if self.sidebar_filter_pre_expansion.is_none() {
                 self.sidebar_filter_pre_expansion = Some(self.snapshot_tree_expansion(cx));
             }
-            self.tree_items_for_query(&query, None)
+            self.tree_items_for_query(&query, &HashMap::new())
         };
         self.tree_state
             .update(cx, |state, cx| state.set_items(items, cx));
     }
 
-    /// Builds the sidebar's `TreeItem`s for the open workspace: the ordinary (optionally
-    /// `expansion`-restored) tree when `query` is empty, the filtered tree otherwise. Empty (no
+    /// Builds the sidebar's `TreeItem`s for the open workspace: the ordinary tree with the
+    /// folders' `expansion` when `query` is empty, the filtered tree otherwise. Empty (no
     /// workspace open) when there is nothing to show.
     fn tree_items_for_query(
         &self,
         query: &str,
-        expansion: Option<&HashMap<String, bool>>,
+        expansion: &HashMap<String, bool>,
     ) -> Vec<gpui_kit::component::tree::TreeItem> {
         let Some(workspace) = self.state.workspace.as_ref() else {
             return Vec::new();
@@ -526,6 +553,18 @@ impl AppView {
         map
     }
 
+    /// Expands the folders above `id` when some are collapsed, so a request opened from
+    /// elsewhere (the command line, a script, a new tab) is visible in the sidebar.
+    fn reveal_in_tree(&mut self, id: &str, cx: &mut Context<Self>) {
+        if !self.sidebar_filter_input.read(cx).value().trim().is_empty() {
+            return;
+        }
+        let expansion = self.snapshot_tree_expansion(cx);
+        if state::tree_expansion::is_hidden(&expansion, id) {
+            self.refresh_tree_with(cx, |expansion| state::tree_expansion::reveal(expansion, id));
+        }
+    }
+
     /// Loads `id` from the workspace and opens it as a tab (or activates it, if already open).
     pub(crate) fn open_request(&mut self, id: String, cx: &mut Context<Self>) {
         let Some(workspace) = self.state.workspace.as_ref() else {
@@ -541,8 +580,9 @@ impl AppView {
                 if is_new_tab {
                     log::debug!("opened tab {id}");
                 }
-                self.state.tabs.open(id, request);
+                self.state.tabs.open(id.clone(), request);
                 self.workspace_error = None;
+                self.reveal_in_tree(&id, cx);
                 if is_new_tab {
                     self.active_request_tab =
                         ui_tabs::tab_to_show_on_open(self.active_request_tab, query_len, has_body);
@@ -628,7 +668,9 @@ impl AppView {
             Ok(id) => {
                 log::debug!("created request {id}");
                 self.workspace_error = None;
-                self.refresh_tree(cx);
+                self.refresh_tree_with(cx, |expansion| {
+                    state::tree_expansion::reveal(expansion, &id);
+                });
                 self.open_request(id, cx);
                 return;
             }
@@ -655,7 +697,9 @@ impl AppView {
             Ok(id) => {
                 log::debug!("created folder {id}");
                 self.workspace_error = None;
-                self.refresh_tree(cx);
+                self.refresh_tree_with(cx, |expansion| {
+                    state::tree_expansion::reveal(expansion, &id);
+                });
             }
             Err(error) => {
                 log_workspace_error(&format!("create folder {name:?}"), &error);
@@ -676,7 +720,9 @@ impl AppView {
                 log::debug!("renamed {id} to {new_id}");
                 self.state.tabs.rename_prefix(&id, &new_id);
                 self.workspace_error = None;
-                self.refresh_tree(cx);
+                self.refresh_tree_with(cx, |expansion| {
+                    state::tree_expansion::rename_prefix(expansion, &id, &new_id);
+                });
             }
             Err(error) => {
                 log_workspace_error(&format!("rename {id}"), &error);

@@ -58,6 +58,7 @@ shop-api/
     <li><strong>By opening a request file:</strong> double click a <code>.postino</code> file, or pass it on the command line. Postino opens the remembered workspace if the file is inside it, otherwise the file's own folder, and then opens the file in a tab.</li>
 </ul>
 <p>Postino remembers up to ten recent workspaces, and for each one the environment that was active, which is selected again when you reopen it. This memory lives in Postino's configuration folder, not in the workspace, so picking an environment never changes your git diff.</p>
+<p>Every folder in the sidebar starts collapsed when a workspace opens. Folders keep their open or closed state while you create, rename, delete or save, and the folders above a request are expanded automatically when you create it or open it from outside the sidebar, for example from the command line. The open state is not remembered between sessions.</p>
 
 <h2>Creating requests and folders</h2>
 <p>Use the <strong>New request</strong> and <strong>New folder</strong> buttons in the sidebar header to create them at the root, or right click a folder to create them inside it. You can also run <strong>New request</strong> and <strong>New folder</strong> from the command palette.</p>
