@@ -39,7 +39,6 @@ use crate::theme::metrics::{
     ICON_BUTTON_LG, RADIUS_SM, SIDEBAR_WIDTH, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_MIN,
 };
 use crate::views::components::{DocumentTab, DocumentTabs, InlineMessage, InlineMessageKind};
-use crate::views::define_variable::DefineVariableState;
 use crate::views::request_editor::RequestEditorEntities;
 use crate::views::response_view::ResponseEditorEntities;
 use crate::views::send::SendingTask;
@@ -121,9 +120,6 @@ pub struct AppView {
     /// dialog) because it must survive the dialog's `content` closure being re-invoked on every
     /// repaint: see `views/snippet_dialog.rs`'s module doc comment.
     pub(crate) snippet_language: SnippetLanguage,
-    /// The Define variable dialog's live entities and in-progress choices, `Some` only while that
-    /// dialog is open. See `views/define_variable.rs`.
-    pub(crate) define_variable: Option<DefineVariableState>,
     /// The `gpui` entities behind whichever load test tab is active: its config panel's numeric
     /// inputs and target picker. See `views/load_test/config_panel.rs`.
     pub(crate) load_test_entities: crate::views::load_test::LoadTestEntities,
@@ -220,7 +216,6 @@ impl AppView {
             sidebar_filter_input,
             sidebar_filter_pre_expansion: None,
             snippet_language: SnippetLanguage::Curl,
-            define_variable: None,
             load_test_entities: crate::views::load_test::LoadTestEntities::default(),
             load_runs: HashMap::new(),
             nav: state::navigation::NavState::default(),
@@ -306,14 +301,6 @@ impl AppView {
                 let weak = cx.weak_entity();
                 window.defer(cx, move |window, cx| {
                     let _ = weak.update(cx, |view, cx| view.open_snippet_dialog(window, cx));
-                });
-            }
-            DebugOpenTarget::Define => {
-                let weak = cx.weak_entity();
-                window.defer(cx, move |window, cx| {
-                    let _ = weak.update(cx, |view, cx| {
-                        view.open_define_variable_dialog("exampleVar".to_string(), window, cx)
-                    });
                 });
             }
             DebugOpenTarget::LoadTest => {

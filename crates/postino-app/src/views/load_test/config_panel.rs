@@ -26,8 +26,8 @@ const PANEL_WIDTH: f32 = 280.0;
 /// The `gpui` entities behind a load test tab's editable numeric fields, rebuilt only when the
 /// active tab id changes, the same reasoning as `views/request_editor.rs`'s
 /// `RequestEditorEntities`: typing into one of these must never lose focus on an unrelated
-/// re-render. The target picker needs no entity of its own (a plain dropdown menu, like
-/// `views/define_variable.rs`'s environment select, both on `components::select_trigger`).
+/// re-render. The target picker needs no entity of its own (a plain dropdown menu on
+/// `components::select_trigger`).
 #[derive(Default)]
 pub(crate) struct LoadTestEntities {
     built_for: Option<String>,

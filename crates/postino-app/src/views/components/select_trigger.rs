@@ -1,7 +1,6 @@
 //! [`select_trigger`]: a ghost `Button` restyled as a bordered select box, the trigger of a
-//! dropdown menu (the font pickers in Settings, the environment select of the Define variable
-//! dialog, the load test target picker). [`select_label_row`] is its usual content: the current
-//! pick on the left, a chevron on the right.
+//! dropdown menu (the selects of Settings, the load test target picker). [`select_label_row`] is
+//! its usual content: the current pick on the left, a chevron on the right.
 //!
 //! The trigger is a `Button` because `DropdownMenu` (`gpui-component`'s trait for opening a
 //! `PopupMenu` on click) is only implemented for `Button`

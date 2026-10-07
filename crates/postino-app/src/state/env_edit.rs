@@ -392,44 +392,6 @@ impl EnvEditTab {
         self.reindex();
     }
 
-    /// Records that `key` was set to `value` in `layer` on disk by something other than this tab
-    /// (the Define variable dialog), keeping the tab's unsaved edits. The first row loaded for
-    /// `key` in `layer` takes the new value as its saved state, and its shown value too unless
-    /// it has unsaved edits. A key the file did not have becomes a new saved row, listed last.
-    pub fn apply_saved_set(&mut self, layer: EnvLayer, key: &str, value: &str) {
-        match self
-            .original
-            .iter_mut()
-            .find(|row| row.layer == layer && row.name == key)
-        {
-            Some(saved) => {
-                let before = saved.clone();
-                saved.value = value.to_string();
-                if let Some(row) = self.rows.iter_mut().find(|row| row.id == before.id)
-                    && *row == before
-                {
-                    row.value = value.to_string();
-                }
-            }
-            None => {
-                let row = EnvVarRow {
-                    id: self.next_id,
-                    name: key.to_string(),
-                    value: value.to_string(),
-                    layer,
-                };
-                self.next_id += 1;
-                self.original.push(row.clone());
-                self.rows.push(row);
-            }
-        }
-        match layer {
-            EnvLayer::Base => self.base_exists = true,
-            EnvLayer::Local => self.local_exists = true,
-        }
-        self.reindex();
-    }
-
     fn matches_filter(&self, name: &str) -> bool {
         let filter = self.filter.trim();
         filter.is_empty() || name.to_lowercase().contains(&filter.to_lowercase())
@@ -782,56 +744,6 @@ mod tests {
         tab.set_filter("url");
         assert_eq!(tab.reveal("missing"), None);
         assert_eq!(tab.filter, "url");
-        assert!(!tab.is_dirty());
-    }
-
-    #[test]
-    fn a_saved_set_of_a_new_key_adds_a_clean_row() {
-        let mut tab = sample();
-        tab.apply_saved_set(EnvLayer::Local, "token", "t");
-        assert!(!tab.is_dirty());
-        assert!(tab.changes().is_empty());
-        assert!(visible_names(&tab).contains(&"token"));
-    }
-
-    #[test]
-    fn a_saved_set_updates_an_untouched_row_and_keeps_unsaved_edits() {
-        let mut tab = sample();
-        // rows: 0 baseUrl, 1 apiKey, 2 timeout (base), 3 password, 4 apiKey (local)
-        tab.set_value(2, "9");
-        let id = tab.add_variable();
-        tab.set_name(id, "draft");
-        tab.set_value(id, "d");
-
-        tab.apply_saved_set(EnvLayer::Base, "baseUrl", "https://new");
-        tab.apply_saved_set(EnvLayer::Base, "timeout", "7");
-        tab.apply_saved_set(EnvLayer::Local, "fresh", "f");
-
-        assert_eq!(tab.rows[0].value, "https://new");
-        assert_eq!(tab.rows[2].value, "9");
-        assert!(tab.is_dirty());
-        assert_eq!(
-            tab.changes(),
-            vec![
-                EnvChange::Set {
-                    layer: EnvLayer::Base,
-                    key: "timeout".into(),
-                    value: "9".into()
-                },
-                EnvChange::Set {
-                    layer: EnvLayer::Base,
-                    key: "draft".into(),
-                    value: "d".into()
-                },
-            ]
-        );
-    }
-
-    #[test]
-    fn a_saved_set_records_a_file_that_did_not_exist() {
-        let mut tab = EnvEditTab::load("dev", &layers(&[("a", "1")], None));
-        tab.apply_saved_set(EnvLayer::Local, "secret", "s");
-        assert!(tab.local_exists);
         assert!(!tab.is_dirty());
     }
 }

@@ -407,31 +407,24 @@ impl AppView {
                     )
                     .mono_suffix(name.clone())
                     .action(t!("common.define"), move |window, cx| {
-                        let name = name.clone();
-                        let _ = define_weak.update(cx, |view, cx| {
-                            view.open_define_variable_dialog(name, window, cx)
-                        });
+                        let names = vec![name.clone()];
+                        let _ = define_weak
+                            .update(cx, |view, cx| view.define_variables(names, window, cx));
                     })
                     .into_any_element()
                 }
                 response_render::WarningGroup::UnknownVariables(names) => {
                     let define_weak = weak.clone();
-                    // Only the first name is offered: the dialog defines one variable at a
-                    // time, and the design gives this row a single "Define" action, not one per
-                    // name. The rest stay listed in the message itself.
-                    let first_name = names.first().cloned();
+                    let all_names = names.clone();
                     InlineMessage::new(
                         InlineMessageKind::Warning,
                         t!("response.warning.unknown_variables"),
                     )
                     .mono_suffix(names.join(", "))
                     .action(t!("common.define"), move |window, cx| {
-                        let Some(name) = first_name.clone() else {
-                            return;
-                        };
-                        let _ = define_weak.update(cx, |view, cx| {
-                            view.open_define_variable_dialog(name, window, cx)
-                        });
+                        let names = all_names.clone();
+                        let _ = define_weak
+                            .update(cx, |view, cx| view.define_variables(names, window, cx));
                     })
                     .into_any_element()
                 }

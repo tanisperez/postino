@@ -23,6 +23,7 @@ use rust_i18n::t;
 use postino_core::KeyValue;
 use postino_workspace::EnvLayer;
 
+use crate::state::define_variable;
 use crate::state::env_color::env_color;
 use crate::state::env_edit::{EnvEditTab, EnvScope, EnvValidationError, EnvVarRow, RowNote};
 use crate::state::number::format_integer;
@@ -120,33 +121,14 @@ impl AppView {
         cx.notify();
     }
 
-    /// Tells the open tab of `name`, if any, that `key` was set to `value` in `layer` on disk by
-    /// something else (the Define variable dialog), keeping its unsaved edits. Its inputs are
-    /// rebuilt from the rows on the next render.
-    pub(crate) fn sync_env_tab_after_set(
-        &mut self,
-        name: &str,
-        layer: EnvLayer,
-        key: &str,
-        value: &str,
-        cx: &mut Context<Self>,
-    ) {
-        let tab_id = crate::state::env_edit::tab_id(name);
-        self.edit_env(&tab_id, cx, |edit| {
-            edit.apply_saved_set(layer, key, value);
-            true
-        });
-        self.env_editors.remove(&tab_id);
-    }
-
-    /// Opens the editor tab of the environment `name` with a new row for `key` holding `value`
-    /// in `layer`, and focuses its value. Used by the Define variable dialog's "Open in editor".
-    pub(crate) fn open_env_tab_with_variable(
+    /// Opens the editor tab of the environment `name` on the rows of `keys`, for defining them
+    /// from a request: a key the environment already has is shown as it is, a missing one gets a
+    /// new row (in `.local.env` when its name looks like a secret). The view scrolls to the first
+    /// key and focuses its value. Nothing is saved.
+    pub(crate) fn open_env_tab_for_variables(
         &mut self,
         name: String,
-        key: &str,
-        value: &str,
-        layer: EnvLayer,
+        keys: &[String],
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -156,53 +138,50 @@ impl AppView {
             return;
         }
         self.ensure_env_entities(&tab_id, window, cx);
-
-        // A variable the environment already has: go to its row instead of adding a duplicate.
-        let mut existing = None;
+        // Each key's row id, with what a new row needs for its inputs (its name and mask).
+        let mut targets: Vec<(u64, Option<(String, bool)>)> = Vec::new();
         self.edit_env(&tab_id, cx, |edit| {
-            existing = edit.reveal(key);
-            existing.is_some()
-        });
-        if let Some(id) = existing {
-            if let Some(entities) = self.env_editors.get(&tab_id) {
-                entities
-                    .filter
-                    .update(cx, |state, cx| state.set_value(String::new(), window, cx));
-                entities.reveal.set(Some(id));
-                if let Some(inputs) = entities.rows.get(&id) {
-                    let value_input = inputs.value.clone();
-                    value_input.update(cx, |input, cx| input.focus(window, cx));
+            for key in keys {
+                if let Some(id) = edit.reveal(key) {
+                    targets.push((id, None));
+                    continue;
                 }
+                let id = edit.add_variable();
+                edit.set_name(id, key);
+                if define_variable::looks_sensitive(key) {
+                    edit.set_layer(id, EnvLayer::Local);
+                }
+                let masked = edit
+                    .rows
+                    .iter()
+                    .find(|row| row.id == id)
+                    .is_some_and(|row| edit.is_masked(row));
+                targets.push((id, Some((key.clone(), masked))));
             }
-            return;
-        }
-
-        let mut row = None;
-        self.edit_env(&tab_id, cx, |edit| {
-            let id = edit.add_variable();
-            edit.set_name(id, key);
-            edit.set_value(id, value);
-            edit.set_layer(id, layer);
-            row = edit
-                .rows
-                .iter()
-                .find(|row| row.id == id)
-                .map(|row| (id, edit.is_masked(row)));
             true
         });
-        let Some((id, masked)) = row else {
+        let mut new_inputs = Vec::new();
+        for (id, new_row) in &targets {
+            if let Some((key, masked)) = new_row {
+                let inputs = build_row_inputs(&tab_id, *id, key, "", *masked, window, cx);
+                new_inputs.push((*id, inputs));
+            }
+        }
+        let Some(entities) = self.env_editors.get_mut(&tab_id) else {
             return;
         };
-        let inputs = build_row_inputs(&tab_id, id, key, value, masked, window, cx);
-        let value_input = inputs.value.clone();
-        if let Some(entities) = self.env_editors.get_mut(&tab_id) {
-            entities
-                .filter
-                .update(cx, |state, cx| state.set_value(String::new(), window, cx));
-            entities.rows.insert(id, inputs);
-            entities.reveal.set(Some(id));
+        entities
+            .filter
+            .update(cx, |state, cx| state.set_value(String::new(), window, cx));
+        entities.rows.extend(new_inputs);
+        let Some(&(first, _)) = targets.first() else {
+            return;
+        };
+        entities.reveal.set(Some(first));
+        if let Some(inputs) = entities.rows.get(&first) {
+            let value_input = inputs.value.clone();
+            value_input.update(cx, |input, cx| input.focus(window, cx));
         }
-        value_input.update(cx, |input, cx| input.focus(window, cx));
     }
 
     /// Creates the entities of the tab `tab_id` the first time it is shown.
