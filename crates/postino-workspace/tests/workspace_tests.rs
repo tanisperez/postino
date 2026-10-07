@@ -852,6 +852,10 @@ fn rename_environment_moves_both_files() {
         workspace.rename_environment("dev", "a/b"),
         Err(WorkspaceError::InvalidId(_))
     ));
+    assert!(matches!(
+        workspace.rename_environment("dev", "qa.LOCAL"),
+        Err(WorkspaceError::InvalidId(_))
+    ));
     workspace.rename_environment("dev", "qa").expect("rename");
 
     assert!(!env_dir(&temp).join("dev.env").exists());

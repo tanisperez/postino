@@ -222,7 +222,11 @@ impl Workspace {
             if let Some(stem) = file_name.strip_suffix(".env") {
                 // A "<name>.local.env" file also ends in ".env", but it is not a separate
                 // environment: it is merged into "<name>.env" by `load_environment`.
-                if !stem.ends_with(".local") {
+                // On case-insensitive file systems (macOS, Windows) "dev.LOCAL.env" is the same
+                // file as "dev.local.env", so ask the file system instead of comparing spellings.
+                let is_local_layer = strip_local_suffix(stem)
+                    .is_some_and(|base| dir.join(format!("{base}.local.env")).is_file());
+                if !is_local_layer {
                     names.push(stem.to_string());
                 }
             }
@@ -367,4 +371,11 @@ pub(crate) fn atomic_write(path: &Path, contents: &str) -> Result<(), WorkspaceE
             source: error.error,
         })?;
     Ok(())
+}
+
+/// Returns `stem` without a trailing `.local`, compared ignoring ASCII case.
+pub(crate) fn strip_local_suffix(stem: &str) -> Option<&str> {
+    let split = stem.len().checked_sub(".local".len())?;
+    let (base, suffix) = (stem.get(..split)?, stem.get(split..)?);
+    suffix.eq_ignore_ascii_case(".local").then_some(base)
 }

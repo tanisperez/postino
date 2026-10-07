@@ -176,7 +176,7 @@ impl Workspace {
     /// [`WorkspaceError::InvalidId`] if `new` is not a plain file name.
     pub fn rename_environment(&self, old: &str, new: &str) -> Result<(), WorkspaceError> {
         validate_relative_path(old)?;
-        if new.ends_with(".local") || sanitize_file_name(new) != new {
+        if crate::workspace::strip_local_suffix(new).is_some() || sanitize_file_name(new) != new {
             return Err(WorkspaceError::InvalidId(new.to_string()));
         }
         let moves: Vec<(PathBuf, PathBuf)> = [EnvLayer::Base, EnvLayer::Local]
