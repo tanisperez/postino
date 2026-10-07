@@ -1,11 +1,10 @@
-//! Plain logic behind the Define variable dialog: the secret-name heuristic that defaults the
-//! "Store in .local.env" switch on, and which environment the dialog preselects when it opens.
-//! `views/define_variable.rs` renders the dialog and owns its `gpui` entities; this module holds
-//! only what can be unit tested without a window.
+//! Plain logic behind defining an unknown variable from a request (a red chip, or the response's
+//! "Define" action): where the user is taken, and the secret-name heuristic that puts a new
+//! row in `.local.env`. `views/define_variable.rs` carries it out; this module holds only what can
+//! be unit tested without a window.
 
-/// Case-insensitive substrings that mark a variable name as likely sensitive. Defining a
-/// variable whose name contains one of these defaults the "Store in .local.env (not versioned)"
-/// switch on.
+/// Case-insensitive substrings that mark a variable name as likely sensitive. A new row for a
+/// variable whose name contains one of these is stored in `.local.env` (not versioned).
 const SENSITIVE_NEEDLES: [&str; 4] = ["token", "secret", "password", "key"];
 
 /// Whether `name` looks like it holds a secret, by a case-insensitive substring check against
@@ -17,17 +16,24 @@ pub fn looks_sensitive(name: &str) -> bool {
         .any(|needle| lower.contains(needle))
 }
 
-/// The environment the Define dialog preselects when it opens: the active environment, if the
-/// workspace still has one by that name, otherwise the workspace's first environment (already
-/// sorted, matching the environment picker). `None` (the dialog then starts in "New
-/// environment..." mode) only when the workspace has no environment at all.
-pub fn initial_environment(active: Option<&str>, environments: &[String]) -> Option<String> {
-    if let Some(active) = active
-        && environments.iter().any(|name| name == active)
-    {
-        return Some(active.to_string());
+/// Where defining a variable takes the user.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DefineTarget {
+    /// No environment is active: the Environments panel, to pick or create one.
+    ChooseEnvironment,
+    /// The editor tab of the active environment, on the variable's row.
+    Environment(String),
+}
+
+/// The target for the `active` environment, among the workspace's `environments`. An active
+/// environment whose files are gone counts as none.
+pub fn target(active: Option<&str>, environments: &[String]) -> DefineTarget {
+    match active {
+        Some(active) if environments.iter().any(|name| name == active) => {
+            DefineTarget::Environment(active.to_string())
+        }
+        _ => DefineTarget::ChooseEnvironment,
     }
-    environments.first().cloned()
 }
 
 #[cfg(test)]
@@ -50,34 +56,27 @@ mod tests {
     }
 
     #[test]
-    fn initial_environment_prefers_the_active_one_when_it_still_exists() {
+    fn the_active_environment_is_the_target() {
         let environments = vec!["local".to_string(), "prod".to_string()];
         assert_eq!(
-            initial_environment(Some("prod"), &environments),
-            Some("prod".to_string())
+            target(Some("prod"), &environments),
+            DefineTarget::Environment("prod".to_string())
         );
     }
 
     #[test]
-    fn initial_environment_falls_back_to_the_first_one_with_no_active_environment() {
-        let environments = vec!["local".to_string(), "prod".to_string()];
-        assert_eq!(
-            initial_environment(None, &environments),
-            Some("local".to_string())
-        );
+    fn without_an_active_environment_the_user_chooses_one() {
+        let environments = vec!["local".to_string()];
+        assert_eq!(target(None, &environments), DefineTarget::ChooseEnvironment);
+        assert_eq!(target(None, &[]), DefineTarget::ChooseEnvironment);
     }
 
     #[test]
-    fn initial_environment_falls_back_to_the_first_one_when_the_active_one_is_gone() {
+    fn an_active_environment_that_no_longer_exists_counts_as_none() {
         let environments = vec!["local".to_string()];
         assert_eq!(
-            initial_environment(Some("stale"), &environments),
-            Some("local".to_string())
+            target(Some("stale"), &environments),
+            DefineTarget::ChooseEnvironment
         );
-    }
-
-    #[test]
-    fn initial_environment_is_none_when_the_workspace_has_no_environment() {
-        assert_eq!(initial_environment(None, &[]), None);
     }
 }

@@ -118,9 +118,18 @@ impl VariableContext {
         self.state(span).is_defined()
     }
 
-    /// Whether the variable called `name` is undefined, for a click on its chip.
-    pub fn is_unknown_variable(&self, name: &str) -> bool {
-        !self.state_of(name, VariableKind::Variable).is_defined()
+    /// Whether a click on the chip of the variable called `name` takes the user to the
+    /// environment editor: when it is undefined (to add it) or comes from the active environment
+    /// (to show its row). A variable set by a script or kept for the session has no row there.
+    pub fn opens_environment(&self, name: &str) -> bool {
+        matches!(
+            self.state_of(name, VariableKind::Variable),
+            VariableState::Unknown
+                | VariableState::Resolved {
+                    origin: Origin::Environment(_),
+                    ..
+                }
+        )
     }
 }
 
@@ -225,6 +234,20 @@ mod tests {
             &[],
             HashSet::new(),
         )
+    }
+
+    #[test]
+    fn unknown_and_environment_variables_open_the_environment_editor() {
+        let context = VariableContext::new(
+            Some("local".to_string()),
+            &vars(&[("baseUrl", "x")]),
+            &vars(&[("token", "t")]),
+            HashSet::from(["fromScript".to_string()]),
+        );
+        assert!(context.opens_environment("missing"));
+        assert!(context.opens_environment("baseUrl"));
+        assert!(!context.opens_environment("token"));
+        assert!(!context.opens_environment("fromScript"));
     }
 
     #[test]

@@ -1,4 +1,4 @@
-# Request editor, Define variable and Code snippet dialogs, environment picker. Glossary and rules: docs/i18n.md
+# Request editor, Code snippet dialog, environment picker. Glossary and rules: docs/i18n.md
 _version: 2
 "request.send":
   en: "Send"
@@ -60,41 +60,6 @@ _version: 2
   es: "Sin espacio de trabajo"
   gl: "Sen espazo de traballo"
   it: "Nessuno spazio di lavoro"
-"request.define_variable.title":
-  en: "Define variable"
-  es: "Definir variable"
-  gl: "Definir variable"
-  it: "Definisci variabile"
-"request.define_variable.variable":
-  en: "Variable"
-  es: "Variable"
-  gl: "Variable"
-  it: "Variabile"
-"request.define_variable.environment":
-  en: "Environment"
-  es: "Entorno"
-  gl: "Contorno"
-  it: "Ambiente"
-"request.define_variable.environment_name_placeholder":
-  en: "Environment name"
-  es: "Nombre del entorno"
-  gl: "Nome do contorno"
-  it: "Nome dell'ambiente"
-"request.define_variable.new_environment_name":
-  en: "New environment name"
-  es: "Nombre del nuevo entorno"
-  gl: "Nome do novo contorno"
-  it: "Nome del nuovo ambiente"
-"request.define_variable.new_environment":
-  en: "New environment..."
-  es: "Nuevo entorno..."
-  gl: "Novo contorno..."
-  it: "Nuovo ambiente..."
-"request.define_variable.store_local":
-  en: "Store in .local.env (not versioned)"
-  es: "Guardar en .local.env (sin versionar)"
-  gl: "Gardar en .local.env (sen versionar)"
-  it: "Salva in .local.env (non versionato)"
 "request.format.today":
   en: "today"
   es: "hoy"

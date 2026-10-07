@@ -549,8 +549,8 @@ impl AppView {
         });
     }
 
-    /// Applies the current language to every input placeholder the request editor (and the open
-    /// Define variable dialog) cached when it built its inputs. Call it after a language change.
+    /// Applies the current language to every input placeholder the request editor cached when it
+    /// built its inputs. Call it after a language change.
     pub(crate) fn relocalize_request_editor(
         &mut self,
         window: &mut Window,
@@ -567,7 +567,6 @@ impl AppView {
                 });
             }
         }
-        self.relocalize_define_variable(window, cx);
     }
 
     /// Renders the active tab's request editor, or a placeholder when no tab is open.
@@ -679,14 +678,13 @@ impl AppView {
                 }
             });
         })
-        // Opens the Define dialog for a danger (unknown) chip. A defined (accent) chip's click is a
-        // no-op: only a chip the context reports as unknown (the same rule that colors it danger)
-        // opens anything.
+        // Takes an unknown variable, or one from the active environment, to the environment
+        // editor (`views/define_variable.rs`). A chip set by a script or the session does nothing.
         .on_chip_click(move |name, window, cx| {
-            if chip_context.is_unknown_variable(&name) {
-                let _ = chip_click_weak.update(cx, |view, cx| {
-                    view.open_define_variable_dialog(name, window, cx)
-                });
+            if chip_context.opens_environment(&name) {
+                cx.stop_propagation();
+                let _ = chip_click_weak
+                    .update(cx, |view, cx| view.define_variables(vec![name], window, cx));
             }
         });
 
@@ -964,8 +962,8 @@ impl AppView {
     }
 }
 
-/// The handler of a click on a variable chip: opens the Define dialog when the variable is
-/// undefined, does nothing when it resolves.
+/// The handler of a click on a variable chip: takes an unknown variable, or one from the active
+/// environment, to the environment editor (`views/define_variable.rs`).
 fn define_variable_click(
     weak: &WeakEntity<AppView>,
     context: &Rc<VariableContext>,
@@ -973,10 +971,9 @@ fn define_variable_click(
     let weak = weak.clone();
     let context = context.clone();
     move |name, window, cx| {
-        if context.is_unknown_variable(&name) {
-            let _ = weak.update(cx, |view, cx| {
-                view.open_define_variable_dialog(name, window, cx)
-            });
+        if context.opens_environment(&name) {
+            cx.stop_propagation();
+            let _ = weak.update(cx, |view, cx| view.define_variables(vec![name], window, cx));
         }
     }
 }

@@ -21,8 +21,6 @@ pub enum DebugOpenTarget {
     /// Opens the Code snippet dialog for the active tab's request. A no-op (like every
     /// `POSTINO_OPEN` target with nothing to show) when no tab is open.
     Snippet,
-    /// Opens the Define variable dialog, prefilled with the name `"exampleVar"`.
-    Define,
     /// Opens a load test tab preselecting the first request found in the workspace tree, for
     /// screenshotting the load test config panel. A no-op when no workspace is open or it has no
     /// requests.
@@ -40,7 +38,6 @@ pub fn parse(value: &str) -> Option<DebugOpenTarget> {
         "settings-about" => Some(DebugOpenTarget::SettingsAbout),
         "palette" => Some(DebugOpenTarget::Palette),
         "snippet" => Some(DebugOpenTarget::Snippet),
-        "define" => Some(DebugOpenTarget::Define),
         "loadtest" => Some(DebugOpenTarget::LoadTest),
         _ => None,
     }
@@ -106,11 +103,6 @@ mod tests {
     #[test]
     fn parses_snippet() {
         assert_eq!(parse("snippet"), Some(DebugOpenTarget::Snippet));
-    }
-
-    #[test]
-    fn parses_define() {
-        assert_eq!(parse("define"), Some(DebugOpenTarget::Define));
     }
 
     #[test]

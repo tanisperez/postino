@@ -168,6 +168,5 @@ implementation, with `WindowDecorations::Client` in the window options on Linux.
 `POSTINO_ENV`, `POSTINO_AUTOSEND` and `POSTINO_OPEN` are read once at startup, do nothing when
 unset, appear in no menu and are not a supported feature. They exist so a screenshot of a given
 UI state can be taken without clicking (`POSTINO_OPEN` takes `components`, `settings`,
-`settings-requests`, `settings-advanced`, `settings-about`, `palette`, `snippet`, `define`,
-`loadtest` or `env:<name>`; see `state/debug_open.rs`). Opening a dialog needs a `Window`, so the hook runs where a window is
+`settings-requests`, `settings-advanced`, `settings-about`, `palette`, `snippet`, `loadtest` or `env:<name>`; see `state/debug_open.rs`). Opening a dialog needs a `Window`, so the hook runs where a window is
 available.

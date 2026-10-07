@@ -273,50 +273,6 @@ impl Workspace {
         })
     }
 
-    /// Sets `key` to `value` in the environment `env`, writing to `environments/<env>.env` (or
-    /// `environments/<env>.local.env` when `local` is true), creating the environments folder
-    /// and the file if either is missing.
-    ///
-    /// The file is rewritten through [`postino_format::env::parse_lines`] and
-    /// [`postino_format::env::set_variable`], so the order and comments of every other line are
-    /// preserved: only `key` changes, or is appended at the end if it was not already present.
-    pub fn set_environment_var(
-        &self,
-        env: &str,
-        key: &str,
-        value: &str,
-        local: bool,
-    ) -> Result<(), WorkspaceError> {
-        validate_relative_path(env)?;
-        let dir = self.root.join(ENVIRONMENTS_FOLDER);
-        fs::create_dir_all(&dir).map_err(|source| WorkspaceError::Io {
-            path: dir.clone(),
-            source,
-        })?;
-        let file_name = if local {
-            format!("{env}.local.env")
-        } else {
-            format!("{env}.env")
-        };
-        let path = dir.join(file_name);
-        let existing = if path.is_file() {
-            fs::read_to_string(&path).map_err(|source| WorkspaceError::Io {
-                path: path.clone(),
-                source,
-            })?
-        } else {
-            String::new()
-        };
-        let mut lines = postino_format::env::parse_lines(&existing).map_err(|source| {
-            WorkspaceError::EnvParse {
-                name: env.to_string(),
-                source,
-            }
-        })?;
-        postino_format::env::set_variable(&mut lines, key, value);
-        atomic_write(&path, &postino_format::env::serialize_lines(&lines))
-    }
-
     /// Creates a new, empty environment: `environments/<name>.env`, creating the environments
     /// folder if it is missing. Fails with [`WorkspaceError::AlreadyExists`] if the file already
     /// exists.

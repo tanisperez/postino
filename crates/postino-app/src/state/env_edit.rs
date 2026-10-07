@@ -140,17 +140,6 @@ impl EnvEditTab {
         tab
     }
 
-    /// Replaces the rows with what is on disk now, keeping the filter, the scope and the secrets
-    /// toggle. The tab is clean afterwards.
-    pub fn reload(&mut self, layers: &EnvLayers) {
-        let mut fresh = Self::load(&self.name, layers);
-        fresh.filter = std::mem::take(&mut self.filter);
-        fresh.scope = self.scope;
-        fresh.show_secrets = self.show_secrets;
-        fresh.reindex();
-        *self = fresh;
-    }
-
     /// The indexes into [`Self::rows`] the table lists, in order.
     pub fn visible(&self) -> &[usize] {
         &self.visible
@@ -224,6 +213,21 @@ impl EnvEditTab {
         self.error = None;
         self.reindex();
         id
+    }
+
+    /// The row the merged view shows for `name` (the `.local.env` one when it overrides `.env`),
+    /// with the filter and the scope reset first so it is on screen. `None`, leaving the view as
+    /// it was, when no row has that name.
+    pub fn reveal(&mut self, name: &str) -> Option<u64> {
+        let name = name.trim();
+        let found = self.merged_order().into_iter().find_map(|index| {
+            let row = &self.rows[index];
+            (row.name.trim() == name).then_some(row.id)
+        })?;
+        self.filter.clear();
+        self.scope = EnvScope::All;
+        self.reindex();
+        Some(found)
     }
 
     /// Removes the row `id`.
@@ -723,18 +727,23 @@ mod tests {
     }
 
     #[test]
-    fn reload_keeps_the_view_settings_and_drops_the_edits() {
+    fn reveal_finds_the_row_the_merged_view_shows_and_resets_the_view() {
+        let mut tab = sample();
+        tab.set_filter("timeout");
+        tab.set_scope(EnvScope::Base);
+        // apiKey is in both files: the local row (id 4) overrides the base one.
+        assert_eq!(tab.reveal("apiKey"), Some(4));
+        assert_eq!(tab.filter, "");
+        assert_eq!(tab.scope, EnvScope::All);
+        assert_eq!(tab.reveal("baseUrl"), Some(0));
+    }
+
+    #[test]
+    fn reveal_of_an_unknown_name_leaves_the_view_alone() {
         let mut tab = sample();
         tab.set_filter("url");
-        tab.toggle_secrets();
-        tab.set_value(0, "edited");
-
-        tab.reload(&layers(&[("baseUrl", "disk")], None));
-
-        assert!(!tab.is_dirty());
+        assert_eq!(tab.reveal("missing"), None);
         assert_eq!(tab.filter, "url");
-        assert!(tab.show_secrets);
-        assert_eq!(tab.rows[0].value, "disk");
-        assert_eq!(tab.rows.len(), 1);
+        assert!(!tab.is_dirty());
     }
 }

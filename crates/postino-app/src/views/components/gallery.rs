@@ -18,7 +18,7 @@ use super::{
     Card, DangerButton, DocumentTab, DocumentTabs, EnvMenuItem, EnvPill, GhostButton, IconButton,
     InlineMessage, InlineMessageKind, KeyValueRow, KeyValueTable, MethodBadge, PrimaryButton,
     SecondaryButton, SectionLabel, SegmentedControl, SegmentedItem, StatusBadge, StatusState,
-    UnderlineTabItem, UnderlineTabs, UrlBar, VariableChip,
+    UnderlineTabItem, UnderlineTabs, UrlBar, VariableChip, select_label_row, select_trigger,
 };
 use crate::state::variable_hint::VariableContext;
 use crate::theme::PaletteExt;
@@ -56,6 +56,7 @@ impl AppView {
                     .child(section("Methods", render_methods()))
                     .child(section("Status", render_status()))
                     .child(section("Controls", render_controls()))
+                    .child(section("Select", render_select(&palette)))
                     .child(section("Menu", render_menu(&palette)))
                     .child(section("Key-value table", render_key_value_table()))
                     .child(section("Inline messages", render_inline_messages()))
@@ -288,6 +289,16 @@ fn render_controls() -> impl IntoElement {
                         .child("refresh"),
                 ),
         )
+}
+
+/// The "Select" swatch: a `select_trigger` with its label row, as in the Settings selects.
+fn render_select(palette: &crate::theme::Palette) -> impl IntoElement {
+    h_flex().child(
+        select_trigger("gallery-select", palette)
+            .w(px(220.0))
+            .text_color(palette.fg)
+            .child(select_label_row(div().child("staging"), palette)),
+    )
 }
 
 /// The "Menu" swatch: a static reproduction of the environment menu's rows (a checked "No

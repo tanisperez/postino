@@ -166,14 +166,15 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
 6. **Status bar** (24 px, `surface`, top border): `lock` icon and "Local only", the active file
    id, a spacer, "Unsaved changes" when the active tab is dirty, "UTF-8".
 
-Dialogs (Settings, Code snippet, Define variable) are modals: `overlay` fill, radius 14, shadow,
+Dialogs (Settings, Code snippet) are modals: `overlay` fill, radius 14, shadow,
 `scrim` behind. The command palette is a popover with the same surface rules.
 
 ## Components (`views/components/`)
 
 `buttons` (primary, secondary, danger, ghost), `card`, `document_tabs`, `edit_menu`, `env_pill`,
 `icon_button`, `inline_message`, `key_value_table`, `method_badge`, `section_label`,
-`segmented_control`, `status_badge`, `text_field`, `underline_tabs`, `url_bar`, `variable_chip`.
+`segmented_control`, `select_trigger`, `status_badge`, `text_field`, `underline_tabs`, `url_bar`,
+`variable_chip`.
 Reuse one before writing a new widget, and add new ones to the gallery.
 
 Icons are Lucide, through `gpui_kit::assets::IconName`. The app must keep

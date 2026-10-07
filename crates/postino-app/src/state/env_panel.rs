@@ -40,6 +40,7 @@ pub fn load_env_rows(workspace: &Workspace) -> Vec<EnvRow> {
 #[allow(clippy::expect_used)]
 mod tests {
     use super::*;
+    use postino_workspace::{EnvChange, EnvLayer};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -47,17 +48,45 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let workspace = Workspace::open(dir.path()).expect("open");
         workspace
-            .set_environment_var("staging", "a", "1", false)
-            .expect("set");
+            .save_environment(
+                "staging",
+                &[EnvChange::Set {
+                    layer: EnvLayer::Base,
+                    key: "a".to_string(),
+                    value: "1".to_string(),
+                }],
+            )
+            .expect("save");
         workspace
-            .set_environment_var("staging", "b", "2", false)
-            .expect("set");
+            .save_environment(
+                "staging",
+                &[EnvChange::Set {
+                    layer: EnvLayer::Base,
+                    key: "b".to_string(),
+                    value: "2".to_string(),
+                }],
+            )
+            .expect("save");
         workspace
-            .set_environment_var("staging", "b", "3", true)
-            .expect("set");
+            .save_environment(
+                "staging",
+                &[EnvChange::Set {
+                    layer: EnvLayer::Local,
+                    key: "b".to_string(),
+                    value: "3".to_string(),
+                }],
+            )
+            .expect("save");
         workspace
-            .set_environment_var("staging", "c", "4", true)
-            .expect("set");
+            .save_environment(
+                "staging",
+                &[EnvChange::Set {
+                    layer: EnvLayer::Local,
+                    key: "c".to_string(),
+                    value: "4".to_string(),
+                }],
+            )
+            .expect("save");
         workspace.create_environment("local").expect("create");
 
         let rows = load_env_rows(&workspace);

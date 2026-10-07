@@ -9,7 +9,6 @@
 //! `AppState::settings` and calls [`AppView::apply_settings_live`], so it updates the global
 //! `Theme` and persists to `settings.toml` immediately: there is no "Save" button.
 
-use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::scroll::{Scrollbar, ScrollbarMode};
 use gpui_kit::component::theme::{Theme, ThemeMode};
@@ -28,7 +27,7 @@ use crate::state::settings::{
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_LG, RADIUS_MD};
 use crate::theme::{self, Palette, PaletteExt};
 
-use super::components::{GhostButton, IconButton};
+use super::components::{GhostButton, IconButton, select_label_row, select_trigger};
 use super::root::AppView;
 
 mod about;
@@ -586,28 +585,13 @@ fn render_language_section(
     palette: &Palette,
     current: LanguageChoice,
 ) -> AnyElement {
-    let trigger = Button::new("settings-language")
-        .ghost()
+    let trigger = select_trigger("settings-language", palette)
         .w(px(SELECT_WIDTH))
-        .h(px(CONTROL_HEIGHT))
-        .px(px(10.0))
-        .rounded(px(RADIUS_MD - 1.0))
-        .border_1()
-        .border_color(palette.border_strong)
-        .bg(palette.raised)
         .text_color(palette.fg)
-        .child(
-            h_flex()
-                .w_full()
-                .items_center()
-                .justify_between()
-                .child(div().child(language_choice_label(current)))
-                .child(
-                    Icon::new(IconName::ChevronsUpDown)
-                        .small()
-                        .text_color(palette.fg_subtle),
-                ),
-        );
+        .child(select_label_row(
+            div().child(language_choice_label(current)),
+            palette,
+        ));
     let control = trigger
         .dropdown_menu(move |mut menu, _, _| {
             for choice in LanguageChoice::ALL {
@@ -918,28 +902,10 @@ fn render_tls_section(
     palette: &Palette,
     current: InvalidTlsCertificates,
 ) -> AnyElement {
-    let trigger = Button::new("settings-invalid-certificates")
-        .ghost()
+    let trigger = select_trigger("settings-invalid-certificates", palette)
         .w(px(SELECT_WIDTH))
-        .h(px(CONTROL_HEIGHT))
-        .px(px(10.0))
-        .rounded(px(RADIUS_MD - 1.0))
-        .border_1()
-        .border_color(palette.border_strong)
-        .bg(palette.raised)
         .text_color(palette.fg)
-        .child(
-            h_flex()
-                .w_full()
-                .items_center()
-                .justify_between()
-                .child(div().child(current.label()))
-                .child(
-                    Icon::new(IconName::ChevronsUpDown)
-                        .small()
-                        .text_color(palette.fg_subtle),
-                ),
-        );
+        .child(select_label_row(div().child(current.label()), palette));
     let control = trigger
         .dropdown_menu(move |mut menu, _, _| {
             for choice in InvalidTlsCertificates::ALL {
@@ -980,28 +946,13 @@ fn render_response_section(
     palette: &Palette,
     current: u32,
 ) -> AnyElement {
-    let trigger = Button::new("settings-max-response")
-        .ghost()
+    let trigger = select_trigger("settings-max-response", palette)
         .w(px(SELECT_WIDTH))
-        .h(px(CONTROL_HEIGHT))
-        .px(px(10.0))
-        .rounded(px(RADIUS_MD - 1.0))
-        .border_1()
-        .border_color(palette.border_strong)
-        .bg(palette.raised)
         .text_color(palette.fg)
-        .child(
-            h_flex()
-                .w_full()
-                .items_center()
-                .justify_between()
-                .child(div().child(state::settings::max_response_label(current)))
-                .child(
-                    Icon::new(IconName::ChevronsUpDown)
-                        .small()
-                        .text_color(palette.fg_subtle),
-                ),
-        );
+        .child(select_label_row(
+            div().child(state::settings::max_response_label(current)),
+            palette,
+        ));
     // A value written by hand in the file is listed too, so the current choice is always checked.
     let mut choices = state::settings::MAX_RESPONSE_MB_OPTIONS.to_vec();
     if !choices.contains(&current) {
@@ -1049,28 +1000,10 @@ fn render_logging_section(
     current: LogLevel,
     mono_font_family: &SharedString,
 ) -> AnyElement {
-    let trigger = Button::new("settings-log-level")
-        .ghost()
+    let trigger = select_trigger("settings-log-level", palette)
         .w(px(SELECT_WIDTH))
-        .h(px(CONTROL_HEIGHT))
-        .px(px(10.0))
-        .rounded(px(RADIUS_MD - 1.0))
-        .border_1()
-        .border_color(palette.border_strong)
-        .bg(palette.raised)
         .text_color(palette.fg)
-        .child(
-            h_flex()
-                .w_full()
-                .items_center()
-                .justify_between()
-                .child(div().child(current.label()))
-                .child(
-                    Icon::new(IconName::ChevronsUpDown)
-                        .small()
-                        .text_color(palette.fg_subtle),
-                ),
-        );
+        .child(select_label_row(div().child(current.label()), palette));
     let control = trigger
         .dropdown_menu(move |mut menu, _, _| {
             for level in LogLevel::ALL {
@@ -1221,40 +1154,16 @@ fn render_font_picker(
         current.to_string()
     };
 
-    let trigger = Button::new(id)
-        .ghost()
-        .w(px(SELECT_WIDTH))
-        .h(px(CONTROL_HEIGHT))
-        .px(px(10.0))
-        .rounded(px(RADIUS_MD - 1.0))
-        .border_1()
-        .border_color(palette.border_strong)
-        .bg(palette.raised)
-        .text_color(palette.fg);
     // The mono family and size go on the label itself: set on the `Button`, its own text size
     // wins and the label grows with the editor font size, pushing the chevron out of the box.
     let mut label_el = div().child(label);
     if let Some(family) = mono_style {
         label_el = label_el.font_family(family).text_size(px(12.5));
     }
-    // Not `.label(...)`/`.icon(...)`: `Button` lays those out in its own inner content row,
-    // which hardcodes `justify_center()` on a style field this crate has no builder to reach
-    // (`content_style`, `gpui-component-0.6.6/src/button/button.rs:207,289,712`, `pub(crate)`).
-    // A single, full-width child of our own, given to `Button` as an ordinary child instead,
-    // sidesteps that: `Button`'s row centers *it* (a no-op once it already fills the width), and
-    // this row's own `justify_between()` places the label left and the chevron right, .
-    let trigger = trigger.child(
-        h_flex()
-            .w_full()
-            .items_center()
-            .justify_between()
-            .child(label_el)
-            .child(
-                Icon::new(IconName::ChevronsUpDown)
-                    .small()
-                    .text_color(palette.fg_subtle),
-            ),
-    );
+    let trigger = select_trigger(id, palette)
+        .w(px(SELECT_WIDTH))
+        .text_color(palette.fg)
+        .child(select_label_row(label_el, palette));
 
     let options = options.to_vec();
     let bundled = bundled.to_string();
