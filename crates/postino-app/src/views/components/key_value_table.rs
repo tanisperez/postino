@@ -244,8 +244,12 @@ fn key_value_cell(cell: Cell, grow: f32, text_color: Hsla, enabled: bool) -> Any
             .when(!enabled, |cell| cell.line_through())
             .child(text)
             .into_any_element(),
+        // A zero basis keeps the 1 : 1.4 split whatever the element's own width, which a row of
+        // variable chips (not shrinkable, unlike an `Input`) would otherwise skew.
         Cell::Element(element) => div()
             .flex_grow(grow)
+            .flex_basis(px(0.0))
+            .min_w_0()
             .when(!enabled, |cell| cell.opacity(0.5))
             .child(element)
             .into_any_element(),

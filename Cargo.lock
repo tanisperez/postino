@@ -5160,6 +5160,7 @@ dependencies = [
  "icu_decimal",
  "icu_locale_core",
  "log",
+ "lsp-types",
  "postino-core",
  "postino-format",
  "postino-load",

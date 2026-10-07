@@ -22,6 +22,7 @@ pub mod text_field;
 pub mod underline_tabs;
 pub mod url_bar;
 pub mod variable_chip;
+pub mod variable_line;
 
 pub use buttons::{DangerButton, GhostButton, PrimaryButton, SecondaryButton};
 pub use card::Card;
@@ -39,3 +40,4 @@ pub use text_field::text_field;
 pub use underline_tabs::{UnderlineTabItem, UnderlineTabs};
 pub use url_bar::UrlBar;
 pub use variable_chip::VariableChip;
+pub use variable_line::VariableField;

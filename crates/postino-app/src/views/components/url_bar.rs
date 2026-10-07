@@ -8,7 +8,6 @@
 //! `postino_runner::preview` on every edit) is the request editor's job; this component only renders and
 //! forwards clicks.
 
-use std::collections::HashSet;
 use std::rc::Rc;
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
@@ -22,7 +21,8 @@ use rust_i18n::t;
 use postino_core::{Method, VariableSpan};
 
 use super::edit_menu::edit_menu;
-use super::variable_chip::VariableChip;
+use super::variable_line::{TextHandler, marker_children};
+use crate::state::variable_hint::VariableContext;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{RADIUS_MD, URL_BAR_HEIGHT};
 
@@ -49,9 +49,8 @@ pub struct UrlBar {
     text: SharedString,
     /// Every `{{ }}` marker in `text` (`postino_core::variable_spans`), for styling.
     spans: Vec<VariableSpan>,
-    /// Names, among `spans`, that [`postino_runner::preview`] reported as unknown. A name not in
-    /// this set (and not a function call) renders as defined.
-    unknown_names: HashSet<String>,
+    /// What each marker in `spans` resolves to: it decides the chip color and the tooltip.
+    context: Rc<VariableContext>,
     input_state: Entity<InputState>,
     /// When set, replaces the method dropdown with a live `Input` bound to this entity, for typing
     /// a custom method token.
@@ -74,27 +73,25 @@ pub struct UrlBar {
 /// A method change handler, factored out because clippy's `type_complexity` flags the inline
 /// form.
 type MethodHandler = Rc<dyn Fn(Method, &mut Window, &mut App)>;
-/// A text-carrying handler (chip click, text change), see [`MethodHandler`].
-type TextHandler = Rc<dyn Fn(String, &mut Window, &mut App)>;
 /// A handler with no payload (Escape), see [`MethodHandler`].
 type VoidHandler = Rc<dyn Fn(&mut Window, &mut App)>;
 
 impl UrlBar {
     /// A bar showing `method` and `text`, with `spans` (`postino_core::variable_spans(text)`)
-    /// and `unknown_names` (the names `postino_runner::preview` reported as unknown) driving
-    /// chip colors. `input_state` backs the live `Input` shown once the bar is focused.
+    /// and `context` (how each marker resolves) driving chip colors and tooltips. `input_state`
+    /// backs the live `Input` shown once the bar is focused.
     pub fn new(
         method: Method,
         text: impl Into<SharedString>,
         spans: Vec<VariableSpan>,
-        unknown_names: HashSet<String>,
+        context: Rc<VariableContext>,
         input_state: Entity<InputState>,
     ) -> Self {
         Self {
             method,
             text: text.into(),
             spans,
-            unknown_names,
+            context,
             input_state,
             editing_method: None,
             on_method_change: None,
@@ -121,7 +118,7 @@ impl UrlBar {
     }
 
     /// Sets the handler for clicking a variable chip, called with the variable's name.
-    /// `views/request_editor.rs` only wires this for a danger (undefined) chip, opening the Define
+    /// `views/request_editor.rs` only acts on a danger (undefined) chip, opening the Define
     /// dialog.
     pub fn on_chip_click(
         mut self,
@@ -261,29 +258,14 @@ impl UrlBar {
                 let end = gpui_kit::base::input::Position::new(0, u32::MAX);
                 input_state.update(cx, |state, cx| state.set_cursor_position(end, window, cx));
             });
-        let mut cursor = 0;
-        for span in &self.spans {
-            if span.range.start > cursor {
-                row = row.child(self.text[cursor..span.range.start].to_string());
-            }
-            let defined = span.kind == postino_core::VariableKind::FunctionCall
-                || !self.unknown_names.contains(&span.name);
-            let marker_text = self.text[span.range.clone()].to_string();
-            let name = span.name.clone();
-            let handler = self.on_chip_click.clone();
-            let mut chip = div()
-                .id(("url-bar-chip", span.range.start))
-                .cursor_pointer()
-                .child(VariableChip::new(marker_text, defined));
-            if let Some(handler) = handler {
-                chip = chip.on_click(move |_, window, cx| handler(name.clone(), window, cx));
-            }
-            row = row.child(chip);
-            cursor = span.range.end;
-        }
-        if cursor < self.text.len() {
-            row = row.child(self.text[cursor..].to_string());
-        }
+        row = row.children(marker_children(
+            &SharedString::from("url-bar-chip"),
+            &self.text,
+            &self.spans,
+            &self.context,
+            false,
+            self.on_chip_click.as_ref(),
+        ));
         row.into_any_element()
     }
 }
