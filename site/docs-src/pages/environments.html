@@ -120,9 +120,12 @@ apiKey=sk_test_51H...
 <ol class="steps">
     <li>Click the red chip in the URL bar, or <strong>Define</strong> on the <strong>Unknown variable</strong> warning of the response.</li>
     <li>The <strong>Define variable</strong> dialog asks for the value and the environment. It preselects the active environment, or the first one. Choose <strong>New environment…</strong> to create one on the spot.</li>
+    <li>Under the name, the dialog helps you spot a typo before creating a duplicate: <strong>Already defined in</strong> lists the environments that have a variable with that exact name, and <strong>Similar name</strong> shows a known variable that differs only in case or in one or two characters, such as <code>baseUrl</code> for <code>baseURL</code>. If it is a typo, cancel and fix the name in the request.</li>
     <li><strong>Store in .local.env (not versioned)</strong> decides where the value goes. It is switched on for you when the name looks like a secret: when it contains <code>token</code>, <code>secret</code>, <code>password</code> or <code>key</code>, ignoring case.</li>
-    <li>Press <strong>Save</strong>. The value is written to the file right away.</li>
+    <li>Press <strong>Save</strong>. The value is written to the file right away. If that environment is open in a tab, the tab shows the new value too, and keeps any change you had not saved yet.</li>
 </ol>
+<p>When no environment is active, saving also makes the chosen environment the active one, so the variable stops showing in red. The dialog says so under the environment with <strong>It will become the active environment.</strong></p>
+<p>To see the variable next to the rest of the environment instead, press <strong>Open in editor</strong>. It opens the environment's tab with a new row holding the name, the value and the file you picked, with the cursor in the value. Nothing is written until you save the tab with <kbd>Ctrl</kbd> <kbd>S</kbd>. The button is hidden while <strong>New environment…</strong> is picked.</p>
 
 <h2>Session variables</h2>
 <p>A post-response script can store a value for later requests with <code>env.set()</code>. The typical case is a login request that keeps the token:</p>

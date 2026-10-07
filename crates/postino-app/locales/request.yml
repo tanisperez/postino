@@ -95,6 +95,26 @@ _version: 2
   es: "Guardar en .local.env (sin versionar)"
   gl: "Gardar en .local.env (sen versionar)"
   it: "Salva in .local.env (non versionato)"
+"request.define_variable.defined_in":
+  en: "Already defined in: %{environments}"
+  es: "Ya definida en: %{environments}"
+  gl: "Xa definida en: %{environments}"
+  it: "Già definita in: %{environments}"
+"request.define_variable.similar":
+  en: "Similar name: %{name}"
+  es: "Nombre parecido: %{name}"
+  gl: "Nome parecido: %{name}"
+  it: "Nome simile: %{name}"
+"request.define_variable.will_activate":
+  en: "It will become the active environment."
+  es: "Pasará a ser el entorno activo."
+  gl: "Pasará a ser o contorno activo."
+  it: "Diventerà l'ambiente attivo."
+"request.define_variable.open_in_editor":
+  en: "Open in editor"
+  es: "Abrir en el editor"
+  gl: "Abrir no editor"
+  it: "Apri nell'editor"
 "request.format.today":
   en: "today"
   es: "hoy"

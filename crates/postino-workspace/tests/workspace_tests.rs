@@ -488,13 +488,20 @@ fn load_environment_fails_for_an_unknown_name() {
 // --- Environment writes ---------------------------------------------------------------------
 
 #[test]
-fn set_environment_var_creates_the_folder_and_file_when_missing() {
+fn save_environment_set_creates_the_folder_and_file_when_missing() {
     let temp = TempDir::new().expect("temp dir");
     let workspace = Workspace::open(temp.path()).expect("open workspace");
 
     workspace
-        .set_environment_var("dev", "BASE_URL", "https://dev.test", false)
-        .expect("set environment var");
+        .save_environment(
+            "dev",
+            &[EnvChange::Set {
+                layer: EnvLayer::Base,
+                key: "BASE_URL".to_string(),
+                value: "https://dev.test".to_string(),
+            }],
+        )
+        .expect("save environment");
 
     let content =
         fs::read_to_string(temp.path().join("environments/dev.env")).expect("read env file");
@@ -502,13 +509,20 @@ fn set_environment_var_creates_the_folder_and_file_when_missing() {
 }
 
 #[test]
-fn set_environment_var_writes_the_local_variant() {
+fn save_environment_set_writes_the_local_variant() {
     let temp = TempDir::new().expect("temp dir");
     let workspace = Workspace::open(temp.path()).expect("open workspace");
 
     workspace
-        .set_environment_var("dev", "TOKEN", "secret", true)
-        .expect("set environment var");
+        .save_environment(
+            "dev",
+            &[EnvChange::Set {
+                layer: EnvLayer::Local,
+                key: "TOKEN".to_string(),
+                value: "secret".to_string(),
+            }],
+        )
+        .expect("save environment");
 
     let content = fs::read_to_string(temp.path().join("environments/dev.local.env"))
         .expect("read local env file");
@@ -517,7 +531,7 @@ fn set_environment_var_writes_the_local_variant() {
 }
 
 #[test]
-fn set_environment_var_replaces_a_key_preserving_comments_and_order() {
+fn save_environment_set_replaces_a_key_preserving_comments_and_order() {
     let temp = TempDir::new().expect("temp dir");
     write_file(
         &temp.path().join("environments/dev.env"),
@@ -526,8 +540,15 @@ fn set_environment_var_replaces_a_key_preserving_comments_and_order() {
     let workspace = Workspace::open(temp.path()).expect("open workspace");
 
     workspace
-        .set_environment_var("dev", "BASE_URL", "https://new.test", false)
-        .expect("set environment var");
+        .save_environment(
+            "dev",
+            &[EnvChange::Set {
+                layer: EnvLayer::Base,
+                key: "BASE_URL".to_string(),
+                value: "https://new.test".to_string(),
+            }],
+        )
+        .expect("save environment");
 
     let content =
         fs::read_to_string(temp.path().join("environments/dev.env")).expect("read env file");
@@ -538,14 +559,21 @@ fn set_environment_var_replaces_a_key_preserving_comments_and_order() {
 }
 
 #[test]
-fn set_environment_var_appends_a_missing_key() {
+fn save_environment_set_appends_a_missing_key() {
     let temp = TempDir::new().expect("temp dir");
     write_file(&temp.path().join("environments/dev.env"), "A=1\n");
     let workspace = Workspace::open(temp.path()).expect("open workspace");
 
     workspace
-        .set_environment_var("dev", "B", "2", false)
-        .expect("set environment var");
+        .save_environment(
+            "dev",
+            &[EnvChange::Set {
+                layer: EnvLayer::Base,
+                key: "B".to_string(),
+                value: "2".to_string(),
+            }],
+        )
+        .expect("save environment");
 
     let content =
         fs::read_to_string(temp.path().join("environments/dev.env")).expect("read env file");

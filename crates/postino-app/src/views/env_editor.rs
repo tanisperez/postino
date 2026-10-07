@@ -82,6 +82,8 @@ struct EnvRowInputs {
 pub(crate) struct EnvEditorEntities {
     filter: Entity<InputState>,
     rows: HashMap<u64, EnvRowInputs>,
+    /// The table's scroll position, so a row added at the end can be brought into view.
+    scroll: ScrollHandle,
 }
 
 impl AppView {
@@ -115,32 +117,68 @@ impl AppView {
         cx.notify();
     }
 
-    /// Loads `name`'s files again into its open tab, when that tab has no unsaved edits. Used
-    /// after something else wrote to the files (the Define variable dialog).
-    pub(crate) fn reload_env_tab_if_clean(&mut self, name: &str, cx: &mut Context<Self>) {
+    /// Tells the open tab of `name`, if any, that `key` was set to `value` in `layer` on disk by
+    /// something else (the Define variable dialog), keeping its unsaved edits. Its inputs are
+    /// rebuilt from the rows on the next render.
+    pub(crate) fn sync_env_tab_after_set(
+        &mut self,
+        name: &str,
+        layer: EnvLayer,
+        key: &str,
+        value: &str,
+        cx: &mut Context<Self>,
+    ) {
         let tab_id = crate::state::env_edit::tab_id(name);
-        let Some(index) = self.state.tabs.index_of(&tab_id) else {
-            return;
-        };
-        if self.state.tabs.get(index).is_none_or(|tab| tab.dirty) {
-            return;
-        }
-        let Some(workspace) = self.state.workspace.as_ref() else {
-            return;
-        };
-        let Ok(layers) = workspace.load_environment_layers(name) else {
-            return;
-        };
-        if let Some(edit) = self
-            .state
-            .tabs
-            .get_mut(index)
-            .and_then(|tab| tab.environment_mut())
-        {
-            edit.reload(&layers);
-        }
+        self.edit_env(&tab_id, cx, |edit| {
+            edit.apply_saved_set(layer, key, value);
+            true
+        });
         self.env_editors.remove(&tab_id);
-        cx.notify();
+    }
+
+    /// Opens the editor tab of the environment `name` with a new row for `key` holding `value`
+    /// in `layer`, and focuses its value. Used by the Define variable dialog's "Open in editor".
+    pub(crate) fn open_env_tab_with_variable(
+        &mut self,
+        name: String,
+        key: &str,
+        value: &str,
+        layer: EnvLayer,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let tab_id = crate::state::env_edit::tab_id(&name);
+        self.open_environment_tab(name, cx);
+        if self.state.tabs.active().is_none_or(|tab| tab.id != tab_id) {
+            return;
+        }
+        self.ensure_env_entities(&tab_id, window, cx);
+        let mut row = None;
+        self.edit_env(&tab_id, cx, |edit| {
+            let id = edit.add_variable();
+            edit.set_name(id, key);
+            edit.set_value(id, value);
+            edit.set_layer(id, layer);
+            row = edit
+                .rows
+                .iter()
+                .find(|row| row.id == id)
+                .map(|row| (id, edit.is_masked(row)));
+            true
+        });
+        let Some((id, masked)) = row else {
+            return;
+        };
+        let inputs = build_row_inputs(&tab_id, id, key, value, masked, window, cx);
+        let value_input = inputs.value.clone();
+        if let Some(entities) = self.env_editors.get_mut(&tab_id) {
+            entities
+                .filter
+                .update(cx, |state, cx| state.set_value(String::new(), window, cx));
+            entities.rows.insert(id, inputs);
+            entities.scroll.scroll_to_bottom();
+        }
+        value_input.update(cx, |input, cx| input.focus(window, cx));
     }
 
     /// Creates the entities of the tab `tab_id` the first time it is shown.
@@ -188,6 +226,7 @@ impl AppView {
         let mut entities = EnvEditorEntities {
             filter,
             rows: HashMap::new(),
+            scroll: ScrollHandle::new(),
         };
         for (id, name, value, masked) in rows {
             let inputs = build_row_inputs(tab_id, id, &name, &value, masked, window, cx);
@@ -294,6 +333,7 @@ impl AppView {
                 .filter
                 .update(cx, |state, cx| state.set_value(String::new(), window, cx));
             entities.rows.insert(id, inputs);
+            entities.scroll.scroll_to_bottom();
         }
         name_input.update(cx, |input, cx| input.focus(window, cx));
     }
@@ -684,6 +724,7 @@ impl AppView {
                     .flex_1()
                     .min_h_0()
                     .overflow_y_scroll()
+                    .track_scroll(&entities.scroll)
                     .px(px(20.0))
                     .py(px(12.0))
                     .child(render_table(
