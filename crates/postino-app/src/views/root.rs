@@ -42,6 +42,7 @@ use crate::views::components::{DocumentTab, DocumentTabs, InlineMessage, InlineM
 use crate::views::request_editor::RequestEditorEntities;
 use crate::views::response_view::ResponseEditorEntities;
 use crate::views::send::SendingTask;
+use crate::views::settings::SettingsSelects;
 
 use super::sidebar;
 
@@ -100,6 +101,9 @@ pub struct AppView {
     pub(crate) send_options: SendOptions,
     /// The category the Settings modal shows (`views/settings.rs`).
     pub(crate) settings_category: SettingsCategory,
+    /// The Settings selects (language, fonts, TLS, ...), created each time the modal opens. See
+    /// `views/settings/selects.rs`.
+    pub(crate) settings_selects: Option<SettingsSelects>,
     /// Version, platform and paths shown by Settings, "About", read once at startup.
     pub(crate) about_info: AboutInfo,
     /// The UI state `POSTINO_OPEN` requested at startup, if any (`state::debug_open`). `None` on
@@ -210,6 +214,7 @@ impl AppView {
             script_engine: Arc::new(QuickJsEngine),
             send_options,
             settings_category: SettingsCategory::default(),
+            settings_selects: None,
             about_info: AboutInfo::detect(),
             debug_open: None,
             gallery_url_input: None,
