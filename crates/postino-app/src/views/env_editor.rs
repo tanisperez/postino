@@ -5,6 +5,7 @@
 //! entities are created once per tab (and once per added row), never per frame, and resynced
 //! only by [`AppView::reload_env_tab`].
 
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -82,8 +83,10 @@ struct EnvRowInputs {
 pub(crate) struct EnvEditorEntities {
     filter: Entity<InputState>,
     rows: HashMap<u64, EnvRowInputs>,
-    /// The table's scroll position, so a row added at the end can be brought into view.
+    /// The table's scroll position, so a row can be brought into view.
     scroll: ScrollHandle,
+    /// A row to scroll into view at the next prepaint of the table, then cleared.
+    reveal: Rc<Cell<Option<u64>>>,
 }
 
 impl AppView {
@@ -153,6 +156,27 @@ impl AppView {
             return;
         }
         self.ensure_env_entities(&tab_id, window, cx);
+
+        // A variable the environment already has: go to its row instead of adding a duplicate.
+        let mut existing = None;
+        self.edit_env(&tab_id, cx, |edit| {
+            existing = edit.reveal(key);
+            existing.is_some()
+        });
+        if let Some(id) = existing {
+            if let Some(entities) = self.env_editors.get(&tab_id) {
+                entities
+                    .filter
+                    .update(cx, |state, cx| state.set_value(String::new(), window, cx));
+                entities.reveal.set(Some(id));
+                if let Some(inputs) = entities.rows.get(&id) {
+                    let value_input = inputs.value.clone();
+                    value_input.update(cx, |input, cx| input.focus(window, cx));
+                }
+            }
+            return;
+        }
+
         let mut row = None;
         self.edit_env(&tab_id, cx, |edit| {
             let id = edit.add_variable();
@@ -176,7 +200,7 @@ impl AppView {
                 .filter
                 .update(cx, |state, cx| state.set_value(String::new(), window, cx));
             entities.rows.insert(id, inputs);
-            entities.scroll.scroll_to_bottom();
+            entities.reveal.set(Some(id));
         }
         value_input.update(cx, |input, cx| input.focus(window, cx));
     }
@@ -227,6 +251,7 @@ impl AppView {
             filter,
             rows: HashMap::new(),
             scroll: ScrollHandle::new(),
+            reveal: Rc::new(Cell::new(None)),
         };
         for (id, name, value, masked) in rows {
             let inputs = build_row_inputs(tab_id, id, &name, &value, masked, window, cx);
@@ -333,7 +358,7 @@ impl AppView {
                 .filter
                 .update(cx, |state, cx| state.set_value(String::new(), window, cx));
             entities.rows.insert(id, inputs);
-            entities.scroll.scroll_to_bottom();
+            entities.reveal.set(Some(id));
         }
         name_input.update(cx, |input, cx| input.focus(window, cx));
     }
@@ -1137,6 +1162,9 @@ fn render_table(
         let last = edit.visible().len() + offset + 1 == total;
         table = table.child(session_row(variable, last, palette, mono_font));
     }
+    if let Some(target) = entities.reveal.get() {
+        table = reveal_row(table, edit, target, &entities.scroll, &entities.reveal);
+    }
     if total == 0 {
         let text = if edit.filter.trim().is_empty() {
             t!("environments.empty")
@@ -1153,6 +1181,52 @@ fn render_table(
         );
     }
     table.into_any_element()
+}
+
+/// Scrolls the table so the row `target` is fully visible, once: the table's children report
+/// their bounds at prepaint, the offset is adjusted and the request cleared, and one more frame
+/// is drawn. The rows are children of the bordered table, not of the scrolled element, so
+/// `ScrollHandle::scroll_to_item` cannot reach them.
+fn reveal_row(
+    table: Div,
+    edit: &EnvEditTab,
+    target: u64,
+    scroll: &ScrollHandle,
+    reveal: &Rc<Cell<Option<u64>>>,
+) -> Div {
+    // Child 0 is the header.
+    let Some(child) = edit
+        .visible()
+        .iter()
+        .position(|&index| edit.rows[index].id == target)
+        .map(|position| position + 1)
+    else {
+        reveal.set(None);
+        return table;
+    };
+    let scroll = scroll.clone();
+    let reveal = reveal.clone();
+    table.on_children_prepainted(move |bounds, window, _cx| {
+        if reveal.get() != Some(target) {
+            return;
+        }
+        reveal.set(None);
+        let Some(row) = bounds.get(child) else {
+            return;
+        };
+        let view = scroll.bounds();
+        let margin = px(12.0);
+        let mut offset = scroll.offset();
+        if row.top() < view.top() {
+            offset.y += view.top() - row.top() + margin;
+        } else if row.bottom() > view.bottom() {
+            offset.y -= row.bottom() - view.bottom() + margin;
+        } else {
+            return;
+        }
+        scroll.set_offset(offset);
+        window.refresh();
+    })
 }
 
 /// A small button drawn as a "stored in" chip: icon and mono file name on a tinted background.

@@ -125,7 +125,7 @@ apiKey=sk_test_51H...
     <li>Press <strong>Save</strong>. The value is written to the file right away. If that environment is open in a tab, the tab shows the new value too, and keeps any change you had not saved yet.</li>
 </ol>
 <p>When no environment is active, saving also makes the chosen environment the active one, so the variable stops showing in red. The dialog says so under the environment with <strong>It will become the active environment.</strong></p>
-<p>To see the variable next to the rest of the environment instead, press <strong>Open in editor</strong>. It opens the environment's tab with a new row holding the name, the value and the file you picked, with the cursor in the value. Nothing is written until you save the tab with <kbd>Ctrl</kbd> <kbd>S</kbd>. The button is hidden while <strong>New environment…</strong> is picked.</p>
+<p>To see the variable next to the rest of the environment instead, press <strong>Open in editor</strong>. It opens the environment's tab with a new row holding the name, the value and the file you picked, with the cursor in the value. Nothing is written until you save the tab with <kbd>Ctrl</kbd> <kbd>S</kbd>. When the environment already has that variable, no row is added: the tab scrolls to the existing one and puts the cursor in its value, and the value typed in the dialog is not used. The button is hidden while <strong>New environment…</strong> is picked.</p>
 
 <h2>Session variables</h2>
 <p>A post-response script can store a value for later requests with <code>env.set()</code>. The typical case is a login request that keeps the token:</p>
