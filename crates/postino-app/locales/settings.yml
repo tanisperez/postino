@@ -300,3 +300,8 @@ _version: 2
   es: "Buscar"
   gl: "Buscar"
   it: "Cerca"
+"settings.select.no_results":
+  en: "No results"
+  es: "Sin resultados"
+  gl: "Sen resultados"
+  it: "Nessun risultato"

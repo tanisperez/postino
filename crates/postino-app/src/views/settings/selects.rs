@@ -8,7 +8,10 @@
 //! family name, the megabytes, the position in the enum's `ALL`) apart from its translated label.
 
 use gpui_kit::component::Icon;
-use gpui_kit::component::searchable_list::{SearchableListItem, SearchableVec};
+use gpui_kit::component::IndexPath;
+use gpui_kit::component::searchable_list::{
+    SearchableListDelegate, SearchableListItem, SearchableVec,
+};
 use gpui_kit::component::select::{Select, SelectEvent, SelectState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -24,8 +27,11 @@ use super::AppView;
 
 /// Width of a select box.
 pub(super) const SELECT_WIDTH: f32 = 220.0;
-/// Maximum height of a select's list, which scrolls beyond it.
-const MENU_MAX_HEIGHT: f32 = 320.0;
+/// Rows a searchable select always lists, filtered or not (see [`PaddedOptions`]).
+const SEARCH_ROWS: usize = 12;
+/// Maximum height of a select's list, which scrolls beyond it. Just above [`SEARCH_ROWS`] rows
+/// (20px each, plus the list's padding), so a padded list never scrolls.
+const MENU_MAX_HEIGHT: f32 = 252.0;
 /// Size of the monospace picker's label, as in the editors.
 const MONO_LABEL_SIZE: f32 = 12.5;
 
@@ -34,6 +40,8 @@ const MONO_LABEL_SIZE: f32 = 12.5;
 pub(super) struct SelectOption {
     value: SharedString,
     label: SharedString,
+    /// A filler row, not a choice (see [`PaddedOptions`]).
+    filler: bool,
 }
 
 impl SelectOption {
@@ -41,6 +49,15 @@ impl SelectOption {
         Self {
             value: value.into(),
             label: label.into(),
+            filler: false,
+        }
+    }
+
+    fn filler(index: usize, label: impl Into<SharedString>) -> Self {
+        Self {
+            value: format!("\u{0}filler-{index}").into(),
+            label: label.into(),
+            filler: true,
         }
     }
 }
@@ -55,9 +72,70 @@ impl SearchableListItem for SelectOption {
     fn value(&self) -> &SharedString {
         &self.value
     }
+
+    fn disabled(&self) -> bool {
+        self.filler
+    }
 }
 
-type OptionsState = SelectState<SearchableVec<SelectOption>>;
+/// The options of a select, with empty filler rows after the matches so that a filtered list is
+/// as tall as the full one. gpui-component places the list under the box when it fits and above
+/// it when it does not, deciding again on every change of the list: a list that shrinks while the
+/// user types would jump from above the box to below it. A constant height keeps it in place.
+/// With no match at all, the first filler reads "No results".
+pub(super) struct PaddedOptions {
+    options: SearchableVec<SelectOption>,
+    fillers: Vec<SelectOption>,
+    no_results: SelectOption,
+    matches: usize,
+}
+
+impl PaddedOptions {
+    /// `min_rows` is 0 for a select without search, which needs no padding.
+    fn new(options: Vec<SelectOption>, min_rows: usize) -> Self {
+        let matches = options.len();
+        Self {
+            options: SearchableVec::new(options),
+            fillers: (0..min_rows).map(|i| SelectOption::filler(i, "")).collect(),
+            no_results: SelectOption::filler(min_rows, t!("settings.select.no_results")),
+            matches,
+        }
+    }
+}
+
+impl SearchableListDelegate for PaddedOptions {
+    type Item = SelectOption;
+
+    fn items_count(&self, section: usize) -> usize {
+        self.options.items_count(section).max(self.fillers.len())
+    }
+
+    fn item(&self, ix: IndexPath) -> Option<&SelectOption> {
+        if ix.row < self.matches {
+            return self.options.item(ix);
+        }
+        if self.matches == 0 && ix.row == 0 && !self.fillers.is_empty() {
+            return Some(&self.no_results);
+        }
+        self.fillers.get(ix.row - self.matches)
+    }
+
+    fn position<V>(&self, value: &V) -> Option<IndexPath>
+    where
+        SelectOption: SearchableListItem<Value = V>,
+        V: PartialEq,
+    {
+        self.options.position(value)
+    }
+
+    fn perform_search(&mut self, query: &str, window: &mut Window, cx: &mut App) -> Task<()> {
+        let task = self.options.perform_search(query, window, cx);
+        self.matches = self.options.items_count(0);
+        task
+    }
+}
+
+type OptionsState = SelectState<PaddedOptions>;
 
 /// The entity behind one Settings select.
 pub(super) type SettingsSelect = Entity<OptionsState>;
@@ -161,16 +239,17 @@ fn create_select(
     cx: &mut Context<AppView>,
 ) -> SettingsSelect {
     let selected: SharedString = selected.to_string().into();
+    let rows = if searchable { SEARCH_ROWS } else { 0 };
     let select = cx.new(|cx| {
-        let mut state =
-            SelectState::new(SearchableVec::new(options), None, window, cx).searchable(searchable);
+        let mut state = SelectState::new(PaddedOptions::new(options, rows), None, window, cx)
+            .searchable(searchable);
         state.set_selected_value(&selected, window, cx);
         state
     });
     subscriptions.push(cx.subscribe_in(
         &select,
         window,
-        move |view, _, event: &SelectEvent<SearchableVec<SelectOption>>, window, cx| {
+        move |view, _, event: &SelectEvent<PaddedOptions>, window, cx| {
             if let SelectEvent::Confirm(Some(value)) = event {
                 on_pick(view, value, window, cx);
             }
@@ -329,7 +408,7 @@ fn set_items(
     cx: &mut Context<AppView>,
 ) {
     select.update(cx, |state, cx| {
-        state.set_items(SearchableVec::new(options), window, cx)
+        state.set_items(PaddedOptions::new(options, 0), window, cx)
     });
 }
 
