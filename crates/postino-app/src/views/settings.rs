@@ -9,7 +9,6 @@
 //! `AppState::settings` and calls [`AppView::apply_settings_live`], so it updates the global
 //! `Theme` and persists to `settings.toml` immediately: there is no "Save" button.
 
-use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::scroll::{Scrollbar, ScrollbarMode};
 use gpui_kit::component::theme::{Theme, ThemeMode};
 use gpui_kit::component::*;
@@ -27,10 +26,14 @@ use crate::state::settings::{
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_LG, RADIUS_MD};
 use crate::theme::{self, Palette, PaletteExt};
 
-use super::components::{GhostButton, IconButton, select_label_row, select_trigger};
+use super::components::{GhostButton, IconButton};
 use super::root::AppView;
 
 mod about;
+mod selects;
+
+pub(crate) use selects::SettingsSelects;
+use selects::{SelectHandles, SettingsSelect, render_select};
 
 /// Width of the modal itself.
 const MODAL_WIDTH: f32 = 800.0;
@@ -42,10 +45,6 @@ const MODAL_MARGIN_MIN: f32 = 16.0;
 const NAV_WIDTH: f32 = 188.0;
 /// Height of the right column's header and footer strips.
 const HEADER_FOOTER_HEIGHT: f32 = 52.0;
-/// Width of a font picker's select box.
-const SELECT_WIDTH: f32 = 220.0;
-/// Maximum height of a font picker's dropdown menu, which scrolls beyond it.
-const FONT_MENU_MAX_HEIGHT: f32 = 320.0;
 /// Width of a font size stepper's numeric readout.
 const STEPPER_VALUE_WIDTH: f32 = 64.0;
 
@@ -56,6 +55,13 @@ impl AppView {
         if window.has_active_dialog(cx) {
             return;
         }
+        let installed = cx.text_system().all_font_names();
+        self.settings_selects = Some(SettingsSelects::new(
+            &self.state.settings,
+            &installed,
+            window,
+            cx,
+        ));
         let weak = cx.weak_entity();
         window.open_dialog(cx, move |dialog, window, cx| {
             let palette = cx.palette();
@@ -115,6 +121,7 @@ impl AppView {
         self.send_options.max_response_size = self.state.settings.max_response_bytes();
         log::info!("settings changed: {:?}", self.state.settings);
         state::settings::save_settings(&self.state.settings);
+        self.sync_settings_selects(false, window, cx);
         cx.notify();
     }
 
@@ -143,7 +150,21 @@ impl AppView {
         locale::apply(language);
         log::info!("language changed to {}", language.code());
         self.relocalize(window, cx);
+        self.sync_settings_selects(true, window, cx);
         cx.refresh_windows();
+    }
+
+    /// Shows the current settings in the Settings selects, when the modal has been opened.
+    fn sync_settings_selects(
+        &mut self,
+        relabel: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(selects) = self.settings_selects.take() {
+            selects.sync(&self.state.settings, relabel, window, cx);
+            self.settings_selects = Some(selects);
+        }
     }
 
     /// Picks what to do with an invalid TLS certificate.
@@ -261,7 +282,14 @@ fn render_settings_body(
         (category == SettingsCategory::About).then(|| about::AboutPane::capture(view.read(cx)));
     let palette = cx.palette();
     let mono_font_family = cx.theme().mono_font_family.clone();
-    let installed = cx.text_system().all_font_names();
+    let Some(selects) = view
+        .read(cx)
+        .settings_selects
+        .as_ref()
+        .map(|selects| selects.handles.clone())
+    else {
+        return div().into_any_element();
+    };
     let modal_radius = cx.theme().radius_lg;
 
     h_flex()
@@ -279,7 +307,7 @@ fn render_settings_body(
             category,
             &palette,
             &settings,
-            &installed,
+            &selects,
             &mono_font_family,
             about.as_ref(),
         ))
@@ -397,7 +425,7 @@ fn render_right_column(
     category: SettingsCategory,
     palette: &Palette,
     settings: &Settings,
-    installed: &[String],
+    selects: &SelectHandles,
     mono_font_family: &SharedString,
     about: Option<&about::AboutPane>,
 ) -> AnyElement {
@@ -417,7 +445,7 @@ fn render_right_column(
                     category,
                     palette,
                     settings,
-                    installed,
+                    selects,
                     mono_font_family,
                     about,
                 ))
@@ -460,7 +488,7 @@ fn render_body(
     category: SettingsCategory,
     palette: &Palette,
     settings: &Settings,
-    installed: &[String],
+    selects: &SelectHandles,
     mono_font_family: &SharedString,
     about: Option<&about::AboutPane>,
 ) -> AnyElement {
@@ -473,7 +501,7 @@ fn render_body(
         .gap(px(22.0))
         .children(match category {
             SettingsCategory::Appearance => vec![
-                render_language_section(weak.clone(), palette, settings.language),
+                render_language_section(palette, &selects.language),
                 divider(palette),
                 render_theme_section(weak.clone(), palette, settings.theme),
                 divider(palette),
@@ -481,21 +509,20 @@ fn render_body(
                     weak.clone(),
                     palette,
                     settings,
-                    installed,
+                    selects,
                     mono_font_family,
                 ),
                 divider(palette),
-                render_editor_section(weak.clone(), palette, settings, installed, mono_font_family),
+                render_editor_section(weak.clone(), palette, settings, selects, mono_font_family),
             ],
             SettingsCategory::Requests => vec![
-                render_tls_section(weak.clone(), palette, settings.invalid_tls_certificates),
+                render_tls_section(palette, &selects.tls),
                 divider(palette),
-                render_response_section(weak.clone(), palette, settings.max_response_mb),
+                render_response_section(palette, &selects.max_response),
             ],
             SettingsCategory::Advanced => vec![render_logging_section(
-                weak.clone(),
                 palette,
-                settings.log_level,
+                &selects.log_level,
                 mono_font_family,
             )],
             SettingsCategory::About => about
@@ -582,34 +609,8 @@ fn language_choice_label(choice: LanguageChoice) -> String {
 }
 
 /// The "Language" section: a dropdown with Automatic and the four languages.
-fn render_language_section(
-    weak: WeakEntity<AppView>,
-    palette: &Palette,
-    current: LanguageChoice,
-) -> AnyElement {
-    let trigger = select_trigger("settings-language", palette)
-        .w(px(SELECT_WIDTH))
-        .text_color(palette.fg)
-        .child(select_label_row(
-            div().child(language_choice_label(current)),
-            palette,
-        ));
-    let control = trigger
-        .dropdown_menu(move |mut menu, _, _| {
-            for choice in LanguageChoice::ALL {
-                let target = weak.clone();
-                menu = menu.item(
-                    PopupMenuItem::new(language_choice_label(choice))
-                        .checked(choice == current)
-                        .on_click(move |_, window, cx| {
-                            let _ =
-                                target.update(cx, |view, cx| view.set_language(choice, window, cx));
-                        }),
-                );
-            }
-            menu
-        })
-        .into_any_element();
+fn render_language_section(palette: &Palette, select: &SettingsSelect) -> AnyElement {
+    let control = render_select("settings-language", select, palette, None);
 
     v_flex()
         .gap(px(14.0))
@@ -798,10 +799,9 @@ fn render_interface_section(
     weak: WeakEntity<AppView>,
     palette: &Palette,
     settings: &Settings,
-    installed: &[String],
+    selects: &SelectHandles,
     mono_font_family: &SharedString,
 ) -> AnyElement {
-    let options = state::settings::font_options("Geist", installed);
     v_flex()
         .gap(px(14.0))
         .child(
@@ -813,18 +813,7 @@ fn render_interface_section(
             palette,
             t!("settings.font"),
             Some(t!("settings.interface.font_description")),
-            render_font_picker(
-                FontPickerSpec {
-                    id: "settings-ui-font",
-                    palette,
-                    mono_style: None,
-                    bundled: "Geist",
-                    current: &settings.ui_font,
-                    options: &options,
-                },
-                weak.clone(),
-                |view, font, window, cx| view.set_ui_font(font, window, cx),
-            ),
+            render_select("settings-ui-font", &selects.ui_font, palette, None),
         ))
         .child(labeled_row(
             palette,
@@ -848,10 +837,9 @@ fn render_editor_section(
     weak: WeakEntity<AppView>,
     palette: &Palette,
     settings: &Settings,
-    installed: &[String],
+    selects: &SelectHandles,
     mono_font_family: &SharedString,
 ) -> AnyElement {
-    let options = state::settings::font_options("Geist Mono", installed);
     v_flex()
         .gap(px(14.0))
         .child(
@@ -863,17 +851,11 @@ fn render_editor_section(
             palette,
             t!("settings.editor.mono_font"),
             None::<SharedString>,
-            render_font_picker(
-                FontPickerSpec {
-                    id: "settings-mono-font",
-                    palette,
-                    mono_style: Some(mono_font_family.clone()),
-                    bundled: "Geist Mono",
-                    current: &settings.mono_font,
-                    options: &options,
-                },
-                weak.clone(),
-                |view, font, window, cx| view.set_mono_font(font, window, cx),
+            render_select(
+                "settings-mono-font",
+                &selects.mono_font,
+                palette,
+                Some(mono_font_family.clone()),
             ),
         ))
         .child(labeled_row(
@@ -899,32 +881,8 @@ fn render_editor_section(
 }
 
 /// The "TLS" section of the Requests pane: what to do with an invalid certificate.
-fn render_tls_section(
-    weak: WeakEntity<AppView>,
-    palette: &Palette,
-    current: InvalidTlsCertificates,
-) -> AnyElement {
-    let trigger = select_trigger("settings-invalid-certificates", palette)
-        .w(px(SELECT_WIDTH))
-        .text_color(palette.fg)
-        .child(select_label_row(div().child(current.label()), palette));
-    let control = trigger
-        .dropdown_menu(move |mut menu, _, _| {
-            for choice in InvalidTlsCertificates::ALL {
-                let target = weak.clone();
-                menu = menu.item(
-                    PopupMenuItem::new(choice.label())
-                        .checked(choice == current)
-                        .on_click(move |_, window, cx| {
-                            let _ = target.update(cx, |view, cx| {
-                                view.set_invalid_tls_certificates(choice, window, cx)
-                            });
-                        }),
-                );
-            }
-            menu
-        })
-        .into_any_element();
+fn render_tls_section(palette: &Palette, select: &SettingsSelect) -> AnyElement {
+    let control = render_select("settings-invalid-certificates", select, palette, None);
 
     v_flex()
         .gap(px(14.0))
@@ -943,41 +901,8 @@ fn render_tls_section(
 }
 
 /// The "Responses" section of the Requests pane: the largest response body that is read.
-fn render_response_section(
-    weak: WeakEntity<AppView>,
-    palette: &Palette,
-    current: u32,
-) -> AnyElement {
-    let trigger = select_trigger("settings-max-response", palette)
-        .w(px(SELECT_WIDTH))
-        .text_color(palette.fg)
-        .child(select_label_row(
-            div().child(state::settings::max_response_label(current)),
-            palette,
-        ));
-    // A value written by hand in the file is listed too, so the current choice is always checked.
-    let mut choices = state::settings::MAX_RESPONSE_MB_OPTIONS.to_vec();
-    if !choices.contains(&current) {
-        choices.push(current);
-        choices.sort_unstable();
-    }
-    let control = trigger
-        .dropdown_menu(move |mut menu, _, _| {
-            for &choice in &choices {
-                let target = weak.clone();
-                menu = menu.item(
-                    PopupMenuItem::new(state::settings::max_response_label(choice))
-                        .checked(choice == current)
-                        .on_click(move |_, window, cx| {
-                            let _ = target.update(cx, |view, cx| {
-                                view.set_max_response_mb(choice, window, cx)
-                            });
-                        }),
-                );
-            }
-            menu
-        })
-        .into_any_element();
+fn render_response_section(palette: &Palette, select: &SettingsSelect) -> AnyElement {
+    let control = render_select("settings-max-response", select, palette, None);
 
     v_flex()
         .gap(px(14.0))
@@ -997,31 +922,11 @@ fn render_response_section(
 
 /// The "Logging" section of the Advanced pane: the log level and where the log file is.
 fn render_logging_section(
-    weak: WeakEntity<AppView>,
     palette: &Palette,
-    current: LogLevel,
+    select: &SettingsSelect,
     mono_font_family: &SharedString,
 ) -> AnyElement {
-    let trigger = select_trigger("settings-log-level", palette)
-        .w(px(SELECT_WIDTH))
-        .text_color(palette.fg)
-        .child(select_label_row(div().child(current.label()), palette));
-    let control = trigger
-        .dropdown_menu(move |mut menu, _, _| {
-            for level in LogLevel::ALL {
-                let target = weak.clone();
-                menu = menu.item(
-                    PopupMenuItem::new(level.label())
-                        .checked(level == current)
-                        .on_click(move |_, window, cx| {
-                            let _ =
-                                target.update(cx, |view, cx| view.set_log_level(level, window, cx));
-                        }),
-                );
-            }
-            menu
-        })
-        .into_any_element();
+    let control = render_select("settings-log-level", select, palette, None);
 
     let log_dir = logging::log_dir();
     let path_label = logging::log_path()
@@ -1118,83 +1023,6 @@ fn labeled_row(
         .gap(px(16.0))
         .child(leading)
         .child(div().flex_none().child(control))
-        .into_any_element()
-}
-
-/// The display inputs of a [`render_font_picker`], grouped into one struct so the function itself
-/// keeps a reasonable argument count.
-struct FontPickerSpec<'a> {
-    id: &'static str,
-    palette: &'a Palette,
-    /// The family the trigger renders its own label in, when it differs from the UI font (the
-    /// Editor section's monospace picker), at 12.5px.
-    mono_style: Option<SharedString>,
-    bundled: &'a str,
-    current: &'a str,
-    options: &'a [String],
-}
-
-/// A font picker: a select-styled trigger showing the current family (`"<bundled> (bundled)"` for
-/// the bundled one), opening a dropdown menu of `spec.options` (as built by
-/// `state::settings::font_options`).
-fn render_font_picker(
-    spec: FontPickerSpec,
-    weak: WeakEntity<AppView>,
-    on_pick: impl Fn(&mut AppView, String, &mut Window, &mut Context<AppView>) + Clone + 'static,
-) -> AnyElement {
-    let FontPickerSpec {
-        id,
-        palette,
-        mono_style,
-        bundled,
-        current,
-        options,
-    } = spec;
-    let label = if current == bundled {
-        t!("settings.font_bundled", name = current).into_owned()
-    } else {
-        current.to_string()
-    };
-
-    // The mono family and size go on the label itself: set on the `Button`, its own text size
-    // wins and the label grows with the editor font size, pushing the chevron out of the box.
-    let mut label_el = div().child(label);
-    if let Some(family) = mono_style {
-        label_el = label_el.font_family(family).text_size(px(12.5));
-    }
-    let trigger = select_trigger(id, palette)
-        .w(px(SELECT_WIDTH))
-        .text_color(palette.fg)
-        .child(select_label_row(label_el, palette));
-
-    let options = options.to_vec();
-    let bundled = bundled.to_string();
-    let current = current.to_string();
-    trigger
-        .dropdown_menu(move |menu, _, _| {
-            // The installed font list is long: without `scrollable` the menu is clipped with no
-            // way to reach the rest.
-            let mut menu = menu.scrollable(true).max_h(px(FONT_MENU_MAX_HEIGHT));
-            for name in &options {
-                let item_label = if *name == bundled {
-                    t!("settings.font_bundled", name = name).into_owned()
-                } else {
-                    name.clone()
-                };
-                let selected = *name == current;
-                let value = name.clone();
-                let target = weak.clone();
-                let on_pick = on_pick.clone();
-                menu = menu.item(PopupMenuItem::new(item_label).checked(selected).on_click(
-                    move |_, window, cx| {
-                        let value = value.clone();
-                        let on_pick = on_pick.clone();
-                        let _ = target.update(cx, |view, cx| on_pick(view, value, window, cx));
-                    },
-                ));
-            }
-            menu
-        })
         .into_any_element()
 }
 
