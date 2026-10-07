@@ -151,7 +151,6 @@ pub fn apply(language: Language) {
 
 /// The key of the plural form to use for `count`: `<key>.one` for exactly one, `<key>.other`
 /// otherwise. Enough for English, Spanish, Galician and Italian.
-#[allow(dead_code)] // No plural string exists yet.
 pub fn plural_key(key: &str, count: usize) -> String {
     let form = if count == 1 { "one" } else { "other" };
     format!("{key}.{form}")
@@ -159,7 +158,6 @@ pub fn plural_key(key: &str, count: usize) -> String {
 
 /// The translation of the plural keys `<key>.one` and `<key>.other` for `count`, with `count`
 /// available in the text as `%{count}`.
-#[allow(dead_code)] // No plural string exists yet.
 pub fn plural(key: &str, count: usize) -> String {
     let key = plural_key(key, count);
     rust_i18n::t!(key.as_str(), count = count).to_string()

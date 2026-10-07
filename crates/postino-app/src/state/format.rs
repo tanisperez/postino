@@ -1,46 +1,12 @@
-//! Small formatting helpers for numbers and paths shown in the UI: human-readable sizes and
-//! durations, home-relative paths, and relative day labels.
+//! Small formatting helpers for paths and dates shown in the UI: home-relative paths and relative
+//! day labels.
 
 use std::path::{MAIN_SEPARATOR, Path, PathBuf};
-use std::time::Duration;
 
 use rust_i18n::t;
 
-use super::number::{format_decimal, format_integer};
-
 /// Number of seconds in a day, used by [`relative_day`] to compare UTC day boundaries.
 const SECONDS_PER_DAY: i64 = 24 * 60 * 60;
-
-/// Formats a byte count as a human-readable size, for example `"512 B"`, `"1.2 KB"`, `"3.4 MB"`.
-/// Uses binary units (1 KB = 1024 B).
-#[allow(dead_code)] // wired by the response viewer and load test dashboard of later phases
-pub fn human_size(bytes: u64) -> String {
-    const KB: f64 = 1024.0;
-    const MB: f64 = KB * 1024.0;
-    const GB: f64 = MB * 1024.0;
-    let bytes_f = bytes as f64;
-    if bytes < 1024 {
-        format!("{} B", format_integer(bytes))
-    } else if bytes_f < MB {
-        format!("{} KB", format_decimal(bytes_f / KB, 1))
-    } else if bytes_f < GB {
-        format!("{} MB", format_decimal(bytes_f / MB, 1))
-    } else {
-        format!("{} GB", format_decimal(bytes_f / GB, 1))
-    }
-}
-
-/// Formats a duration as a human-readable time, for example `"142 ms"` below one second, `"1.4
-/// s"` at or above it.
-#[allow(dead_code)] // wired by the response viewer and load test dashboard of later phases
-pub fn human_duration(duration: Duration) -> String {
-    let millis = duration.as_millis();
-    if millis < 1000 {
-        format!("{} ms", format_integer(millis as u64))
-    } else {
-        format!("{} s", format_decimal(duration.as_secs_f64(), 1))
-    }
-}
 
 /// Shortens `path` to start with `~` when it is inside `home`, for example `/home/tanis/dev`
 /// with home `/home/tanis` becomes `~/dev`. Returns the path unchanged (as a string) if it is
@@ -130,22 +96,6 @@ fn relative_day_in(then_unix_seconds: i64, now_unix_seconds: i64, locale: &str) 
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
-
-    #[test]
-    fn human_size_formats_each_unit() {
-        assert_eq!(human_size(0), "0 B");
-        assert_eq!(human_size(512), "512 B");
-        assert_eq!(human_size(1229), "1.2 KB");
-        assert_eq!(human_size(3_460_000), "3.3 MB");
-        assert_eq!(human_size(2_147_483_648), "2.0 GB");
-    }
-
-    #[test]
-    fn human_duration_switches_units_at_one_second() {
-        assert_eq!(human_duration(Duration::from_millis(142)), "142 ms");
-        assert_eq!(human_duration(Duration::from_millis(999)), "999 ms");
-        assert_eq!(human_duration(Duration::from_millis(1400)), "1.4 s");
-    }
 
     #[test]
     fn shorten_path_replaces_the_home_prefix() {
