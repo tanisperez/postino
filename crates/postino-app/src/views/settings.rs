@@ -44,6 +44,8 @@ const NAV_WIDTH: f32 = 188.0;
 const HEADER_FOOTER_HEIGHT: f32 = 52.0;
 /// Width of a font picker's select box.
 const SELECT_WIDTH: f32 = 220.0;
+/// Maximum height of a font picker's dropdown menu, which scrolls beyond it.
+const FONT_MENU_MAX_HEIGHT: f32 = 320.0;
 /// Width of a font size stepper's numeric readout.
 const STEPPER_VALUE_WIDTH: f32 = 64.0;
 
@@ -1169,7 +1171,10 @@ fn render_font_picker(
     let bundled = bundled.to_string();
     let current = current.to_string();
     trigger
-        .dropdown_menu(move |mut menu, _, _| {
+        .dropdown_menu(move |menu, _, _| {
+            // The installed font list is long: without `scrollable` the menu is clipped with no
+            // way to reach the rest.
+            let mut menu = menu.scrollable(true).max_h(px(FONT_MENU_MAX_HEIGHT));
             for name in &options {
                 let item_label = if *name == bundled {
                     t!("settings.font_bundled", name = name).into_owned()
