@@ -1,7 +1,6 @@
 //! The load test tab's left config panel: the target segmented control and picker, the numeric
 //! fields, the "Stop on errors" switch, and the Start/Stop run button.
 
-use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::scroll::ScrollableElement as _;
@@ -16,7 +15,7 @@ use crate::state::locale;
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{
-    DangerButton, PrimaryButton, SegmentedControl, SegmentedItem, edit_menu,
+    DangerButton, PrimaryButton, SegmentedControl, SegmentedItem, edit_menu, select_trigger,
 };
 
 use crate::views::root::AppView;
@@ -28,7 +27,7 @@ const PANEL_WIDTH: f32 = 280.0;
 /// active tab id changes, the same reasoning as `views/request_editor.rs`'s
 /// `RequestEditorEntities`: typing into one of these must never lose focus on an unrelated
 /// re-render. The target picker needs no entity of its own (a plain dropdown menu, like
-/// `views/define_variable.rs`'s environment select).
+/// `views/define_variable.rs`'s environment select, both on `components::select_trigger`).
 #[derive(Default)]
 pub(crate) struct LoadTestEntities {
     built_for: Option<String>,
@@ -347,21 +346,8 @@ fn render_target_picker(
         );
     }
 
-    // `DropdownMenu` (`gpui-component`'s trait for opening a `PopupMenu` on click) is only
-    // implemented for `Button` (`gpui-component-0.6.6/src/menu/dropdown_menu.rs`, `impl
-    // DropdownMenu for Button {}`), not for a plain styled `div`/`h_flex`: this trigger is a
-    // `Button` for that reason, ghosted and re-bordered to look like the design's bordered pill
-    // row, the same trick `views/define_variable.rs`'s `render_environment_select` and
-    // `views/settings.rs`'s `render_font_picker` already use for their own dropdown triggers.
-    let trigger = Button::new("load-test-target-picker")
-        .ghost()
+    let trigger = select_trigger("load-test-target-picker", palette)
         .w_full()
-        .h(px(CONTROL_HEIGHT))
-        .px(px(10.0))
-        .rounded(px(RADIUS_MD - 1.0))
-        .border_1()
-        .border_color(palette.border_strong)
-        .bg(palette.raised)
         .disabled(is_running)
         .when(is_running, |button| button.opacity(0.5))
         .child(content);
