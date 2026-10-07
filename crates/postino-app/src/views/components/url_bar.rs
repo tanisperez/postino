@@ -234,9 +234,9 @@ impl UrlBar {
     /// Renders the not-focused URL line: plain text segments and [`VariableChip`]s, each chip
     /// wrapped in its own clickable `div` (see this module's doc comment for why, instead of a
     /// single [`gpui::StyledText`] with highlight runs, which cannot carry a per-range click
-    /// handler on its own). Clicking anywhere on the row (including a chip, which keeps its own
-    /// click action too) focuses [`Self::input_state`] and moves the caret to the end, which
-    /// swaps this line for the live `Input` on the next render.
+    /// handler on its own). Clicking anywhere on the row focuses [`Self::input_state`] and moves
+    /// the caret to the end, which swaps this line for the live `Input` on the next render. A
+    /// chip whose handler acts on the click stops it before it reaches the row.
     fn render_line(&self, cx: &mut App) -> AnyElement {
         let mono_font = cx.theme().mono_font_family.clone();
         let input_state = self.input_state.clone();

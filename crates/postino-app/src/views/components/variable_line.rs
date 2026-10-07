@@ -15,7 +15,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
-use postino_core::{VariableSpan, variable_spans};
+use postino_core::{VariableKind, VariableSpan, variable_spans};
 
 use super::edit_menu::edit_menu;
 use super::variable_chip::VariableChip;
@@ -91,7 +91,12 @@ pub fn marker_children(
             let tooltip = SharedString::from(tooltip_text(&hint));
             chip = chip.tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx));
         }
-        if let Some(handler) = on_chip_click {
+        // Only a variable chip calls the handler, not a template function call. A handler that
+        // acts on the click stops its propagation, or the line around the chip also takes it and
+        // focuses its input.
+        if let Some(handler) = on_chip_click
+            && span.kind == VariableKind::Variable
+        {
             let handler = handler.clone();
             chip = chip.on_click(move |_, window, cx| handler(name.clone(), window, cx));
         }

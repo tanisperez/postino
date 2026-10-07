@@ -678,11 +678,11 @@ impl AppView {
                 }
             });
         })
-        // Defines a danger (unknown) chip's variable (`views/define_variable.rs`). A defined
-        // (accent) chip's click is a no-op: only a chip the context reports as unknown (the same
-        // rule that colors it danger) does anything.
+        // Takes an unknown variable, or one from the active environment, to the environment
+        // editor (`views/define_variable.rs`). A chip set by a script or the session does nothing.
         .on_chip_click(move |name, window, cx| {
-            if chip_context.is_unknown_variable(&name) {
+            if chip_context.opens_environment(&name) {
+                cx.stop_propagation();
                 let _ = chip_click_weak
                     .update(cx, |view, cx| view.define_variables(vec![name], window, cx));
             }
@@ -962,8 +962,8 @@ impl AppView {
     }
 }
 
-/// The handler of a click on a variable chip: defines the variable when it is undefined
-/// (`views/define_variable.rs`), does nothing when it resolves.
+/// The handler of a click on a variable chip: takes an unknown variable, or one from the active
+/// environment, to the environment editor (`views/define_variable.rs`).
 fn define_variable_click(
     weak: &WeakEntity<AppView>,
     context: &Rc<VariableContext>,
@@ -971,7 +971,8 @@ fn define_variable_click(
     let weak = weak.clone();
     let context = context.clone();
     move |name, window, cx| {
-        if context.is_unknown_variable(&name) {
+        if context.opens_environment(&name) {
+            cx.stop_propagation();
             let _ = weak.update(cx, |view, cx| view.define_variables(vec![name], window, cx));
         }
     }

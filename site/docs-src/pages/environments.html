@@ -15,7 +15,7 @@ since = {{since}}
 ```
 <ul>
     <li>Every variable in the URL, the Params and Headers tables and the Body is highlighted. A variable that resolves is drawn in the accent color, and one with no value is red with a wavy underline. With no environment selected, the variables that come from an environment are red, while template functions and variables a pre-request script sets with <code>vars.set("name", ...)</code> stay highlighted as defined. In the tables, the chips show while the field is not being edited. Bodies larger than 1 MB are not highlighted.</li>
-    <li>Hover a highlighted variable to see its current value and where it comes from (the environment, or a script of this session). Values of variables whose name looks like a secret (it contains <code>token</code>, <code>key</code>, <code>secret</code>, <code>password</code>, <code>auth</code> or <code>session</code>), and any variable inside the value of a sensitive header such as <code>Authorization</code>, are shown as dots. Click a red variable to define it.</li>
+    <li>Hover a highlighted variable to see its current value and where it comes from (the environment, or a script of this session). Values of variables whose name looks like a secret (it contains <code>token</code>, <code>key</code>, <code>secret</code>, <code>password</code>, <code>auth</code> or <code>session</code>), and any variable inside the value of a sensitive header such as <code>Authorization</code>, are shown as dots. Click a red variable to define it, or one that comes from the active environment to go to its row in the environment editor.</li>
     <li>A variable with no value is sent literally, as <code>{{name}}</code>, and the response shows an <strong>Unknown variable</strong> warning. It never stops the request.</li>
     <li>Variables are replaced in one pass: if the value of <code>outer</code> is <code>{{inner}}</code>, the request contains the text <code>{{inner}}</code>, not the value of <code>inner</code>.</li>
     <li>A <code>{{</code> with no closing <code>}}</code> is left alone, without a warning.</li>
@@ -116,11 +116,11 @@ apiKey=sk_test_51H...
 <p>You can also create the files by hand in any editor. An environment exists as soon as its <code>.env</code> file does.</p>
 
 <h2 id="defining-a-variable-from-a-request">Defining a variable from a request</h2>
-<p>When a request uses a variable that has no value, click its red chip (in the URL bar or in a table), or <strong>Define</strong> on the <strong>Unknown variable</strong> warning of the response. Where you land depends on the active environment:</p>
+<p>Click a variable chip in the URL bar or in a table, or <strong>Define</strong> on the <strong>Unknown variable</strong> warning of the response. A red chip has no value yet; a chip that resolves takes you to its definition, unless its value comes from a script, which has no row to show. Where you land depends on the active environment:</p>
 <ul>
     <li><strong>No environment is active:</strong> the Environments panel opens in the sidebar. Make an environment active (open it and click <strong>Use this environment</strong>, or choose it in the environment picker of the title bar), or create one with <strong>New environment</strong>, then click the variable again.</li>
     <li><strong>The active environment does not have the variable:</strong> its tab opens with a new row for it at the end of the table, and the cursor in the value. The row goes to <code>.local.env</code> (not versioned) when the name looks like a secret, that is, when it contains <code>token</code>, <code>secret</code>, <code>password</code> or <code>key</code>, ignoring case. Otherwise it goes to <code>.env</code>. You can change it in the <strong>Stored in</strong> column.</li>
-    <li><strong>The active environment already has the variable</strong> (for example in a row you have not saved yet): its tab opens, scrolled to that row, with the cursor in the value. No row is added.</li>
+    <li><strong>The active environment already has the variable:</strong> its tab opens, scrolled to that row, with the cursor in the value. No row is added. When the variable is in both files, that is the <code>.local.env</code> row, the one that applies.</li>
 </ul>
 <p>Type the value and save the tab with <kbd>Ctrl</kbd> <kbd>S</kbd>: nothing is written before that, and the chip stays red until the variable is saved. When the response warning lists several unknown variables, <strong>Define</strong> adds a row for each one and puts the cursor in the first.</p>
 
