@@ -2,8 +2,7 @@
 //! two files it is stored in, a toolbar (filter, file scope, secrets toggle, add), a table of the
 //! variables with inline inputs, and the resolution order. The rows and every decision about
 //! them live in `state::env_edit`; this file only draws them and forwards the edits. The input
-//! entities are created once per tab (and once per added row), never per frame, and resynced
-//! only by [`AppView::reload_env_tab`].
+//! entities are created once per tab (and once per added row), never per frame.
 
 use std::cell::Cell;
 use std::collections::HashMap;
