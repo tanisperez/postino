@@ -110,3 +110,28 @@ _version: 2
   es: "hace %{count} días"
   gl: "hai %{count} días"
   it: "%{count} giorni fa"
+"request.variable.origin_environment":
+  en: "Environment: %{name}"
+  es: "Entorno: %{name}"
+  gl: "Contorno: %{name}"
+  it: "Ambiente: %{name}"
+"request.variable.origin_session":
+  en: "Set by a script (this session)"
+  es: "Definida por un script (esta sesión)"
+  gl: "Definida por un script (esta sesión)"
+  it: "Impostata da uno script (questa sessione)"
+"request.variable.script_defined":
+  en: "Set by the pre script, its value is known when the request is sent"
+  es: "Definida por el script previo, su valor se conoce al enviar la petición"
+  gl: "Definida polo script previo, o seu valor coñécese ao enviar a petición"
+  it: "Impostata dallo script pre, il valore si conosce all'invio della richiesta"
+"request.variable.masked":
+  en: "Hidden because it looks like a secret"
+  es: "Oculto porque parece un secreto"
+  gl: "Oculto porque parece un segredo"
+  it: "Nascosto perché sembra un segreto"
+"request.variable.empty":
+  en: "(empty)"
+  es: "(vacío)"
+  gl: "(baleiro)"
+  it: "(vuoto)"

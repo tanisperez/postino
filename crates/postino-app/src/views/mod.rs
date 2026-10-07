@@ -25,5 +25,6 @@ pub mod snippet_dialog;
 pub mod status_bar;
 pub mod title_bar;
 pub mod update;
+pub mod variable_hover;
 
 pub use root::AppView;

@@ -14,7 +14,8 @@ Authorization: Bearer {{token}}
 since = {{since}}
 ```
 <ul>
-    <li>In the URL bar, every variable is drawn as a chip. A variable with no value shows as a red chip.</li>
+    <li>Every variable in the URL, the Params and Headers tables and the Body is highlighted. A variable that resolves is drawn in the accent color, and one with no value is red with a wavy underline. With no environment selected, the variables that come from an environment are red, while template functions and variables a pre-request script sets with <code>vars.set("name", ...)</code> stay highlighted as defined. In the tables, the chips show while the field is not being edited. Bodies larger than 1 MB are not highlighted.</li>
+    <li>Hover a highlighted variable to see its current value and where it comes from (the environment, or a script of this session). Values of variables whose name looks like a secret (it contains <code>token</code>, <code>key</code>, <code>secret</code>, <code>password</code>, <code>auth</code> or <code>session</code>), and any variable inside the value of a sensitive header such as <code>Authorization</code>, are shown as dots. Click a red variable to define it.</li>
     <li>A variable with no value is sent literally, as <code>{{name}}</code>, and the response shows an <strong>Unknown variable</strong> warning. It never stops the request.</li>
     <li>Variables are replaced in one pass: if the value of <code>outer</code> is <code>{{inner}}</code>, the request contains the text <code>{{inner}}</code>, not the value of <code>inner</code>.</li>
     <li>A <code>{{</code> with no closing <code>}}</code> is left alone, without a warning.</li>

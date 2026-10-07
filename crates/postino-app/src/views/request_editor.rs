@@ -9,26 +9,35 @@
 //! triggers a rebuild, which is what lets it keep focus and cursor position while the user
 //! types; see [`RequestEditorEntities::sync`].
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::input::{
-    Editor, EditorState, Input, InputEvent, InputState, Textarea, TextareaState,
+    Editor, EditorState, InputEvent, InputState, TextDecoration, TextDecorationCollection,
+    Textarea, TextareaState,
 };
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
+use gpui::Hsla;
+use postino_core::log_safe::is_sensitive_header;
 use postino_core::{Body, KeyValue, Method, Request, variable_spans};
 
 use crate::state::request_edit::{self, BodyKind};
 use crate::state::script_heuristics;
 use crate::state::ui_tabs::RequestTab;
+use crate::state::variable_hint::{self, VariableContext};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{RADIUS_MD, SEND_BUTTON_HEIGHT, SEND_BUTTON_MIN_WIDTH};
+use crate::views::components::variable_chip::highlight_style;
 use crate::views::components::{
     GhostButton, KeyValueRow, KeyValueTable, PrimaryButton, SegmentedControl, SegmentedItem,
-    UnderlineTabItem, UnderlineTabs, UrlBar, edit_menu,
+    UnderlineTabItem, UnderlineTabs, UrlBar, VariableField, edit_menu,
 };
+use crate::views::variable_hover::{BodyMarkers, VariableHover};
 
 use super::root::AppView;
 
@@ -224,9 +233,23 @@ pub(crate) struct RequestEditorEntities {
     query: KeyValueTableEntities,
     form: KeyValueTableEntities,
     body_editor: Option<Entity<EditorState>>,
+    /// How the `{{ }}` markers resolve right now, refreshed on every render of the editor. Every
+    /// field that shows markers reads it.
+    variable_context: Rc<VariableContext>,
+    /// The body editor's marker styling and hover data, rebuilt together with `body_editor`.
+    body_markers: Option<BodyMarkerHandles>,
+    /// What `body_markers` was last styled for, so it is recomputed only when the context or
+    /// the colors change (an edit recomputes it directly, see [`AppView::refresh_body_markers`]).
+    body_markers_built_for: Option<(VariableContext, Hsla)>,
     pre_editor: Option<Entity<EditorState>>,
     post_editor: Option<Entity<EditorState>>,
     docs: Option<Entity<TextareaState>>,
+}
+
+/// The handles that style and explain the markers of the body editor.
+struct BodyMarkerHandles {
+    decorations: TextDecorationCollection,
+    shared: Rc<RefCell<BodyMarkers>>,
 }
 
 impl RequestEditorEntities {
@@ -248,6 +271,7 @@ impl RequestEditorEntities {
         if rebuilt {
             self.rebuild(tab_id, request, window, cx);
             self.built_for = Some(key);
+            self.body_markers_built_for = None;
         }
 
         if let Some(url) = &self.url {
@@ -268,6 +292,8 @@ impl RequestEditorEntities {
             if current.as_ref() != text {
                 let new_value = text.to_string();
                 editor.update(cx, |state, cx| state.set_value(new_value, window, cx));
+                // `set_value` clears the editor's decorations.
+                self.body_markers_built_for = None;
             }
         }
 
@@ -330,10 +356,21 @@ impl RequestEditorEntities {
             _ => KeyValueTableEntities::default(),
         };
 
+        self.body_markers = None;
         self.body_editor = body_language(&request.body).map(|(text, language)| {
             let editor = cx.new(|cx| EditorState::new(window, cx).language(language));
             editor.update(cx, |state, cx| {
                 state.set_value(text.to_string(), window, cx)
+            });
+            let shared = Rc::new(RefCell::new(BodyMarkers::default()));
+            let decorations = editor.update(cx, |state, cx| {
+                state.lsp_mut().hover_provider = Some(Rc::new(VariableHover::new(shared.clone())));
+                state.refresh(cx);
+                state.create_decorations_collection(Vec::new(), cx)
+            });
+            self.body_markers = Some(BodyMarkerHandles {
+                decorations,
+                shared,
             });
             let tab_id = tab_id.to_string();
             cx.subscribe(&editor, move |view, entity, event: &InputEvent, cx| {
@@ -344,6 +381,7 @@ impl RequestEditorEntities {
                 view.edit_active_request(&tab_id, cx, |request| {
                     request_edit::set_body_text(request, text)
                 });
+                view.refresh_body_markers(cx);
             })
             .detach();
             editor
@@ -553,24 +591,22 @@ impl AppView {
             // of which should leave a stale custom-method editor open.
             self.editing_method = false;
         }
-        // Computed fresh on every render rather than
-        // from a separate `InputState` subscription, since every edit that could change it
-        // (URL, query, headers, body) already goes through `edit_active_request`, which calls
-        // `cx.notify()` and so triggers exactly this render. Names the pre script sets with
-        // `vars.set(...)` are treated as defined too too: `preview` never
-        // runs the script, so it cannot see them resolve for real the way an actual send would.
-        let known_from_script = script_heuristics::vars_set_names(&request.pre_script);
-        let unknown_names = self
-            .current_preview()
-            .map(|preview| {
-                preview
-                    .unknown_variables
-                    .into_iter()
-                    .map(|unknown| unknown.name)
-                    .filter(|name| !known_from_script.contains(name))
-                    .collect()
-            })
-            .unwrap_or_default();
+        // Computed fresh on every render rather than from a separate `InputState` subscription,
+        // since every edit that could change it (URL, query, headers, body) already goes through
+        // `edit_active_request`, which calls `cx.notify()` and so triggers exactly this render.
+        // Names the pre script sets with `vars.set(...)` count as defined too: the script never
+        // runs while editing, so it cannot be seen resolving them the way a real send does.
+        let environment = self.active_environment();
+        let context = VariableContext::new(
+            self.state.active_environment.clone(),
+            &environment.variables,
+            self.state.session_env.as_slice(),
+            script_heuristics::vars_set_names(&request.pre_script),
+        );
+        if *self.request_editor.variable_context != context {
+            self.request_editor.variable_context = Rc::new(context);
+        }
+        self.sync_body_markers(cx);
 
         // The Body tab's code editor (JSON/Text/XML) scrolls its own content and needs a real,
         // determinate height to fill: an ancestor `overflow_y_scroll()` container instead measures
@@ -589,7 +625,7 @@ impl AppView {
 
         v_flex()
             .size_full()
-            .child(self.render_method_url_bar(&tab_id, &request, unknown_names, cx))
+            .child(self.render_method_url_bar(&tab_id, &request, cx))
             .child(self.render_request_tab_bar(&request, cx))
             .child(
                 content
@@ -604,10 +640,10 @@ impl AppView {
         &self,
         tab_id: &str,
         request: &Request,
-        unknown_names: std::collections::HashSet<String>,
         cx: &Context<Self>,
     ) -> AnyElement {
         let weak = cx.weak_entity();
+        let context = self.request_editor.variable_context.clone();
         let Some(url_input) = self.request_editor.url.clone() else {
             return div().into_any_element();
         };
@@ -621,12 +657,12 @@ impl AppView {
         };
         let app_focus_handle = self.focus_handle.clone();
         let chip_click_weak = weak.clone();
-        let chip_unknown_names = unknown_names.clone();
+        let chip_context = context.clone();
         let url_bar = UrlBar::new(
             request.method.clone(),
             request.url.clone(),
             variable_spans(&request.url),
-            unknown_names,
+            context,
             url_input,
         )
         .editing_method(editing_method_input)
@@ -643,10 +679,11 @@ impl AppView {
                 }
             });
         })
-        // Opens the Define dialog for a danger (unknown) chip. A defined (accent) chip's click is a no-op: only a
-        // chip actually in `unknown_names` (the same set that colors it danger) opens anything.
+        // Opens the Define dialog for a danger (unknown) chip. A defined (accent) chip's click is a
+        // no-op: only a chip the context reports as unknown (the same rule that colors it danger)
+        // opens anything.
         .on_chip_click(move |name, window, cx| {
-            if chip_unknown_names.contains(&name) {
+            if chip_context.is_unknown_variable(&name) {
                 let _ = chip_click_weak.update(cx, |view, cx| {
                     view.open_define_variable_dialog(name, window, cx)
                 });
@@ -876,6 +913,7 @@ impl AppView {
         cx: &Context<Self>,
     ) -> AnyElement {
         let weak = cx.weak_entity();
+        let context = self.request_editor.variable_context.clone();
         let mut table = KeyValueTable::new(("kv-table", kind as u8 as usize));
         for (index, (row, row_entities)) in rows.iter().zip(entities.rows.iter()).enumerate() {
             let toggle_weak = weak.clone();
@@ -884,14 +922,23 @@ impl AppView {
             let remove_tab_id = tab_id.to_string();
             table = table.row(
                 KeyValueRow::with_elements(
-                    Input::new(&row_entities.key)
-                        .context_menu(edit_menu(&row_entities.key, cx))
-                        .py_0()
-                        .w_full(),
-                    Input::new(&row_entities.value)
-                        .context_menu(edit_menu(&row_entities.value, cx))
-                        .py_0()
-                        .w_full(),
+                    VariableField::new(
+                        format!("kv-{}-{index}-key", kind as u8),
+                        row_entities.key.clone(),
+                        row.key.clone(),
+                        context.clone(),
+                    )
+                    .on_chip_click(define_variable_click(&weak, &context)),
+                    VariableField::new(
+                        format!("kv-{}-{index}-value", kind as u8),
+                        row_entities.value.clone(),
+                        row.value.clone(),
+                        context.clone(),
+                    )
+                    // The value of a sensitive header never shows in a tooltip, whatever the
+                    // variable inside it is called.
+                    .mask_all(kind == RowKind::Headers && is_sensitive_header(&row.key))
+                    .on_chip_click(define_variable_click(&weak, &context)),
                 )
                 .enabled(row.enabled)
                 .on_toggle(move |enabled, _, cx| {
@@ -914,6 +961,66 @@ impl AppView {
                 let _ = add_weak.update(cx, |view, cx| view.add_row(&add_tab_id, kind, cx));
             })
             .into_any_element()
+    }
+}
+
+/// The handler of a click on a variable chip: opens the Define dialog when the variable is
+/// undefined, does nothing when it resolves.
+fn define_variable_click(
+    weak: &WeakEntity<AppView>,
+    context: &Rc<VariableContext>,
+) -> impl Fn(String, &mut Window, &mut App) + 'static {
+    let weak = weak.clone();
+    let context = context.clone();
+    move |name, window, cx| {
+        if context.is_unknown_variable(&name) {
+            let _ = weak.update(cx, |view, cx| {
+                view.open_define_variable_dialog(name, window, cx)
+            });
+        }
+    }
+}
+
+impl AppView {
+    /// Restyles the body editor's markers when the variable context or the colors changed since
+    /// they were last styled.
+    fn sync_body_markers(&mut self, cx: &mut Context<Self>) {
+        let key = (
+            (*self.request_editor.variable_context).clone(),
+            cx.palette().accent_text,
+        );
+        if self.request_editor.body_markers_built_for.as_ref() == Some(&key) {
+            return;
+        }
+        self.request_editor.body_markers_built_for = Some(key);
+        self.refresh_body_markers(cx);
+    }
+
+    /// Restyles the body editor's `{{ }}` markers (defined in the accent color, undefined in red)
+    /// and refreshes what its hover tooltip shows. Called when the body text changes, and from
+    /// [`Self::sync_body_markers`] when the variables or the colors do.
+    pub(crate) fn refresh_body_markers(&mut self, cx: &mut Context<Self>) {
+        let (Some(editor), Some(handles)) = (
+            self.request_editor.body_editor.clone(),
+            self.request_editor.body_markers.as_ref(),
+        ) else {
+            return;
+        };
+        let context = self.request_editor.variable_context.clone();
+        let text = editor.read(cx).value();
+        let markers = variable_hint::markers(&text, &context);
+        let palette = cx.palette();
+        let decorations = markers
+            .iter()
+            .map(|(span, defined)| {
+                TextDecoration::new(span.range.clone(), highlight_style(*defined, &palette))
+            })
+            .collect();
+        handles.decorations.set(decorations, cx);
+        *handles.shared.borrow_mut() = BodyMarkers {
+            spans: markers.into_iter().map(|(span, _)| span).collect(),
+            context,
+        };
     }
 }
 

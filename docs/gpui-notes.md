@@ -97,10 +97,18 @@ representations and picks one per render by focus: a read-only line of
 defined `{{var}}` (accent background) and an unknown one (danger text, wavy underline) both
 render from one call, using the byte ranges from `postino_core::variable_spans`.
 
-**Inside a code editor it is feasible**, but not done: the body editor is in code editor mode, so
-a custom `InputHighlighter` that wraps the language highlighter and overlays the variable spans
-would work. The two style lists need a real merge, not concatenation, because a `{{token}}`
-inside a JSON string is inside a `string` capture as far as tree-sitter is concerned.
+**Inside a code editor, use text decorations.** `EditorState::create_decorations_collection`
+returns a `TextDecorationCollection` of `TextDecoration { range, style: HighlightStyle }`. The
+editor merges them with the syntax runs, so a `{{token}}` inside a JSON string keeps the string
+color for the rest of the text. They follow edits, but `set_value` clears them, so set them again
+after it (`views/request_editor.rs` does it when the variable context or the body text changes).
+The tree-sitter `InputHighlighter` of `gpui-component` is `pub(crate)`, which is why wrapping it
+was not an option.
+
+**Hover tooltips.** A single-line field shows a plain `Tooltip` on each chip's `div`. The code
+editor asks a `HoverProvider` (`state.lsp_mut().hover_provider`, then `state.refresh(cx)`), which
+returns an `lsp_types::Hover` rendered as Markdown. Newlines of plain text collapse there, so the
+provider uses a fenced first line and one paragraph per note (`views/variable_hover.rs`).
 
 ## Command palette
 

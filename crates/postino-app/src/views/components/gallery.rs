@@ -3,6 +3,7 @@
 //! reachable from any menu.
 
 use std::collections::HashSet;
+use std::rc::Rc;
 
 use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::radio::Radio;
@@ -11,7 +12,7 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use postino_core::{Method, variable_spans};
+use postino_core::{KeyValue, Method, variable_spans};
 
 use super::{
     Card, DangerButton, DocumentTab, DocumentTabs, EnvMenuItem, EnvPill, GhostButton, IconButton,
@@ -19,6 +20,7 @@ use super::{
     SecondaryButton, SectionLabel, SegmentedControl, SegmentedItem, StatusBadge, StatusState,
     UnderlineTabItem, UnderlineTabs, UrlBar, VariableChip,
 };
+use crate::state::variable_hint::VariableContext;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
 use crate::views::root::AppView;
@@ -73,10 +75,15 @@ impl AppView {
         };
         let text = "{{baseUrl}}/users/{{missing}}";
         let spans = variable_spans(text);
-        let mut unknown_names = HashSet::new();
-        unknown_names.insert("missing".to_string());
+        let environment = [KeyValue {
+            key: "baseUrl".to_string(),
+            value: "https://api.example.com".to_string(),
+            enabled: true,
+        }];
+        let context =
+            VariableContext::new(Some("demo".to_string()), &environment, &[], HashSet::new());
 
-        UrlBar::new(Method::Post, text, spans, unknown_names, input_state).into_any_element()
+        UrlBar::new(Method::Post, text, spans, Rc::new(context), input_state).into_any_element()
     }
 }
 
