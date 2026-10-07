@@ -280,7 +280,7 @@ argument is one of:
 | `now()` | none | milliseconds since the Unix epoch |
 | `isoDate()` | none | current UTC time, RFC 3339 (`2026-09-25T13:11:00Z`) |
 | `randomInt(min, max)` | two integers | a random integer in `[min, max]` inclusive (bounds swapped if `min > max`) |
-| `randomString(len)` | one integer | a random alphanumeric string of that length |
+| `randomString(len)` | one integer | a random alphanumeric string of that length (at most 1,048,576 characters, longer fails) |
 | `base64Encode(str)` | one string | standard base64 encoding |
 | `base64Decode(str)` | one string | the decoded string (errors if not valid base64 or not valid UTF-8 once decoded) |
 | `urlEncode(str)` | one string | percent-encoded, unreserved characters `A-Z a-z 0-9 - . _ ~` left as is |

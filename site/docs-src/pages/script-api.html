@@ -131,7 +131,7 @@ test("has a next page cursor", () => {
         <tr><td><code>util.now()</code></td><td>number, milliseconds since the Unix epoch</td></tr>
         <tr><td><code>util.isoDate()</code></td><td>string, the current UTC time in RFC 3339</td></tr>
         <tr><td><code>util.randomInt(min, max)</code></td><td>number, an integer between <code>min</code> and <code>max</code>, both included</td></tr>
-        <tr><td><code>util.randomString(len)</code></td><td>string of letters and digits</td></tr>
+        <tr><td><code>util.randomString(len)</code></td><td>string of letters and digits, at most 1,048,576 characters. Throws on a longer or negative length</td></tr>
         <tr><td><code>util.base64Encode(str)</code></td><td>string</td></tr>
         <tr><td><code>util.base64Decode(str)</code></td><td>string. Throws on invalid Base64 or non UTF-8 output</td></tr>
         <tr><td><code>util.urlEncode(str)</code></td><td>string, percent-encoded</td></tr>

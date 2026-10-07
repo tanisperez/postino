@@ -77,10 +77,13 @@ pub fn call(name: &str, args: &[Arg]) -> Result<String, FunctionError> {
         "randomString" => {
             expect_arity(name, args, 1)?;
             let len = expect_int(name, args, 0)?;
-            let len = usize::try_from(len).map_err(|_| FunctionError::InvalidArgument {
-                function: name.to_string(),
-                message: "length must not be negative".to_string(),
-            })?;
+            let len = usize::try_from(len)
+                .ok()
+                .filter(|&len| len <= MAX_RANDOM_STRING_LEN)
+                .ok_or_else(|| FunctionError::InvalidArgument {
+                    function: name.to_string(),
+                    message: format!("length must be between 0 and {MAX_RANDOM_STRING_LEN}"),
+                })?;
             Ok(random_string(len))
         }
         "base64Encode" => {
@@ -201,6 +204,10 @@ pub fn random_int(min: i64, max: i64) -> i64 {
     let (min, max) = if min <= max { (min, max) } else { (max, min) };
     fastrand::i64(min..=max)
 }
+
+/// The longest string `randomString` accepts, so a typo such as `randomString(1e12)` fails
+/// instead of exhausting memory.
+pub const MAX_RANDOM_STRING_LEN: usize = 1_048_576;
 
 /// The alphanumeric alphabet used by [`random_string`].
 const ALPHANUMERIC: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -397,6 +404,25 @@ mod tests {
     fn call_reports_negative_random_string_length() {
         assert!(matches!(
             call("randomString", &[Arg::Int(-1)]),
+            Err(FunctionError::InvalidArgument { .. })
+        ));
+    }
+
+    #[test]
+    fn call_limits_the_random_string_length() {
+        let max = MAX_RANDOM_STRING_LEN as i64;
+        assert_eq!(
+            call("randomString", &[Arg::Int(max)])
+                .expect("at the limit")
+                .len(),
+            MAX_RANDOM_STRING_LEN
+        );
+        assert!(matches!(
+            call("randomString", &[Arg::Int(max + 1)]),
+            Err(FunctionError::InvalidArgument { .. })
+        ));
+        assert!(matches!(
+            call("randomString", &[Arg::Int(i64::MAX)]),
             Err(FunctionError::InvalidArgument { .. })
         ));
     }

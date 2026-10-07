@@ -27,7 +27,7 @@ Authorization: Basic {{ base64Encode("api:secret") }}
         <tr><td><code>now()</code></td><td>none</td><td>Milliseconds since the Unix epoch</td><td><code>1791302400000</code></td></tr>
         <tr><td><code>isoDate()</code></td><td>none</td><td>The current UTC time, RFC 3339</td><td><code>2026-10-06T09:30:00Z</code></td></tr>
         <tr><td><code>randomInt(min, max)</code></td><td>two integers</td><td>A random integer between <code>min</code> and <code>max</code>, both included. If <code>min</code> is greater than <code>max</code>, they are swapped</td><td><code>42</code></td></tr>
-        <tr><td><code>randomString(len)</code></td><td>one integer</td><td>A random string of letters and digits of that length</td><td><code>aZ3kQ9</code></td></tr>
+        <tr><td><code>randomString(len)</code></td><td>one integer</td><td>A random string of letters and digits of that length, up to 1,048,576 characters. A longer or negative length fails</td><td><code>aZ3kQ9</code></td></tr>
         <tr><td><code>base64Encode(str)</code></td><td>one string</td><td>Standard Base64 encoding</td><td><code>YXBpOnNlY3JldA==</code></td></tr>
         <tr><td><code>base64Decode(str)</code></td><td>one string</td><td>The decoded text. Fails if the input is not valid Base64 or does not decode to UTF-8 text</td><td><code>api:secret</code></td></tr>
         <tr><td><code>urlEncode(str)</code></td><td>one string</td><td>Percent encoding. Letters, digits and <code>- . _ ~</code> are kept as is</td><td><code>a%20b%26c</code></td></tr>
