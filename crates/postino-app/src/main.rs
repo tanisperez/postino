@@ -19,10 +19,10 @@ use gpui_kit::component::{Root, TitleBar};
 use gpui_kit::*;
 
 use actions::{
-    CloseActiveTab, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, PreviousTab,
-    SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
-    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
-    SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+    CloseActiveTab, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, OpenWorkspace,
+    PreviousTab, SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3,
+    SelectEnvironment4, SelectEnvironment5, SelectEnvironment6, SelectEnvironment7,
+    SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
 };
 use state::settings::ThemeChoice;
 use views::AppView;
@@ -261,6 +261,7 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-0", SelectNoEnvironment, None),
         KeyBinding::new("cmd-,", OpenSettings, None),
         KeyBinding::new("cmd-k", OpenCommandPalette, None),
+        KeyBinding::new("cmd-o", OpenWorkspace, None),
         KeyBinding::new("cmd-w", CloseActiveTab, None),
         KeyBinding::new("cmd-shift-/", OpenShortcuts, None),
     ]);
@@ -280,6 +281,7 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-0", SelectNoEnvironment, None),
         KeyBinding::new("ctrl-,", OpenSettings, None),
         KeyBinding::new("ctrl-k", OpenCommandPalette, None),
+        KeyBinding::new("ctrl-o", OpenWorkspace, None),
         KeyBinding::new("ctrl-w", CloseActiveTab, None),
         KeyBinding::new("f1", OpenShortcuts, None),
     ]);

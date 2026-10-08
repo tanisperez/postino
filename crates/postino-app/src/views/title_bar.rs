@@ -11,6 +11,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
+use crate::actions::OpenWorkspace;
 use crate::state;
 use crate::theme::Palette;
 use crate::theme::PaletteExt;
@@ -162,11 +163,14 @@ impl AppView {
                     menu = menu.separator();
                 }
                 let open_weak = weak.clone();
-                menu = menu.item(PopupMenuItem::new(t!("common.open_folder")).on_click(
-                    move |_, window, cx| {
-                        sidebar::pick_workspace_folder(open_weak.clone(), window, cx);
-                    },
-                ));
+                // The action only shows its `Ctrl O` hint: the click handler runs instead of it.
+                menu = menu.item(
+                    PopupMenuItem::new(t!("common.open_folder"))
+                        .action(Box::new(OpenWorkspace))
+                        .on_click(move |_, window, cx| {
+                            sidebar::pick_workspace_folder(open_weak.clone(), window, cx);
+                        }),
+                );
                 menu
             })
             .into_any_element()

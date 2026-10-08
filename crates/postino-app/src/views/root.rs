@@ -23,10 +23,10 @@ use postino_runner::{RunResult, ScriptEngine, SendOptions};
 use postino_script::QuickJsEngine;
 
 use crate::actions::{
-    CloseActiveTab, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, PreviousTab,
-    SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
-    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
-    SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+    CloseActiveTab, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, OpenWorkspace,
+    PreviousTab, SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3,
+    SelectEnvironment4, SelectEnvironment5, SelectEnvironment6, SelectEnvironment7,
+    SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
 };
 use crate::state::about::AboutInfo;
 use crate::state::debug_open::{self, DebugOpenTarget};
@@ -791,6 +791,17 @@ impl AppView {
         self.open_command_palette(window, cx);
     }
 
+    /// Handles the `Ctrl O` / `Cmd O` key binding (see `main.rs`'s `bind_keys`): the same folder
+    /// picker as the workspace switcher's "Open folder..." and the command palette's action.
+    fn on_open_workspace_action(
+        &mut self,
+        _: &OpenWorkspace,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        sidebar::pick_workspace_folder(cx.weak_entity(), window, cx);
+    }
+
     /// Handles the `F1` / `Cmd+Shift+/` key binding (see `main.rs`'s `bind_keys`).
     fn on_open_shortcuts_action(
         &mut self,
@@ -1213,6 +1224,7 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_send_action))
             .on_action(cx.listener(Self::on_open_settings_action))
             .on_action(cx.listener(Self::on_open_command_palette_action))
+            .on_action(cx.listener(Self::on_open_workspace_action))
             .on_action(cx.listener(Self::on_open_shortcuts_action))
             .on_action(cx.listener(Self::on_close_tab_action))
             .on_action(cx.listener(Self::on_next_tab_action))

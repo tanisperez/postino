@@ -30,6 +30,11 @@ _version: 2
   es: "Abrir la paleta de comandos"
   gl: "Abrir a paleta de comandos"
   it: "Apri la tavolozza dei comandi"
+"shortcuts.action.open_folder":
+  en: "Open a folder"
+  es: "Abrir una carpeta"
+  gl: "Abrir un cartafol"
+  it: "Apri una cartella"
 "shortcuts.action.settings":
   en: "Open Settings"
   es: "Abrir ajustes"

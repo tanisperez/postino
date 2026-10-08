@@ -52,6 +52,7 @@ pub fn groups() -> Vec<ShortcutGroup> {
             title: t!("shortcuts.group.general").to_string(),
             shortcuts: vec![
                 shortcut(t!("shortcuts.action.palette"), &[modifier, "K"]),
+                shortcut(t!("shortcuts.action.open_folder"), &[modifier, "O"]),
                 shortcut(t!("shortcuts.action.settings"), &[modifier, ","]),
                 Shortcut {
                     label: t!("shortcuts.action.help").to_string(),
