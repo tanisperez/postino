@@ -146,6 +146,13 @@ pub struct AppView {
     /// The Load tests panel's target tree (`views/load_panel.rs`), rebuilt by
     /// [`Self::refresh_tree`].
     pub(crate) load_targets: state::load_panel::TargetTree,
+    /// The recently opened workspaces, most recent first, for the title bar's workspace
+    /// switcher. Read from the config file at startup and after opening a workspace
+    /// ([`Self::open_workspace_at`]), so render never reads it.
+    pub(crate) recent_workspaces: Vec<PathBuf>,
+    /// The open workspace's absolute path, the form [`Self::recent_workspaces`] holds, so the
+    /// switcher can tick the open one without canonicalizing a path on every render.
+    pub(crate) workspace_path: Option<PathBuf>,
     /// How many times [`Render::render`] ran, logged at Trace. A count that keeps growing while
     /// nobody touches the app means something keeps calling `cx.notify()`.
     render_count: u64,
@@ -228,6 +235,8 @@ impl AppView {
             env_editors: HashMap::new(),
             new_env_input: None,
             load_targets: state::load_panel::TargetTree::default(),
+            recent_workspaces: state::config::recent_workspaces(),
+            workspace_path: None,
             render_count: 0,
         };
         if let Some(root) = initial_workspace {
@@ -393,6 +402,8 @@ impl AppView {
                 // verbatim `\\?\C:\...` form `std` returns on Windows.
                 let absolute = dunce::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
                 state::config::record_workspace(&absolute);
+                self.recent_workspaces = state::config::recent_workspaces();
+                self.workspace_path = Some(absolute.clone());
                 self.restore_last_environment(&absolute);
                 self.refresh_env_rows();
             }
