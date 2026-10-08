@@ -223,7 +223,8 @@ impl LogLevel {
 }
 
 /// User-configurable settings: the UI language, the theme mode, the two fonts (UI and editor) with their sizes,
-/// how requests treat invalid TLS certificates, and the log level.
+/// how requests treat invalid TLS certificates, the log level, the update check and the welcome
+/// tab.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Settings {
     /// The UI language: automatic (the system's) or a fixed one.
@@ -248,6 +249,9 @@ pub struct Settings {
     /// Whether to check for a new version once at startup. Only used by builds that have an
     /// updater (`state::update::updater_enabled`).
     pub check_updates: bool,
+    /// Whether the welcome tab opens at startup next to the reopened workspace. Without a
+    /// workspace to open it always does (`state::welcome::show_at_startup`).
+    pub show_welcome: bool,
 }
 
 impl Default for Settings {
@@ -263,6 +267,7 @@ impl Default for Settings {
             max_response_mb: 20,
             log_level: LogLevel::default(),
             check_updates: true,
+            show_welcome: false,
         }
     }
 }
@@ -397,6 +402,10 @@ fn parse_settings(content: &str) -> Settings {
         .and_then(|table| table.get("check_updates"))
         .and_then(toml::Value::as_bool)
         .unwrap_or(defaults.check_updates);
+    let show_welcome = table
+        .and_then(|table| table.get("show_welcome"))
+        .and_then(toml::Value::as_bool)
+        .unwrap_or(defaults.show_welcome);
 
     Settings {
         language,
@@ -409,6 +418,7 @@ fn parse_settings(content: &str) -> Settings {
         max_response_mb,
         log_level,
         check_updates,
+        show_welcome,
     }
 }
 
@@ -465,6 +475,7 @@ mod tests {
         assert_eq!(settings.max_response_mb, 20);
         assert_eq!(settings.log_level, LogLevel::Info);
         assert!(settings.check_updates);
+        assert!(!settings.show_welcome);
     }
 
     #[test]
@@ -487,6 +498,7 @@ mod tests {
             max_response_mb: 100,
             log_level: LogLevel::Trace,
             check_updates: false,
+            show_welcome: true,
         };
 
         write_settings(dir.path(), &settings);
@@ -651,6 +663,17 @@ mod tests {
         let settings = parse_settings("theme = \"dark\"\ncheck_updates = 3\n");
         assert_eq!(settings.theme, ThemeChoice::Dark);
         assert!(settings.check_updates);
+    }
+
+    #[test]
+    fn show_welcome_defaults_to_off_and_falls_back_per_field() {
+        let parse = |text: &str| parse_settings(text).show_welcome;
+        assert!(!parse(""));
+        assert!(parse("show_welcome = true\n"));
+        assert!(!parse("show_welcome = \"yes\"\n"));
+        let settings = parse_settings("show_welcome = 1\ntheme = \"light\"\n");
+        assert_eq!(settings.theme, ThemeChoice::Light);
+        assert!(!settings.show_welcome);
     }
 
     #[test]

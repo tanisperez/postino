@@ -83,3 +83,23 @@ pub const MENU_DOT_COLUMN_WIDTH: f32 = 13.0;
 pub const ENV_PILL_HEIGHT: f32 = 26.0;
 /// Height of the sidebar's filter input (see `docs/design-system.md`).
 pub const SIDEBAR_FILTER_HEIGHT: f32 = 28.0;
+
+/// Maximum width of the welcome tab's content column when it fills the window (no workspace
+/// open, so no sidebar).
+pub const WELCOME_COLUMN_WIDTH: f32 = 820.0;
+/// Maximum width of the welcome tab's content column next to the sidebar.
+pub const WELCOME_COLUMN_WIDTH_NARROW: f32 = 760.0;
+/// Space above the welcome tab's content when it fills the window.
+pub const WELCOME_TOP_PADDING: f32 = 72.0;
+/// Space above the welcome tab's content next to the sidebar.
+pub const WELCOME_TOP_PADDING_NARROW: f32 = 56.0;
+/// Side length of the welcome tab's "P" logo square.
+pub const WELCOME_LOGO_SIZE: f32 = 48.0;
+/// Corner radius of the welcome tab's logo square.
+pub const WELCOME_LOGO_RADIUS: f32 = 12.0;
+/// Height of a row of the welcome tab's Start and Recent lists.
+pub const WELCOME_ROW_HEIGHT: f32 = 34.0;
+/// Width of a recent workspace's name in the welcome tab, before its path.
+pub const WELCOME_RECENT_NAME_WIDTH: f32 = 80.0;
+/// Side length of the welcome tab's "show at startup" checkbox.
+pub const WELCOME_CHECKBOX_SIZE: f32 = 14.0;

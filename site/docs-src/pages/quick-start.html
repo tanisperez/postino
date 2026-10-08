@@ -7,11 +7,11 @@ description: Create a workspace, send its example request, create your own, keep
 <h2>1. Create a workspace</h2>
 <p>A workspace is a folder on your disk: its subfolders are collections and every <code>.postino</code> file in it is a request.</p>
 <ol class="steps">
-    <li>Start Postino, click the workspace switcher next to the Postino name at the top left of the title bar and choose <strong>New workspace…</strong>.</li>
+    <li>Start Postino. The first time, it opens the <a href="interface.html#welcome-tab">welcome tab</a>: click <strong>New workspace…</strong> under <strong>Start</strong>.</li>
     <li>Type a name, for example <code>my-api</code>. The dialog shows where the folder will be created, inside your Documents folder by default. <strong>Change…</strong> picks another place. Press <strong>Create</strong>.</li>
-    <li>Postino creates the folder with an example request, <code>hello.postino</code>, and a <code>local</code> environment, opens the request in a tab and selects the environment. It remembers the workspace and opens it again the next time you start the app.</li>
+    <li>Postino creates the folder with an example request, <code>hello.postino</code>, and a <code>local</code> environment, closes the welcome tab, opens the request in a tab and selects the environment. It remembers the workspace and opens it again the next time you start the app.</li>
 </ol>
-<p>To use a folder you already have, for example a folder inside the repository of your API so the requests travel with the code, choose <strong>Open folder…</strong> in the workspace switcher instead, or press <kbd>Ctrl</kbd> <kbd>O</kbd> (<kbd>⌘</kbd> <kbd>O</kbd> on macOS).</p>
+<p>You can also choose <strong>New workspace…</strong> in the workspace switcher next to the Postino name at the top left of the title bar, which is where to find it once the welcome tab is gone. To use a folder you already have, for example a folder inside the repository of your API so the requests travel with the code, click <strong>Open folder…</strong> in the welcome tab or the workspace switcher instead, or press <kbd>Ctrl</kbd> <kbd>O</kbd> (<kbd>⌘</kbd> <kbd>O</kbd> on macOS).</p>
 
 <h2>2. Send the example</h2>
 <p>Click <strong>Send</strong> or press <kbd>Ctrl</kbd> <kbd>Enter</kbd> (<kbd>⌘</kbd> <kbd>Enter</kbd> on macOS). The URL, <code>{{baseUrl}}/hello.json</code>, uses the <code>baseUrl</code> variable of the <code>local</code> environment. The response pane shows the status, the time and the size, then the body. Switch between <strong>Pretty</strong> and <strong>Raw</strong>, look at the <strong>Headers</strong> tab, and open the <strong>Tests</strong> tab: the example checks the response with two tests, and both pass.</p>

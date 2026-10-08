@@ -34,6 +34,7 @@ pub mod tree_expansion;
 pub mod ui_tabs;
 pub mod update;
 pub mod variable_hint;
+pub mod welcome;
 pub mod workspace_log;
 
 pub use tabs::{TabKind, TabsState};

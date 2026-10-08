@@ -181,7 +181,9 @@ pub struct AppView {
 
 impl AppView {
     /// Creates a fresh view, opening `initial_workspace` right away if one was given (the CLI
-    /// argument or the remembered last workspace, see `main.rs`). `settings` is whatever `main.rs`
+    /// argument or the remembered last workspace, see `main.rs`), and the welcome tab when
+    /// `show_welcome` says so (`state::welcome::show_at_startup`), after that workspace.
+    /// `settings` is whatever `main.rs`
     /// loaded from `settings.toml` (or its defaults) before opening the window; the theme and
     /// fonts it describes are already applied by the time this runs, this just remembers it so
     /// the Settings view (`views/settings.rs`) has a value to show and change. `window` is only
@@ -190,6 +192,7 @@ impl AppView {
     pub fn new(
         initial_workspace: Option<PathBuf>,
         initial_request: Option<String>,
+        show_welcome: bool,
         settings: Settings,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -269,6 +272,9 @@ impl AppView {
                     view.open_request(id, cx);
                 });
             }
+        }
+        if show_welcome {
+            view.when_workspace_opens(window, cx, |view, _, cx| view.open_welcome_tab(cx));
         }
         // Before `apply_debug_open`: a `POSTINO_OPEN=settings` launch defers opening the dialog
         // (see that method), and `Root::open_dialog` captures whatever is focused at that later
@@ -499,6 +505,11 @@ impl AppView {
             Err(error) => {
                 log_workspace_error(&format!("open workspace {}", root.display()), &error);
                 self.workspace_error = Some(error.to_string());
+                // Nothing open and nothing to show, as when the folder remembered at startup
+                // can no longer be opened: the welcome tab offers a way forward.
+                if self.state.workspace.is_none() && self.state.tabs.open_tabs().is_empty() {
+                    self.open_welcome_tab(cx);
+                }
             }
         }
         self.last_selected_request = None;
@@ -1106,7 +1117,10 @@ impl AppView {
         // `flex_1`/`min_h_0` chain never got a real height to shrink within either) out of the
         // visible area. `min_h_0` is what actually allows this to shrink below its content size
         // instead of just growing; `flex_1` alone is not enough in a vertical flex chain.
-        let sidebar_visible = self.nav.sidebar_visible();
+        // With no workspace open nor being opened, the rail and the sidebar have nothing to show:
+        // the main area takes the whole width, for the welcome tab (GitHub #90).
+        let has_workspace = self.state.workspace.is_some() || self.opening.is_some();
+        let sidebar_visible = has_workspace && self.nav.sidebar_visible();
         let sidebar = if sidebar_visible {
             self.render_side_panel(weak.clone(), cx)
         } else {
@@ -1115,7 +1129,7 @@ impl AppView {
         h_flex()
             .flex_1()
             .min_h_0()
-            .child(self.render_rail(cx))
+            .when(has_workspace, |this| this.child(self.render_rail(cx)))
             .child(
                 div().flex_1().min_w_0().h_full().child(
                     h_resizable("postino-layout")
@@ -1145,7 +1159,20 @@ impl AppView {
             return self.render_components_gallery(window, cx);
         }
 
+        if self.state.tabs.open_tabs().is_empty()
+            && self.state.workspace.is_none()
+            && self.opening.is_none()
+        {
+            return self.render_no_workspace(weak, cx);
+        }
+
         let tabs_bar = self.render_tabs_bar(weak, cx);
+        let welcome = self
+            .state
+            .tabs
+            .active()
+            .and_then(|tab| tab.welcome())
+            .cloned();
         let is_load_test = self
             .state
             .tabs
@@ -1157,7 +1184,9 @@ impl AppView {
             .active()
             .is_some_and(|tab| tab.environment().is_some());
 
-        let content = if is_load_test {
+        let content = if let Some(welcome) = welcome {
+            self.render_welcome(&welcome, cx)
+        } else if is_load_test {
             self.render_load_test_tab(window, cx)
         } else if is_environment {
             self.render_env_tab(window, cx)
@@ -1215,9 +1244,10 @@ impl AppView {
         for (index, tab) in self.state.tabs.open_tabs().iter().enumerate() {
             let select_weak = weak.clone();
             let close_weak = weak.clone();
-            let full_id = match tab.environment() {
-                Some(edit) => state::env_edit::status_path(&edit.name),
-                None => tab.id.clone(),
+            let full_id = match &tab.kind {
+                state::TabKind::Environment(edit) => state::env_edit::status_path(&edit.name),
+                state::TabKind::Welcome(_) => t!("welcome.tab").into_owned(),
+                state::TabKind::Request(_) | state::TabKind::LoadTest(_) => tab.id.clone(),
             };
             let mut doc_tab = match &tab.kind {
                 state::TabKind::Request(request) => {
@@ -1232,6 +1262,9 @@ impl AppView {
                     DocumentTab::new(crate::views::load_test::tab_label(load_test))
                         .icon(gpui_kit::assets::IconName::Gauge)
                 }
+                state::TabKind::Welcome(_) => DocumentTab::new(t!("welcome.tab"))
+                    .icon(gpui_kit::assets::IconName::House)
+                    .icon_color(cx.palette().accent_text),
             };
             doc_tab = doc_tab
                 .dirty(tab.dirty)
@@ -1250,6 +1283,10 @@ impl AppView {
             tabs = tabs.item(doc_tab);
         }
 
+        // A new request needs a workspace: next to the welcome tab alone there is none.
+        if self.state.workspace.is_none() {
+            return tabs.into_any_element();
+        }
         // Padded off the last tab's border, with a large hover area around a small icon (an
         // `IconButton`'s large size also scales its icon up).
         let palette = cx.palette();

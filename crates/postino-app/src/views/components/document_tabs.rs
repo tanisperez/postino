@@ -26,6 +26,7 @@ use crate::theme::metrics::{OPEN_TABS_BAR_HEIGHT, RADIUS_SM};
 /// One open tab.
 pub struct DocumentTab {
     icon: Option<Icon>,
+    icon_color: Option<Hsla>,
     method: Option<Method>,
     label: SharedString,
     dirty: bool,
@@ -74,6 +75,7 @@ impl DocumentTab {
     pub fn new(label: impl Into<SharedString>) -> Self {
         Self {
             icon: None,
+            icon_color: None,
             method: None,
             label: label.into(),
             dirty: false,
@@ -87,6 +89,12 @@ impl DocumentTab {
     /// Sets a leading icon (for example `gauge` for a load test tab).
     pub fn icon(mut self, icon: impl Into<Icon>) -> Self {
         self.icon = Some(icon.into());
+        self
+    }
+
+    /// Colors the leading icon, `fg_subtle` by default (the welcome tab's house is `accent_text`).
+    pub fn icon_color(mut self, color: Hsla) -> Self {
+        self.icon_color = Some(color);
         self
     }
 
@@ -223,7 +231,8 @@ impl RenderOnce for DocumentTabs {
                         ])
                     });
                 if let Some(icon) = item.icon {
-                    tab = tab.child(Icon::new(icon).small().text_color(palette.fg_subtle));
+                    let color = item.icon_color.unwrap_or(palette.fg_subtle);
+                    tab = tab.child(Icon::new(icon).small().text_color(color));
                 }
                 if let Some(handler) = on_reorder.clone() {
                     let dragged = DraggedTab {

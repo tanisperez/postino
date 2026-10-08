@@ -64,6 +64,8 @@ pub enum ActionId {
     NewWorkspace,
     /// Opens the "Open folder" picker.
     OpenWorkspace,
+    /// Opens the welcome tab, or brings it to the front.
+    ShowWelcome,
     /// Starts creating a new load test tab.
     NewLoadTest,
     /// Toggles between the light and dark theme.
@@ -171,6 +173,7 @@ pub fn action_items() -> Vec<PaletteItem> {
             t!("common.open_folder"),
             Some(format!("{MODIFIER_KEY}+O")),
         ),
+        action_item(ActionId::ShowWelcome, t!("welcome.palette_action"), None),
         action_item(
             ActionId::NewLoadTest,
             t!("shell.palette.new_load_test"),
@@ -369,7 +372,7 @@ mod tests {
     #[test]
     fn action_items_cover_every_action_id() {
         let items = action_items();
-        assert_eq!(items.len(), 12);
+        assert_eq!(items.len(), 13);
         assert!(
             items
                 .iter()

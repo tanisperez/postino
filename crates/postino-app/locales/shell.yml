@@ -85,11 +85,6 @@ _version: 2
   es: "Filtrar"
   gl: "Filtrar"
   it: "Filtra"
-"shell.sidebar.empty":
-  en: "Open a folder to get started."
-  es: "Abre una carpeta para empezar."
-  gl: "Abre un cartafol para comezar."
-  it: "Apri una cartella per iniziare."
 "shell.sidebar.opening":
   en: "Opening %{name}..."
   es: "Abriendo %{name}..."

@@ -1,5 +1,5 @@
 title: Settings
-description: Every Postino setting: language, theme, fonts, invalid TLS certificates, maximum response size, log level and updates, and the settings.toml file.
+description: Every Postino setting: language, theme, fonts, the welcome tab, invalid TLS certificates, maximum response size, log level and updates, and the settings.toml file.
 ---
 <h1>Settings</h1>
 <p class="lead">Open Settings with the gear in the title bar or <kbd>Ctrl</kbd> <kbd>,</kbd> (<kbd>⌘</kbd> <kbd>,</kbd> on macOS). Changes apply immediately and are saved as you make them; there is no Save button.</p>
@@ -19,6 +19,7 @@ description: Every Postino setting: language, theme, fonts, invalid TLS certific
         <tr><td>Theme</td><td>System</td><td>System follows the light or dark setting of your OS and switches live. Light. Dark.</td></tr>
         <tr><td>Interface font</td><td>Geist</td><td>Geist is bundled, so every platform looks the same. Any font installed on your system can be chosen, and typing in the list filters the fonts by name.</td></tr>
         <tr><td>Interface font size</td><td>13</td><td>11 to 16, in steps of 1.</td></tr>
+        <tr><td>Welcome tab at startup</td><td>Off</td><td>On shows the <a href="interface.html#welcome-tab">welcome tab</a> next to the last workspace every time Postino starts. Without a workspace to open, the first time you run it for example, it always shows, whatever this says. The checkbox <strong>Show the welcome tab when Postino starts</strong> at the bottom of the welcome tab changes the same setting.</td></tr>
         <tr><td>Editor monospace font</td><td>Geist Mono</td><td>Used in the URL bar, tables, code editors and the response body. Geist Mono is bundled.</td></tr>
         <tr><td>Editor font size</td><td>12.5</td><td>10 to 18, in steps of 0.5.</td></tr>
     </tbody>
@@ -81,4 +82,5 @@ invalid_tls_certificates = "warn"     # warn, reject, accept
 max_response_mb = 20                  # 1 to 1000
 log_level = "info"                    # off, error, warn, info, debug, trace
 check_updates = true                  # only used by builds with an updater
+show_welcome = false                  # show the welcome tab next to the last workspace
 ```

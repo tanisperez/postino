@@ -27,5 +27,6 @@ pub mod status_bar;
 pub mod title_bar;
 pub mod update;
 pub mod variable_hover;
+pub mod welcome;
 
 pub use root::AppView;
