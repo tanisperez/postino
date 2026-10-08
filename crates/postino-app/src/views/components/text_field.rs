@@ -13,8 +13,9 @@ use super::edit_menu::edit_menu;
 
 /// Line height of a [`text_field`], and so the height of its selection highlight.
 const FIELD_LINE_HEIGHT: f32 = 22.0;
-/// Height of a [`text_field`] box: the line plus 6 px of breathing room on each side.
-const FIELD_HEIGHT: f32 = 36.0;
+/// Height of a [`text_field`] box: the line plus 6 px of breathing room on each side. Controls
+/// that sit next to a field, such as a button, use it too so both line up.
+pub(crate) const FIELD_HEIGHT: f32 = 36.0;
 
 /// Builds the field for `state`, with the app's edit menu. The height is set on a wrapper: the
 /// `Input` itself ignores a fixed height in a dialog's content.

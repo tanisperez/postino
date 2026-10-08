@@ -10,6 +10,7 @@
 //! `Theme` and persists to `settings.toml` immediately: there is no "Save" button.
 
 use gpui_kit::component::scroll::{Scrollbar, ScrollbarMode};
+use gpui_kit::component::switch::Switch;
 use gpui_kit::component::theme::{Theme, ThemeMode};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -194,6 +195,17 @@ impl AppView {
     /// Turns the automatic update check at startup on or off.
     fn set_check_updates(&mut self, enabled: bool, window: &mut Window, cx: &mut Context<Self>) {
         self.state.settings.check_updates = enabled;
+        self.apply_settings_live(window, cx);
+    }
+
+    /// Turns the welcome tab at startup on or off, from Settings or the tab's own checkbox.
+    pub(crate) fn set_show_welcome(
+        &mut self,
+        enabled: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.state.settings.show_welcome = enabled;
         self.apply_settings_live(window, cx);
     }
 
@@ -794,7 +806,7 @@ fn preview_line(width_fraction: f32, color: Hsla) -> impl IntoElement {
         .bg(color)
 }
 
-/// The "Interface" section: the UI font picker and its size stepper.
+/// The "Interface" section: the UI font picker, its size stepper and the welcome tab switch.
 fn render_interface_section(
     weak: WeakEntity<AppView>,
     palette: &Palette,
@@ -821,13 +833,25 @@ fn render_interface_section(
             None::<SharedString>,
             render_size_stepper(
                 "settings-ui-size",
-                weak,
+                weak.clone(),
                 palette,
                 settings.ui_font_size,
                 mono_font_family.clone(),
                 state::settings::UI_FONT_SIZE_STEP,
                 |view, delta, window, cx| view.step_ui_font_size(delta, window, cx),
             ),
+        ))
+        .child(labeled_row(
+            palette,
+            t!("settings.interface.welcome"),
+            Some(t!("settings.interface.welcome_description")),
+            Switch::new("settings-show-welcome")
+                .checked(settings.show_welcome)
+                .on_click(move |checked, window, cx| {
+                    let checked = *checked;
+                    let _ = weak.update(cx, |view, cx| view.set_show_welcome(checked, window, cx));
+                })
+                .into_any_element(),
         ))
         .into_any_element()
 }

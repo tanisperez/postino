@@ -1,11 +1,12 @@
-//! Open tabs: requests being edited, environment editors and load test tabs, in which order, which
-//! one is active, and whether each has unsaved changes. No `gpui` types here, so this is
+//! Open tabs: requests being edited, environment editors, load test tabs and the welcome tab, in
+//! which order, which one is active, and whether each has unsaved changes. No `gpui` types here, so this is
 //! unit-tested directly.
 
 use postino_core::Request;
 
 use super::env_edit::{self, EnvEditTab};
 use super::load_test::LoadTestTab;
+use super::welcome::{self, WelcomeTab};
 
 /// What one open tab shows: a request being edited, an environment being edited, or a load test in
 /// progress or finished. Dirty state and saving apply to [`TabKind::Request`] and
@@ -20,6 +21,8 @@ pub enum TabKind {
     /// history and the latest snapshot), and clippy's `large_enum_variant` flags the gap between
     /// the two otherwise.
     LoadTest(Box<LoadTestTab>),
+    /// The welcome tab (`state::welcome`). Nothing to save, like a load test.
+    Welcome(WelcomeTab),
 }
 
 /// One open tab.
@@ -41,7 +44,7 @@ impl OpenTab {
     pub fn request(&self) -> Option<&Request> {
         match &self.kind {
             TabKind::Request(request) => Some(request),
-            TabKind::Environment(_) | TabKind::LoadTest(_) => None,
+            TabKind::Environment(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) => None,
         }
     }
 
@@ -49,7 +52,7 @@ impl OpenTab {
     pub fn request_mut(&mut self) -> Option<&mut Request> {
         match &mut self.kind {
             TabKind::Request(request) => Some(request),
-            TabKind::Environment(_) | TabKind::LoadTest(_) => None,
+            TabKind::Environment(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) => None,
         }
     }
 
@@ -57,7 +60,7 @@ impl OpenTab {
     pub fn environment(&self) -> Option<&EnvEditTab> {
         match &self.kind {
             TabKind::Environment(edit) => Some(edit.as_ref()),
-            TabKind::Request(_) | TabKind::LoadTest(_) => None,
+            TabKind::Request(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) => None,
         }
     }
 
@@ -65,7 +68,7 @@ impl OpenTab {
     pub fn environment_mut(&mut self) -> Option<&mut EnvEditTab> {
         match &mut self.kind {
             TabKind::Environment(edit) => Some(edit.as_mut()),
-            TabKind::Request(_) | TabKind::LoadTest(_) => None,
+            TabKind::Request(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) => None,
         }
     }
 
@@ -73,7 +76,15 @@ impl OpenTab {
     pub fn load_test(&self) -> Option<&LoadTestTab> {
         match &self.kind {
             TabKind::LoadTest(load_test) => Some(load_test.as_ref()),
-            TabKind::Request(_) | TabKind::Environment(_) => None,
+            TabKind::Request(_) | TabKind::Environment(_) | TabKind::Welcome(_) => None,
+        }
+    }
+
+    /// This tab's welcome content, if it is the [`TabKind::Welcome`] tab.
+    pub fn welcome(&self) -> Option<&WelcomeTab> {
+        match &self.kind {
+            TabKind::Welcome(welcome) => Some(welcome),
+            TabKind::Request(_) | TabKind::Environment(_) | TabKind::LoadTest(_) => None,
         }
     }
 
@@ -81,7 +92,7 @@ impl OpenTab {
     pub fn load_test_mut(&mut self) -> Option<&mut LoadTestTab> {
         match &mut self.kind {
             TabKind::LoadTest(load_test) => Some(load_test.as_mut()),
-            TabKind::Request(_) | TabKind::Environment(_) => None,
+            TabKind::Request(_) | TabKind::Environment(_) | TabKind::Welcome(_) => None,
         }
     }
 }
@@ -172,6 +183,20 @@ impl TabsState {
                 edit.name = new.to_string();
             }
         }
+    }
+
+    /// Opens the welcome tab with `welcome` and makes it active. If it is already open, it is
+    /// made active and its content replaced, so its recent workspaces are fresh. Returns the
+    /// tab's index.
+    pub fn open_welcome(&mut self, welcome: WelcomeTab) -> usize {
+        if let Some(index) = self.index_of(welcome::TAB_ID) {
+            if let Some(tab) = self.open.get_mut(index) {
+                tab.kind = TabKind::Welcome(welcome);
+            }
+            self.active = Some(index);
+            return index;
+        }
+        self.push_and_activate(welcome::TAB_ID.to_string(), TabKind::Welcome(welcome))
     }
 
     /// Opens a new load test tab and makes it active. Always a fresh tab, never deduplicated:
@@ -705,5 +730,37 @@ mod tests {
         tabs.set_dirty(0, false);
         assert!(!tabs.open_tabs()[0].dirty);
         tabs.set_dirty(9, true);
+    }
+
+    #[test]
+    fn open_welcome_dedupes_and_refreshes_its_content() {
+        let mut tabs = TabsState::default();
+        let first = tabs.open_welcome(WelcomeTab::default());
+        tabs.open("a.postino", request());
+        let refreshed = WelcomeTab {
+            recents: vec![crate::state::welcome::RecentWorkspace {
+                name: "api".to_string(),
+                path_label: "~/api".to_string(),
+                path: std::path::PathBuf::from("/home/ana/api"),
+            }],
+        };
+        let second = tabs.open_welcome(refreshed.clone());
+        assert_eq!(first, 0);
+        assert_eq!(second, 0);
+        assert_eq!(tabs.open_tabs().len(), 2);
+        assert_eq!(tabs.active_index(), Some(0));
+        assert_eq!(tabs.open_tabs()[0].welcome(), Some(&refreshed));
+    }
+
+    #[test]
+    fn the_welcome_tab_is_only_a_welcome_tab() {
+        let mut tabs = TabsState::default();
+        tabs.open_welcome(WelcomeTab::default());
+        let tab = tabs.active().expect("just opened");
+        assert!(tab.welcome().is_some());
+        assert!(tab.request().is_none());
+        assert!(tab.environment().is_none());
+        assert!(tab.load_test().is_none());
+        assert!(!tab.dirty);
     }
 }

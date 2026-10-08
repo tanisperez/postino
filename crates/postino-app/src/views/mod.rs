@@ -14,6 +14,7 @@ pub mod import_menu;
 pub mod load_panel;
 pub mod load_test;
 pub mod navigation;
+pub mod new_workspace;
 pub mod request_editor;
 pub mod response_view;
 pub mod root;
@@ -26,5 +27,6 @@ pub mod status_bar;
 pub mod title_bar;
 pub mod update;
 pub mod variable_hover;
+pub mod welcome;
 
 pub use root::AppView;

@@ -12,10 +12,10 @@ $ postino [PATH]
 <div class="table"><table>
     <thead><tr><th>PATH is</th><th>Postino opens</th></tr></thead>
     <tbody>
-        <tr><td>Missing</td><td>The last workspace you used, if the folder still exists.</td></tr>
+        <tr><td>Missing</td><td>The last workspace you used, if the folder still exists. Otherwise the <a href="interface.html#welcome-tab">welcome tab</a>.</td></tr>
         <tr><td>A folder</td><td>That folder as the workspace.</td></tr>
         <tr><td>A <code>.postino</code> file</td><td>The remembered workspace if it contains the file, otherwise the file's folder, and then the file in a tab.</td></tr>
-        <tr><td>A path that does not exist</td><td>An error saying the workspace could not be opened.</td></tr>
+        <tr><td>A path that does not exist</td><td>An error saying the workspace could not be opened, with the welcome tab open behind it so there is something to click.</td></tr>
     </tbody>
 </table></div>
 ```shell
@@ -25,6 +25,7 @@ $ postino ~/code/shop/api-requests
 # Open one request
 $ postino ~/code/shop/api-requests/orders/create.postino
 ```
+<p>Starting Postino with a path never opens the welcome tab, whatever the <a href="settings.html">Welcome tab at startup</a> setting says: you asked for something specific. The only exception is the path that cannot be opened, in the table above. Opening a <code>.postino</code> file from your file manager counts as a path.</p>
 <p>Only the first argument is read. Postino is not single instance: running it again, or double clicking a <code>.postino</code> file while it runs, starts a second window process.</p>
 
 <h2 id="environment-variables">Environment variables</h2>

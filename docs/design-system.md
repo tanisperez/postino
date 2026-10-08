@@ -133,6 +133,8 @@ Widths (px): sidebar 248 (resizable 180 to 480), activity rail 48 (buttons 34), 
 Icon buttons (px): 24 small, 28 large, 22 in sidebar section headers. Status bar shortcuts button
 20.
 
+The welcome tab has its own `WELCOME_*` constants, listed in its section below.
+
 Radii (px): 4 chips and checkboxes (`RADIUS_XS`), 6 segmented items, tree rows and badges
 (`RADIUS_SM`), 8 inputs, buttons and editor cards (`RADIUS_MD`), 10 menus, popovers and dashboard
 cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 general and 14 large.
@@ -144,16 +146,21 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
    centered 360 px search trigger ("Search requests and actions", `Ctrl K` hint), environment
    pill (dot, name, chevron, on `raised` with border), "Import" ghost button, settings gear,
    window controls. On Linux the app draws its own chrome (client decorations).
-2. **Activity rail** (48 px) left of the **sidebar** (`surface`, right border): header
+2. **Activity rail** (48 px) left of the **sidebar** (`surface`, right border). Both are hidden
+   while no workspace is open and none is being opened, so the main area takes the whole width
+   (the welcome tab, below). The sidebar has: header
    "COLLECTIONS" with new request and new folder icon buttons, a filter input with the
    `list-filter` icon, the tree (chevron for folders, 34 px method label for requests; selected
    row `accent_subtle` background with `accent_text` label, hover `hover`), and a footer with a
    top border: `hard-drive` icon and the `~`-shortened workspace path, then `git-branch` and the
    branch name (omitted outside a git repo).
-3. **Open-tabs bar** (`surface`): icon (optional, `gauge` for load tests), method label, name,
-   then a filled 8 px dot when dirty or an `x` when clean (hovering a dirty tab shows the `x`).
-   Active tab: `bg` background, 2 px `accent` line on top, `fg` text. Inactive: transparent,
-   `fg_muted`. A "+" after the last tab.
+3. **Open-tabs bar** (`surface`): icon (optional: `gauge` for load tests and `house` for the
+   welcome tab, `fg_subtle` unless said otherwise, `accent_text` for the house), method label
+   (requests only), name, then a filled 8 px dot when dirty or an `x` when clean (hovering a dirty
+   tab shows the `x`). Active tab: `bg` background, 2 px `accent` line on top, `fg` text.
+   Inactive: transparent, `fg_muted`. A "+" after the last tab, only with a workspace open (a new
+   request needs one). A welcome tab, an environment
+   editor or a load test fills the area below the bar in place of items 4 and 5.
 4. **Request pane**: URL bar (method selector and URL joined in one bordered `raised` box, method
    in its color, variables shown as chips) plus the primary Send button with its `Ctrl ↵` hint
    (`Cmd ↵` on macOS). Underline tabs: Params, Headers, Body, Pre-request, Post-response, Docs,
@@ -168,6 +175,80 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
 
 Dialogs (Settings, Code snippet) are modals: `overlay` fill, radius 14, shadow,
 `scrim` behind. The command palette is a popover with the same surface rules.
+
+## Welcome tab
+
+`views/welcome.rs` renders it and `state/welcome.rs` decides when it opens and reads the recent
+workspaces (once, when the tab opens, never in `render`). It is a tab of its own kind
+(`TabKind::Welcome`), never dirty, with a `house` icon in `accent_text` and the label "Welcome".
+Why it exists and when it opens: GitHub #90.
+
+**Page.** `bg` fill, scrolls vertically. One column, centered horizontally, `100%` wide up to a
+maximum and stretched to the tab's height, so the footer sits at the bottom edge when the content
+is short. Line height 1.25 (gpui's default is taller and spreads the blocks apart). Side padding 40
+and bottom padding 32 in both cases. Which case applies depends on whether the sidebar is shown (a
+workspace is open or being opened), not on the window width.
+
+| | No workspace (no rail, no sidebar) | Next to the sidebar |
+| --- | --- | --- |
+| Column max width | 820 (`WELCOME_COLUMN_WIDTH`) | 760 (`WELCOME_COLUMN_WIDTH_NARROW`) |
+| Top padding | 72 (`WELCOME_TOP_PADDING`) | 56 (`WELCOME_TOP_PADDING_NARROW`) |
+
+Top to bottom (px unless said otherwise):
+
+1. **Header.** Row, items centered, gap 16. A logo square of 48 (`WELCOME_LOGO_SIZE`), radius 12
+   (`WELCOME_LOGO_RADIUS`), `accent` fill, with a "P" in 24/700 `accent_fg`. Beside it, a column
+   with gap 4: "Postino" in 26/600 `fg`, and the tagline in 14 `fg_muted`.
+2. **Files card.** Margin top 28. `surface` fill, 1 `border`, radius 10 (`RADIUS_LG`), padding 14
+   vertical and 16 horizontal, children spaced 12 apart. First an intro line in the base size
+   (13) `fg`. Then a wrapping row, items centered, gap 10, text 12.5 `fg_muted`, with three items
+   separated by a `·` in `fg_subtle` at 60% opacity. Each item (never wraps inside) is gap 6: a
+   13 Lucide icon in `fg_subtle`, a word in the mono font, and "= meaning". The words are `fg`,
+   except `.postino`, which is `accent_text`. The items are `folder` icon "folder = workspace",
+   `folder-tree` "subfolder = collection" and `file-text` ".postino = request".
+3. **Two columns.** Margin top 36, items aligned to the top, gap 40, widths 1 to 1.3 (flex grow
+   1 and 1.3 from a zero basis, both allowed to shrink to nothing). Each column is a stack with gap
+   6, headed by a `SectionLabel` ("Start", "Recent") padded 0 10 6.
+   - **Start rows.** Three rows. A row is 34 high (`WELCOME_ROW_HEIGHT`), padding 0 10, radius 7
+     (`RADIUS_MD` minus 1), `hover` background on hover and `pressed` while held, pointer cursor.
+     Gap 10: a 15 icon in `accent_text`, the label in `fg` (grows, truncates), and an optional key
+     hint in the mono font, 11, `fg_subtle`. The rows are `plus` "New workspace...", `folder-open`
+     "Open folder..." with the hint "Ctrl+O" ("Cmd+O" on macOS) and `download` "Import from
+     Postman...".
+   - **Recent rows.** Up to four (`RECENT_LIMIT`), same row box, gap 12: the folder name in `fg`, a
+     fixed 80 wide (`WELCOME_RECENT_NAME_WIDTH`) and truncated, then the path in the mono font, 12,
+     `fg_subtle`, which takes the rest and truncates with an ellipsis. The path is `~`-shortened
+     and elided in the middle to at most 44 characters. With no recent workspace, the column is
+     left empty (no heading) and Start keeps its width.
+4. **Spacer.** Grows to push the footer down, at least 24 high.
+5. **Footer.** Top border 1 `border`, padding top 16, text 12.5, wrapping row, items centered,
+   gap 16.
+   - Links, gap 10, separated by the same faint `·`: "Quick start", "Shortcuts" with "(F1)" and
+     "Search" with "(Ctrl+K)". Text `accent_text`, `fg` on hover, no underline, pointer cursor. The
+     hint in parentheses is mono, 11, in the link's color, and follows the label with a gap of 4.
+     On macOS the hints read "(Cmd+Shift+/)" and "(Cmd+K)".
+   - A flexible gap, then the checkbox row, gap 8, label "Show the welcome tab when Postino
+     starts" in `fg_muted`. The box is 14 (`WELCOME_CHECKBOX_SIZE`), radius 4 (`RADIUS_XS`), 1
+     border. Checked: `accent` fill and border with a 10 `check` icon in `accent_fg`. Unchecked:
+     transparent fill, `border_strong` border. The whole row is clickable and flips
+     `show_welcome`, the same setting as Settings, Appearance, Interface.
+
+**Empty main area.** With no workspace and no tab (the welcome tab was closed), the area is `bg`
+with a centered column, gap 16: "Create a workspace or open a folder to get started." in
+`fg_muted`, then a row with gap 8 of a primary button with a `plus` icon ("New workspace...") and
+a secondary button with a `folder-open` icon ("Open folder..."). The mockup did not cover it.
+
+Where the code differs from `Welcome.dc.html`:
+
+- The mockup sets the "Postino" title at -0.01em letter spacing; gpui's text style has no letter
+  spacing, so it renders without it (as the 0.06em of `SectionLabel`).
+- The mockup's column headings are 11/500 with 0.04em tracking; the shared `SectionLabel` (11/600,
+  `fg_subtle`) is reused instead of a second style.
+- The mockup only styles `hover` on the rows; the code adds `pressed`.
+- The mockup draws the `·` separators and the unchecked box border in a fixed `#4a4d57`; the
+  code uses `fg_subtle` at 60% and `border_strong`, so both themes follow the palette.
+- The mockup is static: it shows a hover state only, a checkbox that toggles locally, and Spanish
+  text. The strings are in `locales/welcome.yml` in four languages.
 
 ## Components (`views/components/`)
 
@@ -191,6 +272,9 @@ change breaks that rule.
 The original mockups (Claude Design HTML files in `postino_design_system/`: Postino Screens,
 Postino Design System, Main A and B, Components, Settings, Navigation Options, Performance,
 Current UI) are kept only in git history, under the tag `design-mockups` (`git checkout design-mockups -- postino_design_system`).
+
+The welcome tab mockup (`Welcome.dc.html`, 2026-10-08) is implemented and not kept, like the
+others: the Welcome tab section above is its record.
 
 Decisions taken in the redesign: the main screen is the "flat panes" direction (request above,
 response below, panels separated by borders, no shadows); the other direction explored (a

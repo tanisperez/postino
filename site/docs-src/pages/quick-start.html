@@ -1,26 +1,27 @@
 title: Quick start
-description: Open a workspace, create and send your first request, add an environment and a test in Postino.
+description: Create a workspace, send its example request, create your own, keep its base URL in an environment and add a test in Postino.
 ---
 <h1>Quick start</h1>
-<p class="lead">This tutorial takes about five minutes. You will open a folder as a workspace, send a request, move its base URL into an environment and check the response with a test.</p>
+<p class="lead">This tutorial takes about five minutes. You will create a workspace, send its example request, write your own request, keep its base URL in an environment and check the response with a test.</p>
 
-<h2>1. Open a workspace</h2>
-<p>A workspace is any folder on your disk. A good place is a folder inside the repository of the API you are working on, for example <code>api/requests/</code>, so the requests travel with the code.</p>
+<h2>1. Create a workspace</h2>
+<p>A workspace is a folder on your disk: its subfolders are collections and every <code>.postino</code> file in it is a request.</p>
 <ol class="steps">
-    <li>Start Postino. The first time, the sidebar says <strong>Open a folder to get started</strong>.</li>
-    <li>Click the workspace switcher, next to the Postino name at the top left of the title bar, choose <strong>Open folder…</strong> and pick a folder. It can be empty. <kbd>Ctrl</kbd> <kbd>O</kbd> (<kbd>⌘</kbd> <kbd>O</kbd> on macOS) does the same.</li>
-    <li>Postino remembers it and opens it again the next time you start the app. The workspace switcher keeps the last ten folders you opened.</li>
+    <li>Start Postino. The first time, it opens the <a href="interface.html#welcome-tab">welcome tab</a>: click <strong>New workspace…</strong> under <strong>Start</strong>.</li>
+    <li>Type a name, for example <code>my-api</code>. The dialog shows where the folder will be created, inside your Documents folder by default. <strong>Change…</strong> picks another place. Press <strong>Create</strong>.</li>
+    <li>Postino creates the folder with an example request, <code>hello.postino</code>, and a <code>local</code> environment, closes the welcome tab, opens the request in a tab and selects the environment. It remembers the workspace and opens it again the next time you start the app.</li>
 </ol>
+<p>You can also choose <strong>New workspace…</strong> in the workspace switcher next to the Postino name at the top left of the title bar, which is where to find it once the welcome tab is gone. To use a folder you already have, for example a folder inside the repository of your API so the requests travel with the code, click <strong>Open folder…</strong> in the welcome tab or the workspace switcher instead, or press <kbd>Ctrl</kbd> <kbd>O</kbd> (<kbd>⌘</kbd> <kbd>O</kbd> on macOS).</p>
 
-<h2>2. Create a request</h2>
+<h2>2. Send the example</h2>
+<p>Click <strong>Send</strong> or press <kbd>Ctrl</kbd> <kbd>Enter</kbd> (<kbd>⌘</kbd> <kbd>Enter</kbd> on macOS). The URL, <code>{{baseUrl}}/hello.json</code>, uses the <code>baseUrl</code> variable of the <code>local</code> environment. The response pane shows the status, the time and the size, then the body. Switch between <strong>Pretty</strong> and <strong>Raw</strong>, look at the <strong>Headers</strong> tab, and open the <strong>Tests</strong> tab: the example checks the response with two tests, and both pass.</p>
+
+<h2>3. Create a request</h2>
 <ol class="steps">
     <li>In the sidebar header, click the <strong>New request</strong> button. To create it inside a folder, right click the folder and choose <strong>New request</strong>.</li>
     <li>Type a name, for example <code>list-users</code>, and press <strong>Create</strong>. Postino writes <code>list-users.postino</code> into the folder and opens it in a tab.</li>
-    <li>A new request starts as <code>GET https://example.com</code>. Replace the URL with an API you can reach, for example <code>https://httpbin.org/get</code>.</li>
+    <li>A new request starts as <code>GET https://example.com</code>. Replace the URL with an API you can reach, for example <code>https://httpbin.org/get</code>, and send it.</li>
 </ol>
-
-<h2>3. Send it</h2>
-<p>Click <strong>Send</strong> or press <kbd>Ctrl</kbd> <kbd>Enter</kbd> (<kbd>⌘</kbd> <kbd>Enter</kbd> on macOS). The response pane shows the status, the time and the size, then the body. Switch between <strong>Pretty</strong> and <strong>Raw</strong>, look at the <strong>Headers</strong> tab, and use the search button to find text in a long body.</p>
 <p>The tab shows a dot when it has unsaved changes. Press <kbd>Ctrl</kbd> <kbd>S</kbd> to save. Send always uses what is in the editor, saved or not.</p>
 
 <div class="callout warning">
@@ -28,19 +29,21 @@ description: Open a workspace, create and send your first request, add an enviro
     <p>Closing a request tab discards its unsaved changes without asking. Save first with <kbd>Ctrl</kbd> <kbd>S</kbd>.</p>
 </div>
 
-<h2>4. Add an environment</h2>
-<p>Hard coding the host in every request makes it painful to switch between local, staging and production. Move it into a variable.</p>
+<h2>4. Add a variable</h2>
+<p>Hard coding the host in every request makes it painful to switch between local, staging and production. Move it into a variable of the environment.</p>
 <ol class="steps">
-    <li>Click <strong>Environments</strong> in the activity rail on the left (the second icon) and then <strong>New environment</strong>. Name it <code>local</code> and press <kbd>Enter</kbd>. Postino creates <code>environments/local.env</code>.</li>
-    <li>The environment opens in a tab. Click <strong>Add variable</strong>, name it <code>baseUrl</code> and set its value to <code>https://httpbin.org</code>. Save with <kbd>Ctrl</kbd> <kbd>S</kbd>.</li>
-    <li>Select <code>local</code> in the environment pill at the top right of the title bar, or press <kbd>Ctrl</kbd> <kbd>1</kbd>.</li>
-    <li>Back in your request, change the URL to <code>{{baseUrl}}/get</code>. The variable turns into a chip. An unknown variable shows in red, and clicking it takes you to the active environment to define it.</li>
+    <li>Click <strong>Environments</strong> in the activity rail on the left (the second icon) and then <code>local</code>. The environment opens in a tab, with the <code>baseUrl</code> variable of the example.</li>
+    <li>Click <strong>Add variable</strong>, name it <code>httpbin</code> and set its value to <code>https://httpbin.org</code>. Save with <kbd>Ctrl</kbd> <kbd>S</kbd>.</li>
+    <li>Back in your request, change the URL to <code>{{httpbin}}/get</code>. The variable turns into a chip. An unknown variable shows in red, and clicking it takes you to the active environment to define it.</li>
 </ol>
+<p>To add another environment, such as <code>staging</code>, click <strong>New environment</strong> in the Environments panel, and switch between them with the environment pill at the top right of the title bar or with <kbd>Ctrl</kbd> <kbd>1</kbd>, <kbd>Ctrl</kbd> <kbd>2</kbd>, and so on.</p>
 <p>Your workspace now looks like this:</p>
 ```text title="my-api/"
 my-api/
 ├── environments/
 │   └── local.env
+├── .gitignore
+├── hello.postino
 └── list-users.postino
 ```
 
@@ -60,7 +63,7 @@ test("the response echoes the URL", () => {
 <h2>6. Look at the file</h2>
 <p>Open <code>list-users.postino</code> in any text editor. It is short and readable:</p>
 ```postino title="list-users.postino"
-GET {{baseUrl}}/get
+GET {{httpbin}}/get
 
 ::: post
 test("status is 200", () => {
@@ -71,7 +74,7 @@ test("the response echoes the URL", () => {
   expect(res.json().url).toContain("/get");
 });
 ```
-<p>Commit it with the rest of your code. Before you add secrets to an environment, add this line to your <code>.gitignore</code> so <code>.local.env</code> files never reach git:</p>
+<p>Commit it with the rest of your code. The <code>.gitignore</code> of the new workspace already holds this line, so <code>.local.env</code> files, where secrets go, never reach git. Add it to your own <code>.gitignore</code> when you open an existing folder:</p>
 ```text title=".gitignore"
 *.local.env
 ```

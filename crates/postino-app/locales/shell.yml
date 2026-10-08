@@ -85,11 +85,6 @@ _version: 2
   es: "Filtrar"
   gl: "Filtrar"
   it: "Filtra"
-"shell.sidebar.empty":
-  en: "Open a folder to get started."
-  es: "Abre una carpeta para empezar."
-  gl: "Abre un cartafol para comezar."
-  it: "Apri una cartella per iniziare."
 "shell.sidebar.opening":
   en: "Opening %{name}..."
   es: "Abriendo %{name}..."
@@ -180,3 +175,53 @@ _version: 2
   es: "Buscar actualizaciones"
   gl: "Buscar actualizacións"
   it: "Cerca aggiornamenti"
+"shell.new_workspace.title":
+  en: "New workspace"
+  es: "Nuevo espacio de trabajo"
+  gl: "Novo espazo de traballo"
+  it: "Nuovo spazio di lavoro"
+"shell.new_workspace.example_note":
+  en: "A new folder with an example request, hello.postino, ready to send."
+  es: "Una carpeta nueva con una petición de ejemplo, hello.postino, lista para enviar."
+  gl: "Un cartafol novo cunha petición de exemplo, hello.postino, lista para enviar."
+  it: "Una nuova cartella con una richiesta di esempio, hello.postino, pronta da inviare."
+"shell.new_workspace.name":
+  en: "Name"
+  es: "Nombre"
+  gl: "Nome"
+  it: "Nome"
+"shell.new_workspace.name_placeholder":
+  en: "my-api"
+  es: "mi-api"
+  gl: "a-miña-api"
+  it: "mia-api"
+"shell.new_workspace.location":
+  en: "Location"
+  es: "Ubicación"
+  gl: "Localización"
+  it: "Posizione"
+"shell.new_workspace.change":
+  en: "Change..."
+  es: "Cambiar..."
+  gl: "Cambiar..."
+  it: "Cambia..."
+"shell.new_workspace.target":
+  en: "Creates"
+  es: "Se creará"
+  gl: "Crearase"
+  it: "Verrà creata"
+"shell.new_workspace.not_empty":
+  en: "That folder already exists and is not empty. Choose another name or location."
+  es: "Esa carpeta ya existe y no está vacía. Elige otro nombre u otra ubicación."
+  gl: "Ese cartafol xa existe e non está baleiro. Escolle outro nome ou outra localización."
+  it: "Quella cartella esiste già e non è vuota. Scegli un altro nome o un'altra posizione."
+"shell.new_workspace.failed":
+  en: "Could not create the workspace: %{error}"
+  es: "No se pudo crear el espacio de trabajo: %{error}"
+  gl: "Non se puido crear o espazo de traballo: %{error}"
+  it: "Impossibile creare lo spazio di lavoro: %{error}"
+"shell.new_workspace.import_note":
+  en: "A new, empty folder for the Postman export %{file}."
+  es: "Una carpeta nueva y vacía para la exportación de Postman %{file}."
+  gl: "Un cartafol novo e baleiro para a exportación de Postman %{file}."
+  it: "Una nuova cartella vuota per l'esportazione di Postman %{file}."

@@ -305,3 +305,13 @@ _version: 2
   es: "Sin resultados"
   gl: "Sen resultados"
   it: "Nessun risultato"
+"settings.interface.welcome":
+  en: "Welcome tab at startup"
+  es: "Bienvenida al abrir"
+  gl: "Benvida ao abrir"
+  it: "Benvenuto all'avvio"
+"settings.interface.welcome_description":
+  en: "Next to the last workspace. Without a workspace to open, it always shows."
+  es: "Junto al último espacio de trabajo. Sin espacio de trabajo que abrir, se muestra siempre."
+  gl: "Xunto ao último espazo de traballo. Sen espazo de traballo que abrir, amósase sempre."
+  it: "Accanto all'ultimo spazio di lavoro. Senza uno spazio di lavoro da aprire, appare sempre."

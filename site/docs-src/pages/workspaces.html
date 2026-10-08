@@ -52,10 +52,29 @@ shop-api/
     <p>To control the order of requests, prefix their names with numbers: <code>01-login</code>, <code>02-create-order</code>, <code>03-pay</code>. Natural sorting keeps <code>10-</code> after <code>9-</code>.</p>
 </div>
 
+<h2>Creating a workspace</h2>
+<p>Click <strong>New workspace…</strong> in the <a href="interface.html#welcome-tab">welcome tab</a>, or choose it in the workspace switcher in the title bar, or run it from the command palette. The dialog asks for:</p>
+<dl>
+    <dt>Name</dt>
+    <dd>The name of the new folder, for example <code>my-api</code>. It is made safe for every operating system the same way as a request name (see <a href="#creating-requests-and-folders">Creating requests and folders</a>).</dd>
+    <dt>Location</dt>
+    <dd>The folder the new one goes in. It starts as your Documents folder, or your home folder when there is none. <strong>Change…</strong> picks another one.</dd>
+</dl>
+<p>Below the fields, the dialog shows the full path it will create. <strong>Create</strong> (or <kbd>Enter</kbd>) creates it. A folder that already exists is only accepted when it is empty; otherwise the dialog says so and nothing is written.</p>
+<p>Every new workspace starts with a small example, so the first Send works without editing anything:</p>
+```text title="my-api/"
+my-api/
+├── environments/
+│   └── local.env       # baseUrl=https://postino.tanis.codes
+├── hello.postino       # GET {{baseUrl}}/hello.json, with two tests
+└── .gitignore          # *.local.env
+```
+<p>Postino opens the new workspace, selects the <code>local</code> environment and opens <code>hello.postino</code> in a tab. It asks the Postino website for a small JSON file and checks the answer with two tests. Delete the example whenever you no longer need it.</p>
+
 <h2>Opening a workspace</h2>
 <ul>
-    <li><strong>From the app:</strong> click the workspace switcher in the title bar and choose <strong>Open folder…</strong>, or one of the recent workspaces listed above it. The command palette has <strong>Open folder…</strong> too, and <kbd>Ctrl</kbd> <kbd>O</kbd> (<kbd>⌘</kbd> <kbd>O</kbd> on macOS) opens the folder picker from anywhere.</li>
-    <li><strong>At startup:</strong> Postino reopens the last workspace you used, as long as the folder still exists.</li>
+    <li><strong>From the app:</strong> click the workspace switcher in the title bar and choose <strong>Open folder…</strong>, or one of the recent workspaces listed above it. The <a href="interface.html#welcome-tab">welcome tab</a> has <strong>Open folder…</strong> and the four most recent workspaces too. The command palette has <strong>Open folder…</strong>, and <kbd>Ctrl</kbd> <kbd>O</kbd> (<kbd>⌘</kbd> <kbd>O</kbd> on macOS) opens the folder picker from anywhere.</li>
+    <li><strong>At startup:</strong> Postino reopens the last workspace you used, as long as the folder still exists. When there is none to reopen, because it is the first start or every recent folder is gone, it opens the welcome tab instead. With <strong>Welcome tab at startup</strong> on in <a href="settings.html">Settings</a>, the welcome tab also opens next to the reopened workspace.</li>
     <li><strong>From a terminal:</strong> <code>postino path/to/folder</code>. See <a href="command-line.html">Command line</a>.</li>
     <li><strong>By opening a request file:</strong> double click a <code>.postino</code> file, or pass it on the command line. Postino opens the remembered workspace if the file is inside it, otherwise the file's own folder, and then opens the file in a tab.</li>
 </ul>

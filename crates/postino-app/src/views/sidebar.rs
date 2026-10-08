@@ -81,6 +81,7 @@ impl AppView {
                                 .child(t!("shell.sidebar.opening", name = name)),
                         )
                     })
+                    // Without a workspace, nor one being opened, `render_body` hides the sidebar.
                     .when(opening.is_none() && has_workspace, |this| {
                         let row_palette = palette.clone();
                         this.child(
@@ -96,15 +97,6 @@ impl AppView {
                                 build_context_menu(weak.clone(), entry, menu, window, cx)
                             })
                             .size_full(),
-                        )
-                    })
-                    .when(opening.is_none() && !has_workspace, |this| {
-                        this.child(
-                            div()
-                                .p_4()
-                                .text_sm()
-                                .text_color(palette.fg_subtle)
-                                .child(t!("shell.sidebar.empty")),
                         )
                     }),
             )

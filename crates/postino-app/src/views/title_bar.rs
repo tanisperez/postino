@@ -21,7 +21,7 @@ use crate::theme::metrics::{
 };
 
 use super::root::AppView;
-use super::sidebar;
+use super::{new_workspace, sidebar};
 
 /// Longest path, in characters, shown next to a recent workspace in the switcher menu. Longer
 /// ones get their middle elided so the menu stays as narrow as a normal one.
@@ -81,8 +81,8 @@ impl AppView {
     }
 
     /// Renders the workspace switcher: the folder icon, the open workspace's folder name (or a
-    /// placeholder), a chevron, and its dropdown menu (recent workspaces, then "Open
-    /// folder...").
+    /// placeholder), a chevron, and its dropdown menu (recent workspaces, then "New workspace..."
+    /// and "Open folder...").
     fn render_workspace_switcher(&self, weak: WeakEntity<Self>, palette: &Palette) -> AnyElement {
         let label = self
             .state
@@ -158,6 +158,18 @@ impl AppView {
                 if !recent_is_empty {
                     menu = menu.separator();
                 }
+                let new_weak = weak.clone();
+                menu = menu.item(PopupMenuItem::new(t!("common.new_workspace")).on_click(
+                    move |_, window, cx| {
+                        new_workspace::open_new_workspace_dialog(
+                            new_weak.clone(),
+                            new_workspace::NewWorkspacePurpose::Example,
+                            None,
+                            window,
+                            cx,
+                        );
+                    },
+                ));
                 let open_weak = weak.clone();
                 // The action only shows its `Ctrl O` hint: the click handler runs instead of it.
                 menu = menu.item(

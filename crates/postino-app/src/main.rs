@@ -70,6 +70,8 @@ fn main() {
         arg.as_deref(),
         state::config::load_last_workspace().as_deref(),
     );
+    let show_welcome =
+        state::welcome::show_at_startup(arg.is_some(), launch.is_some(), settings.show_welcome);
     let (initial_workspace, initial_request) = match launch {
         Some(target) => (Some(target.workspace), target.request_id),
         None => (None, None),
@@ -157,6 +159,7 @@ fn main() {
                     AppView::new(
                         initial_workspace.clone(),
                         initial_request.clone(),
+                        show_welcome,
                         settings,
                         window,
                         cx,

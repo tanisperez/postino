@@ -1,5 +1,5 @@
 title: The interface
-description: A tour of the Postino window: title bar, activity rail, sidebar, tabs, request editor, response pane, status bar and command palette.
+description: A tour of the Postino window: title bar, activity rail, sidebar, tabs, welcome tab, request editor, response pane, status bar and command palette.
 ---
 <h1>The interface</h1>
 <p class="lead">Postino uses the layout you probably know from other API clients: collections on the left, the request on top and the response below. This page names every part of the window, so the rest of the documentation can refer to them.</p>
@@ -12,7 +12,7 @@ description: A tour of the Postino window: title bar, activity rail, sidebar, ta
 <h2>Title bar</h2>
 <p>From left to right:</p>
 <ul>
-    <li><strong>Workspace switcher.</strong> Shows the name of the open folder. Click it to reopen one of your last ten workspaces or to choose <strong>Open folder…</strong> (<kbd>Ctrl</kbd> <kbd>O</kbd>).</li>
+    <li><strong>Workspace switcher.</strong> Shows the name of the open folder. Click it to reopen one of your last ten workspaces, to create one with <strong>New workspace…</strong> (see <a href="workspaces.html#creating-a-workspace">Creating a workspace</a>) or to choose <strong>Open folder…</strong> (<kbd>Ctrl</kbd> <kbd>O</kbd>).</li>
     <li><strong>Search.</strong> The box in the middle, <strong>Search requests and actions</strong>, opens the <a href="#command-palette">command palette</a>. Its shortcut is <kbd>Ctrl</kbd> <kbd>K</kbd>.</li>
     <li><strong>Environment pill.</strong> The active environment, with a colored dot. Click it to switch environments. See <a href="environments.html#switching-environments">switching environments</a>.</li>
     <li><strong>Settings.</strong> The gear opens <a href="settings.html">Settings</a> (<kbd>Ctrl</kbd> <kbd>,</kbd>).</li>
@@ -30,6 +30,7 @@ description: A tour of the Postino window: title bar, activity rail, sidebar, ta
     </tbody>
 </table></div>
 <p>It works like the activity bar of a code editor: clicking another section switches to it, clicking the active section hides the sidebar, and clicking any button while the sidebar is hidden shows it again.</p>
+<p>With no workspace open there is nothing for the rail and the sidebar to show, so both are hidden and the <a href="#welcome-tab">welcome tab</a> takes the whole width. They appear as soon as a workspace opens.</p>
 
 <h2>Sidebar</h2>
 <h3>Collections</h3>
@@ -55,7 +56,7 @@ description: A tour of the Postino window: title bar, activity rail, sidebar, ta
 <p>Lists the <strong>Targets</strong> (the requests and folders you can point a load test at) and the <strong>Runs this session</strong>, each with its state: running with the elapsed time, done or stopped with its p95 latency, or failed. See <a href="load-testing.html">Load testing</a>.</p>
 
 <h2>Tabs</h2>
-<p>Every request, environment and load test you open gets a tab. A request tab shows its method and name. A dot instead of the close button means unsaved changes; hover the tab to reveal the close button again.</p>
+<p>Every request, environment and load test you open gets a tab. A request tab shows its method and name. A dot instead of the close button means unsaved changes; hover the tab to reveal the close button again. The <a href="#welcome-tab">welcome tab</a> has a house icon and the name <strong>Welcome</strong>.</p>
 <ul>
     <li><kbd>Ctrl</kbd> <kbd>Tab</kbd> and <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Tab</kbd> move to the next and previous tab.</li>
     <li><kbd>Ctrl</kbd> <kbd>W</kbd> closes the active tab.</li>
@@ -65,6 +66,31 @@ description: A tour of the Postino window: title bar, activity rail, sidebar, ta
     <span class="title">Unsaved changes</span>
     <p>An environment tab asks before discarding unsaved changes. A request tab does not: closing it drops its edits. Save first.</p>
 </div>
+
+<h2>Welcome tab</h2>
+<p>The welcome tab is where Postino starts when it has nothing to show yet. From top to bottom it has:</p>
+<ul>
+    <li>The Postino logo and a line on what it is: a native, lightweight HTTP client, with no account and no cloud.</li>
+    <li>A card that says how Postino stores things, so you do not have to guess: a <code>folder</code> is a workspace, a <code>subfolder</code> is a collection and a <code>.postino</code> file is a request. See <a href="workspaces.html">Workspaces and collections</a>.</li>
+    <li><strong>Start</strong>, with three entries:
+        <ul>
+            <li><strong>New workspace…</strong> opens the <a href="workspaces.html#creating-a-workspace">New workspace</a> dialog.</li>
+            <li><strong>Open folder…</strong> (<kbd>Ctrl</kbd> <kbd>O</kbd>) opens the folder picker.</li>
+            <li><strong>Import from Postman…</strong> imports a Postman collection. Without a workspace, Postino asks where to create one first. See <a href="postman-import.html#importing-without-a-workspace">Importing without a workspace</a>.</li>
+        </ul>
+    </li>
+    <li><strong>Recent</strong>, the four most recent workspaces whose folder still exists, each with its name and its shortened path. One click opens it. The list is hidden when there are none.</li>
+    <li>Links to the <strong>Quick start</strong> (it opens the quick start guide in your browser), the <strong>Shortcuts</strong> cheat sheet (<kbd>F1</kbd>) and <strong>Search</strong>, the <a href="#command-palette">command palette</a> (<kbd>Ctrl</kbd> <kbd>K</kbd>).</li>
+    <li>A checkbox, <strong>Show the welcome tab when Postino starts</strong>. It is the same setting as <strong>Welcome tab at startup</strong> in <a href="settings.html">Settings</a>, Appearance.</li>
+</ul>
+<p>The welcome tab opens:</p>
+<ul>
+    <li>When Postino starts and there is no workspace to open: the first time you run it, or when none of your recent workspaces exists any more (or the one it tries to reopen cannot be opened). It does this whatever the setting says, so Postino never starts in an empty window.</li>
+    <li>When Postino starts with <strong>Welcome tab at startup</strong> on, next to the workspace it reopens. The setting is off by default.</li>
+    <li>Whenever you choose <strong>Show welcome</strong> in the command palette.</li>
+</ul>
+<p>It does not open when you start Postino with a path or open a <code>.postino</code> file from your file manager. See <a href="command-line.html">Command line</a>. On macOS, with <strong>Welcome tab at startup</strong> on, a file opened from the Finder while Postino is closed still gets the welcome tab next to it.</p>
+<p>Close it like any tab, with its close button or <kbd>Ctrl</kbd> <kbd>W</kbd>. Opening a workspace, from the welcome tab or anywhere else, also closes it, because a workspace always opens with fresh tabs. If you close it while no workspace is open, the main area says <strong>Create a workspace or open a folder to get started.</strong> and offers the <strong>New workspace…</strong> and <strong>Open folder…</strong> buttons.</p>
 
 <h2>Request editor</h2>
 <p>The top half of a request tab. The <strong>URL bar</strong> joins the method selector and the URL, and shows <code>{{variables}}</code> as chips. Next to it are the <strong>Send</strong> button and <strong>Code</strong>, which opens the <a href="code-snippets.html">code snippet</a> dialog. Below, six tabs, each with a count when it has content:</p>
@@ -109,7 +135,7 @@ description: A tour of the Postino window: title bar, activity rail, sidebar, ta
     <dt>Environments</dt>
     <dd><strong>No environment</strong> and every environment, with their shortcuts. Choosing one makes it active.</dd>
     <dt>Actions</dt>
-    <dd>Send request, Save, New request, New folder, Import Postman collection…, Import Postman environment…, Open Settings, Keyboard shortcuts, Open folder…, New load test, Toggle theme and, in builds with an updater, Check for updates.</dd>
+    <dd>Send request, Save, New request, New folder, Import Postman collection…, Import Postman environment…, Open Settings, Keyboard shortcuts, New workspace…, Open folder…, Show welcome, New load test, Toggle theme and, in builds with an updater, Check for updates.</dd>
 </dl>
 
 <h2>Keyboard shortcuts cheat sheet</h2>

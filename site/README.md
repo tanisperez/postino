@@ -5,6 +5,8 @@ Plain HTML, CSS and JavaScript, no dependencies. The only build step generates t
 documentation pages. How it is deployed: `docs/releasing.md`.
 
 - `index.html`, `install.html`: the pages.
+- `hello.json`: the response of the example request (`hello.postino`) that every new workspace
+  gets, so its shape must not change: the example's test checks `app`.
 - `docs-src/`: the sources of the user documentation. Not published.
   - `pages/*.html`: one file per page, with only its content: a `title:` and `description:`
     header, a `---` line, then HTML. Code goes in fenced blocks, `` ```lang title="file" ``,

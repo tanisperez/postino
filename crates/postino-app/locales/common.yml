@@ -125,3 +125,8 @@ _version: 2
   es: "Seleccionar todo"
   gl: "Seleccionar todo"
   it: "Seleziona tutto"
+"common.new_workspace":
+  en: "New workspace..."
+  es: "Nuevo espacio de trabajo..."
+  gl: "Novo espazo de traballo..."
+  it: "Nuovo spazio di lavoro..."
