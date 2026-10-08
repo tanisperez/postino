@@ -37,10 +37,8 @@ pub mod workspace_log;
 
 pub use tabs::{TabKind, TabsState};
 
-use std::path::Path;
-
 use postino_runner::SessionEnv;
-use postino_workspace::{Workspace, WorkspaceError};
+use postino_workspace::Workspace;
 
 use settings::Settings;
 
@@ -71,17 +69,16 @@ impl AppState {
         Self::default()
     }
 
-    /// Replaces the current workspace with the one at `root`.
+    /// Replaces the current workspace with `workspace`, already opened (scanned) by the caller.
     ///
     /// Open tabs and the active environment belonged to the previous workspace, so they are
     /// discarded; the session environment is reset too, so a new workspace never sees stale
     /// overrides left over from the last one.
-    pub fn open_workspace(&mut self, root: impl AsRef<Path>) -> Result<(), WorkspaceError> {
-        self.workspace = Some(Workspace::open(root)?);
+    pub fn set_workspace(&mut self, workspace: Workspace) {
+        self.workspace = Some(workspace);
         self.tabs = TabsState::default();
         self.active_environment = None;
         self.session_env = SessionEnv::new();
-        Ok(())
     }
 }
 
@@ -100,27 +97,19 @@ mod tests {
     }
 
     #[test]
-    fn open_workspace_resets_tabs_environment_and_session_overrides() {
+    fn set_workspace_resets_tabs_environment_and_session_overrides() {
         let dir = tempfile::tempdir().expect("tempdir");
         let mut state = AppState::new();
         state.active_environment = Some("stale".to_string());
         state.session_env.set("token", "stale");
 
-        state
-            .open_workspace(dir.path())
-            .expect("opening an empty folder as a workspace never fails");
+        state.set_workspace(
+            Workspace::open(dir.path()).expect("opening an empty folder never fails"),
+        );
 
         assert!(state.workspace.is_some());
         assert!(state.tabs.open_tabs().is_empty());
         assert!(state.active_environment.is_none());
         assert!(state.session_env.as_slice().is_empty());
-    }
-
-    #[test]
-    fn open_workspace_on_a_missing_folder_fails_and_keeps_no_workspace() {
-        let mut state = AppState::new();
-        let result = state.open_workspace("/does/not/exist/postino-test");
-        assert!(result.is_err());
-        assert!(state.workspace.is_none());
     }
 }

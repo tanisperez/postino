@@ -42,6 +42,13 @@ impl AppView {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let has_workspace = self.state.workspace.is_some();
+        // The folder being opened replaces whatever the sidebar showed until its scan is done.
+        let opening = self.opening.as_ref().map(|opening| {
+            opening.root.file_name().map_or_else(
+                || opening.root.display().to_string(),
+                |name| name.to_string_lossy().into_owned(),
+            )
+        });
         let tree_state = self.tree_state.clone();
         let palette = cx.palette();
         let mut methods_by_id = HashMap::new();
@@ -65,7 +72,16 @@ impl AppView {
                     .flex_1()
                     .min_h_0()
                     .px(px(6.0))
-                    .when(has_workspace, |this| {
+                    .when_some(opening.clone(), |this, name| {
+                        this.child(
+                            div()
+                                .p_4()
+                                .text_sm()
+                                .text_color(palette.fg_subtle)
+                                .child(t!("shell.sidebar.opening", name = name)),
+                        )
+                    })
+                    .when(opening.is_none() && has_workspace, |this| {
                         let row_palette = palette.clone();
                         this.child(
                             tree_view(&tree_state, move |_ix, entry, selected, _window, _cx| {
@@ -82,7 +98,7 @@ impl AppView {
                             .size_full(),
                         )
                     })
-                    .when(!has_workspace, |this| {
+                    .when(opening.is_none() && !has_workspace, |this| {
                         this.child(
                             div()
                                 .p_4()

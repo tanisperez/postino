@@ -163,7 +163,11 @@ pub fn action_items() -> Vec<PaletteItem> {
             t!("shortcuts.title"),
             Some(super::shortcuts::open_hint()),
         ),
-        action_item(ActionId::OpenWorkspace, t!("common.open_folder"), None),
+        action_item(
+            ActionId::OpenWorkspace,
+            t!("common.open_folder"),
+            Some(format!("{MODIFIER_KEY}+O")),
+        ),
         action_item(
             ActionId::NewLoadTest,
             t!("shell.palette.new_load_test"),

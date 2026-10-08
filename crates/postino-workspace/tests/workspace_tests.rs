@@ -130,6 +130,89 @@ fn hidden_folders_and_target_are_ignored() {
 }
 
 #[test]
+fn node_modules_folders_are_ignored_at_every_level() {
+    let temp = TempDir::new().expect("temp dir");
+    write_file(
+        &temp.path().join("node_modules/pkg/hidden.postino"),
+        "GET https://example.com\n",
+    );
+    write_file(
+        &temp.path().join("api/node_modules/pkg/hidden.postino"),
+        "GET https://example.com\n",
+    );
+    write_file(
+        &temp.path().join("api/ping.postino"),
+        "GET https://example.com\n",
+    );
+
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+    let names: Vec<&str> = workspace.tree().iter().map(Node::name).collect();
+    assert_eq!(names, vec!["api"]);
+    let Node::Folder(api) = &workspace.tree()[0] else {
+        panic!("expected folder api")
+    };
+    let children: Vec<&str> = api.children.iter().map(Node::name).collect();
+    assert_eq!(children, vec!["ping"]);
+}
+
+#[test]
+fn folders_without_requests_are_left_out_unless_empty() {
+    let temp = TempDir::new().expect("temp dir");
+    // A code repository around the requests: none of these folders holds a request.
+    write_file(&temp.path().join("src/main.rs"), "fn main() {}\n");
+    write_file(&temp.path().join("src/nested/lib.rs"), "");
+    write_file(&temp.path().join("docs/README.md"), "# Docs\n");
+    // Kept: a request below it, even next to other files or only deep down.
+    write_file(&temp.path().join("api/README.md"), "# API\n");
+    write_file(
+        &temp.path().join("api/users/list.postino"),
+        "GET https://example.com\n",
+    );
+    // Kept: empty, or empty but for hidden files (`.gitkeep`) or empty subfolders.
+    fs::create_dir_all(temp.path().join("empty")).expect("create empty folder");
+    write_file(&temp.path().join("only-hidden/.gitkeep"), "");
+    fs::create_dir_all(temp.path().join("parent/child")).expect("create nested empty folder");
+
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+    let names: Vec<&str> = workspace.tree().iter().map(Node::name).collect();
+    assert_eq!(names, vec!["api", "empty", "only-hidden", "parent"]);
+    let Node::Folder(api) = &workspace.tree()[0] else {
+        panic!("expected folder api")
+    };
+    let children: Vec<&str> = api.children.iter().map(Node::name).collect();
+    assert_eq!(children, vec!["users"]);
+}
+
+#[cfg(unix)]
+#[test]
+fn an_unreadable_subfolder_is_skipped_instead_of_failing_the_open() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp = TempDir::new().expect("temp dir");
+    write_file(
+        &temp.path().join("locked/secret.postino"),
+        "GET https://example.com\n",
+    );
+    write_file(
+        &temp.path().join("open/ping.postino"),
+        "GET https://example.com\n",
+    );
+    let locked = temp.path().join("locked");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).expect("lock folder");
+    // Root ignores permissions: nothing to check then.
+    let readable_anyway = fs::read_dir(&locked).is_ok();
+
+    let result = Workspace::open(temp.path());
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).expect("unlock folder");
+    if readable_anyway {
+        return;
+    }
+    let workspace = result.expect("open workspace");
+    let names: Vec<&str> = workspace.tree().iter().map(Node::name).collect();
+    assert_eq!(names, vec!["open"]);
+}
+
+#[test]
 fn top_level_environments_folder_is_skipped_from_the_tree() {
     let temp = TempDir::new().expect("temp dir");
     write_file(

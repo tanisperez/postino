@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::component::tooltip::Tooltip;
@@ -21,12 +21,13 @@ use postino_core::Body;
 use postino_format::snippet::SnippetLanguage;
 use postino_runner::{RunResult, ScriptEngine, SendOptions};
 use postino_script::QuickJsEngine;
+use postino_workspace::{Workspace, WorkspaceError};
 
 use crate::actions::{
-    CloseActiveTab, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, PreviousTab,
-    SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
-    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
-    SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+    CloseActiveTab, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, OpenWorkspace,
+    PreviousTab, SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3,
+    SelectEnvironment4, SelectEnvironment5, SelectEnvironment6, SelectEnvironment7,
+    SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
 };
 use crate::state::about::AboutInfo;
 use crate::state::debug_open::{self, DebugOpenTarget};
@@ -45,6 +46,23 @@ use crate::views::send::SendingTask;
 use crate::views::settings::SettingsSelects;
 
 use super::sidebar;
+
+/// Something to do once the workspace being opened is ready (see
+/// [`AppView::when_workspace_opens`]).
+type AfterOpen = Box<dyn FnOnce(&mut AppView, &mut Window, &mut Context<AppView>)>;
+
+/// A workspace folder being scanned on the background executor by
+/// [`AppView::open_workspace_at`].
+pub(crate) struct OpeningWorkspace {
+    /// The folder being opened, as given.
+    pub(crate) root: PathBuf,
+    /// What waits for it: a request to open in a tab, the startup debug hooks. Dropped if the
+    /// open fails.
+    after: Vec<AfterOpen>,
+    /// Delivers the scan's result. Opening another folder replaces this, which drops it and so
+    /// discards the result.
+    _task: Task<()>,
+}
 
 /// The main window view: title bar, resizable sidebar, and main area (open tabs plus the
 /// request editor and response viewer).
@@ -146,6 +164,16 @@ pub struct AppView {
     /// The Load tests panel's target tree (`views/load_panel.rs`), rebuilt by
     /// [`Self::refresh_tree`].
     pub(crate) load_targets: state::load_panel::TargetTree,
+    /// The recently opened workspaces, most recent first, for the title bar's workspace
+    /// switcher. Read from the config file at startup and after opening a workspace
+    /// ([`Self::open_workspace_at`]), so render never reads it.
+    pub(crate) recent_workspaces: Vec<PathBuf>,
+    /// The open workspace's absolute path, the form [`Self::recent_workspaces`] holds, so the
+    /// switcher can tick the open one without canonicalizing a path on every render.
+    pub(crate) workspace_path: Option<PathBuf>,
+    /// The workspace folder being scanned in the background, `None` once it is open or failed
+    /// to open. The sidebar shows it as loading meanwhile.
+    pub(crate) opening: Option<OpeningWorkspace>,
     /// How many times [`Render::render`] ran, logged at Trace. A count that keeps growing while
     /// nobody touches the app means something keeps calling `cx.notify()`.
     render_count: u64,
@@ -228,13 +256,18 @@ impl AppView {
             env_editors: HashMap::new(),
             new_env_input: None,
             load_targets: state::load_panel::TargetTree::default(),
+            recent_workspaces: state::config::recent_workspaces(),
+            workspace_path: None,
+            opening: None,
             render_count: 0,
         };
         if let Some(root) = initial_workspace {
             view.open_workspace_at(&root, window, cx);
             // A file given on the command line: open its request in a tab, without sending.
             if let Some(id) = initial_request {
-                view.open_request(id, cx);
+                view.when_workspace_opens(window, cx, move |view, _, cx| {
+                    view.open_request(id, cx);
+                });
             }
         }
         // Before `apply_debug_open`: a `POSTINO_OPEN=settings` launch defers opening the dialog
@@ -242,8 +275,12 @@ impl AppView {
         // point as the handle to restore once the dialog closes, so this must already be in
         // effect for that capture to see it.
         focus_handle.focus(window, cx);
-        view.apply_debug_autosend(cx);
-        view.apply_debug_open(window, cx);
+        // Both hooks act on the workspace (send one of its requests, open an environment), so
+        // they wait for the scan.
+        view.when_workspace_opens(window, cx, |view, window, cx| {
+            view.apply_debug_autosend(cx);
+            view.apply_debug_open(window, cx);
+        });
         view.schedule_startup_update_check(cx);
         view
     }
@@ -357,35 +394,96 @@ impl AppView {
                 log::warn!("the OS asked to open a file that does not exist");
                 continue;
             }
-            let current = self
-                .state
-                .workspace
-                .as_ref()
-                .map(|workspace| workspace.root().to_path_buf());
+            // The folder being opened counts as the current one: a second file from the same
+            // folder joins that open instead of starting it again.
+            let current = match self.opening.as_ref() {
+                Some(opening) => Some(opening.root.clone()),
+                None => self
+                    .state
+                    .workspace
+                    .as_ref()
+                    .map(|workspace| workspace.root().to_path_buf()),
+            };
             let target = state::launch::target_for_file(&path, current.as_deref());
             if current.as_deref() != Some(target.workspace.as_path()) {
                 self.open_workspace_at(&target.workspace, window, cx);
             }
             if let Some(id) = target.request_id {
-                self.open_request(id, cx);
+                self.when_workspace_opens(window, cx, move |view, _, cx| {
+                    view.open_request(id, cx);
+                });
             }
         }
     }
 
-    /// Opens `root` as the workspace, remembers it for next launch, clears the sidebar filter
-    /// (it belonged to the previous workspace), and refreshes the sidebar tree. Used at startup
-    /// and by the title bar's workspace switcher ("Open folder..." and picking a recent
-    /// workspace).
+    /// Opens `root` as the workspace. The folder is scanned on the background executor, so a big
+    /// one never freezes the window, and [`Self::finish_opening_workspace`] swaps it in. Opening
+    /// another folder before this one is ready discards this one. Used at startup, by the title
+    /// bar's workspace switcher ("Open folder..." and picking a recent workspace), `Ctrl O`, and
+    /// for folders and files the OS hands over.
     pub(crate) fn open_workspace_at(
         &mut self,
         root: &Path,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let started = Instant::now();
-        match self.state.open_workspace(root) {
-            Ok(()) => {
-                self.log_opened_workspace(root, started);
+        let scan_root = root.to_path_buf();
+        let task = cx.spawn_in(window, async move |this, cx| {
+            // Timed here, not up to `finish_opening_workspace`: at startup that also waits for
+            // the window's first frames.
+            let (result, elapsed) = cx
+                .background_spawn(async move {
+                    let started = Instant::now();
+                    (Workspace::open(scan_root), started.elapsed())
+                })
+                .await;
+            let _ = this.update_in(cx, |view, window, cx| {
+                view.finish_opening_workspace(result, elapsed, window, cx);
+            });
+        });
+        self.opening = Some(OpeningWorkspace {
+            root: root.to_path_buf(),
+            after: Vec::new(),
+            _task: task,
+        });
+        cx.notify();
+    }
+
+    /// Runs `after` once the workspace being opened is ready, or right away when none is being
+    /// opened. It is dropped if that open fails, so a request id never opens in the previous
+    /// workspace instead.
+    pub(crate) fn when_workspace_opens(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+        after: impl FnOnce(&mut Self, &mut Window, &mut Context<Self>) + 'static,
+    ) {
+        match self.opening.as_mut() {
+            Some(opening) => opening.after.push(Box::new(after)),
+            None => after(self, window, cx),
+        }
+    }
+
+    /// Swaps in the workspace [`Self::open_workspace_at`] scanned, remembers it for next launch,
+    /// clears the sidebar filter (it belonged to the previous workspace), refreshes the sidebar
+    /// tree, then runs what was waiting for it. A failed open keeps the previous workspace and
+    /// shows the error.
+    fn finish_opening_workspace(
+        &mut self,
+        result: Result<Workspace, WorkspaceError>,
+        elapsed: Duration,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(OpeningWorkspace { root, after, .. }) = self.opening.take() else {
+            return;
+        };
+        let root = root.as_path();
+        let opened = result.is_ok();
+        match result {
+            Ok(workspace) => {
+                self.state.set_workspace(workspace);
+                self.log_opened_workspace(root, elapsed);
                 self.workspace_error = None;
                 // Remember an absolute path: a relative one (as given on the command line, for
                 // example) would resolve against whatever directory the app happens to be
@@ -393,6 +491,8 @@ impl AppView {
                 // verbatim `\\?\C:\...` form `std` returns on Windows.
                 let absolute = dunce::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
                 state::config::record_workspace(&absolute);
+                self.recent_workspaces = state::config::recent_workspaces();
+                self.workspace_path = Some(absolute.clone());
                 self.restore_last_environment(&absolute);
                 self.refresh_env_rows();
             }
@@ -414,6 +514,11 @@ impl AppView {
             .update(cx, |state, cx| state.set_items(Vec::new(), cx));
         self.refresh_tree(cx);
         cx.notify();
+        if opened {
+            for after in after {
+                after(self, window, cx);
+            }
+        }
     }
 
     /// Re-selects the environment that was active when the workspace at `root` was last used,
@@ -436,7 +541,7 @@ impl AppView {
 
     /// Logs a successfully opened workspace: where it is, what it holds, how long the scan took,
     /// and which request files do not parse.
-    fn log_opened_workspace(&self, root: &Path, started: Instant) {
+    fn log_opened_workspace(&self, root: &Path, elapsed: Duration) {
         let Some(workspace) = self.state.workspace.as_ref() else {
             return;
         };
@@ -445,7 +550,7 @@ impl AppView {
         log::info!(
             "opened workspace {} in {} ms: {} requests, {} folders, {} environments",
             root.display(),
-            started.elapsed().as_millis(),
+            elapsed.as_millis(),
             counts.requests,
             counts.folders,
             environments,
@@ -789,6 +894,17 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         self.open_command_palette(window, cx);
+    }
+
+    /// Handles the `Ctrl O` / `Cmd O` key binding (see `main.rs`'s `bind_keys`): the same folder
+    /// picker as the workspace switcher's "Open folder..." and the command palette's action.
+    fn on_open_workspace_action(
+        &mut self,
+        _: &OpenWorkspace,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        sidebar::pick_workspace_folder(cx.weak_entity(), window, cx);
     }
 
     /// Handles the `F1` / `Cmd+Shift+/` key binding (see `main.rs`'s `bind_keys`).
@@ -1213,6 +1329,7 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_send_action))
             .on_action(cx.listener(Self::on_open_settings_action))
             .on_action(cx.listener(Self::on_open_command_palette_action))
+            .on_action(cx.listener(Self::on_open_workspace_action))
             .on_action(cx.listener(Self::on_open_shortcuts_action))
             .on_action(cx.listener(Self::on_close_tab_action))
             .on_action(cx.listener(Self::on_next_tab_action))

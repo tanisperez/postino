@@ -9,9 +9,9 @@ use postino_core::{Environment, KeyValue, Request};
 use crate::error::WorkspaceError;
 use crate::ids::{id_to_path, path_to_id, validate_relative_path};
 use crate::sanitize::sanitize_file_name;
-use crate::scan::scan_folder;
+use crate::scan::scan_workspace;
 use crate::tree::Node;
-use crate::{ENVIRONMENTS_FOLDER, REQUEST_EXTENSION};
+use crate::{ENVIRONMENTS_FOLDER, MAX_WORKSPACE_ENTRIES, REQUEST_EXTENSION};
 
 /// A Postino workspace: a folder on disk holding `.postino` request files, subfolders acting as
 /// collections, and an optional top-level `environments/` folder.
@@ -31,16 +31,21 @@ impl Workspace {
     ///
     /// Directories become folders, `.postino` files become requests, and the top-level
     /// `environments/` folder is read separately (see [`Workspace::list_environments`] and
-    /// [`Workspace::load_environment`]) rather than appearing in the tree. A `.postino` file
-    /// that fails to parse does not fail the scan: it is still listed, marked broken (see
-    /// [`crate::RequestEntry::broken`]).
+    /// [`Workspace::load_environment`]) rather than appearing in the tree. Hidden entries,
+    /// `target` and `node_modules` folders are skipped, and a folder with no request below it is
+    /// left out unless it is empty. A `.postino` file that fails to parse, or a subfolder that
+    /// cannot be read, does not fail the scan: the file is still listed, marked broken (see
+    /// [`crate::RequestEntry::broken`]), and the folder is skipped.
+    ///
+    /// Fails with [`WorkspaceError::TooLarge`] for a folder with more than
+    /// [`MAX_WORKSPACE_ENTRIES`] files and folders.
     pub fn open(root: impl AsRef<Path>) -> Result<Workspace, WorkspaceError> {
         let root = root.as_ref().to_path_buf();
         let is_dir = fs::metadata(&root).is_ok_and(|metadata| metadata.is_dir());
         if !is_dir {
             return Err(WorkspaceError::RootNotFound(root));
         }
-        let tree = scan_folder(&root, &root, true)?;
+        let tree = scan_workspace(&root, Some(MAX_WORKSPACE_ENTRIES))?;
         Ok(Workspace { root, tree })
     }
 
@@ -55,9 +60,10 @@ impl Workspace {
         &self.tree
     }
 
-    /// Re-scans the workspace root, refreshing the tree returned by [`Workspace::tree`].
+    /// Re-scans the workspace root, refreshing the tree returned by [`Workspace::tree`]. Unlike
+    /// [`Workspace::open`] it has no size limit: a workspace that grew past it keeps working.
     pub fn rescan(&mut self) -> Result<(), WorkspaceError> {
-        self.tree = scan_folder(&self.root, &self.root, true)?;
+        self.tree = scan_workspace(&self.root, None)?;
         Ok(())
     }
 

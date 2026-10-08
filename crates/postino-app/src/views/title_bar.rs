@@ -11,6 +11,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
+use crate::actions::OpenWorkspace;
 use crate::state;
 use crate::theme::Palette;
 use crate::theme::PaletteExt;
@@ -83,20 +84,16 @@ impl AppView {
     /// placeholder), a chevron, and its dropdown menu (recent workspaces, then "Open
     /// folder...").
     fn render_workspace_switcher(&self, weak: WeakEntity<Self>, palette: &Palette) -> AnyElement {
-        let current_root = self
+        let label = self
             .state
             .workspace
             .as_ref()
-            .map(|workspace| workspace.root().to_path_buf());
-        let current_canonical = current_root
-            .as_ref()
-            .and_then(|root| dunce::canonicalize(root).ok());
-        let label = current_root
-            .as_ref()
-            .and_then(|root| root.file_name())
+            .and_then(|workspace| workspace.root().file_name())
             .map(|name| name.to_string_lossy().into_owned())
             .unwrap_or_else(|| t!("shell.title_bar.no_workspace").into_owned());
-        let recent = state::config::recent_workspaces();
+        // Cached by `open_workspace_at`: this runs on every render, so no file is read here.
+        let current_path = self.workspace_path.clone();
+        let recent = self.recent_workspaces.clone();
         let home = dirs::home_dir();
         let fg_subtle = palette.fg_subtle;
         let accent_text = palette.accent_text;
@@ -121,7 +118,7 @@ impl AppView {
                         &state::format::shorten_path(path, home.as_deref()),
                         MENU_PATH_MAX_CHARS,
                     );
-                    let is_current = current_canonical.as_deref() == Some(path.as_path());
+                    let is_current = current_path.as_deref() == Some(path.as_path());
                     let select_weak = weak.clone();
                     let target = path.clone();
 
@@ -162,11 +159,14 @@ impl AppView {
                     menu = menu.separator();
                 }
                 let open_weak = weak.clone();
-                menu = menu.item(PopupMenuItem::new(t!("common.open_folder")).on_click(
-                    move |_, window, cx| {
-                        sidebar::pick_workspace_folder(open_weak.clone(), window, cx);
-                    },
-                ));
+                // The action only shows its `Ctrl O` hint: the click handler runs instead of it.
+                menu = menu.item(
+                    PopupMenuItem::new(t!("common.open_folder"))
+                        .action(Box::new(OpenWorkspace))
+                        .on_click(move |_, window, cx| {
+                            sidebar::pick_workspace_folder(open_weak.clone(), window, cx);
+                        }),
+                );
                 menu
             })
             .into_any_element()

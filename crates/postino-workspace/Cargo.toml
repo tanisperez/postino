@@ -9,6 +9,7 @@ authors.workspace = true
 [dependencies]
 postino-core = { path = "../postino-core" }
 postino-format = { path = "../postino-format" }
+log = { workspace = true }
 thiserror = { workspace = true }
 tempfile = { workspace = true }
 

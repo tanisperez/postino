@@ -37,10 +37,12 @@ shop-api/
 </dl>
 
 <h2>What the sidebar shows</h2>
-<p>Postino scans the workspace folder and lists every <code>.postino</code> file and every folder, with these rules:</p>
+<p>Postino scans the workspace folder and lists its <code>.postino</code> files and the folders that hold them, with these rules:</p>
 <ul>
     <li>Hidden entries, whose name starts with a dot (<code>.git</code>, <code>.postino</code>, <code>.vscode</code>), are skipped at every level.</li>
-    <li>A folder named <code>target</code> is skipped at every level, so a Rust build folder never floods the tree.</li>
+    <li>Folders named <code>target</code> or <code>node_modules</code> are skipped at every level, so build and dependency folders never flood the tree or slow down the scan.</li>
+    <li>A folder with no request anywhere inside it is not shown when it holds other files, so a workspace at the root of a code repository does not list <code>src/</code> or <code>docs/</code> as collections. An empty folder is shown, so a new collection can be filled. A folder that only holds hidden files, such as a <code>.gitkeep</code>, counts as empty.</li>
+    <li>A folder Postino is not allowed to read is skipped, with a warning in the <a href="troubleshooting.html#collecting-a-log">log</a>.</li>
     <li>The top-level <code>environments/</code> folder is skipped. A folder named <code>environments</code> deeper in the tree is a normal collection.</li>
     <li>Files with another extension are ignored, so the workspace can live inside a code repository next to anything else.</li>
     <li>Folders are listed before requests. Both are sorted in natural order: <code>step2</code> comes before <code>step10</code>.</li>
@@ -52,11 +54,12 @@ shop-api/
 
 <h2>Opening a workspace</h2>
 <ul>
-    <li><strong>From the app:</strong> click the workspace switcher in the title bar and choose <strong>Open folder…</strong>, or one of the recent workspaces listed above it. The command palette has <strong>Open folder…</strong> too.</li>
+    <li><strong>From the app:</strong> click the workspace switcher in the title bar and choose <strong>Open folder…</strong>, or one of the recent workspaces listed above it. The command palette has <strong>Open folder…</strong> too, and <kbd>Ctrl</kbd> <kbd>O</kbd> (<kbd>⌘</kbd> <kbd>O</kbd> on macOS) opens the folder picker from anywhere.</li>
     <li><strong>At startup:</strong> Postino reopens the last workspace you used, as long as the folder still exists.</li>
     <li><strong>From a terminal:</strong> <code>postino path/to/folder</code>. See <a href="command-line.html">Command line</a>.</li>
     <li><strong>By opening a request file:</strong> double click a <code>.postino</code> file, or pass it on the command line. Postino opens the remembered workspace if the file is inside it, otherwise the file's own folder, and then opens the file in a tab.</li>
 </ul>
+<p>Postino reads the folder in the background: the sidebar shows <strong>Opening <em>name</em>…</strong> until it is ready, and the window keeps responding meanwhile. A folder with more than 20,000 files and folders, not counting the skipped ones, is not opened, since every change rescans the whole workspace and would become slow. That is usually a home folder or the root of a large repository: open the folder that holds your requests instead.</p>
 <p>Postino remembers up to ten recent workspaces, and for each one the environment that was active, which is selected again when you reopen it. This memory lives in Postino's configuration folder, not in the workspace, so picking an environment never changes your git diff.</p>
 <p>Every folder in the sidebar starts collapsed when a workspace opens. Folders keep their open or closed state while you create, rename, delete or save, and the folders above a request are expanded automatically when you create it or open it from outside the sidebar, for example from the command line. The open state is not remembered between sessions.</p>
 
