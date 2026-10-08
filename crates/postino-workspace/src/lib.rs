@@ -32,3 +32,10 @@ pub(crate) const REQUEST_EXTENSION: &str = "postino";
 
 /// The name of the top-level folder that holds environment files instead of a collection.
 pub(crate) const ENVIRONMENTS_FOLDER: &str = "environments";
+
+/// The most files and folders [`Workspace::open`] scans (hidden entries and skipped folders such
+/// as `node_modules` do not count) before it gives up with [`WorkspaceError::TooLarge`]. Every
+/// change to the workspace rescans the whole folder, so a folder this big, such as a home folder
+/// or the root of a large repository, would make every save slow. Real workspaces hold a few
+/// hundred entries.
+pub const MAX_WORKSPACE_ENTRIES: usize = 20_000;

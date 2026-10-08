@@ -41,6 +41,18 @@ pub enum WorkspaceError {
         source: postino_format::env::EnvParseError,
     },
 
+    /// [`crate::Workspace::open`] gave up on a folder with more than
+    /// [`crate::MAX_WORKSPACE_ENTRIES`] files and folders, too many to be a workspace.
+    #[error(
+        "{path:?} has more than {limit} files and folders, too many for a workspace. Open the folder that holds your requests instead"
+    )]
+    TooLarge {
+        /// The folder that was being opened.
+        path: PathBuf,
+        /// The limit it went over.
+        limit: usize,
+    },
+
     /// A filesystem operation failed.
     #[error("io error at {path:?}: {source}")]
     Io {

@@ -90,6 +90,11 @@ _version: 2
   es: "Abre una carpeta para empezar."
   gl: "Abre un cartafol para comezar."
   it: "Apri una cartella per iniziare."
+"shell.sidebar.opening":
+  en: "Opening %{name}..."
+  es: "Abriendo %{name}..."
+  gl: "Abrindo %{name}..."
+  it: "Apertura di %{name}..."
 "shell.sidebar.collections":
   en: "Collections"
   es: "Colecciones"
