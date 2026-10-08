@@ -18,6 +18,9 @@ description: Import Postman collections (v2.1 and v2.0) and environment exports 
     <li>A summary lists the number of files created and any warnings. The new collection appears in the sidebar and the new environment in the environment picker.</li>
 </ol>
 
+<h3>Importing without a workspace</h3>
+<p>Coming from Postman, the first thing you may want to do is import a collection, before you have any workspace. That works too: with no workspace open, run <strong>Import Postman collection…</strong> or <strong>Import Postman environment…</strong> from the command palette and pick the exported file. Postino reads it, then opens the <a href="workspaces.html#creating-a-workspace">New workspace</a> dialog with the name of the collection or environment as the folder name. <strong>Create</strong> makes an empty folder, without the example request, opens it as the workspace and imports the file into it. Cancelling either the file picker or the dialog writes nothing.</p>
+
 <h2>Collections</h2>
 <p>The collection becomes a new folder at the root of the workspace, named after it. If a folder with that name exists, the new one gets a <code>(2)</code>, <code>(3)</code> suffix, so nothing is ever overwritten. Postman folders become subfolders, and each request becomes a <code>.postino</code> file.</p>
 <div class="table"><table>

@@ -2,7 +2,8 @@
 //! opens the native folder picker, and the full path that will be created. Create makes the
 //! folder with `postino_workspace::create_workspace`, with the example request and environment,
 //! and opens it as the workspace. Opened from the workspace switcher menu and the command
-//! palette.
+//! palette, and by a Postman import started without a workspace (`views/import_menu.rs`, GitHub
+//! #89), which gets an empty folder and imports into it instead.
 //!
 //! An in-app dialog, never a native "save" one: those are meant for files and behave differently
 //! between platforms when they create a folder.
@@ -28,6 +29,7 @@ use crate::views::components::{
     InlineMessage, InlineMessageKind, PrimaryButton, SecondaryButton, text_field,
 };
 
+use super::import_menu::PendingImport;
 use super::root::AppView;
 
 /// Width of the dialog.
@@ -36,6 +38,24 @@ const DIALOG_WIDTH: f32 = 480.0;
 /// Longest path, in characters, the dialog shows. Longer ones get their middle elided, so the
 /// folder being created stays visible at the end.
 const PATH_MAX_CHARS: usize = 46;
+
+/// What the new workspace is for.
+pub(crate) enum NewWorkspacePurpose {
+    /// A fresh start: the example request and environment.
+    Example,
+    /// An empty folder that receives this Postman export once it is open.
+    Import(PendingImport),
+}
+
+impl NewWorkspacePurpose {
+    /// What `create_workspace` writes for this purpose.
+    fn content(&self) -> NewWorkspaceContent {
+        match self {
+            NewWorkspacePurpose::Example => NewWorkspaceContent::Example,
+            NewWorkspacePurpose::Import(_) => NewWorkspaceContent::Empty,
+        }
+    }
+}
 
 /// The dialog's state. Owned by the dialog's builder closures, so it ends with the dialog.
 struct NewWorkspaceForm {
@@ -46,21 +66,32 @@ struct NewWorkspaceForm {
     location: PathBuf,
     /// Why the last Create failed, until the name or the location changes.
     error: Option<String>,
+    /// What the workspace is for, taken once it has been created.
+    purpose: Option<NewWorkspacePurpose>,
 }
 
-/// Opens the dialog. Also called from the workspace switcher menu and the command palette.
+/// Opens the dialog for `purpose`, with `suggested_name` already typed (the export's name for an
+/// import).
 pub(crate) fn open_new_workspace_dialog(
     view: WeakEntity<AppView>,
+    purpose: NewWorkspacePurpose,
+    suggested_name: Option<String>,
     window: &mut Window,
     cx: &mut App,
 ) {
     let name = cx.new(|cx| {
-        InputState::new(window, cx).placeholder(t!("shell.new_workspace.name_placeholder"))
+        let state =
+            InputState::new(window, cx).placeholder(t!("shell.new_workspace.name_placeholder"));
+        match suggested_name {
+            Some(suggested) => state.default_value(suggested),
+            None => state,
+        }
     });
     let form = cx.new(|_| NewWorkspaceForm {
         name: name.clone(),
         location: state::new_workspace::default_location_for_user(),
         error: None,
+        purpose: Some(purpose),
     });
     {
         // Weak, or the subscription would keep the form, and through it the input, alive forever.
@@ -111,8 +142,11 @@ pub(crate) fn open_new_workspace_dialog(
             )
     });
     // Focus only after `open_dialog`, which captures the focused handle to restore on close
-    // (see `views/command_palette.rs`).
-    name.update(cx, |state, cx| state.focus(window, cx));
+    // (see `views/command_palette.rs`). Selecting a suggested name makes typing replace it.
+    name.update(cx, |state, cx| {
+        state.focus(window, cx);
+        state.select_all(window, cx);
+    });
 }
 
 /// The folder the form's name creates in its location, `None` while the name is blank.
@@ -137,6 +171,16 @@ fn render_form(form: &Entity<NewWorkspaceForm>, cx: &App) -> AnyElement {
     };
     let location = shown(&state.location);
     let change_form = form.downgrade();
+    let note = match &state.purpose {
+        Some(NewWorkspacePurpose::Import(pending)) => {
+            let file = pending.source.file_name().map_or_else(
+                || pending.source.display().to_string(),
+                |name| name.to_string_lossy().into_owned(),
+            );
+            t!("shell.new_workspace.import_note", file = file)
+        }
+        _ => t!("shell.new_workspace.example_note"),
+    };
 
     let label = |text: SharedString| {
         div()
@@ -147,11 +191,7 @@ fn render_form(form: &Entity<NewWorkspaceForm>, cx: &App) -> AnyElement {
 
     v_flex()
         .gap(px(14.0))
-        .child(
-            div()
-                .text_color(palette.fg_muted)
-                .child(t!("shell.new_workspace.example_note")),
-        )
+        .child(div().text_color(palette.fg_muted).child(note))
         .child(
             v_flex()
                 .gap(px(6.0))
@@ -250,7 +290,15 @@ fn confirm(
     let Some(target) = target_of(form, cx) else {
         return false;
     };
-    if let Err(error) = create_workspace(&target, NewWorkspaceContent::Example) {
+    let Some(content) = form
+        .read(cx)
+        .purpose
+        .as_ref()
+        .map(NewWorkspacePurpose::content)
+    else {
+        return false;
+    };
+    if let Err(error) = create_workspace(&target, content) {
         log_workspace_error("create workspace", &error);
         // The path is already on screen, in the "Creates" line.
         let message = match error {
@@ -263,19 +311,45 @@ fn confirm(
         });
         return false;
     }
-    let _ = view.update(cx, |view, cx| view.open_new_workspace(target, window, cx));
+    if let Some(purpose) = form.update(cx, |form, _| form.purpose.take()) {
+        let _ = view.update(cx, |view, cx| {
+            view.open_new_workspace(target, purpose, window, cx);
+        });
+    }
     true
 }
 
 impl AppView {
-    /// Opens the workspace the dialog just created, then selects its example environment and
-    /// opens its example request, so the first Send works without editing anything.
-    fn open_new_workspace(&mut self, root: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
+    /// Opens the workspace the dialog just created. For the example, then selects its
+    /// environment and opens its request, so the first Send works without editing anything; for
+    /// an import, runs the import into it.
+    fn open_new_workspace(
+        &mut self,
+        root: PathBuf,
+        purpose: NewWorkspacePurpose,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         log::info!("created workspace {}", root.display());
         self.open_workspace_at(&root, window, cx);
-        self.when_workspace_opens(window, cx, |view, _, cx| {
-            view.select_environment(Some(EXAMPLE_ENVIRONMENT.to_string()), cx);
-            view.open_request(EXAMPLE_REQUEST_ID.to_string(), cx);
-        });
+        match purpose {
+            NewWorkspacePurpose::Example => {
+                self.when_workspace_opens(window, cx, |view, _, cx| {
+                    view.select_environment(Some(EXAMPLE_ENVIRONMENT.to_string()), cx);
+                    view.open_request(EXAMPLE_REQUEST_ID.to_string(), cx);
+                });
+            }
+            NewWorkspacePurpose::Import(pending) => {
+                self.when_workspace_opens(window, cx, move |view, window, cx| {
+                    view.import_into_workspace(
+                        pending.kind,
+                        &pending.json,
+                        &pending.source,
+                        window,
+                        cx,
+                    );
+                });
+            }
+        }
     }
 }

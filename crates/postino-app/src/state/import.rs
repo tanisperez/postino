@@ -1,10 +1,12 @@
-//! Postman import, wired to the workspace (the "Import" menu entries).
+//! Postman import, wired to the workspace (the "Import" menu entries), and the export names an
+//! import without a workspace suggests for the new one.
 //!
 //! These are thin wrappers around [`Workspace::import_postman_collection`] and
 //! [`Workspace::import_postman_environment`], kept here so the menu handlers in
 //! `views/sidebar.rs` and this module's own tests go through the exact same call, instead of the
 //! menu poking at `postino-workspace` directly.
 
+use postino_format::postman::{parse_collection, parse_environment};
 use postino_workspace::{ImportReport, Workspace, WorkspaceError};
 
 /// Imports a Postman collection export (the raw JSON text of a `.postman_collection.json` file)
@@ -23,6 +25,19 @@ pub fn import_postman_environment(
     json: &str,
 ) -> Result<ImportReport, WorkspaceError> {
     workspace.import_postman_environment(json)
+}
+
+/// The name of a Postman collection export (`info.name`), suggested as the name of the new
+/// workspace an import without a workspace creates (GitHub #89). Fails like the import itself
+/// would on a file that is not a collection export.
+pub fn postman_collection_name(json: &str) -> Result<String, WorkspaceError> {
+    Ok(parse_collection(json)?.collection_name)
+}
+
+/// The name of a standalone Postman environment export, suggested like
+/// [`postman_collection_name`].
+pub fn postman_environment_name(json: &str) -> Result<String, WorkspaceError> {
+    Ok(parse_environment(json)?.name)
 }
 
 #[cfg(test)]
@@ -85,5 +100,24 @@ mod tests {
                 .load_environment(name)
                 .unwrap_or_else(|error| panic!("environment {name} failed to load: {error}"));
         }
+    }
+
+    #[test]
+    fn export_names_come_from_the_exports() {
+        assert_eq!(
+            postman_collection_name(COLLECTION_FIXTURE).expect("a collection"),
+            "Demo API"
+        );
+        assert_eq!(
+            postman_environment_name(ENVIRONMENT_FIXTURE).expect("an environment"),
+            "Demo"
+        );
+    }
+
+    #[test]
+    fn export_names_fail_on_something_else() {
+        assert!(postman_collection_name("{}").is_err());
+        assert!(postman_collection_name("not json").is_err());
+        assert!(postman_environment_name("not json").is_err());
     }
 }

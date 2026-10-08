@@ -161,7 +161,13 @@ impl AppView {
                 let new_weak = weak.clone();
                 menu = menu.item(PopupMenuItem::new(t!("common.new_workspace")).on_click(
                     move |_, window, cx| {
-                        new_workspace::open_new_workspace_dialog(new_weak.clone(), window, cx);
+                        new_workspace::open_new_workspace_dialog(
+                            new_weak.clone(),
+                            new_workspace::NewWorkspacePurpose::Example,
+                            None,
+                            window,
+                            cx,
+                        );
                     },
                 ));
                 let open_weak = weak.clone();

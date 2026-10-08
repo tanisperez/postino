@@ -225,3 +225,8 @@ _version: 2
   es: "No se pudo crear el espacio de trabajo: %{error}"
   gl: "Non se puido crear o espazo de traballo: %{error}"
   it: "Impossibile creare lo spazio di lavoro: %{error}"
+"shell.new_workspace.import_note":
+  en: "A new, empty folder for the Postman export %{file}."
+  es: "Una carpeta nueva y vacía para la exportación de Postman %{file}."
+  gl: "Un cartafol novo e baleiro para a exportación de Postman %{file}."
+  it: "Una nuova cartella vuota per l'esportazione di Postman %{file}."

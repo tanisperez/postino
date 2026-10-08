@@ -432,7 +432,13 @@ fn execute_action(weak: WeakEntity<AppView>, action: ActionId, window: &mut Wind
         ActionId::OpenShortcuts => {
             let _ = weak.update(cx, |view, cx| view.open_shortcuts(window, cx));
         }
-        ActionId::NewWorkspace => new_workspace::open_new_workspace_dialog(weak, window, cx),
+        ActionId::NewWorkspace => new_workspace::open_new_workspace_dialog(
+            weak,
+            new_workspace::NewWorkspacePurpose::Example,
+            None,
+            window,
+            cx,
+        ),
         ActionId::OpenWorkspace => sidebar::pick_workspace_folder(weak, window, cx),
         ActionId::NewLoadTest => {
             let _ = weak.update(cx, |view, cx| view.open_new_load_test_tab(cx));
