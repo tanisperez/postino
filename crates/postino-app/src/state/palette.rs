@@ -60,6 +60,8 @@ pub enum ActionId {
     OpenSettings,
     /// Opens the keyboard shortcuts cheat sheet.
     OpenShortcuts,
+    /// Opens the "New workspace" dialog.
+    NewWorkspace,
     /// Opens the "Open folder" picker.
     OpenWorkspace,
     /// Starts creating a new load test tab.
@@ -163,6 +165,7 @@ pub fn action_items() -> Vec<PaletteItem> {
             t!("shortcuts.title"),
             Some(super::shortcuts::open_hint()),
         ),
+        action_item(ActionId::NewWorkspace, t!("common.new_workspace"), None),
         action_item(
             ActionId::OpenWorkspace,
             t!("common.open_folder"),
@@ -366,7 +369,7 @@ mod tests {
     #[test]
     fn action_items_cover_every_action_id() {
         let items = action_items();
-        assert_eq!(items.len(), 11);
+        assert_eq!(items.len(), 12);
         assert!(
             items
                 .iter()

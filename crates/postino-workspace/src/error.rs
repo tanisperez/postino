@@ -23,6 +23,11 @@ pub enum WorkspaceError {
     #[error("{0:?} already exists")]
     AlreadyExists(String),
 
+    /// [`crate::create_workspace`] refused a folder that already exists and has something inside,
+    /// hidden files included.
+    #[error("{0:?} already exists and is not empty")]
+    NotEmpty(PathBuf),
+
     /// The named environment has neither a `.env` nor a `.local.env` file.
     #[error("environment {0:?} not found")]
     EnvironmentNotFound(String),

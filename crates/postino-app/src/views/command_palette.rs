@@ -26,7 +26,7 @@ use crate::theme::PaletteExt;
 use crate::views::components::{MethodBadge, edit_menu};
 
 use super::root::AppView;
-use super::{import_menu, sidebar};
+use super::{import_menu, new_workspace, sidebar};
 
 /// Right margin of a row's shortcut hint, so the list's scrollbar does not sit on top of it.
 const SCROLLBAR_CLEARANCE: f32 = 6.0;
@@ -359,6 +359,7 @@ fn action_icon(action: ActionId) -> gpui_kit::assets::IconName {
         ActionId::ImportCollection | ActionId::ImportEnvironment => Lucide::Download,
         ActionId::OpenSettings => Lucide::Settings,
         ActionId::OpenShortcuts => Lucide::Keyboard,
+        ActionId::NewWorkspace => Lucide::FolderPlus,
         ActionId::OpenWorkspace => Lucide::Folder,
         ActionId::NewLoadTest => Lucide::Gauge,
         ActionId::ToggleTheme => Lucide::Palette,
@@ -431,6 +432,7 @@ fn execute_action(weak: WeakEntity<AppView>, action: ActionId, window: &mut Wind
         ActionId::OpenShortcuts => {
             let _ = weak.update(cx, |view, cx| view.open_shortcuts(window, cx));
         }
+        ActionId::NewWorkspace => new_workspace::open_new_workspace_dialog(weak, window, cx),
         ActionId::OpenWorkspace => sidebar::pick_workspace_folder(weak, window, cx),
         ActionId::NewLoadTest => {
             let _ = weak.update(cx, |view, cx| view.open_new_load_test_tab(cx));
