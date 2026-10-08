@@ -102,7 +102,13 @@ impl RenderOnce for InlineMessage {
             .text_color(palette.fg)
             .child(self.kind.icon().small().text_color(icon_color));
 
-        let mut text_line = h_flex().flex_1().gap(px(4.0)).child(self.text);
+        // `min_w_0` on the line and the text, so a long message wraps inside the strip instead
+        // of running past its right edge.
+        let mut text_line = h_flex()
+            .flex_1()
+            .min_w_0()
+            .gap(px(4.0))
+            .child(div().min_w_0().child(self.text));
         if let Some(suffix) = self.mono_suffix {
             text_line = text_line.child(div().font_family(mono_font).child(suffix));
         }
