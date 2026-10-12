@@ -4,6 +4,7 @@
 //! [`postino_runner::Runner::run`]; this module's only job is to run it off the main thread so
 //! the UI stays responsive, show a spinner while it is in flight, and allow cancelling it.
 
+use std::sync::Arc;
 use std::time::Instant;
 
 use gpui_kit::*;
@@ -31,19 +32,12 @@ pub(crate) struct SendingTask {
 }
 
 impl AppView {
-    /// The environment to send with: the active environment's variables, loaded from the
-    /// workspace, or an empty [`Environment`] for "No environment" (or when no workspace is
-    /// open, which should not happen while a tab is open, but is handled the same way rather
-    /// than panicking).
-    pub(crate) fn active_environment(&self) -> Environment {
-        let workspace = match self.state.workspace.as_ref() {
-            Some(workspace) => workspace,
-            None => return Environment::default(),
-        };
-        let Some(name) = self.state.active_environment.as_deref() else {
-            return Environment::default();
-        };
-        workspace.load_environment(name).unwrap_or_default()
+    /// The environment to send with: the active environment's variables as last loaded
+    /// (`AppState::environment`, an O(1) clone), or an empty [`Environment`] for "No environment" or when no
+    /// workspace is open. Never reads the files, so render can call it; whatever runs a request
+    /// calls `AppState::reload_environment` first, to see edits made outside Postino.
+    pub(crate) fn active_environment(&self) -> Arc<Environment> {
+        self.state.environment.clone()
     }
 
     /// The active tab's request resolved against the active environment and the session
@@ -68,6 +62,8 @@ impl AppView {
     /// [`AppView::sending`] (done here unconditionally) drops any request already in flight,
     /// cancelling it, so starting a new send also acts as "cancel the previous one".
     pub(crate) fn send_active_tab(&mut self, cx: &mut Context<Self>) {
+        // The files may have changed outside Postino since they were last read.
+        self.state.reload_environment();
         let Some(tab) = self.state.tabs.active() else {
             return;
         };

@@ -61,7 +61,7 @@ shop/
 <p>Conflicts in a <code>.postino</code> or <code>.env</code> file are resolved like in any text file. Keep the conflict markers out of the result: a file that still contains <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> does not parse and shows up as <strong>(broken)</strong> in the sidebar until you fix it. Postino reads files as they are on disk, so after a pull, reopen the workspace to see the changes.</p>
 
 <h2>The status bar</h2>
-<p>When the workspace is inside a git repository, the status bar shows the current branch, or the short commit hash on a detached <code>HEAD</code>. Postino only reads <code>.git/HEAD</code> to find it; it never runs git, and never commits, pulls or pushes for you. Worktrees are supported.</p>
+<p>When the workspace is inside a git repository, the status bar shows the current branch, or the short commit hash on a detached <code>HEAD</code>. Postino only reads <code>.git/HEAD</code> to find it, when the workspace opens and when its window gets the focus back, so a branch you switch in a terminal shows as soon as you come back. It never runs git, and never commits, pulls or pushes for you. Worktrees are supported.</p>
 
 <h2>Line endings</h2>
 <p>Postino reads both <code>\n</code> and <code>\r\n</code> and always writes <code>\n</code>. If your repository converts line endings on Windows (<code>core.autocrlf</code>), add this to <code>.gitattributes</code> so files stay identical on every system:</p>

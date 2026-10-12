@@ -17,6 +17,16 @@ use super::components::IconButton;
 use super::root::AppView;
 
 impl AppView {
+    /// Reads the open workspace's git branch again into [`AppView::git_branch`]. Call when the
+    /// workspace opens and when the window gets the focus back, never from render.
+    pub(crate) fn refresh_git_branch(&mut self) {
+        self.git_branch = self
+            .state
+            .workspace
+            .as_ref()
+            .and_then(|workspace| git_branch(workspace.root()));
+    }
+
     /// Renders the status bar.
     pub(crate) fn render_status_bar(&self, cx: &Context<Self>) -> AnyElement {
         let palette = cx.palette();
@@ -37,7 +47,7 @@ impl AppView {
             .children(self.state.workspace.as_ref().map(|workspace| {
                 let path_label =
                     state::format::shorten_path(workspace.root(), dirs::home_dir().as_deref());
-                let branch = git_branch(workspace.root());
+                let branch = self.git_branch.clone();
                 h_flex()
                     .items_center()
                     .gap(px(16.0))

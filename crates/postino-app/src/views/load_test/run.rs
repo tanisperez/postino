@@ -133,7 +133,8 @@ impl AppView {
         );
         let started_at_unix = unix_now();
 
-        let environment = self.active_environment();
+        self.state.reload_environment();
+        let environment = (*self.active_environment()).clone();
         let session_env = self.state.session_env.clone();
         let engine = self.script_engine.clone();
         let options = self.send_options.clone();

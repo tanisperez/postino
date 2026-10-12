@@ -248,12 +248,8 @@ fn build_all_items(view: &Entity<AppView>, cx: &mut App) -> Vec<PaletteItem> {
         .as_ref()
         .map(|workspace| palette::request_items(workspace.tree()))
         .unwrap_or_default();
-    let environments = read
-        .state
-        .workspace
-        .as_ref()
-        .and_then(|workspace| workspace.list_environments().ok())
-        .unwrap_or_default();
+    // From the Environments panel rows, never the folder: this runs on every repaint.
+    let environments: Vec<String> = read.env_rows.iter().map(|row| row.name.clone()).collect();
     let mut items = requests;
     items.extend(palette::environment_items(&environments));
     items.extend(palette::action_items());

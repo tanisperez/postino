@@ -106,7 +106,7 @@ impl AppView {
             }
         );
         if self.nav.sidebar_visible() && self.nav.section() == NavSection::Environments {
-            self.refresh_env_rows();
+            self.refresh_environments();
         }
         if self.nav.section() != NavSection::Environments {
             self.new_env_input = None;

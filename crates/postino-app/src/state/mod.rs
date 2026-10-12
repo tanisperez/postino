@@ -39,6 +39,9 @@ pub mod workspace_log;
 
 pub use tabs::{TabKind, TabsState};
 
+use std::sync::Arc;
+
+use postino_core::Environment;
 use postino_runner::SessionEnv;
 use postino_workspace::Workspace;
 
@@ -51,8 +54,13 @@ pub struct AppState {
     pub workspace: Option<Workspace>,
     /// The requests currently open as tabs.
     pub tabs: TabsState,
-    /// The name of the active environment, `None` for "No environment".
+    /// The name of the active environment, `None` for "No environment". Change it with
+    /// [`Self::set_active_environment`], which also loads its variables.
     pub active_environment: Option<String>,
+    /// The active environment's variables as last read from disk (GitHub #79), empty for "No
+    /// environment". Render reads this, never the files. Only [`Self::set_active_environment`]
+    /// and [`Self::reload_environment`] change it. An `Arc`, so a clone is O(1).
+    pub(crate) environment: Arc<Environment>,
     /// Environment overrides scripts have set during this session (the second
     /// variable layer in `docs/format.md`). Carried across requests so, for example, a login token a post script sets with
     /// `env.set` is visible to the next request. The MVP never writes this to disk.
@@ -80,7 +88,25 @@ impl AppState {
         self.workspace = Some(workspace);
         self.tabs = TabsState::default();
         self.active_environment = None;
+        self.environment = Arc::default();
         self.session_env = SessionEnv::new();
+    }
+
+    /// Makes `name` the active environment (`None` for "No environment") and loads its variables.
+    pub fn set_active_environment(&mut self, name: Option<String>) {
+        self.active_environment = name;
+        self.reload_environment();
+    }
+
+    /// Reads the active environment's variables from disk again. Call when its files may have
+    /// changed: the environment editor saved, an import wrote one, a request is about to run.
+    /// Never from render. A file that cannot be read loads as an empty environment, as it sends.
+    pub fn reload_environment(&mut self) {
+        let environment = match (self.workspace.as_ref(), self.active_environment.as_deref()) {
+            (Some(workspace), Some(name)) => workspace.load_environment(name).unwrap_or_default(),
+            _ => Environment::default(),
+        };
+        self.environment = Arc::new(environment);
     }
 }
 
@@ -112,6 +138,78 @@ mod tests {
         assert!(state.workspace.is_some());
         assert!(state.tabs.open_tabs().is_empty());
         assert!(state.active_environment.is_none());
+        assert!(state.environment.variables.is_empty());
         assert!(state.session_env.as_slice().is_empty());
+    }
+
+    /// A state with a workspace in a fresh folder whose `dev` environment has `host`.
+    fn state_with_dev_environment(dir: &std::path::Path) -> AppState {
+        let mut state = AppState::new();
+        state.set_workspace(Workspace::open(dir).expect("open"));
+        write_dev_environment(dir, "host=a.test\n");
+        state
+    }
+
+    fn write_dev_environment(dir: &std::path::Path, text: &str) {
+        let environments = dir.join("environments");
+        std::fs::create_dir_all(&environments).expect("create environments");
+        std::fs::write(environments.join("dev.env"), text).expect("write dev.env");
+    }
+
+    fn host(state: &AppState) -> Option<String> {
+        state
+            .environment
+            .variables
+            .iter()
+            .find(|variable| variable.key == "host")
+            .map(|variable| variable.value.clone())
+    }
+
+    #[test]
+    fn setting_the_active_environment_loads_its_variables() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut state = state_with_dev_environment(dir.path());
+
+        state.set_active_environment(Some("dev".to_string()));
+        assert_eq!(host(&state).as_deref(), Some("a.test"));
+
+        state.set_active_environment(None);
+        assert!(state.environment.variables.is_empty());
+    }
+
+    #[test]
+    fn the_variables_stay_as_loaded_until_reloaded() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut state = state_with_dev_environment(dir.path());
+        state.set_active_environment(Some("dev".to_string()));
+
+        write_dev_environment(dir.path(), "host=b.test\n");
+        assert_eq!(host(&state).as_deref(), Some("a.test"));
+
+        state.reload_environment();
+        assert_eq!(host(&state).as_deref(), Some("b.test"));
+    }
+
+    #[test]
+    fn a_missing_environment_loads_as_empty() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut state = state_with_dev_environment(dir.path());
+
+        state.set_active_environment(Some("gone".to_string()));
+
+        assert_eq!(state.active_environment.as_deref(), Some("gone"));
+        assert!(state.environment.variables.is_empty());
+    }
+
+    #[test]
+    fn set_workspace_drops_the_loaded_variables() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut state = state_with_dev_environment(dir.path());
+        state.set_active_environment(Some("dev".to_string()));
+
+        let other = tempfile::tempdir().expect("tempdir");
+        state.set_workspace(Workspace::open(other.path()).expect("open"));
+
+        assert!(state.environment.variables.is_empty());
     }
 }

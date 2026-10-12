@@ -440,9 +440,9 @@ impl AppView {
                 }
                 self.state.tabs.mark_saved(index);
                 self.workspace_error = None;
-                // Requests read the active environment from disk when they run, so the next
-                // send already sees the saved values.
-                self.refresh_env_rows();
+                // Also reloads the active environment, so variable hints and the next send see
+                // the saved values.
+                self.refresh_environments();
             }
             Err(error) => {
                 log_workspace_error(&format!("save environment {name:?}"), &error);
@@ -515,7 +515,7 @@ impl AppView {
                 }
                 // The remembered environment is rewritten even when it is not the active one.
                 if self.state.active_environment.as_deref() == Some(old.as_str()) {
-                    self.state.active_environment = Some(new.clone());
+                    self.state.set_active_environment(Some(new.clone()));
                     crate::state::config::record_environment(&root, Some(&new));
                 } else if crate::state::config::last_environment(&root).as_deref()
                     == Some(old.as_str())
@@ -523,7 +523,7 @@ impl AppView {
                     crate::state::config::record_environment(&root, Some(&new));
                 }
                 self.workspace_error = None;
-                self.refresh_env_rows();
+                self.refresh_environments();
             }
             Err(error) => {
                 log_workspace_error(&format!("rename environment {old:?}"), &error);
@@ -549,7 +549,7 @@ impl AppView {
                     self.select_environment(None, cx);
                 }
                 self.workspace_error = None;
-                self.refresh_env_rows();
+                self.refresh_environments();
             }
             Err(error) => {
                 log_workspace_error(&format!("delete environment {name:?}"), &error);

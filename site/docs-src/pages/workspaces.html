@@ -97,7 +97,7 @@ my-api/
 <h2>Editing files outside Postino</h2>
 <p>Because requests are plain text, you can edit them in any editor, generate them with a script or merge them with git. A few things to keep in mind:</p>
 <ul>
-    <li>Postino does not watch the folder for changes. Reopen the workspace from the workspace switcher to see files created outside the app.</li>
+    <li>Postino does not watch the folder for changes. Reopen the workspace from the workspace switcher to see files created outside the app. Environment files are the exception: Postino reads them again when its window gets the focus back (see <a href="environments.html#environment-files">Environment files</a>).</li>
     <li>When you save a request, Postino writes it in its canonical form: the same content always gives the same bytes, with sections in a fixed order. Hand formatting such as extra blank lines between sections is normalized. See <a href="file-format.html#canonical-serialization">canonical serialization</a>.</li>
     <li>Files are saved atomically: Postino writes a temporary file and renames it over the old one, so a crash never leaves a half written request.</li>
 </ul>
