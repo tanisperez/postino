@@ -24,13 +24,11 @@ use crate::state::number::format_decimal;
 use crate::state::settings::{
     InvalidTlsCertificates, LogLevel, Settings, SettingsCategory, ThemeChoice,
 };
-use crate::theme::metrics::{
-    CONTROL_HEIGHT, RADIUS_LG, RADIUS_MD, RADIUS_SM, THEME_PREVIEW_HEIGHT, THEME_PREVIEW_PADDING,
-};
+use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
 use crate::theme::{self, Palette, PaletteExt};
 
 use super::components::{
-    GhostButton, IconButton, MODAL_INNER_RADIUS, ModalPlacement, framed_dialog,
+    GhostButton, IconButton, MODAL_INNER_RADIUS, ModalPlacement, ThemeCard, framed_dialog,
 };
 use super::root::AppView;
 
@@ -210,8 +208,8 @@ impl AppView {
         self.set_theme_choice(next, window, cx);
     }
 
-    /// Picks a theme card.
-    fn set_theme_choice(
+    /// Picks a theme card, in Settings or in the welcome tab.
+    pub(crate) fn set_theme_choice(
         &mut self,
         choice: ThemeChoice,
         window: &mut Window,
@@ -631,6 +629,26 @@ fn render_language_section(palette: &Palette, select: &SettingsSelect) -> AnyEle
 }
 
 /// The "Theme" section: the description and the three theme cards.
+/// The [`ThemeCard`] for `choice`, selected when it is `current`, that picks it on click. Shared by
+/// Settings and the welcome tab; `id_prefix` keeps their element ids apart.
+pub(crate) fn theme_card(
+    weak: WeakEntity<AppView>,
+    id_prefix: &str,
+    choice: ThemeChoice,
+    current: ThemeChoice,
+) -> ThemeCard {
+    let id = match choice {
+        ThemeChoice::System => "system",
+        ThemeChoice::Light => "light",
+        ThemeChoice::Dark => "dark",
+    };
+    ThemeCard::new(SharedString::from(format!("{id_prefix}-{id}")), choice)
+        .selected(choice == current)
+        .on_click(move |_, window, cx| {
+            let _ = weak.update(cx, |view, cx| view.set_theme_choice(choice, window, cx));
+        })
+}
+
 fn render_theme_section(
     weak: WeakEntity<AppView>,
     palette: &Palette,
@@ -657,164 +675,10 @@ fn render_theme_section(
             h_flex().gap(px(12.0)).children(
                 [ThemeChoice::System, ThemeChoice::Light, ThemeChoice::Dark]
                     .into_iter()
-                    .map(|choice| {
-                        render_theme_card(weak.clone(), palette, choice, choice == current)
-                    }),
+                    .map(|choice| theme_card(weak.clone(), "settings-theme", choice, current)),
             ),
         )
         .into_any_element()
-}
-
-/// One theme card (System, Light or Dark): the mini light/dark preview, the radio and the label.
-fn render_theme_card(
-    weak: WeakEntity<AppView>,
-    palette: &Palette,
-    choice: ThemeChoice,
-    selected: bool,
-) -> AnyElement {
-    let (id, label): (&'static str, String) = match choice {
-        ThemeChoice::System => (
-            "settings-theme-system",
-            t!("settings.theme.system").into_owned(),
-        ),
-        ThemeChoice::Light => (
-            "settings-theme-light",
-            t!("settings.theme.light").into_owned(),
-        ),
-        ThemeChoice::Dark => (
-            "settings-theme-dark",
-            t!("settings.theme.dark").into_owned(),
-        ),
-    };
-    // System's preview is half light, half dark; Light and Dark show their own single mode on
-    // both sides (System is `[light, dark]`, Light is
-    // `[light, light]`, Dark is `[dark, dark]`: the two palettes passed to each card's left and
-    // right half).
-    let (left, right) = match choice {
-        ThemeChoice::System => (Palette::light(), Palette::dark()),
-        ThemeChoice::Light => (Palette::light(), Palette::light()),
-        ThemeChoice::Dark => (Palette::dark(), Palette::dark()),
-    };
-    // Every card's left half draws its accent line in the dark palette's accent color, regardless
-    // of which theme the card represents: a fixed swatch color, for visual
-    // consistency across the three previews, not the current theme mode's own accent.
-    let accent_line = Palette::dark().accent;
-
-    let ring_color = if selected {
-        palette.accent
-    } else {
-        palette.border_strong
-    };
-    let radio_color = if selected {
-        palette.accent
-    } else {
-        palette.border_strong
-    };
-
-    let mut radio = div()
-        .size(px(14.0))
-        .rounded_full()
-        .border_color(radio_color);
-    radio = if selected {
-        radio.border_4()
-    } else {
-        radio.border_1()
-    };
-
-    // A real border, not a `box-shadow` ring (an `N px` spread shadow): a
-    // spread, zero-blur, zero-offset shadow on a `rounded()` + `overflow_hidden()` box rendered
-    // as a filled halo covering the box's own content here, not a thin outline as CSS would, so
-    // the border achieves the same "ring" look without that. The frame is a recessed well
-    // (`surface`, `accent_subtle` when selected) around the mini window, which keeps its own
-    // rounded corners and border. The selected frame's thicker border eats one pixel of padding,
-    // so the mini window stays put when the selection changes.
-    let mut preview_box = div()
-        .flex()
-        .h(px(THEME_PREVIEW_HEIGHT))
-        .rounded(px(RADIUS_LG))
-        .border_color(ring_color)
-        .bg(if selected {
-            palette.accent_subtle
-        } else {
-            palette.surface
-        });
-    preview_box = if selected {
-        preview_box.border_2().p(px(THEME_PREVIEW_PADDING - 1.0))
-    } else {
-        preview_box.border_1().p(px(THEME_PREVIEW_PADDING))
-    };
-    // gpui clips children to a rectangle, not to rounded corners, so each half rounds its own
-    // outer corners inside the mini window's 1 px border.
-    let mini_radius = px(RADIUS_SM - 1.0);
-    let mini_window = h_flex()
-        .flex_1()
-        .items_stretch()
-        .rounded(px(RADIUS_SM))
-        .border_1()
-        .border_color(palette.border_strong);
-
-    v_flex()
-        .id(id)
-        .flex_1()
-        .gap(px(8.0))
-        .cursor_pointer()
-        .hover(|style| style.opacity(0.85))
-        .active(|style| style.opacity(0.7))
-        .child(
-            preview_box.child(
-                mini_window
-                    .child(
-                        v_flex()
-                            .flex_1()
-                            .rounded_l(mini_radius)
-                            .bg(left.surface)
-                            .p(px(8.0))
-                            .gap(px(5.0))
-                            .child(preview_line(0.7, left.border_strong))
-                            .child(preview_line(0.5, accent_line))
-                            .child(preview_line(0.6, left.border_strong)),
-                    )
-                    .child(
-                        v_flex()
-                            .flex_grow(2.0)
-                            .flex_shrink(1.0)
-                            .flex_basis(relative(0.0))
-                            .rounded_r(mini_radius)
-                            .bg(right.bg)
-                            .p(px(8.0))
-                            .gap(px(6.0))
-                            .child(
-                                div()
-                                    .h(px(12.0))
-                                    .rounded(px(4.0))
-                                    .border_1()
-                                    .border_color(right.border_strong),
-                            )
-                            .child(preview_line(0.8, right.border_strong))
-                            .child(preview_line(0.55, right.border_strong)),
-                    ),
-            ),
-        )
-        .child(
-            h_flex()
-                .items_center()
-                .gap(px(8.0))
-                .child(radio)
-                .child(label),
-        )
-        .on_click(move |_, window, cx| {
-            let _ = weak.update(cx, |view, cx| view.set_theme_choice(choice, window, cx));
-        })
-        .into_any_element()
-}
-
-/// A mini preview "line": a thin, colored, rounded bar `width_fraction` of its parent's width.
-fn preview_line(width_fraction: f32, color: Hsla) -> impl IntoElement {
-    div()
-        .h(px(5.0))
-        .w(relative(width_fraction))
-        .rounded(px(3.0))
-        .bg(color)
 }
 
 /// The "Interface" section: the UI font picker, its size stepper and the welcome tab switch.

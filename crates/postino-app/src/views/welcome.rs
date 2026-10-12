@@ -12,6 +12,7 @@ use gpui_kit::*;
 use rust_i18n::t;
 
 use crate::state;
+use crate::state::settings::ThemeChoice;
 use crate::state::shortcuts::MODIFIER_KEY;
 use crate::state::welcome::{QUICK_START_URL, RecentWorkspace, WelcomeTab};
 use crate::theme::metrics::{
@@ -25,6 +26,7 @@ use super::components::{PrimaryButton, SecondaryButton, SectionLabel};
 use super::import_menu::{self, ImportKind};
 use super::new_workspace::{self, NewWorkspacePurpose};
 use super::root::AppView;
+use super::settings::theme_card;
 use super::sidebar;
 
 /// A click handler of a Start row, a link or the checkbox.
@@ -88,6 +90,7 @@ impl AppView {
                             })),
                     ),
             )
+            .child(render_theme(weak.clone(), self.state.settings.theme))
             .child(div().flex_1().min_h(px(24.0)))
             .child(render_footer(
                 weak,
@@ -408,6 +411,27 @@ fn list_row(id: impl Into<ElementId>, palette: &Palette) -> Stateful<Div> {
 }
 
 /// The links (quick start, shortcuts, command palette) and the "show at startup" checkbox.
+/// The Theme row: the three theme cards of Settings, Appearance, so the look can be picked on the
+/// first start without opening Settings (GitHub #98).
+fn render_theme(weak: WeakEntity<AppView>, current: ThemeChoice) -> impl IntoElement {
+    v_flex()
+        .mt(px(36.0))
+        .gap(px(6.0))
+        .child(
+            div()
+                .px(px(10.0))
+                .pb(px(6.0))
+                .child(SectionLabel::new(t!("welcome.theme"))),
+        )
+        .child(
+            h_flex().gap(px(12.0)).children(
+                [ThemeChoice::System, ThemeChoice::Light, ThemeChoice::Dark]
+                    .into_iter()
+                    .map(|choice| theme_card(weak.clone(), "welcome-theme", choice, current)),
+            ),
+        )
+}
+
 fn render_footer(
     weak: WeakEntity<AppView>,
     show_welcome: bool,

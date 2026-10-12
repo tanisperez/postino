@@ -188,7 +188,7 @@ button, bottom border), a body with 20 px padding and, when it has buttons, a 52
 a top border and the buttons at the end. A child that paints its own background into the card's
 corners rounds them with `MODAL_INNER_RADIUS` (13, inside the border).
 
-Settings, Appearance, Theme: three cards, each a 92 px frame (radius 10, `surface`, 1 px
+Settings, Appearance, Theme (and the welcome tab): three `ThemeCard`s, each a 92 px frame (radius 10, `surface`, 1 px
 `border_strong`; selected: `accent_subtle`, 2 px `accent`) with 8 px of padding around a mini
 window (radius 6, 1 px `border_strong`) whose left half is a sidebar and right half an editor, in
 the colors of the theme the card stands for.
@@ -237,8 +237,14 @@ Top to bottom (px unless said otherwise):
      `fg_subtle`, which takes the rest and truncates with an ellipsis. The path is `~`-shortened
      and elided in the middle to at most 44 characters. With no recent workspace, the column is
      left empty (no heading) and Start keeps its width.
-4. **Spacer.** Grows to push the footer down, at least 24 high.
-5. **Footer.** Top border 1 `border`, padding top 16, text 12.5, wrapping row, items centered,
+4. **Theme.** Margin top 36, a stack with gap 6: a `SectionLabel` ("Theme") padded 0 10 6 like
+   the column headings, then a row with gap 12 of the three `ThemeCard`s (System, Light, Dark),
+   each taking a third of the column, the same component and size as Settings, Appearance. A
+   click applies and saves the theme. Below Start and Recent on purpose: creating or opening a
+   workspace stays the first thing on the page, and the theme fills the space above the footer.
+   On a 760 high window without a workspace, the footer then needs a scroll.
+5. **Spacer.** Grows to push the footer down, at least 24 high.
+6. **Footer.** Top border 1 `border`, padding top 16, text 12.5, wrapping row, items centered,
    gap 16.
    - Links, gap 10, separated by the same faint `·`: "Quick start", "Shortcuts" with "(F1)" and
      "Search" with "(Ctrl+K)". Text `accent_text`, `fg` on hover, no underline, pointer cursor. The
@@ -271,8 +277,8 @@ Where the code differs from `Welcome.dc.html`:
 
 `buttons` (primary, secondary, danger, ghost), `card`, `document_tabs`, `edit_menu`, `env_pill`,
 `icon_button`, `inline_message`, `key_value_table`, `method_badge`, `section_label`,
-`segmented_control`, `select_trigger`, `status_badge`, `text_field`, `underline_tabs`, `url_bar`,
-`variable_chip`.
+`segmented_control`, `select_trigger`, `status_badge`, `text_field`, `theme_card`,
+`underline_tabs`, `url_bar`, `variable_chip`, plus `modal` (the frame every dialog shares).
 Reuse one before writing a new widget, and add new ones to the gallery.
 
 Icons are Lucide, through `gpui_kit::assets::IconName`. The app must keep

@@ -18,8 +18,10 @@ use super::{
     Card, DangerButton, DocumentTab, DocumentTabs, EnvMenuItem, EnvPill, GhostButton, IconButton,
     InlineMessage, InlineMessageKind, KeyValueRow, KeyValueTable, MethodBadge, PrimaryButton,
     SecondaryButton, SectionLabel, SegmentedControl, SegmentedItem, StatusBadge, StatusState,
-    UnderlineTabItem, UnderlineTabs, UrlBar, VariableChip, select_label_row, select_trigger,
+    ThemeCard, UnderlineTabItem, UnderlineTabs, UrlBar, VariableChip, select_label_row,
+    select_trigger,
 };
+use crate::state::settings::ThemeChoice;
 use crate::state::variable_hint::VariableContext;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
@@ -62,7 +64,8 @@ impl AppView {
                     .child(section("Inline messages", render_inline_messages()))
                     .child(section("URL bar", self.render_url_bar_demo(window, cx)))
                     .child(section("Env pill", render_env_pill()))
-                    .child(section("Card", render_card())),
+                    .child(section("Card", render_card()))
+                    .child(section("Theme cards", render_theme_cards())),
             )
             .into_any_element()
     }
@@ -398,6 +401,20 @@ fn render_env_pill() -> impl IntoElement {
             EnvMenuItem::named("production").shortcut("Ctrl+3"),
         ],
     ))
+}
+
+/// The three [`ThemeCard`]s, Dark selected, as in Settings and the welcome tab. Clicks do
+/// nothing here.
+fn render_theme_cards() -> impl IntoElement {
+    h_flex().max_w(px(640.0)).gap(px(12.0)).children(
+        [ThemeChoice::System, ThemeChoice::Light, ThemeChoice::Dark].map(|choice| {
+            ThemeCard::new(
+                SharedString::from(format!("gallery-theme-{choice:?}")),
+                choice,
+            )
+            .selected(choice == ThemeChoice::Dark)
+        }),
+    )
 }
 
 /// A [`Card`] with a couple of KPI-like children, close enough to a dashboard
