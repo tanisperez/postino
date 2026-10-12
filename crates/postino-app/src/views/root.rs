@@ -154,8 +154,13 @@ pub struct AppView {
     /// The activity rail's section and collapsed state (`views/navigation.rs`).
     pub(crate) nav: state::navigation::NavState,
     /// The Environments panel's rows, loaded when the workspace or an environment changes
-    /// ([`Self::refresh_environments`]) so render never reads files.
+    /// ([`Self::refresh_environments`]) so render never reads files. The environment picker and
+    /// the command palette list these names too.
     pub(crate) env_rows: Vec<state::env_panel::EnvRow>,
+    /// The status bar's git branch (or short hash) of the open workspace, read when it opens and
+    /// when the window gets the focus back ([`Self::refresh_git_branch`]), so render never reads
+    /// `.git/HEAD`.
+    pub(crate) git_branch: Option<String>,
     /// The `gpui` entities behind every open environment editor tab, keyed by tab id, created
     /// when the tab is first shown. See `views/env_editor.rs`.
     pub(crate) env_editors: HashMap<String, crate::views::env_editor::EnvEditorEntities>,
@@ -219,11 +224,12 @@ impl AppView {
         cx.on_focus_in(&focus_handle, window, |_, _, cx| cx.notify())
             .detach();
         // Postino does not watch the workspace folder: coming back to the window is when files
-        // edited elsewhere, such as an `.env` in another editor, are read again. An event, never
-        // a timer, so an idle window still does no work.
+        // changed elsewhere, such as an `.env` edited in another editor or a branch switched in a
+        // terminal, are read again. An event, never a timer, so an idle window does no work.
         cx.observe_window_activation(window, |view, window, cx| {
             if window.is_window_active() {
                 view.refresh_environments();
+                view.refresh_git_branch();
                 cx.notify();
             }
         })
@@ -266,6 +272,7 @@ impl AppView {
             load_runs: HashMap::new(),
             nav: state::navigation::NavState::default(),
             env_rows: Vec::new(),
+            git_branch: None,
             env_editors: HashMap::new(),
             new_env_input: None,
             load_targets: state::load_panel::TargetTree::default(),
@@ -511,6 +518,7 @@ impl AppView {
                 self.workspace_path = Some(absolute.clone());
                 self.restore_last_environment(&absolute);
                 self.refresh_environments();
+                self.refresh_git_branch();
             }
             Err(error) => {
                 log_workspace_error(&format!("open workspace {}", root.display()), &error);

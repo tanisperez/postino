@@ -31,15 +31,17 @@ impl AppView {
         weak: WeakEntity<Self>,
         _cx: &mut Context<Self>,
     ) -> AnyElement {
-        let Some(workspace) = self.state.workspace.as_ref() else {
+        if self.state.workspace.is_none() {
             return Button::new("env-pill")
                 .ghost()
                 .h(px(ENV_PILL_HEIGHT))
                 .label(t!("request.env.no_workspace"))
                 .disabled(true)
                 .into_any_element();
-        };
-        let environments = workspace.list_environments().unwrap_or_default();
+        }
+        // The names come from the Environments panel rows, loaded when an environment changes
+        // (`refresh_environments`), so render never reads the `environments/` folder.
+        let environments = self.env_rows.iter().map(|row| row.name.clone());
         let active = self.state.active_environment.clone();
 
         let mut items = vec![
@@ -53,7 +55,7 @@ impl AppView {
                     }
                 }),
         ];
-        for (index, name) in environments.into_iter().enumerate() {
+        for (index, name) in environments.enumerate() {
             let is_active = active.as_deref() == Some(name.as_str());
             let mut item = EnvMenuItem::named(name.clone()).active(is_active);
             if index < SHORTCUT_COUNT {
