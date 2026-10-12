@@ -39,6 +39,7 @@ impl AppView {
         if window.has_active_dialog(cx) {
             return;
         }
+        self.state.reload_environment();
         let Some(preview) = self.current_preview() else {
             return;
         };

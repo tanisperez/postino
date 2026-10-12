@@ -42,6 +42,7 @@ password=correct-horse-battery-staple
 apiKey=sk_test_51H...
 ```
 <p>The format is one <code>KEY=value</code> per line. Lines starting with <code>#</code> are comments. The value is everything after the first <code>=</code>, kept exactly as written: no quotes, no escaping and no trimming. The full rules are in the <a href="file-format.html#environment-files">file format reference</a>.</p>
+<p>You can edit these files in any editor while Postino is open. Postino reads the active environment again every time it sends a request and when its window gets the focus back, so new values apply without reopening the workspace. An environment tab that is already open keeps the values it loaded; close and reopen it.</p>
 
 <div class="callout warning">
     <span class="title">Keep secrets out of git</span>
@@ -113,7 +114,7 @@ apiKey=sk_test_51H...
     <li>Click <strong>New environment</strong>, type a name and press <kbd>Enter</kbd>.</li>
     <li>Postino creates <code>environments/&lt;name&gt;.env</code>, creating the folder if needed, and you can start adding variables.</li>
 </ol>
-<p>You can also create the files by hand in any editor. An environment exists as soon as its <code>.env</code> file does.</p>
+<p>You can also create the files by hand in any editor. An environment exists as soon as its <code>.env</code> file does, and Postino lists it when its window gets the focus back.</p>
 
 <h2 id="defining-a-variable-from-a-request">Defining a variable from a request</h2>
 <p>Click a variable chip in the URL bar or in a table, or <strong>Define</strong> on the <strong>Unknown variable</strong> warning of the response. A red chip has no value yet; a chip that resolves takes you to its definition, unless its value comes from a script, which has no row to show. Where you land depends on the active environment:</p>

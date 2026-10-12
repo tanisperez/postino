@@ -213,7 +213,7 @@ impl AppView {
                 self.workspace_error = None;
                 self.refresh_tree(cx);
                 // Both kinds can write an environment: a collection's own variables become one.
-                self.refresh_env_rows();
+                self.refresh_environments();
                 show_import_report_dialog(kind, report, window, cx);
             }
             Err(error) => {

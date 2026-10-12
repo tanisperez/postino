@@ -154,7 +154,7 @@ pub struct AppView {
     /// The activity rail's section and collapsed state (`views/navigation.rs`).
     pub(crate) nav: state::navigation::NavState,
     /// The Environments panel's rows, loaded when the workspace or an environment changes
-    /// ([`Self::refresh_env_rows`]) so render never reads files.
+    /// ([`Self::refresh_environments`]) so render never reads files.
     pub(crate) env_rows: Vec<state::env_panel::EnvRow>,
     /// The `gpui` entities behind every open environment editor tab, keyed by tab id, created
     /// when the tab is first shown. See `views/env_editor.rs`.
@@ -218,6 +218,16 @@ impl AppView {
             .detach();
         cx.on_focus_in(&focus_handle, window, |_, _, cx| cx.notify())
             .detach();
+        // Postino does not watch the workspace folder: coming back to the window is when files
+        // edited elsewhere, such as an `.env` in another editor, are read again. An event, never
+        // a timer, so an idle window still does no work.
+        cx.observe_window_activation(window, |view, window, cx| {
+            if window.is_window_active() {
+                view.refresh_environments();
+                cx.notify();
+            }
+        })
+        .detach();
 
         let send_options = SendOptions {
             invalid_certificates: settings.invalid_tls_certificates.to_http(),
@@ -372,7 +382,7 @@ impl AppView {
             return;
         }
         if let Ok(env_name) = std::env::var("POSTINO_ENV") {
-            self.state.active_environment = Some(env_name);
+            self.state.set_active_environment(Some(env_name));
         }
         if let Ok(request_id) = std::env::var("POSTINO_AUTOSEND") {
             self.open_request(request_id, cx);
@@ -500,7 +510,7 @@ impl AppView {
                 self.recent_workspaces = state::config::recent_workspaces();
                 self.workspace_path = Some(absolute.clone());
                 self.restore_last_environment(&absolute);
-                self.refresh_env_rows();
+                self.refresh_environments();
             }
             Err(error) => {
                 log_workspace_error(&format!("open workspace {}", root.display()), &error);
@@ -546,7 +556,7 @@ impl AppView {
             .is_ok_and(|names| names.contains(&name));
         if exists {
             log::debug!("restored active environment: {name}");
-            self.state.active_environment = Some(name);
+            self.state.set_active_environment(Some(name));
         }
     }
 
@@ -980,7 +990,7 @@ impl AppView {
         if let Some(workspace) = self.state.workspace.as_ref() {
             state::config::record_environment(workspace.root(), name.as_deref());
         }
-        self.state.active_environment = name;
+        self.state.set_active_environment(name);
         cx.notify();
     }
 

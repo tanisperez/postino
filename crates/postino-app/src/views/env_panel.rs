@@ -1,7 +1,7 @@
 //! The Environments panel of the sidebar (GitHub #64): the workspace's environments with their
 //! color dot, an "Active" tag and variable count, an inline "new environment" row, and a footer
 //! that opens the `environments/` folder. The rows come from `state::env_panel`, loaded when the
-//! workspace or an environment changes ([`AppView::refresh_env_rows`]), never in render.
+//! workspace or an environment changes ([`AppView::refresh_environments`]), never in render.
 //!
 //! Clicking an environment row opens its editor tab (#65, `views/env_editor.rs`), and the row of
 //! the environment shown by the active tab is tinted. The "Active" tag follows the active
@@ -28,15 +28,17 @@ use super::root::AppView;
 const ENVIRONMENTS_FOLDER: &str = "environments";
 
 impl AppView {
-    /// Reloads [`AppView::env_rows`] from disk. Call when the workspace opens, an environment is
-    /// created or one of its variables changes, and when the panel is opened.
-    pub(crate) fn refresh_env_rows(&mut self) {
+    /// Reloads [`AppView::env_rows`] and the active environment's variables from disk. Call when
+    /// the workspace opens, an environment is created or one of its variables changes, and when
+    /// the panel is opened.
+    pub(crate) fn refresh_environments(&mut self) {
         self.env_rows = self
             .state
             .workspace
             .as_ref()
             .map(load_env_rows)
             .unwrap_or_default();
+        self.state.reload_environment();
     }
 
     /// Shows the inline "new environment" input and focuses it. A no-op without a workspace.
@@ -100,7 +102,7 @@ impl AppView {
             Ok(()) => {
                 log::debug!("created environment {name}");
                 self.workspace_error = None;
-                self.refresh_env_rows();
+                self.refresh_environments();
                 self.select_environment(Some(name), cx);
             }
             Err(error) => {
