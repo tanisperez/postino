@@ -8,7 +8,7 @@ description: Install Postino on Linux, Windows or macOS from an installer, a pac
 <div class="table"><table>
     <thead><tr><th>System</th><th>Supported</th><th>Packages</th></tr></thead>
     <tbody>
-        <tr><td>Linux</td><td>x86_64, Wayland or X11, a GPU driver with Vulkan</td><td><code>.deb</code>, <code>.rpm</code>, <code>.tar.gz</code>, APT and DNF repositories, AUR</td></tr>
+        <tr><td>Linux</td><td>x86_64, Wayland or X11, a GPU driver with Vulkan</td><td><code>.deb</code>, <code>.rpm</code>, <code>.tar.gz</code>, APT and DNF repositories</td></tr>
         <tr><td>Windows</td><td>Windows 10 and 11, 64 bit</td><td>Installer (<code>-setup.exe</code>), winget</td></tr>
         <tr><td>macOS</td><td>Apple silicon (M1 and later)</td><td>Disk image (<code>.dmg</code>), Homebrew cask</td></tr>
     </tbody>
@@ -38,18 +38,11 @@ $ sudo zypper addrepo https://postino.tanis.codes/rpm/postino.repo
 $ sudo zypper install postino
 ```
 
-<h3>Arch Linux (AUR)</h3>
-<p>The AUR package is coming soon. Until then, install the tarball or build the package from a checkout of the repository:</p>
-```shell
-$ git clone https://github.com/tanisperez/postino.git
-$ cd postino/packaging/aur && makepkg -si
-```
-
 <h3>Tarball</h3>
 <p>The <code>.tar.gz</code> uses a <code>/usr</code>-like layout: <code>bin/postino</code>, plus the desktop entry, the MIME type and the icons under <code>share/</code>. Extract it anywhere and run <code>bin/postino</code>, or copy its contents under <code>~/.local</code> to get the menu entry. A tarball install does not update itself: download new versions from the releases page.</p>
 
 <h3>What the Linux packages install</h3>
-<p>The <code>.deb</code>, <code>.rpm</code> and AUR packages install <code>/usr/bin/postino</code>, a desktop entry, the icons and a MIME type for <code>.postino</code> files. Your file manager then opens a <code>.postino</code> file with Postino on a double click.</p>
+<p>The <code>.deb</code> and <code>.rpm</code> packages install <code>/usr/bin/postino</code>, a desktop entry, the icons and a MIME type for <code>.postino</code> files. Your file manager then opens a <code>.postino</code> file with Postino on a double click.</p>
 
 <h2>Windows</h2>
 <p>Download <code>Postino-…-windows-x86_64-setup.exe</code> and run it. The installer is per user: it installs into <code>%LOCALAPPDATA%\Programs\Postino</code>, needs no administrator rights, adds a Start menu shortcut (and an optional desktop shortcut) and associates <code>.postino</code> files with Postino.</p>
@@ -81,7 +74,7 @@ $ xattr -dr com.apple.quarantine /Applications/Postino.app
 <div class="table"><table>
     <thead><tr><th>Installed from</th><th>How it updates</th></tr></thead>
     <tbody>
-        <tr><td>apt, dnf, zypper, AUR</td><td>With your system updates. Postino never updates itself on Linux.</td></tr>
+        <tr><td>apt, dnf, zypper</td><td>With your system updates. Postino never updates itself on Linux.</td></tr>
         <tr><td>Tarball</td><td>Download the new version from the releases page.</td></tr>
         <tr><td>Windows installer, winget</td><td>In-app updater, or <code>winget upgrade</code>.</td></tr>
         <tr><td>macOS disk image, Homebrew</td><td>In-app updater.</td></tr>
