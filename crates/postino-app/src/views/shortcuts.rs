@@ -14,16 +14,14 @@ use crate::state::shortcuts::{self, ShortcutGroup};
 use crate::theme::metrics::RADIUS_SM;
 use crate::theme::{Palette, PaletteExt};
 
-use super::components::{IconButton, SectionLabel};
+use super::components::{IconButton, ModalPlacement, SectionLabel, framed_dialog};
 use super::root::AppView;
 use super::settings::settings_scrollbar;
 
 /// Width of the modal.
 const MODAL_WIDTH: f32 = 520.0;
-/// Height of the modal on a tall enough window.
-const MODAL_HEIGHT: f32 = 560.0;
-/// Least vertical margin kept between the modal and the window edges.
-const MODAL_MARGIN_MIN: f32 = 16.0;
+/// Height of the modal on a tall enough window: every shortcut fits at the default font size.
+const MODAL_HEIGHT: f32 = 620.0;
 /// Height of the header strip.
 const HEADER_HEIGHT: f32 = 52.0;
 
@@ -35,35 +33,24 @@ impl AppView {
             return;
         }
         let groups = Rc::new(shortcuts::groups());
-        window.open_dialog(cx, move |dialog, window, cx| {
-            let palette = cx.palette();
+        window.open_dialog(cx, move |dialog, window, _cx| {
             let groups = groups.clone();
-            // Centered vertically by hand, like the Settings modal: `Dialog` otherwise lets its
-            // own `max_h` win over `h` on a short window.
-            let viewport_height: f32 = window.viewport_size().height.into();
-            let margin_top = ((viewport_height - MODAL_HEIGHT) / 2.0).max(MODAL_MARGIN_MIN);
-            dialog
-                .w(px(MODAL_WIDTH))
-                .h(px(MODAL_HEIGHT))
-                .margin_top(px(margin_top))
-                .p_0()
-                .border_0()
-                .bg(palette.overlay)
-                .close_button(false)
-                .content(move |content, window, cx| {
+            framed_dialog(
+                dialog,
+                MODAL_WIDTH,
+                Some(MODAL_HEIGHT),
+                ModalPlacement::Centered,
+                window,
+                move |window, cx| {
                     let scroll_handle = window
                         .use_keyed_state("shortcuts-body-scroll", cx, |_, _| {
                             ScrollHandle::default()
                         })
                         .read(cx)
                         .clone();
-                    content.min_h_0().child(render_sheet(
-                        &groups,
-                        &scroll_handle,
-                        &cx.palette(),
-                        cx,
-                    ))
-                })
+                    render_sheet(&groups, &scroll_handle, &cx.palette(), cx)
+                },
+            )
         });
     }
 }

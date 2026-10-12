@@ -23,7 +23,9 @@ use rust_i18n::t;
 use crate::state::palette::{self, ActionId, PaletteItem, PaletteItemKind};
 use crate::theme::Palette;
 use crate::theme::PaletteExt;
-use crate::views::components::{MethodBadge, edit_menu};
+use crate::views::components::{
+    MODAL_INNER_RADIUS, MethodBadge, ModalPlacement, edit_menu, framed_dialog,
+};
 
 use super::root::AppView;
 use super::{import_menu, new_workspace, sidebar};
@@ -79,9 +81,8 @@ impl AppView {
             }
         });
         let focus_search_input = search_input.clone();
-        window.open_dialog(cx, move |dialog, window, cx| {
+        window.open_dialog(cx, move |dialog, window, _cx| {
             let _ = &query_subscription;
-            let palette = cx.palette();
             let weak = weak.clone();
             let command_state = command_state.clone();
             let search_input = search_input.clone();
@@ -89,29 +90,27 @@ impl AppView {
             // the design system does not cover the palette, and every well-known command
             // palette (VS Code, Raycast, and our own "Ctrl K" search trigger in the title bar)
             // opens near the top of the window, not centered.
-            let viewport_height: f32 = window.viewport_size().height.into();
-            let margin_top = (viewport_height * 0.14).max(48.0);
-            dialog
-                .w(px(PALETTE_WIDTH))
-                .margin_top(px(margin_top))
-                .p_0()
-                .border_0()
-                .bg(palette.overlay)
-                .close_button(false)
-                .content(move |content, _window, cx| {
-                    content
-                        .min_h_0()
-                        .child(
-                            div()
-                                .pb(px(PALETTE_BOTTOM_PADDING))
-                                .child(render_palette_content(
-                                    weak.clone(),
-                                    command_state.clone(),
-                                    search_input.clone(),
-                                    cx,
-                                )),
-                        )
-                })
+            framed_dialog(
+                dialog,
+                PALETTE_WIDTH,
+                None,
+                ModalPlacement::Top {
+                    fraction: 0.14,
+                    min: 48.0,
+                },
+                window,
+                move |_window, cx| {
+                    div()
+                        .pb(px(PALETTE_BOTTOM_PADDING))
+                        .child(render_palette_content(
+                            weak.clone(),
+                            command_state.clone(),
+                            search_input.clone(),
+                            cx,
+                        ))
+                        .into_any_element()
+                },
+            )
         });
         // Focus the search field only *after* `open_dialog` above: `Root::open_dialog` captures
         // `window.focused(cx)` at the moment it runs as the handle to restore once the dialog
@@ -166,13 +165,13 @@ fn render_palette_content(
         .map(|group| group.iter().map(|(item, _)| item.kind.clone()).collect())
         .collect();
 
-    // `Command` paints its own background, square unless bordered, over the dialog's rounded
-    // top corners; the bottom ones sit below the list's padding, on the dialog itself.
+    // `Command` paints its own background, square unless bordered, over the modal card's rounded
+    // top corners (inside its border); the bottom ones sit below the list's padding, on the card.
     let mut command = Command::new(&command_state)
         .bordered(false)
         .filterable(false)
         .searchable(false)
-        .rounded_t(cx.theme().radius_lg)
+        .rounded_t(px(MODAL_INNER_RADIUS))
         .max_h(px(PALETTE_LIST_HEIGHT))
         .header(move |_, _, cx| render_search_row(&search_input, cx));
 

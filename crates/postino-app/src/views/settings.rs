@@ -27,7 +27,9 @@ use crate::state::settings::{
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_LG, RADIUS_MD};
 use crate::theme::{self, Palette, PaletteExt};
 
-use super::components::{GhostButton, IconButton};
+use super::components::{
+    GhostButton, IconButton, MODAL_INNER_RADIUS, ModalPlacement, framed_dialog,
+};
 use super::root::AppView;
 
 mod about;
@@ -40,8 +42,6 @@ use selects::{SelectHandles, SettingsSelect, render_select};
 const MODAL_WIDTH: f32 = 800.0;
 /// Height of the modal itself.
 const MODAL_HEIGHT: f32 = 720.0;
-/// Least vertical margin kept between the modal and the window edges.
-const MODAL_MARGIN_MIN: f32 = 16.0;
 /// Width of the modal's left nav column.
 const NAV_WIDTH: f32 = 188.0;
 /// Height of the right column's header and footer strips.
@@ -64,45 +64,24 @@ impl AppView {
             cx,
         ));
         let weak = cx.weak_entity();
-        window.open_dialog(cx, move |dialog, window, cx| {
-            let palette = cx.palette();
+        window.open_dialog(cx, move |dialog, window, _cx| {
             let weak = weak.clone();
-            // `Dialog` otherwise defaults `margin_top` to a tenth of the viewport and lets
-            // `max_h` (viewport minus that margin) win over our own `h(720px)` on a short window
-            // (this environment's own 1280x760 fallback window included), clipping the footer.
-            // Centering the modal vertically ourselves, with a 16px floor so it never touches the
-            // window edge, keeps the requested height on any window tall enough for it and only
-            // shrinks (via the scrollable body, not this) on one that is not.
-            let viewport_height: f32 = window.viewport_size().height.into();
-            let margin_top = ((viewport_height - MODAL_HEIGHT) / 2.0).max(MODAL_MARGIN_MIN);
-            dialog
-                .w(px(MODAL_WIDTH))
-                .h(px(MODAL_HEIGHT))
-                .margin_top(px(margin_top))
-                .p_0()
-                .border_0()
-                .bg(palette.overlay)
-                .close_button(false)
-                .content(move |content, window, cx| {
-                    // `DialogContent` (`gpui-component-0.6.6/src/dialog/content.rs`) is
-                    // `v_flex().flex_1()` inside the dialog's own `overflow_hidden()` wrapper, but
-                    // a flex item's automatic minimum size defaults to its content's natural
-                    // size, not 0: without overriding that here, `DialogContent` (and everything
-                    // under it, including the scrollable body `render_right_column` builds)
-                    // simply grows to fit tall content instead of being clamped to the 720px
-                    // `h()`/`max_h` this dialog already has, which is what let the header/footer
-                    // through at the default font sizes but not at larger ones, where the grown
-                    // content pushed the footer past the ancestor's `overflow_hidden()` with no
-                    // way to scroll to it. `min_h_0()` here is what makes the body's own
-                    // `overflow_y_scroll()` (`render_right_column`) actually take effect instead.
+            // Centered by the shared frame, which keeps the requested height on any window tall
+            // enough for it and only shrinks (via the scrollable body) on one that is not.
+            framed_dialog(
+                dialog,
+                MODAL_WIDTH,
+                Some(MODAL_HEIGHT),
+                ModalPlacement::Centered,
+                window,
+                move |window, cx| {
                     let scroll_handle = window
                         .use_keyed_state("settings-body-scroll", cx, |_, _| ScrollHandle::default())
                         .read(cx)
                         .clone();
-                    content
-                        .min_h_0()
-                        .child(render_settings_body(weak.clone(), scroll_handle, cx))
-                })
+                    render_settings_body(weak.clone(), scroll_handle, cx)
+                },
+            )
         });
     }
 
@@ -302,7 +281,8 @@ fn render_settings_body(
     else {
         return div().into_any_element();
     };
-    let modal_radius = cx.theme().radius_lg;
+    // Inside the modal card's 1 px border.
+    let modal_radius = px(MODAL_INNER_RADIUS);
 
     h_flex()
         .size_full()
@@ -327,8 +307,8 @@ fn render_settings_body(
 }
 
 /// The left nav: "Settings" title, one item per category, and the "Saved to" footer. Its left
-/// corners repeat the modal's `radius`: the dialog's `overflow_hidden` clips to its bounds but
-/// not to its rounded corners, so the nav's background would otherwise paint square ones.
+/// corners repeat the modal card's inner `radius`: the dialog's `overflow_hidden` clips to its
+/// bounds but not to rounded corners, so the nav's background would otherwise paint square ones.
 fn render_nav(
     weak: WeakEntity<AppView>,
     palette: &Palette,
@@ -476,12 +456,13 @@ fn render_right_column(
         .into_any_element()
 }
 
-/// The body's always-shown scrollbar. Its track takes the modal's own background (the theme's
-/// track color is the window's `bg`, which shows as a darker strip on the modal) and no border,
-/// so only the thumb stands out.
+/// The body's always-shown scrollbar. Its track is transparent with no border, so only the thumb
+/// stands out: the theme's track color is the window's `bg`, which shows as a darker strip on the
+/// modal, and an opaque one would square off the modal's rounded corner where the body reaches
+/// the bottom (Keyboard shortcuts).
 pub(super) fn settings_scrollbar(scroll_handle: &ScrollHandle, palette: &Palette) -> Scrollbar {
-    let track = palette.overlay;
-    let border = palette.overlay.opacity(0.0);
+    let track = palette.overlay.opacity(0.0);
+    let border = track;
     Scrollbar::vertical(scroll_handle)
         .mode(ScrollbarMode::Always)
         .styles(|styles| {

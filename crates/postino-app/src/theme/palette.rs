@@ -479,11 +479,13 @@ pub(super) fn theme_colors_and_highlight(dark: bool) -> (serde_json::Value, serd
     (colors, highlight)
 }
 
-/// Builds a [`BoxShadow`] from one `--shadow` layer.
+/// Builds a [`BoxShadow`] from one `--shadow` layer. The tokens are CSS values: a CSS blur is twice
+/// the gaussian's standard deviation, while gpui's `blur_radius` is the standard deviation itself
+/// (`gaussian(y, blur_radius)` in its shadow shader), so the blur is halved to look as designed.
 fn shadow_layer(layer: &ShadowLayer) -> BoxShadow {
     let (r, g, b, a) = layer.color;
     BoxShadow::new(px(0.0), px(layer.offset_y), rgba(r, g, b, a))
-        .blur_radius(px(layer.blur))
+        .blur_radius(px(layer.blur / 2.0))
         .spread_radius(px(layer.spread))
 }
 
