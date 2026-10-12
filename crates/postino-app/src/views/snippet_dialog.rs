@@ -16,7 +16,10 @@ use postino_format::snippet::{SnippetLanguage, render_snippet};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::RADIUS_MD;
 
-use super::components::{IconButton, SegmentedControl, SegmentedItem};
+use super::components::{
+    IconButton, ModalPlacement, SegmentedControl, SegmentedItem, framed_dialog, modal_body,
+    modal_footer, modal_header,
+};
 use super::root::AppView;
 
 /// Width of the dialog.
@@ -48,26 +51,28 @@ impl AppView {
 
         let resolved = preview.resolved;
         let weak = cx.weak_entity();
-        let copy_weak = weak.clone();
-        let copy_resolved = resolved.clone();
-        window.open_dialog(cx, move |dialog, _window, _cx| {
+        window.open_dialog(cx, move |dialog, window, _cx| {
             let weak = weak.clone();
             let resolved = resolved.clone();
-            dialog
-                .title(t!("common.code"))
-                .w(px(DIALOG_WIDTH))
-                .content(move |content, window, cx| {
-                    content.min_h_0().child(render_snippet_body(
-                        weak.clone(),
-                        &resolved,
-                        window,
-                        cx,
-                    ))
-                })
-                .footer(render_snippet_footer(
-                    copy_weak.clone(),
-                    copy_resolved.clone(),
-                ))
+            framed_dialog(
+                dialog,
+                DIALOG_WIDTH,
+                None,
+                ModalPlacement::DEFAULT,
+                window,
+                move |window, cx| {
+                    v_flex()
+                        .child(modal_header(t!("common.code"), cx))
+                        .child(modal_body().child(render_snippet_body(
+                            weak.clone(),
+                            &resolved,
+                            window,
+                            cx,
+                        )))
+                        .child(render_snippet_footer(weak.clone(), resolved.clone(), cx))
+                        .into_any_element()
+                },
+            )
         });
     }
 }
@@ -128,9 +133,12 @@ fn render_snippet_body(
 
 /// The footer's "Copy" button: recomputes the snippet for whichever language is currently
 /// selected at click time, so it always copies exactly what is on screen.
-fn render_snippet_footer(weak: WeakEntity<AppView>, resolved: ResolvedRequest) -> AnyElement {
-    h_flex()
-        .justify_end()
+fn render_snippet_footer(
+    weak: WeakEntity<AppView>,
+    resolved: ResolvedRequest,
+    cx: &App,
+) -> AnyElement {
+    modal_footer(cx)
         .child(
             IconButton::new("snippet-copy", IconName::Copy)
                 .tooltip(t!("common.copy"))

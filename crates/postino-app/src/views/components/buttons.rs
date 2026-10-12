@@ -306,7 +306,6 @@ impl DangerButton {
     }
 
     /// Sets the click handler.
-    #[allow(dead_code)] // no caller outside the components gallery needs this yet
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,

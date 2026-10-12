@@ -208,14 +208,25 @@ fn render_logo(palette: &Palette) -> impl IntoElement {
         .child("P")
 }
 
-/// The centered search trigger: opens the command palette (`views/command_palette.rs`).
+/// The `group` name of the search trigger, so its key hint follows the trigger's hover.
+const SEARCH_TRIGGER_GROUP: &str = "title-bar-search-trigger";
+
+/// The centered search trigger: opens the command palette (`views/command_palette.rs`). Hovered,
+/// its border, text and key hint step up one token (`border_strong`, `fg_muted`); pressed, it takes
+/// the focused input look of the URL bar (`accent` border and a 3 px `accent_subtle` ring), since
+/// releasing it focuses the palette's search field.
 fn render_search_trigger(
     weak: WeakEntity<AppView>,
     palette: &Palette,
     mono_font: SharedString,
 ) -> impl IntoElement {
+    let border_strong = palette.border_strong;
+    let fg_muted = palette.fg_muted;
+    let accent = palette.accent;
+    let accent_subtle = palette.accent_subtle;
     h_flex()
         .id("title-bar-search-trigger")
+        .group(SEARCH_TRIGGER_GROUP)
         .w(px(SEARCH_TRIGGER_WIDTH))
         .h(px(ENV_PILL_HEIGHT))
         .items_center()
@@ -227,6 +238,12 @@ fn render_search_trigger(
         .border_1()
         .border_color(palette.border)
         .text_color(palette.fg_subtle)
+        .hover(move |style| style.border_color(border_strong).text_color(fg_muted))
+        .active(move |style| {
+            style.border_color(accent).shadow(vec![
+                BoxShadow::new(px(0.0), px(0.0), accent_subtle).spread_radius(px(3.0)),
+            ])
+        })
         .child(Icon::new(IconName::Search).small())
         .child(div().flex_1().child(t!("shell.title_bar.search_hint")))
         .child(
@@ -235,6 +252,9 @@ fn render_search_trigger(
                 .text_size(px(11.0))
                 .border_1()
                 .border_color(palette.border)
+                .group_hover(SEARCH_TRIGGER_GROUP, move |style| {
+                    style.border_color(border_strong)
+                })
                 .rounded(px(4.0))
                 .px(px(4.0))
                 .child(shortcut_hint()),

@@ -26,7 +26,8 @@ use crate::theme::PaletteExt;
 use crate::theme::metrics::RADIUS_MD;
 use crate::views::components::text_field::FIELD_HEIGHT;
 use crate::views::components::{
-    InlineMessage, InlineMessageKind, PrimaryButton, SecondaryButton, text_field,
+    InlineMessage, InlineMessageKind, ModalPlacement, PrimaryButton, SecondaryButton,
+    framed_dialog, modal_body, modal_footer, modal_header, text_field,
 };
 
 use super::import_menu::PendingImport;
@@ -108,38 +109,47 @@ pub(crate) fn open_new_workspace_dialog(
             })
             .detach();
     }
-    window.open_dialog(cx, move |dialog, _, cx| {
-        let content_form = form.clone();
-        let can_create = target_of(&form, cx).is_some();
-        let create_form = form.clone();
-        let create_view = view.clone();
+    window.open_dialog(cx, move |dialog, window, _| {
         let enter_form = form.clone();
         let enter_view = view.clone();
-        dialog
-            .title(t!("shell.new_workspace.title"))
-            .w(px(DIALOG_WIDTH))
-            .content(move |content, _, cx| content.child(render_form(&content_form, cx)))
-            // Enter anywhere in the dialog, the name field included, is the dialog's own Confirm
-            // action. Returning `false` keeps the dialog open to show why Create failed.
-            .on_ok(move |_, window, cx| confirm(enter_view.clone(), &enter_form, window, cx))
-            .footer(
-                h_flex()
-                    .justify_end()
-                    .gap(px(8.0))
+        // Enter anywhere in the dialog, the name field included, is the dialog's own Confirm
+        // action. Returning `false` keeps the dialog open to show why Create failed.
+        let dialog =
+            dialog.on_ok(move |_, window, cx| confirm(enter_view.clone(), &enter_form, window, cx));
+        let form = form.clone();
+        let view = view.clone();
+        framed_dialog(
+            dialog,
+            DIALOG_WIDTH,
+            None,
+            ModalPlacement::DEFAULT,
+            window,
+            move |_, cx| {
+                let can_create = target_of(&form, cx).is_some();
+                let create_form = form.clone();
+                let create_view = view.clone();
+                v_flex()
+                    .child(modal_header(t!("shell.new_workspace.title"), cx))
+                    .child(modal_body().child(render_form(&form, cx)))
                     .child(
-                        SecondaryButton::new("new-workspace-cancel", t!("common.cancel"))
-                            .on_click(|_, window, cx| window.close_dialog(cx)),
+                        modal_footer(cx)
+                            .child(
+                                SecondaryButton::new("new-workspace-cancel", t!("common.cancel"))
+                                    .on_click(|_, window, cx| window.close_dialog(cx)),
+                            )
+                            .child(
+                                PrimaryButton::new("new-workspace-create", t!("common.create"))
+                                    .disabled(!can_create)
+                                    .on_click(move |_, window, cx| {
+                                        if confirm(create_view.clone(), &create_form, window, cx) {
+                                            window.close_dialog(cx);
+                                        }
+                                    }),
+                            ),
                     )
-                    .child(
-                        PrimaryButton::new("new-workspace-create", t!("common.create"))
-                            .disabled(!can_create)
-                            .on_click(move |_, window, cx| {
-                                if confirm(create_view.clone(), &create_form, window, cx) {
-                                    window.close_dialog(cx);
-                                }
-                            }),
-                    ),
-            )
+                    .into_any_element()
+            },
+        )
     });
     // Focus only after `open_dialog`, which captures the focused handle to restore on close
     // (see `views/command_palette.rs`). Selecting a suggested name makes typing replace it.

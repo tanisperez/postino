@@ -6,14 +6,24 @@
 //! does not show over the scrim. [`framed_dialog`] makes the dialog's own box transparent and
 //! larger than the card by the room the card's shadow needs, and draws the card inside it, so the
 //! shadow fits in the dialog's content clip and slides and fades in with the dialog.
+//!
+//! The card's parts are shared too: [`modal_header`] (title and close button), [`modal_body`] and
+//! [`modal_footer`] (the dialog buttons), and [`open_confirm_dialog`] for the small confirmations.
 
+use std::rc::Rc;
+
+use gpui_kit::assets::IconName;
 use gpui_kit::component::dialog::Dialog;
-use gpui_kit::component::{v_flex, window_paddings};
+use gpui_kit::component::{WindowExt as _, h_flex, v_flex, window_paddings};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use rust_i18n::t;
 
 use crate::theme::PaletteExt;
-use crate::theme::metrics::RADIUS_MODAL;
+use crate::theme::metrics::{MODAL_HEADER_HEIGHT, MODAL_WIDTH_DEFAULT, RADIUS_MODAL};
+
+use super::buttons::{DangerButton, PrimaryButton, SecondaryButton};
+use super::icon_button::IconButton;
 
 /// Room kept around the card for its shadow (offset y 12, blur 32): the shadow fades out about
 /// 1.5 times the blur past the card's edges, shifted down by the offset.
@@ -170,9 +180,151 @@ where
     })
 }
 
+/// Horizontal padding of a modal's header and footer, and all around its body.
+const MODAL_PADDING: f32 = 20.0;
+/// Gap between the children of a modal's body.
+const MODAL_BODY_GAP: f32 = 12.0;
+/// Gap between the buttons of a modal's footer.
+const MODAL_FOOTER_GAP: f32 = 8.0;
+
+/// A modal's header strip: `title` at the left and a close button at the right that closes the
+/// dialog, over a bottom border. The frame removes gpui-component's own close button.
+pub fn modal_header(title: impl Into<SharedString>, cx: &App) -> Div {
+    let palette = cx.palette();
+    h_flex()
+        .h(px(MODAL_HEADER_HEIGHT))
+        .flex_none()
+        .items_center()
+        .justify_between()
+        .px(px(MODAL_PADDING))
+        .border_b_1()
+        .border_color(palette.border)
+        .child(
+            div()
+                .text_size(px(15.0))
+                .font_weight(FontWeight::SEMIBOLD)
+                .child(title.into()),
+        )
+        .child(
+            IconButton::new("modal-close", IconName::Close)
+                .large()
+                .tooltip(t!("common.close"))
+                .on_click(move |_, window, cx| {
+                    window.close_dialog(cx);
+                }),
+        )
+}
+
+/// A modal's body: a column padded on every side, for the content between the header and the
+/// footer.
+pub fn modal_body() -> Div {
+    v_flex().p(px(MODAL_PADDING)).gap(px(MODAL_BODY_GAP))
+}
+
+/// A modal's footer strip, as tall as the header, under a top border: its children (the dialog
+/// buttons) sit at the end of the row.
+pub fn modal_footer(cx: &App) -> Div {
+    let palette = cx.palette();
+    h_flex()
+        .h(px(MODAL_HEADER_HEIGHT))
+        .flex_none()
+        .items_center()
+        .justify_end()
+        .gap(px(MODAL_FOOTER_GAP))
+        .px(px(MODAL_PADDING))
+        .border_t_1()
+        .border_color(palette.border)
+}
+
+/// What a [`ConfirmDialog`] runs on confirm, factored out because clippy's `type_complexity`
+/// flags the inline form.
+type ConfirmHandler = Rc<dyn Fn(&mut Window, &mut App)>;
+
+/// What [`open_confirm_dialog`] shows.
+#[derive(Clone)]
+pub struct ConfirmDialog {
+    /// The header's title.
+    pub title: SharedString,
+    /// The body, in the muted text color. Line breaks (`\n`) are kept.
+    pub text: SharedString,
+    /// The label of the confirm button.
+    pub confirm_label: SharedString,
+    /// Whether the confirm button is a [`DangerButton`] (a delete, a discard) rather than a
+    /// [`PrimaryButton`].
+    pub destructive: bool,
+    /// Whether the footer has a Cancel button before the confirm one.
+    pub show_cancel: bool,
+    /// Runs when the user confirms, by the button or with Enter, right before the dialog closes.
+    pub on_confirm: ConfirmHandler,
+}
+
+/// Opens a small confirmation in the shared modal frame: the title in the header, the text in the
+/// body and the buttons in the footer. It keeps the semantics of an alert: Enter confirms, Escape
+/// closes, and a click on the backdrop does not.
+pub fn open_confirm_dialog(window: &mut Window, cx: &mut App, confirm: ConfirmDialog) {
+    window.open_dialog(cx, move |dialog, window, _cx| {
+        let on_confirm = confirm.on_confirm.clone();
+        let dialog = dialog.overlay_closable(false).on_ok(move |_, window, cx| {
+            on_confirm(window, cx);
+            true
+        });
+        let confirm = confirm.clone();
+        framed_dialog(
+            dialog,
+            MODAL_WIDTH_DEFAULT,
+            None,
+            ModalPlacement::DEFAULT,
+            window,
+            move |_window, cx| render_confirm(&confirm, cx),
+        )
+    });
+}
+
+/// The content of a [`ConfirmDialog`]: header, text and buttons.
+fn render_confirm(confirm: &ConfirmDialog, cx: &App) -> AnyElement {
+    let palette = cx.palette();
+    let on_confirm = confirm.on_confirm.clone();
+    let on_click = move |_: &ClickEvent, window: &mut Window, cx: &mut App| {
+        on_confirm(window, cx);
+        window.close_dialog(cx);
+    };
+    let confirm_button = if confirm.destructive {
+        DangerButton::new("confirm-ok", confirm.confirm_label.clone())
+            .on_click(on_click)
+            .into_any_element()
+    } else {
+        PrimaryButton::new("confirm-ok", confirm.confirm_label.clone())
+            .on_click(on_click)
+            .into_any_element()
+    };
+    v_flex()
+        .child(modal_header(confirm.title.clone(), cx))
+        .child(
+            modal_body().child(
+                div()
+                    .text_color(palette.fg_muted)
+                    .child(confirm.text.clone()),
+            ),
+        )
+        .child(
+            modal_footer(cx)
+                .when(confirm.show_cancel, |footer| {
+                    footer.child(
+                        SecondaryButton::new("confirm-cancel", t!("common.cancel"))
+                            .on_click(|_, window, cx| window.close_dialog(cx)),
+                    )
+                })
+                .child(confirm_button),
+        )
+        .into_any_element()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{
+        ModalGeometry, ModalPlacement, SHADOW_ROOM_BOTTOM, SHADOW_ROOM_TOP, SHADOW_ROOM_X,
+        WINDOW_EDGE,
+    };
 
     #[test]
     fn a_card_that_fits_keeps_its_size_and_the_full_room() {

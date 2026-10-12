@@ -35,7 +35,10 @@ pub use icon_button::IconButton;
 pub use inline_message::{InlineMessage, InlineMessageKind};
 pub use key_value_table::{KeyValueRow, KeyValueTable};
 pub use method_badge::MethodBadge;
-pub use modal::{MODAL_INNER_RADIUS, ModalPlacement, framed_dialog};
+pub use modal::{
+    ConfirmDialog, MODAL_INNER_RADIUS, ModalPlacement, framed_dialog, modal_body, modal_footer,
+    modal_header, open_confirm_dialog,
+};
 pub use section_label::SectionLabel;
 pub use segmented_control::{SegmentedControl, SegmentedItem};
 pub use select_trigger::{select_label_row, select_trigger};

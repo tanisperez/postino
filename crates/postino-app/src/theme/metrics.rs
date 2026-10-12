@@ -62,6 +62,15 @@ pub const RADIUS_MD: f32 = 8.0;
 pub const RADIUS_LG: f32 = 10.0;
 /// Radius for modals (for example the Settings dialog).
 pub const RADIUS_MODAL: f32 = 14.0;
+/// Height of a modal's header strip and of its footer strip (the dialog buttons).
+pub const MODAL_HEADER_HEIGHT: f32 = 52.0;
+/// Width of a small modal (a confirmation, a name prompt): gpui-component's default dialog width.
+pub const MODAL_WIDTH_DEFAULT: f32 = 448.0;
+
+/// Height of a theme card's preview in Settings, Appearance.
+pub const THEME_PREVIEW_HEIGHT: f32 = 92.0;
+/// Padding between a theme card's frame and the mini window it shows.
+pub const THEME_PREVIEW_PADDING: f32 = 8.0;
 
 /// Height of a `StatusBadge`.
 pub const STATUS_BADGE_HEIGHT: f32 = 22.0;

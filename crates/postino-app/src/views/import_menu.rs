@@ -4,6 +4,7 @@
 //! `state::import`, the same functions its own unit tests exercise.
 
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
@@ -19,6 +20,7 @@ use crate::state::locale;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::ICON_BUTTON_HEADER;
 
+use super::components::{ConfirmDialog, open_confirm_dialog};
 use super::new_workspace::{self, NewWorkspacePurpose};
 use super::root::AppView;
 
@@ -249,7 +251,16 @@ fn show_import_report_dialog(
             description.push_str(warning);
         }
     }
-    window.open_alert_dialog(cx, move |alert, _, _| {
-        alert.title(title.clone()).description(description.clone())
-    });
+    open_confirm_dialog(
+        window,
+        cx,
+        ConfirmDialog {
+            title: title.into(),
+            text: description.into(),
+            confirm_label: t!("common.ok").into(),
+            destructive: false,
+            show_cancel: false,
+            on_confirm: Rc::new(|_, _| {}),
+        },
+    );
 }

@@ -24,7 +24,9 @@ use crate::state::number::format_decimal;
 use crate::state::settings::{
     InvalidTlsCertificates, LogLevel, Settings, SettingsCategory, ThemeChoice,
 };
-use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_LG, RADIUS_MD};
+use crate::theme::metrics::{
+    CONTROL_HEIGHT, RADIUS_LG, RADIUS_MD, RADIUS_SM, THEME_PREVIEW_HEIGHT, THEME_PREVIEW_PADDING,
+};
 use crate::theme::{self, Palette, PaletteExt};
 
 use super::components::{
@@ -715,17 +717,34 @@ fn render_theme_card(
     // A real border, not a `box-shadow` ring (an `N px` spread shadow): a
     // spread, zero-blur, zero-offset shadow on a `rounded()` + `overflow_hidden()` box rendered
     // as a filled halo covering the box's own content here, not a thin outline as CSS would, so
-    // the border achieves the same "ring" look without that.
-    let mut preview_box = h_flex()
-        .h(px(92.0))
+    // the border achieves the same "ring" look without that. The frame is a recessed well
+    // (`surface`, `accent_subtle` when selected) around the mini window, which keeps its own
+    // rounded corners and border. The selected frame's thicker border eats one pixel of padding,
+    // so the mini window stays put when the selection changes.
+    let mut preview_box = div()
+        .flex()
+        .h(px(THEME_PREVIEW_HEIGHT))
         .rounded(px(RADIUS_LG))
-        .overflow_hidden()
-        .border_color(ring_color);
+        .border_color(ring_color)
+        .bg(if selected {
+            palette.accent_subtle
+        } else {
+            palette.surface
+        });
     preview_box = if selected {
-        preview_box.border_2()
+        preview_box.border_2().p(px(THEME_PREVIEW_PADDING - 1.0))
     } else {
-        preview_box.border_1()
+        preview_box.border_1().p(px(THEME_PREVIEW_PADDING))
     };
+    // gpui clips children to a rectangle, not to rounded corners, so each half rounds its own
+    // outer corners inside the mini window's 1 px border.
+    let mini_radius = px(RADIUS_SM - 1.0);
+    let mini_window = h_flex()
+        .flex_1()
+        .items_stretch()
+        .rounded(px(RADIUS_SM))
+        .border_1()
+        .border_color(palette.border_strong);
 
     v_flex()
         .id(id)
@@ -735,35 +754,39 @@ fn render_theme_card(
         .hover(|style| style.opacity(0.85))
         .active(|style| style.opacity(0.7))
         .child(
-            preview_box
-                .child(
-                    v_flex()
-                        .flex_1()
-                        .bg(left.surface)
-                        .p(px(10.0))
-                        .gap(px(5.0))
-                        .child(preview_line(0.7, left.border_strong))
-                        .child(preview_line(0.5, accent_line))
-                        .child(preview_line(0.6, left.border_strong)),
-                )
-                .child(
-                    v_flex()
-                        .flex_grow(2.0)
-                        .flex_shrink(1.0)
-                        .flex_basis(relative(0.0))
-                        .bg(right.bg)
-                        .p(px(10.0))
-                        .gap(px(6.0))
-                        .child(
-                            div()
-                                .h(px(12.0))
-                                .rounded(px(4.0))
-                                .border_1()
-                                .border_color(right.border_strong),
-                        )
-                        .child(preview_line(0.8, right.border_strong))
-                        .child(preview_line(0.55, right.border_strong)),
-                ),
+            preview_box.child(
+                mini_window
+                    .child(
+                        v_flex()
+                            .flex_1()
+                            .rounded_l(mini_radius)
+                            .bg(left.surface)
+                            .p(px(8.0))
+                            .gap(px(5.0))
+                            .child(preview_line(0.7, left.border_strong))
+                            .child(preview_line(0.5, accent_line))
+                            .child(preview_line(0.6, left.border_strong)),
+                    )
+                    .child(
+                        v_flex()
+                            .flex_grow(2.0)
+                            .flex_shrink(1.0)
+                            .flex_basis(relative(0.0))
+                            .rounded_r(mini_radius)
+                            .bg(right.bg)
+                            .p(px(8.0))
+                            .gap(px(6.0))
+                            .child(
+                                div()
+                                    .h(px(12.0))
+                                    .rounded(px(4.0))
+                                    .border_1()
+                                    .border_color(right.border_strong),
+                            )
+                            .child(preview_line(0.8, right.border_strong))
+                            .child(preview_line(0.55, right.border_strong)),
+                    ),
+            ),
         )
         .child(
             h_flex()

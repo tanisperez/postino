@@ -3,8 +3,8 @@
 //! blocking work live in `state::update`; everything blocking runs on the background executor.
 //! Nothing here repeats or polls, so an idle window stays idle.
 
-use gpui_kit::component::button::ButtonVariant;
-use gpui_kit::component::dialog::DialogButtonProps;
+use std::rc::Rc;
+
 use gpui_kit::component::notification::Notification;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -16,6 +16,7 @@ use crate::state::update::{
     self, CheckOutcome, InstallOutcome, ReadyUpdate, STARTUP_DELAY, updater_enabled,
 };
 
+use super::components::{ConfirmDialog, open_confirm_dialog};
 use super::root::AppView;
 
 impl AppView {
@@ -127,23 +128,20 @@ impl AppView {
             return;
         }
         let weak = cx.weak_entity();
-        window.open_alert_dialog(cx, move |alert, _, _| {
-            let weak = weak.clone();
-            alert
-                .title(t!("update.confirm.title"))
-                .description(t!("update.confirm.text"))
-                .button_props(
-                    DialogButtonProps::default()
-                        .ok_text(t!("update.confirm.restart"))
-                        .ok_variant(ButtonVariant::Danger)
-                        .cancel_text(t!("common.cancel"))
-                        .show_cancel(true),
-                )
-                .on_ok(move |_, window, cx| {
+        open_confirm_dialog(
+            window,
+            cx,
+            ConfirmDialog {
+                title: t!("update.confirm.title").into(),
+                text: t!("update.confirm.text").into(),
+                confirm_label: t!("update.confirm.restart").into(),
+                destructive: true,
+                show_cancel: true,
+                on_confirm: Rc::new(move |window, cx| {
                     let _ = weak.update(cx, |view, cx| view.install_update(window, cx));
-                    true
-                })
-        });
+                }),
+            },
+        );
     }
 
     /// Installs the ready update on the background executor, then quits (the installer or the

@@ -14,7 +14,7 @@ use crate::state::shortcuts::{self, ShortcutGroup};
 use crate::theme::metrics::RADIUS_SM;
 use crate::theme::{Palette, PaletteExt};
 
-use super::components::{IconButton, ModalPlacement, SectionLabel, framed_dialog};
+use super::components::{ModalPlacement, SectionLabel, framed_dialog, modal_header};
 use super::root::AppView;
 use super::settings::settings_scrollbar;
 
@@ -22,8 +22,6 @@ use super::settings::settings_scrollbar;
 const MODAL_WIDTH: f32 = 520.0;
 /// Height of the modal on a tall enough window: every shortcut fits at the default font size.
 const MODAL_HEIGHT: f32 = 620.0;
-/// Height of the header strip.
-const HEADER_HEIGHT: f32 = 52.0;
 
 impl AppView {
     /// Opens the cheat sheet. A no-op when a dialog is already open, so `F1` never stacks a
@@ -66,7 +64,7 @@ fn render_sheet(
     v_flex()
         .size_full()
         .min_h_0()
-        .child(render_header(palette))
+        .child(modal_header(t!("shortcuts.title"), cx))
         .child(
             div()
                 .flex_1()
@@ -92,33 +90,6 @@ fn render_sheet(
                         .inset_0()
                         .child(settings_scrollbar(scroll_handle, palette)),
                 ),
-        )
-        .into_any_element()
-}
-
-/// The title and the close button.
-fn render_header(palette: &Palette) -> AnyElement {
-    h_flex()
-        .h(px(HEADER_HEIGHT))
-        .flex_none()
-        .items_center()
-        .justify_between()
-        .px(px(20.0))
-        .border_b_1()
-        .border_color(palette.border)
-        .child(
-            div()
-                .text_size(px(15.0))
-                .font_weight(FontWeight::SEMIBOLD)
-                .child(t!("shortcuts.title")),
-        )
-        .child(
-            IconButton::new("shortcuts-close", IconName::Close)
-                .large()
-                .tooltip(t!("common.close"))
-                .on_click(move |_, window, cx| {
-                    window.close_dialog(cx);
-                }),
         )
         .into_any_element()
 }

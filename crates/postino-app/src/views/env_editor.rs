@@ -11,7 +11,6 @@ use std::rc::Rc;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::{Button, ButtonCustomVariant, ButtonVariants as _};
-use gpui_kit::component::dialog::DialogButtonProps;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::*;
@@ -27,11 +26,12 @@ use crate::state::env_color::env_color;
 use crate::state::env_edit::{EnvEditTab, EnvScope, EnvValidationError, EnvVarRow, RowNote};
 use crate::state::number::format_integer;
 use crate::state::workspace_log::log_workspace_error;
-use crate::theme::metrics::{RADIUS_MD, RADIUS_SM};
+use crate::theme::metrics::{MODAL_WIDTH_DEFAULT, RADIUS_MD, RADIUS_SM};
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{
-    GhostButton, IconButton, InlineMessage, InlineMessageKind, PrimaryButton, SecondaryButton,
-    SegmentedControl, SegmentedItem, edit_menu,
+    ConfirmDialog, GhostButton, IconButton, InlineMessage, InlineMessageKind, ModalPlacement,
+    PrimaryButton, SecondaryButton, SegmentedControl, SegmentedItem, edit_menu, framed_dialog,
+    modal_body, modal_footer, modal_header, open_confirm_dialog,
 };
 
 use super::root::AppView;
@@ -469,28 +469,24 @@ impl AppView {
         let name = edit.name.clone();
         let tab_id = tab.id.clone();
         let weak = cx.weak_entity();
-        window.open_alert_dialog(cx, move |alert, _, _| {
-            let weak = weak.clone();
-            let tab_id = tab_id.clone();
-            alert
-                .title(t!("environments.discard.title"))
-                .description(t!("environments.discard.text", name = name.as_str()))
-                .button_props(
-                    DialogButtonProps::default()
-                        .ok_text(t!("environments.discard.confirm"))
-                        .ok_variant(gpui_kit::component::button::ButtonVariant::Danger)
-                        .cancel_text(t!("common.cancel"))
-                        .show_cancel(true),
-                )
-                .on_ok(move |_, _, cx| {
+        open_confirm_dialog(
+            window,
+            cx,
+            ConfirmDialog {
+                title: t!("environments.discard.title").into(),
+                text: t!("environments.discard.text", name = name.as_str()).into(),
+                confirm_label: t!("environments.discard.confirm").into(),
+                destructive: true,
+                show_cancel: true,
+                on_confirm: Rc::new(move |_, cx| {
                     let _ = weak.update(cx, |view, cx| {
                         if let Some(index) = view.state.tabs.index_of(&tab_id) {
                             view.close_tab(index, cx);
                         }
                     });
-                    true
-                })
-        });
+                }),
+            },
+        );
     }
 
     /// Renames the environment `old` to `new` on disk and everywhere the app remembers it.
@@ -599,31 +595,40 @@ impl AppView {
             .detach();
         }
         let dialog_input = input.clone();
-        window.open_dialog(cx, move |dialog, _, _| {
-            let input_for_content = dialog_input.clone();
+        window.open_dialog(cx, move |dialog, window, _| {
+            let input = dialog_input.clone();
             let submit = submit.clone();
-            dialog
-                .title(t!("environments.rename.title"))
-                .content(move |content, _, cx| {
-                    content.child(
-                        Input::new(&input_for_content)
-                            .context_menu(edit_menu(&input_for_content, cx))
-                            .py_0(),
-                    )
-                })
-                .footer(
-                    h_flex()
-                        .justify_end()
-                        .gap(px(8.0))
+            framed_dialog(
+                dialog,
+                MODAL_WIDTH_DEFAULT,
+                None,
+                ModalPlacement::DEFAULT,
+                window,
+                move |_, cx| {
+                    let submit = submit.clone();
+                    v_flex()
+                        .child(modal_header(t!("environments.rename.title"), cx))
                         .child(
-                            SecondaryButton::new("env-rename-cancel", t!("common.cancel"))
-                                .on_click(|_, window, cx| window.close_dialog(cx)),
+                            modal_body().child(
+                                Input::new(&input)
+                                    .context_menu(edit_menu(&input, cx))
+                                    .py_0(),
+                            ),
                         )
                         .child(
-                            PrimaryButton::new("env-rename-ok", t!("common.rename"))
-                                .on_click(move |_, window, cx| submit(window, cx)),
-                        ),
-                )
+                            modal_footer(cx)
+                                .child(
+                                    SecondaryButton::new("env-rename-cancel", t!("common.cancel"))
+                                        .on_click(|_, window, cx| window.close_dialog(cx)),
+                                )
+                                .child(
+                                    PrimaryButton::new("env-rename-ok", t!("common.rename"))
+                                        .on_click(move |_, window, cx| submit(window, cx)),
+                                ),
+                        )
+                        .into_any_element()
+                },
+            )
         });
         // Focus only after `open_dialog`, which captures the focused handle to restore on close
         // (see `views/command_palette.rs`). Selecting the whole name makes typing replace it.
@@ -640,25 +645,21 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         let weak = cx.weak_entity();
-        window.open_alert_dialog(cx, move |alert, _, _| {
-            let weak = weak.clone();
-            let target = name.clone();
-            alert
-                .title(t!("environments.delete.title"))
-                .description(t!("environments.delete.text", name = name.as_str()))
-                .button_props(
-                    DialogButtonProps::default()
-                        .ok_text(t!("common.delete"))
-                        .ok_variant(gpui_kit::component::button::ButtonVariant::Danger)
-                        .cancel_text(t!("common.cancel"))
-                        .show_cancel(true),
-                )
-                .on_ok(move |_, _, cx| {
-                    let target = target.clone();
+        open_confirm_dialog(
+            window,
+            cx,
+            ConfirmDialog {
+                title: t!("environments.delete.title").into(),
+                text: t!("environments.delete.text", name = name.as_str()).into(),
+                confirm_label: t!("common.delete").into(),
+                destructive: true,
+                show_cancel: true,
+                on_confirm: Rc::new(move |_, cx| {
+                    let target = name.clone();
                     let _ = weak.update(cx, |view, cx| view.delete_environment(target, cx));
-                    true
-                })
-        });
+                }),
+            },
+        );
     }
 
     /// Renders the editor of the active environment tab.

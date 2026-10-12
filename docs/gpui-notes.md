@@ -53,7 +53,9 @@ caret, selection and border, tree chevrons, checkboxes, switches). The mapping i
   are for charts, not HTTP methods, and reusing them would break the load test colors.
 - Shadows are not colors: `ThemeConfig.shadow` is only an on/off switch. Keep the raw shadow
   values in `Palette` and apply them with `.shadow(vec![BoxShadow { .. }])` on menus, popovers
-  and modals.
+  and modals. `BoxShadow::blur_radius` is the gaussian's standard deviation (the shadow shader
+  calls `gaussian(y, blur_radius)` and draws 3 times it past the shape), half of what the same
+  number means in CSS.
 
 ### Syntax highlight
 
@@ -125,6 +127,18 @@ Dialog` is the ready-made wrapper (`.title`, `.content`, `.footer`, `.w`, `.over
 Open it with `window.open_dialog(cx, |dialog, window, cx| ..)`. It centers itself and keeps a
 margin from the window edges. Since 0.7.0 `Root` renders the dialog, sheet and notification
 layers itself, so views must not render them again (see `AGENTS.md`).
+
+`Dialog` paints its own box (theme `background`, 1 px border, radius) and a shadow of its own,
+black at 10%, set inside its open animation: a `.shadow(..)` on the dialog is overwritten on every
+frame, and the shadow does not show over Postino's scrim. Its content is clipped to the box (an
+`overflow_hidden` wrapper), so a shadow drawn by the content is cut at the box edge.
+`components::modal::framed_dialog` works around both: it makes the box transparent, borderless and
+larger than the visible card by the room the card's shadow needs (less on a small window), and
+draws the card inside it. The card then slides and fades in with the dialog. The box also drops
+its close button (it would sit in the transparent room), so modals draw their own in the header.
+
+gpui clips children to a rectangle, never to rounded corners: a child that paints a background
+into a rounded parent's corner must round that corner itself.
 
 ## Single-line inputs
 

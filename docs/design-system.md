@@ -102,6 +102,9 @@ Two layers, horizontal offset always 0.
 | 1 | y 12, blur 32, spread 0, `rgba(20,22,40,0.14)` | y 12, blur 32, spread 0, `rgba(0,0,0,0.45)` |
 | 2 | y 0, blur 0, spread 1, `rgba(20,22,40,0.06)` | y 0, blur 0, spread 1, `rgba(255,255,255,0.04)` |
 
+The values are CSS. gpui's `blur_radius` is the gaussian's standard deviation, half a CSS blur, so
+`Palette::shadow` passes half the blur to gpui.
+
 ### Semantic mappings
 
 - Response status (`Palette::status_colors`): 2xx `success`, 3xx `info`, 4xx `warning`, 5xx
@@ -143,7 +146,10 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
 
 1. **Title bar** (`surface`, bottom border): "P" logo square (18 px, radius 5, `accent`),
    "Postino" (600), 1x16 separator, workspace switcher (folder icon, folder name, chevron),
-   centered 360 px search trigger ("Search requests and actions", `Ctrl K` hint), environment
+   centered 360 px search trigger ("Search requests and actions", `Ctrl K` hint; `raised` with a
+   `border` border and `fg_subtle` text, `border_strong` border, `fg_muted` text and a
+   `border_strong` hint on hover, and the focused input look while pressed: `accent` border and a
+   3 px `accent_subtle` ring), environment
    pill (dot, name, chevron, on `raised` with border), "Import" ghost button, settings gear,
    window controls. On Linux the app draws its own chrome (client decorations).
 2. **Activity rail** (48 px) left of the **sidebar** (`surface`, right border). Both are hidden
@@ -173,8 +179,19 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
 6. **Status bar** (24 px, `surface`, top border): `lock` icon and "Local only", the active file
    id, a spacer, "Unsaved changes" when the active tab is dirty, "UTF-8".
 
-Dialogs (Settings, Code snippet) are modals: `overlay` fill, radius 14, shadow,
-`scrim` behind. The command palette is a popover with the same surface rules.
+Every dialog (Settings, Keyboard shortcuts, Code, New workspace, the name and confirmation
+dialogs, the command palette) is a modal card drawn by `components::modal`: `overlay` fill, radius
+14, a 1 px `border` border and the shadow token, `scrim` behind. gpui-component's `Dialog` box
+around it is transparent and larger than the card, so the shadow has room to show
+(`docs/gpui-notes.md`, "Dialogs"). A dialog has a 52 px header (title 15/600 and a close icon
+button, bottom border), a body with 20 px padding and, when it has buttons, a 52 px footer with
+a top border and the buttons at the end. A child that paints its own background into the card's
+corners rounds them with `MODAL_INNER_RADIUS` (13, inside the border).
+
+Settings, Appearance, Theme: three cards, each a 92 px frame (radius 10, `surface`, 1 px
+`border_strong`; selected: `accent_subtle`, 2 px `accent`) with 8 px of padding around a mini
+window (radius 6, 1 px `border_strong`) whose left half is a sidebar and right half an editor, in
+the colors of the theme the card stands for.
 
 ## Welcome tab
 

@@ -5,8 +5,6 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-use gpui_kit::component::button::ButtonVariant;
-use gpui_kit::component::dialog::DialogButtonProps;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::list::ListItem;
 use gpui_kit::component::menu::{PopupMenu, PopupMenuItem};
@@ -22,10 +20,12 @@ use postino_workspace::{Node, RequestEntry};
 use crate::state;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
-    ICON_BUTTON_HEADER, RADIUS_MD, SIDEBAR_FILTER_HEIGHT, TREE_ROW_HEIGHT,
+    ICON_BUTTON_HEADER, MODAL_WIDTH_DEFAULT, RADIUS_MD, SIDEBAR_FILTER_HEIGHT, TREE_ROW_HEIGHT,
 };
 use crate::views::components::{
-    IconButton, MethodBadge, PrimaryButton, SecondaryButton, SectionLabel, edit_menu, text_field,
+    ConfirmDialog, IconButton, MethodBadge, ModalPlacement, PrimaryButton, SecondaryButton,
+    SectionLabel, edit_menu, framed_dialog, modal_body, modal_footer, modal_header,
+    open_confirm_dialog, text_field,
 };
 
 use super::root::AppView;
@@ -501,26 +501,36 @@ fn open_name_dialog(
             .detach();
     }
     let dialog_input = input.clone();
-    window.open_dialog(cx, move |dialog, _, _| {
-        let input_for_content = dialog_input.clone();
+    window.open_dialog(cx, move |dialog, window, _| {
+        let input = dialog_input.clone();
         let confirm = confirm.clone();
+        let title = title.clone();
         let ok_label = ok_label.clone();
-        dialog
-            .title(title.clone())
-            .content(move |content, _, cx| content.child(text_field(&input_for_content, cx)))
-            .footer(
-                h_flex()
-                    .justify_end()
-                    .gap(px(8.0))
+        framed_dialog(
+            dialog,
+            MODAL_WIDTH_DEFAULT,
+            None,
+            ModalPlacement::DEFAULT,
+            window,
+            move |_, cx| {
+                let confirm = confirm.clone();
+                v_flex()
+                    .child(modal_header(title.clone(), cx))
+                    .child(modal_body().child(text_field(&input, cx)))
                     .child(
-                        SecondaryButton::new("name-dialog-cancel", t!("common.cancel"))
-                            .on_click(|_, window, cx| window.close_dialog(cx)),
+                        modal_footer(cx)
+                            .child(
+                                SecondaryButton::new("name-dialog-cancel", t!("common.cancel"))
+                                    .on_click(|_, window, cx| window.close_dialog(cx)),
+                            )
+                            .child(
+                                PrimaryButton::new("name-dialog-ok", ok_label.clone())
+                                    .on_click(move |_, window, cx| confirm(window, cx)),
+                            ),
                     )
-                    .child(
-                        PrimaryButton::new("name-dialog-ok", ok_label)
-                            .on_click(move |_, window, cx| confirm(window, cx)),
-                    ),
-            )
+                    .into_any_element()
+            },
+        )
     });
     // Focus only after `open_dialog`, which captures the focused handle to restore on close
     // (see `views/command_palette.rs`). Selecting the whole text makes typing replace a
@@ -610,22 +620,18 @@ fn open_delete_confirmation(
     window: &mut Window,
     cx: &mut App,
 ) {
-    window.open_alert_dialog(cx, move |alert, _, _| {
-        let view = view.clone();
-        let id = id.clone();
-        alert
-            .title(t!("shell.sidebar.delete_title"))
-            .description(t!("shell.sidebar.delete_text", name = name.as_str()))
-            .button_props(
-                DialogButtonProps::default()
-                    .ok_text(t!("common.delete"))
-                    .ok_variant(ButtonVariant::Danger)
-                    .cancel_text(t!("common.cancel"))
-                    .show_cancel(true),
-            )
-            .on_ok(move |_, _, cx| {
+    open_confirm_dialog(
+        window,
+        cx,
+        ConfirmDialog {
+            title: t!("shell.sidebar.delete_title").into(),
+            text: t!("shell.sidebar.delete_text", name = name.as_str()).into(),
+            confirm_label: t!("common.delete").into(),
+            destructive: true,
+            show_cancel: true,
+            on_confirm: Rc::new(move |_, cx| {
                 let _ = view.update(cx, |view, cx| view.delete(id.clone(), cx));
-                true
-            })
-    });
+            }),
+        },
+    );
 }

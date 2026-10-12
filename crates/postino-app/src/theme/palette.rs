@@ -265,10 +265,10 @@ pub struct Palette {
     /// Boolean syntax highlight color, see [`Self::syn_key`].
     #[allow(dead_code)]
     pub syn_bool: Hsla,
-    /// The elevation shadow for `overlay`-level surfaces (menus, popovers, the Settings modal), the
-    /// two layers of the design's `--shadow` token. There is no `ThemeConfigColors` field for it,
-    /// so views apply it directly with gpui's own `.shadow(...)`. Used by the `Card` component,
-    /// menus and the Settings dialog.
+    /// The elevation shadow for `overlay`-level surfaces (menus, popovers, modals), the two layers
+    /// of the design's `--shadow` token. There is no `ThemeConfigColors` field for it, so views
+    /// apply it directly with gpui's own `.shadow(...)`. Used by every modal
+    /// (`components::modal`) and the dragged tab.
     pub shadow: Vec<BoxShadow>,
 }
 
