@@ -140,6 +140,14 @@ its close button (it would sit in the transparent room), so modals draw their ow
 gpui clips children to a rectangle, never to rounded corners: a child that paints a background
 into a rounded parent's corner must round that corner itself.
 
+When a dialog closes, `Root` focuses whatever was focused when it opened, through a weak handle.
+Opened from a popup menu, that is the menu, gone by then, so nothing gets the focus and window
+shortcuts stop working. A dialog closed with Enter restores it 250 ms later
+(`defer_close_dialog`), with the same result. `AppView` registers `cx.on_focus_lost` and takes
+the focus back whenever nothing has it and no dialog is open (#96). gpui draws no frame after a
+focus-lost listener moves the focus, so it defers a `window.refresh()`: without that frame, a
+second loss is never reported.
+
 ## Single-line inputs
 
 An `Input` has a default height of 32 px (`h_8`) and a default vertical padding of 8 px, which

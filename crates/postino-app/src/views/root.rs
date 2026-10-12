@@ -223,6 +223,25 @@ impl AppView {
             .detach();
         cx.on_focus_in(&focus_handle, window, |_, _, cx| cx.notify())
             .detach();
+        // A dialog gives the focus back to whatever had it when the dialog opened
+        // (`Root::open_dialog` keeps a weak handle). Opened from a menu, that is the menu, gone
+        // by the time the dialog closes, which left nothing focused and every window shortcut
+        // dead until a click (GitHub #96). Whenever nothing has the focus and no dialog is open,
+        // this view takes it, as a click on the window would. With a dialog open the focus stays
+        // where it is, so shortcuts never act behind a modal.
+        //
+        // gpui draws no new frame after a focus-lost listener moves the focus, and a notify from
+        // inside the listener is dropped with the frame being drawn, so the refresh is deferred.
+        // It matters: a dialog closed with Enter restores the menu's handle 250 ms later
+        // (`Root::defer_close_dialog`), once more focusing nothing, and only a frame drawn with
+        // this view focused in between lets gpui see that second loss and call this again.
+        cx.on_focus_lost(window, |view, window, cx| {
+            if !window.has_active_dialog(cx) {
+                view.focus_handle.focus(window, cx);
+                cx.defer_in(window, |_, window, _| window.refresh());
+            }
+        })
+        .detach();
         // Postino does not watch the workspace folder: coming back to the window is when files
         // changed elsewhere, such as an `.env` edited in another editor or a branch switched in a
         // terminal, are read again. An event, never a timer, so an idle window does no work.
