@@ -267,7 +267,7 @@ impl Default for Settings {
             max_response_mb: 20,
             log_level: LogLevel::default(),
             check_updates: true,
-            show_welcome: false,
+            show_welcome: true,
         }
     }
 }
@@ -475,7 +475,7 @@ mod tests {
         assert_eq!(settings.max_response_mb, 20);
         assert_eq!(settings.log_level, LogLevel::Info);
         assert!(settings.check_updates);
-        assert!(!settings.show_welcome);
+        assert!(settings.show_welcome);
     }
 
     #[test]
@@ -666,14 +666,14 @@ mod tests {
     }
 
     #[test]
-    fn show_welcome_defaults_to_off_and_falls_back_per_field() {
+    fn show_welcome_defaults_to_on_and_falls_back_per_field() {
         let parse = |text: &str| parse_settings(text).show_welcome;
-        assert!(!parse(""));
-        assert!(parse("show_welcome = true\n"));
-        assert!(!parse("show_welcome = \"yes\"\n"));
-        let settings = parse_settings("show_welcome = 1\ntheme = \"light\"\n");
+        assert!(parse(""));
+        assert!(!parse("show_welcome = false\n"));
+        assert!(parse("show_welcome = \"no\"\n"));
+        let settings = parse_settings("show_welcome = 0\ntheme = \"light\"\n");
         assert_eq!(settings.theme, ThemeChoice::Light);
-        assert!(!settings.show_welcome);
+        assert!(settings.show_welcome);
     }
 
     #[test]
