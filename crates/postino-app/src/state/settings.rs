@@ -35,6 +35,10 @@ pub const MONO_FONT_SIZE_RANGE: RangeInclusive<f32> = 10.0..=18.0;
 /// Step of the monospace font size stepper in the Settings view.
 pub const MONO_FONT_SIZE_STEP: f32 = 0.5;
 
+/// The choices for [`Settings::json_indent`], in spaces per level. Any other value read from
+/// `settings.toml` falls back to the default.
+pub const JSON_INDENT_OPTIONS: [usize; 2] = [2, 4];
+
 /// Which theme mode the app follows, chosen in Settings, "Appearance".
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -223,8 +227,8 @@ impl LogLevel {
 }
 
 /// User-configurable settings: the UI language, the theme mode, the two fonts (UI and editor) with their sizes,
-/// how requests treat invalid TLS certificates, the log level, the update check and the welcome
-/// tab.
+/// the JSON indentation, how requests treat invalid TLS certificates, the log level, the update
+/// check and the welcome tab.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Settings {
     /// The UI language: automatic (the system's) or a fixed one.
@@ -239,6 +243,9 @@ pub struct Settings {
     pub mono_font: String,
     /// The monospace font size, in points, clamped to [`MONO_FONT_SIZE_RANGE`].
     pub mono_font_size: f32,
+    /// Spaces per nesting level when Postino formats JSON: the request body's Format button and the
+    /// response's Pretty view. One of [`JSON_INDENT_OPTIONS`].
+    pub json_indent: usize,
     /// What to do with an invalid TLS certificate.
     pub invalid_tls_certificates: InvalidTlsCertificates,
     /// The largest response body that is read, in MB (1 MB is 1,000,000 bytes, like the sizes the
@@ -263,6 +270,7 @@ impl Default for Settings {
             ui_font_size: 13.0,
             mono_font: "Geist Mono".to_string(),
             mono_font_size: 12.5,
+            json_indent: 2,
             invalid_tls_certificates: InvalidTlsCertificates::default(),
             max_response_mb: 20,
             log_level: LogLevel::default(),
@@ -381,6 +389,12 @@ fn parse_settings(content: &str) -> Settings {
         .and_then(as_f32)
         .map(|size| size.clamp(*MONO_FONT_SIZE_RANGE.start(), *MONO_FONT_SIZE_RANGE.end()))
         .unwrap_or(defaults.mono_font_size);
+    let json_indent = table
+        .and_then(|table| table.get("json_indent"))
+        .and_then(toml::Value::as_integer)
+        .and_then(|spaces| usize::try_from(spaces).ok())
+        .filter(|spaces| JSON_INDENT_OPTIONS.contains(spaces))
+        .unwrap_or(defaults.json_indent);
     let invalid_tls_certificates = table
         .and_then(|table| table.get("invalid_tls_certificates"))
         .and_then(toml::Value::as_str)
@@ -414,6 +428,7 @@ fn parse_settings(content: &str) -> Settings {
         ui_font_size,
         mono_font,
         mono_font_size,
+        json_indent,
         invalid_tls_certificates,
         max_response_mb,
         log_level,
@@ -468,6 +483,7 @@ mod tests {
         assert_eq!(settings.ui_font_size, 13.0);
         assert_eq!(settings.mono_font, "Geist Mono");
         assert_eq!(settings.mono_font_size, 12.5);
+        assert_eq!(settings.json_indent, 2);
         assert_eq!(
             settings.invalid_tls_certificates,
             InvalidTlsCertificates::Warn
@@ -494,6 +510,7 @@ mod tests {
             ui_font_size: 14.0,
             mono_font: "Fira Code".to_string(),
             mono_font_size: 13.5,
+            json_indent: 4,
             invalid_tls_certificates: InvalidTlsCertificates::Reject,
             max_response_mb: 100,
             log_level: LogLevel::Trace,
@@ -548,6 +565,20 @@ mod tests {
         assert_eq!(ThemeChoice::parse("DARK"), Some(ThemeChoice::Dark));
         assert_eq!(ThemeChoice::parse("Light"), Some(ThemeChoice::Light));
         assert_eq!(ThemeChoice::parse("nonsense"), None);
+    }
+
+    #[test]
+    fn json_indent_accepts_only_its_options() {
+        let parse = |text: &str| parse_settings(text).json_indent;
+        assert_eq!(parse(""), 2);
+        assert_eq!(parse("json_indent = 4\n"), 4);
+        assert_eq!(parse("json_indent = 2\n"), 2);
+        assert_eq!(parse("json_indent = 3\n"), 2);
+        assert_eq!(parse("json_indent = -4\n"), 2);
+        assert_eq!(parse("json_indent = \"4\"\n"), 2);
+        let settings = parse_settings("json_indent = 8\ntheme = \"dark\"\n");
+        assert_eq!(settings.theme, ThemeChoice::Dark);
+        assert_eq!(settings.json_indent, 2);
     }
 
     #[test]

@@ -161,6 +161,13 @@ impl AppView {
     }
 
     /// Picks the largest response body that is read.
+    /// Picks the JSON indentation, used by the next Format and by every response's Pretty view
+    /// (its text cache is keyed on it, so the shown response is re-indented once).
+    fn set_json_indent(&mut self, spaces: usize, window: &mut Window, cx: &mut Context<Self>) {
+        self.state.settings.json_indent = spaces;
+        self.apply_settings_live(window, cx);
+    }
+
     fn set_max_response_mb(&mut self, mb: u32, window: &mut Window, cx: &mut Context<Self>) {
         self.state.settings.max_response_mb = mb;
         self.apply_settings_live(window, cx);
@@ -900,10 +907,17 @@ fn render_editor_section(
                 |view, delta, window, cx| view.step_mono_font_size(delta, window, cx),
             ),
         ))
+        .child(labeled_row(
+            palette,
+            t!("settings.editor.indent"),
+            Some(t!("settings.editor.indent_description")),
+            render_select("settings-json-indent", &selects.json_indent, palette, None),
+        ))
         .child(render_json_preview(
             palette,
             mono_font_family.clone(),
             settings.mono_font_size,
+            settings.json_indent,
         ))
         .into_any_element()
 }
@@ -1124,9 +1138,16 @@ fn stepper_button(
         .on_click(move |_, window, cx| on_click(window, cx))
 }
 
-/// The Editor section's live preview line: a syntax-highlighted JSON snippet in the chosen
-/// monospace font and size.
-fn render_json_preview(palette: &Palette, mono_font_family: SharedString, size: f32) -> AnyElement {
+/// The Editor section's live preview: a syntax-highlighted JSON snippet in the chosen monospace
+/// font and size, indented by `indent` spaces as the Format button and the Pretty view would.
+fn render_json_preview(
+    palette: &Palette,
+    mono_font_family: SharedString,
+    size: f32,
+    indent: usize,
+) -> AnyElement {
+    let pad = || json_span(" ".repeat(indent), palette.fg_muted);
+    let line = || h_flex().items_baseline();
     div()
         .border_1()
         .border_color(palette.border)
@@ -1135,25 +1156,32 @@ fn render_json_preview(palette: &Palette, mono_font_family: SharedString, size: 
         .px(px(14.0))
         .py(px(10.0))
         .child(
-            h_flex()
-                .items_baseline()
+            v_flex()
                 .font_family(mono_font_family)
                 .text_size(px(size))
                 .line_height(relative(1.6))
-                .child(json_span("{ ", palette.fg_muted))
-                .child(json_span("\"token\"", palette.syn_key))
-                .child(json_span(": ", palette.fg_muted))
-                .child(json_span("\"eyJhbGciOi\u{2026}\"", palette.syn_str))
-                .child(json_span(", ", palette.fg_muted))
-                .child(json_span("\"expiresIn\"", palette.syn_key))
-                .child(json_span(": ", palette.fg_muted))
-                .child(json_span("3600", palette.syn_num))
-                .child(json_span(" }", palette.fg_muted)),
+                .child(line().child(json_span("{", palette.fg_muted)))
+                .child(
+                    line()
+                        .child(pad())
+                        .child(json_span("\"token\"", palette.syn_key))
+                        .child(json_span(": ", palette.fg_muted))
+                        .child(json_span("\"eyJhbGciOi\u{2026}\"", palette.syn_str))
+                        .child(json_span(",", palette.fg_muted)),
+                )
+                .child(
+                    line()
+                        .child(pad())
+                        .child(json_span("\"expiresIn\"", palette.syn_key))
+                        .child(json_span(": ", palette.fg_muted))
+                        .child(json_span("3600", palette.syn_num)),
+                )
+                .child(line().child(json_span("}", palette.fg_muted))),
         )
         .into_any_element()
 }
 
-/// One colored fragment of [`render_json_preview`]'s single line.
-fn json_span(text: &'static str, color: Hsla) -> impl IntoElement {
-    div().text_color(color).child(text)
+/// One colored fragment of a [`render_json_preview`] line.
+fn json_span(text: impl Into<SharedString>, color: Hsla) -> impl IntoElement {
+    div().text_color(color).child(text.into())
 }

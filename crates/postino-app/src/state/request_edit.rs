@@ -104,13 +104,13 @@ pub fn is_valid_custom_method_token(token: &str) -> bool {
     !token.is_empty() && !token.chars().any(|c| c.is_ascii_lowercase())
 }
 
-/// Pretty-prints `text` as JSON with two-space indentation, for the request editor's "Format"
-/// button. `None` if `text` is not valid JSON, in which case the caller leaves the body
-/// unchanged (the button is only enabled for a JSON body, so this is a defensive fallback, not
-/// an expected path).
-pub fn format_json_body(text: &str) -> Option<String> {
-    let value: serde_json::Value = serde_json::from_str(text).ok()?;
-    serde_json::to_string_pretty(&value).ok()
+/// Pretty-prints `text` as JSON with `indent` spaces per level (the `json_indent` setting), for
+/// the request editor's "Format" button. The same formatter as the response's Pretty view, so
+/// every token stays as it was typed (key order, number spellings, escapes). `None` if `text` is
+/// not valid JSON (a body with `{{ }}` markers outside strings, for example), in which case the
+/// caller leaves the body unchanged.
+pub fn format_json_body(text: &str, indent: usize) -> Option<String> {
+    super::json_pretty::pretty_print_json(text.as_bytes(), indent)
 }
 
 /// Appends a new, empty, enabled row (used for the Params, Headers and Form key-value tables).
@@ -227,14 +227,22 @@ mod tests {
     #[test]
     fn format_json_body_pretty_prints_valid_json() {
         assert_eq!(
-            format_json_body(r#"{"a":1,"b":[1,2]}"#),
+            format_json_body(r#"{"a":1,"b":[1,2]}"#, 2),
             Some("{\n  \"a\": 1,\n  \"b\": [\n    1,\n    2\n  ]\n}".to_string())
         );
     }
 
     #[test]
+    fn format_json_body_uses_the_given_indentation_and_keeps_tokens() {
+        assert_eq!(
+            format_json_body(r#"{"z":1.0e3,"a":"\u00e9"}"#, 4),
+            Some("{\n    \"z\": 1.0e3,\n    \"a\": \"\\u00e9\"\n}".to_string())
+        );
+    }
+
+    #[test]
     fn format_json_body_rejects_invalid_json() {
-        assert_eq!(format_json_body("not json"), None);
+        assert_eq!(format_json_body("not json", 2), None);
     }
 
     #[test]

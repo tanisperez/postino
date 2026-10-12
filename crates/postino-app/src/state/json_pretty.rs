@@ -12,18 +12,15 @@
 
 use serde::de::IgnoredAny;
 
-/// Spaces per nesting level.
-const INDENT: usize = 2;
-
 /// The deepest nesting that is formatted, the limit `serde_json` applies when it builds a tree
 /// (the first version of this function). A deeper document is shown raw: it is not a real response,
 /// and its indentation alone would take memory quadratic in the depth.
 const MAX_DEPTH: usize = 127;
 
-/// Pretty-prints `body` as JSON with two-space indentation, or returns `None` when it is not valid
-/// UTF-8 or not valid JSON (or nested deeper than [`MAX_DEPTH`]), in which case the caller shows the
-/// raw text.
-pub fn pretty_print_json(body: &[u8]) -> Option<String> {
+/// Pretty-prints `body` as JSON with `indent` spaces per nesting level (the `json_indent` setting),
+/// or returns `None` when it is not valid UTF-8 or not valid JSON (or nested deeper than
+/// [`MAX_DEPTH`]), in which case the caller shows the raw text.
+pub fn pretty_print_json(body: &[u8], indent: usize) -> Option<String> {
     let text = std::str::from_utf8(body).ok()?;
     // Validation only: `IgnoredAny` visits every token and stores nothing, and `end` rejects
     // anything after the first value.
@@ -32,12 +29,13 @@ pub fn pretty_print_json(body: &[u8]) -> Option<String> {
         .map(|_: IgnoredAny| ())
         .ok()?;
     deserializer.end().ok()?;
-    reindent(text)
+    reindent(text, indent)
 }
 
-/// Re-indents `text`, which must be valid JSON: whitespace between tokens is dropped and rewritten,
-/// every token is copied verbatim. `None` when it is nested deeper than [`MAX_DEPTH`].
-fn reindent(text: &str) -> Option<String> {
+/// Re-indents `text`, which must be valid JSON, with `indent` spaces per level: whitespace between
+/// tokens is dropped and rewritten, every token is copied verbatim. `None` when it is nested deeper
+/// than [`MAX_DEPTH`].
+fn reindent(text: &str, indent: usize) -> Option<String> {
     let bytes = text.as_bytes();
     // A formatted document is usually a third bigger than a compact one.
     let mut out = String::with_capacity(text.len() + text.len() / 3);
@@ -71,19 +69,19 @@ fn reindent(text: &str) -> Option<String> {
                     i = next + 1;
                 } else {
                     depth += 1;
-                    new_line(&mut out, depth);
+                    new_line(&mut out, depth, indent);
                     i += 1;
                 }
             }
             close @ (b'}' | b']') => {
                 depth = depth.saturating_sub(1);
-                new_line(&mut out, depth);
+                new_line(&mut out, depth, indent);
                 out.push(char::from(close));
                 i += 1;
             }
             b',' => {
                 out.push(',');
-                new_line(&mut out, depth);
+                new_line(&mut out, depth, indent);
                 i += 1;
             }
             b':' => {
@@ -104,10 +102,10 @@ fn reindent(text: &str) -> Option<String> {
     Some(out)
 }
 
-/// Starts a new line indented for `depth`.
-fn new_line(out: &mut String, depth: usize) {
+/// Starts a new line indented for `depth` levels of `indent` spaces.
+fn new_line(out: &mut String, depth: usize, indent: usize) {
     out.push('\n');
-    out.extend(std::iter::repeat_n(' ', depth * INDENT));
+    out.extend(std::iter::repeat_n(' ', depth * indent));
 }
 
 /// The four whitespace characters JSON allows between tokens.
@@ -127,13 +125,21 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     fn pretty(text: &str) -> String {
-        pretty_print_json(text.as_bytes()).expect("valid JSON")
+        pretty_print_json(text.as_bytes(), 2).expect("valid JSON")
     }
 
     /// The previous implementation: parse into a tree and write it back.
     fn through_a_tree(text: &str) -> Option<String> {
         let value: serde_json::Value = serde_json::from_str(text).ok()?;
         serde_json::to_string_pretty(&value).ok()
+    }
+
+    #[test]
+    fn indents_by_the_given_width() {
+        assert_eq!(
+            pretty_print_json(br#"{"a":[1,{"b":null}]}"#, 4).expect("valid JSON"),
+            "{\n    \"a\": [\n        1,\n        {\n            \"b\": null\n        }\n    ]\n}"
+        );
     }
 
     #[test]
@@ -233,15 +239,15 @@ mod tests {
             "nul",
             "[01]",
         ] {
-            assert_eq!(pretty_print_json(text.as_bytes()), None, "{text:?}");
+            assert_eq!(pretty_print_json(text.as_bytes(), 2), None, "{text:?}");
         }
     }
 
     #[test]
     fn rejects_non_utf8() {
-        assert_eq!(pretty_print_json(&[b'"', 0xff, 0xfe, b'"']), None);
+        assert_eq!(pretty_print_json(&[b'"', 0xff, 0xfe, b'"'], 2), None);
         assert_eq!(
-            pretty_print_json(&[0xef, 0xbb, 0xbf, b'1']),
+            pretty_print_json(&[0xef, 0xbb, 0xbf, b'1'], 2),
             None,
             "a BOM is not JSON"
         );
@@ -252,7 +258,7 @@ mod tests {
         for depth in [100, 127, 128, 129, 200] {
             let text = format!("{}1{}", "[".repeat(depth), "]".repeat(depth));
             assert_eq!(
-                pretty_print_json(text.as_bytes()).is_some(),
+                pretty_print_json(text.as_bytes(), 2).is_some(),
                 through_a_tree(&text).is_some(),
                 "depth {depth}"
             );

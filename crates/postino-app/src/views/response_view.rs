@@ -48,20 +48,23 @@ const SEND_KEY_HINT: &str = "Ctrl+\u{21b5}";
 pub(crate) struct ResponseEditorEntities {
     built_for: Option<(String, bool)>,
     json: bool,
-    /// The `(tab id, response generation, raw)` whose text the editor currently holds, so a
-    /// resync is decided by comparing this cheap key and never the (possibly huge) text.
-    synced: Option<(String, u64, bool)>,
+    /// The `(tab id, response generation, JSON indentation, raw)` whose text the editor currently
+    /// holds, so a resync is decided by comparing this cheap key and never the (possibly huge)
+    /// text.
+    synced: Option<(String, u64, usize, bool)>,
     editor: Option<Entity<EditorState>>,
     texts: response_render::BodyTextCache,
 }
 
 impl ResponseEditorEntities {
     /// Rebuilds the editor if `tab_id`, `raw` or `json` differ from what it was last built for,
-    /// then resyncs its text to `text` when the `(tab_id, generation, raw)` key changed.
+    /// then resyncs its text to `text` when the `(tab_id, generation, indent, raw)` key changed.
+    #[allow(clippy::too_many_arguments)]
     fn sync(
         &mut self,
         tab_id: &str,
         generation: u64,
+        indent: usize,
         text: &Arc<str>,
         raw: bool,
         window: &mut Window,
@@ -81,7 +84,7 @@ impl ResponseEditorEntities {
             self.json = json;
             self.synced = None;
         }
-        let synced = (tab_id.to_string(), generation, raw);
+        let synced = (tab_id.to_string(), generation, indent, raw);
         if self.synced.as_ref() != Some(&synced)
             && let Some(editor) = &self.editor
         {
@@ -278,6 +281,7 @@ impl AppView {
     ) -> AnyElement {
         let palette = cx.palette();
         let generation = self.response_generations.get(tab_id);
+        let indent = self.state.settings.json_indent;
         // Scoped so the borrow of `self.responses` ends before `self.response_editor` (below)
         // needs a mutable one: `shown` is owned by the time this block ends.
         let shown = {
@@ -291,15 +295,19 @@ impl AppView {
                     .child(t!("response.body.empty"))
                     .into_any_element();
             };
-            self.response_editor
-                .texts
-                .shown(tab_id, generation, &response.body, self.response_raw)
+            self.response_editor.texts.shown(
+                tab_id,
+                generation,
+                &response.body,
+                self.response_raw,
+                indent,
+            )
         };
         let show_raw = shown.raw;
         let text = shown.text;
 
         self.response_editor
-            .sync(tab_id, generation, &text, show_raw, window, cx);
+            .sync(tab_id, generation, indent, &text, show_raw, window, cx);
 
         let weak = cx.weak_entity();
         let pretty_available = shown.pretty_available;

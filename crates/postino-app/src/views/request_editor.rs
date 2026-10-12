@@ -853,9 +853,10 @@ impl AppView {
             .disabled(!is_json)
             .on_click(move |_, _, cx| {
                 let _ = format_weak.update(cx, |view, cx| {
+                    let indent = view.state.settings.json_indent;
                     view.edit_active_request(&format_tab_id, cx, |request| {
                         if let Body::Json(text) = &request.body
-                            && let Some(pretty) = request_edit::format_json_body(text)
+                            && let Some(pretty) = request_edit::format_json_body(text, indent)
                         {
                             request.body = Body::Json(pretty);
                         }

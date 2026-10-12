@@ -73,7 +73,7 @@ Authorization: Bearer {{token}}
 </table></div>
 <ul>
     <li>Switching between JSON, Text and XML keeps what you typed, so you can switch to Text while a JSON body is not valid yet. Switching to or from Form starts from an empty table, or brings back the previous fields.</li>
-    <li><strong>Format</strong> pretty prints a JSON body with two-space indentation. It is enabled only for JSON bodies.</li>
+    <li><strong>Format</strong> pretty prints a JSON body with the <a href="settings.html">JSON indentation</a> of Settings, two spaces by default. It only changes the whitespace: keys keep their order, and numbers and escapes stay as you typed them. It is enabled only for JSON bodies, and does nothing to a body that is not valid JSON yet, such as one with a variable outside a string.</li>
     <li>Variables and <a href="template-functions.html">template functions</a> work inside any body. In a JSON body, put them inside strings when the value is a string: <code>"name": "{{userName}}"</code>.</li>
     <li>Form fields are encoded after variables are replaced. Spaces become <code>+</code>, as servers expect for this content type. Disabled fields are not sent.</li>
 </ul>

@@ -1,5 +1,5 @@
-//! The Settings selects: language, the two font families, invalid TLS certificates, the largest
-//! response and the log level. Every one is a gpui-component [`Select`], which brings a scrolling
+//! The Settings selects: language, the two font families, the JSON indentation, invalid TLS
+//! certificates, the largest response and the log level. Every one is a gpui-component [`Select`], which brings a scrolling
 //! list with a scrollbar, a placement under the box and, for the long font lists, a search box
 //! that also gives keyboard access (type to filter, arrows, Enter).
 //!
@@ -140,12 +140,13 @@ type OptionsState = SelectState<PaddedOptions>;
 /// The entity behind one Settings select.
 pub(super) type SettingsSelect = Entity<OptionsState>;
 
-/// The six selects, cheap to clone into the dialog's render.
+/// The seven selects, cheap to clone into the dialog's render.
 #[derive(Clone)]
 pub(super) struct SelectHandles {
     pub(super) language: SettingsSelect,
     pub(super) ui_font: SettingsSelect,
     pub(super) mono_font: SettingsSelect,
+    pub(super) json_indent: SettingsSelect,
     pub(super) tls: SettingsSelect,
     pub(super) max_response: SettingsSelect,
     pub(super) log_level: SettingsSelect,
@@ -175,6 +176,20 @@ fn language_options() -> Vec<SelectOption> {
         .enumerate()
         .map(|(index, choice)| {
             SelectOption::new(index_id(index), super::language_choice_label(*choice))
+        })
+        .collect()
+}
+
+/// "2 spaces" and "4 spaces", with the number of spaces as the id.
+fn json_indent_options() -> Vec<SelectOption> {
+    state::settings::JSON_INDENT_OPTIONS
+        .iter()
+        .map(|&spaces| {
+            let count = state::number::format_integer(spaces as u64);
+            SelectOption::new(
+                spaces.to_string(),
+                t!("settings.editor.indent_spaces", count = count.as_str()),
+            )
         })
         .collect()
 }
@@ -298,6 +313,19 @@ impl SettingsSelects {
             window,
             cx,
         );
+        let json_indent = create_select(
+            json_indent_options(),
+            &settings.json_indent.to_string(),
+            false,
+            |view, id, window, cx| {
+                if let Ok(spaces) = id.parse::<usize>() {
+                    view.set_json_indent(spaces, window, cx);
+                }
+            },
+            &mut subscriptions,
+            window,
+            cx,
+        );
         let tls = create_select(
             tls_options(),
             &index_id(tls_index(settings.invalid_tls_certificates)),
@@ -342,6 +370,7 @@ impl SettingsSelects {
                 language,
                 ui_font,
                 mono_font,
+                json_indent,
                 tls,
                 max_response,
                 log_level,
@@ -363,6 +392,7 @@ impl SettingsSelects {
         let handles = &self.handles;
         if relabel {
             set_items(&handles.language, language_options(), window, cx);
+            set_items(&handles.json_indent, json_indent_options(), window, cx);
             set_items(&handles.tls, tls_options(), window, cx);
             set_items(&handles.log_level, log_level_options(), window, cx);
         }
@@ -380,6 +410,12 @@ impl SettingsSelects {
         );
         select_value(&handles.ui_font, &settings.ui_font, window, cx);
         select_value(&handles.mono_font, &settings.mono_font, window, cx);
+        select_value(
+            &handles.json_indent,
+            &settings.json_indent.to_string(),
+            window,
+            cx,
+        );
         select_value(
             &handles.tls,
             &index_id(tls_index(settings.invalid_tls_certificates)),

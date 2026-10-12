@@ -110,6 +110,21 @@ _version: 2
   es: "Fuente monoespaciada"
   gl: "Tipo de letra monoespazada"
   it: "Carattere a spaziatura fissa"
+"settings.editor.indent":
+  en: "JSON indentation"
+  es: "Sangría de JSON"
+  gl: "Sangría de JSON"
+  it: "Rientro JSON"
+"settings.editor.indent_description":
+  en: "When formatting JSON: the Format button of a request body and the Pretty view of a response."
+  es: "Al formatear JSON: el botón Formatear del cuerpo de una petición y la vista Formateado de una respuesta."
+  gl: "Ao formatar JSON: o botón Formatar do corpo dunha petición e a vista Formatado dunha resposta."
+  it: "Quando si formatta il JSON: il pulsante Formatta del corpo di una richiesta e la vista Formattato di una risposta."
+"settings.editor.indent_spaces":
+  en: "%{count} spaces"
+  es: "%{count} espacios"
+  gl: "%{count} espazos"
+  it: "%{count} spazi"
 "settings.tls.title":
   en: "TLS"
   es: "TLS"

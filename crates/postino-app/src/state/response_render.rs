@@ -139,7 +139,8 @@ pub struct ShownBody {
 /// Caches the pretty and raw texts of the last response shown in the Body tab.
 #[derive(Debug, Default)]
 pub struct BodyTextCache {
-    key: Option<(String, u64)>,
+    /// The tab, the response generation and the JSON indentation the texts were computed for.
+    key: Option<(String, u64, usize)>,
     /// `None` until computed; the inner `None` means "not valid JSON".
     pretty: Option<Option<Arc<str>>>,
     raw: Option<Arc<str>>,
@@ -148,29 +149,29 @@ pub struct BodyTextCache {
 }
 
 impl BodyTextCache {
-    /// Returns the text to show for the response identified by `(tab_id, generation)`.
-    /// `body` is only read when that key differs from the last call, or the raw text is first
-    /// requested.
+    /// Returns the text to show for the response identified by `(tab_id, generation)`, pretty
+    /// printed with `indent` spaces per level. `body` is only read when that key or `indent`
+    /// differs from the last call, or the raw text is first requested.
     pub fn shown(
         &mut self,
         tab_id: &str,
         generation: u64,
         body: &[u8],
         want_raw: bool,
+        indent: usize,
     ) -> ShownBody {
-        let same = self
-            .key
-            .as_ref()
-            .is_some_and(|(tab, gen_)| tab == tab_id && *gen_ == generation);
+        let same = self.key.as_ref().is_some_and(|(tab, gen_, spaces)| {
+            tab == tab_id && *gen_ == generation && *spaces == indent
+        });
         if !same {
-            self.key = Some((tab_id.to_string(), generation));
+            self.key = Some((tab_id.to_string(), generation, indent));
             self.pretty = None;
             self.raw = None;
         }
         if self.pretty.is_none() {
             self.computations += 1;
             let started = Instant::now();
-            self.pretty = Some(pretty_print_json(body).map(Arc::from));
+            self.pretty = Some(pretty_print_json(body, indent).map(Arc::from));
             log::debug!(
                 "response body of {tab_id}: pretty print of {} bytes took {} us",
                 body.len(),
@@ -240,32 +241,34 @@ mod tests {
     fn body_cache_computes_once_per_response_and_mode() {
         let mut cache = BodyTextCache::default();
         let body = br#"{"a":1}"#;
-        let first = cache.shown("t", 1, body, false);
+        let first = cache.shown("t", 1, body, false, 2);
         assert!(!first.raw && first.pretty_available);
         let before = cache.computations;
-        let again = cache.shown("t", 1, body, false);
+        let again = cache.shown("t", 1, body, false, 2);
         assert!(Arc::ptr_eq(&first.text, &again.text));
         assert_eq!(cache.computations, before);
-        let raw = cache.shown("t", 1, body, true);
+        let raw = cache.shown("t", 1, body, true, 2);
         assert!(raw.raw);
         assert_eq!(&*raw.text, r#"{"a":1}"#);
         let after_raw = cache.computations;
-        cache.shown("t", 1, body, true);
+        cache.shown("t", 1, body, true, 2);
         assert_eq!(cache.computations, after_raw);
     }
 
     #[test]
-    fn body_cache_recomputes_for_new_response_or_tab() {
+    fn body_cache_recomputes_for_new_response_tab_or_indent() {
         let mut cache = BodyTextCache::default();
-        assert_eq!(&*cache.shown("t", 1, b"[1]", false).text, "[\n  1\n]");
-        assert_eq!(&*cache.shown("t", 2, b"[2]", false).text, "[\n  2\n]");
-        assert_eq!(&*cache.shown("u", 2, b"[3]", false).text, "[\n  3\n]");
+        assert_eq!(&*cache.shown("t", 1, b"[1]", false, 2).text, "[\n  1\n]");
+        assert_eq!(&*cache.shown("t", 2, b"[2]", false, 2).text, "[\n  2\n]");
+        assert_eq!(&*cache.shown("u", 2, b"[3]", false, 2).text, "[\n  3\n]");
+        // A new indentation recomputes the same response.
+        assert_eq!(&*cache.shown("u", 2, b"[3]", false, 4).text, "[\n    3\n]");
     }
 
     #[test]
     fn body_cache_falls_back_to_raw_for_non_json() {
         let mut cache = BodyTextCache::default();
-        let shown = cache.shown("t", 1, b"hello", false);
+        let shown = cache.shown("t", 1, b"hello", false, 2);
         assert!(shown.raw && !shown.pretty_available);
         assert_eq!(&*shown.text, "hello");
     }
@@ -282,18 +285,18 @@ mod tests {
 
     #[test]
     fn pretty_print_json_formats_valid_json() {
-        let result = pretty_print_json(br#"{"a":1,"b":[1,2]}"#).expect("valid JSON");
+        let result = pretty_print_json(br#"{"a":1,"b":[1,2]}"#, 2).expect("valid JSON");
         assert_eq!(result, "{\n  \"a\": 1,\n  \"b\": [\n    1,\n    2\n  ]\n}");
     }
 
     #[test]
     fn pretty_print_json_rejects_invalid_json() {
-        assert_eq!(pretty_print_json(b"not json"), None);
+        assert_eq!(pretty_print_json(b"not json", 2), None);
     }
 
     #[test]
     fn pretty_print_json_rejects_non_utf8() {
-        assert_eq!(pretty_print_json(&[0xff, 0xfe]), None);
+        assert_eq!(pretty_print_json(&[0xff, 0xfe], 2), None);
     }
 
     #[test]
