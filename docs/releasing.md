@@ -40,6 +40,11 @@ The work of a version is tracked by its GitHub milestone (`gh issue list --miles
    publishes it. If the draft does not exist yet when the builds finish, the workflow creates one
    with placeholder notes; edit them afterwards with `gh release edit v0.1.0 --notes-file notes.md`.
 
+6. For a stable release, run the `Website` workflow by hand (`gh workflow run website.yml`) once
+   the release is published. It rebuilds the APT and DNF repositories with the new packages. Its
+   `release: published` trigger does not fire here, because the release workflow publishes with
+   `GITHUB_TOKEN`, and events caused by that token never start other workflows.
+
 The release stays a draft until every asset is uploaded, so nobody sees a half-built release.
 
 ## Assets
@@ -165,8 +170,8 @@ published on the site). There is no `gh-pages` branch: a branch holding the deb 
 would make every `git clone` of Postino download them too. The site is deployed from Actions
 (`actions/deploy-pages`) and rebuilt from scratch each time: the job builds the website,
 downloads the deb and rpm of the last 3 stable releases from GitHub Releases, regenerates and
-signs the APT and DNF metadata, and uploads the whole site. It runs after each stable release and
-on pushes to `main` that touch `site/`. GitHub Pages limits: 1 GB per site, 100 MB per file,
+signs the APT and DNF metadata, and uploads the whole site. It runs on pushes to `main` that
+touch `site/`, and by hand after each stable release (step 6 of "Steps"). GitHub Pages limits: 1 GB per site, 100 MB per file,
 100 GB of bandwidth per month (soft). Older versions stay downloadable from Releases. The repo
 URLs use the `postino.tanis.codes` domain, so moving the hosting later (Cloudflare Pages is ruled
 out for now by its 25 MB per file limit) never breaks the users' apt and dnf configuration.
