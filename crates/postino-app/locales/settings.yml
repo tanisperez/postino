@@ -255,6 +255,21 @@ _version: 2
   es: "Reiniciar para actualizar"
   gl: "Reiniciar para actualizar"
   it: "Riavvia per aggiornare"
+"settings.about.available.title":
+  en: "Postino %{version} is available"
+  es: "Postino %{version} está disponible"
+  gl: "Postino %{version} está dispoñible"
+  it: "Postino %{version} è disponibile"
+"settings.about.available.text":
+  en: "This portable copy doesn't update itself. Download the new zip, close Postino and replace postino.exe."
+  es: "Esta copia portable no se actualiza sola. Descarga el nuevo zip, cierra Postino y reemplaza postino.exe."
+  gl: "Esta copia portable non se actualiza soa. Descarga o novo zip, pecha Postino e substitúe postino.exe."
+  it: "Questa copia portatile non si aggiorna da sola. Scarica il nuovo zip, chiudi Postino e sostituisci postino.exe."
+"settings.about.available.download":
+  en: "Download"
+  es: "Descargar"
+  gl: "Descargar"
+  it: "Scarica"
 "settings.about.status.failed":
   en: "The last check failed. The log has the details."
   es: "La última comprobación falló. El registro tiene los detalles."

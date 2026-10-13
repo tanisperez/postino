@@ -30,6 +30,7 @@ impl AppView {
         let Some(platform) = Platform::current() else {
             return;
         };
+        let portable = self.about_info.portable;
         cx.spawn(async move |this, cx| {
             cx.background_executor().timer(STARTUP_DELAY).await;
             // The setting may have been turned off during the delay.
@@ -47,7 +48,7 @@ impl AppView {
                 return;
             }
             let result = cx
-                .background_spawn(async move { update::check_and_download(platform) })
+                .background_spawn(async move { update::check_and_download(platform, portable) })
                 .await;
             // One repaint per change, for the status bar and an open Settings, "About".
             let _ = this.update(cx, |view, cx| {
@@ -75,7 +76,12 @@ impl AppView {
             return;
         };
         if let Some(ready) = self.state.update.ready() {
-            let text = t!("update.already_ready", version = ready.version.as_str());
+            let version = ready.version.as_str();
+            let text = if ready.is_manual_download() {
+                t!("update.available_manual", version = version)
+            } else {
+                t!("update.already_ready", version = version)
+            };
             window.push_notification(Notification::info(text.into_owned()), cx);
             return;
         }
@@ -84,9 +90,10 @@ impl AppView {
         }
         window.push_notification(Notification::info(t!("update.checking").into_owned()), cx);
         cx.notify();
+        let portable = self.about_info.portable;
         cx.spawn_in(window, async move |this, cx| {
             let result = cx
-                .background_spawn(async move { update::check_and_download(platform) })
+                .background_spawn(async move { update::check_and_download(platform, portable) })
                 .await;
             let _ = this.update_in(cx, |view, window, cx| {
                 let notification = match result {
@@ -97,9 +104,15 @@ impl AppView {
                                 t!("update.up_to_date", version = update::CURRENT_VERSION)
                                     .into_owned(),
                             ),
-                            CheckOutcome::Ready(ready) => Notification::info(
-                                t!("update.found", version = ready.version.as_str()).into_owned(),
-                            ),
+                            CheckOutcome::Ready(ready) => {
+                                let version = ready.version.as_str();
+                                let text = if ready.is_manual_download() {
+                                    t!("update.available_manual", version = version)
+                                } else {
+                                    t!("update.found", version = version)
+                                };
+                                Notification::info(text.into_owned())
+                            }
                         }
                     }
                     Err(error) => {

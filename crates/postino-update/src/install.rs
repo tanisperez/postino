@@ -9,6 +9,9 @@ use crate::UpdateError;
 /// Name of the folder, next to the bundle, where the new version is unpacked.
 const STAGING_DIR: &str = ".postino-update";
 
+/// Name of the uninstaller the Inno Setup installer leaves next to `postino.exe`.
+const WINDOWS_UNINSTALLER: &str = "unins000.exe";
+
 /// The arguments the Windows installer is started with.
 #[must_use]
 pub fn windows_installer_args() -> [&'static str; 4] {
@@ -18,6 +21,15 @@ pub fn windows_installer_args() -> [&'static str; 4] {
         "/NORESTART",
         "/relaunch=1",
     ]
+}
+
+/// Windows: whether `exe` runs from a copy made by the installer, which always leaves its
+/// uninstaller next to the program. A portable copy (the zip) has none and must not be updated by
+/// running the installer, which would add a second copy somewhere else.
+#[must_use]
+pub fn windows_is_installed(exe: &Path) -> bool {
+    exe.parent()
+        .is_some_and(|dir| dir.join(WINDOWS_UNINSTALLER).is_file())
 }
 
 /// Windows: starts the downloaded installer silently and returns. The caller quits right after.
@@ -157,6 +169,30 @@ mod tests {
                 "/relaunch=1"
             ]
         );
+    }
+
+    #[test]
+    fn windows_installed_copy_has_its_uninstaller_next_to_the_exe() {
+        let dir = tempfile::tempdir().unwrap();
+        let exe = dir.path().join("postino.exe");
+        fs::write(&exe, "exe").unwrap();
+        assert!(!windows_is_installed(&exe));
+        fs::write(dir.path().join(WINDOWS_UNINSTALLER), "uninstaller").unwrap();
+        assert!(windows_is_installed(&exe));
+    }
+
+    #[test]
+    fn windows_uninstaller_elsewhere_does_not_count() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join(WINDOWS_UNINSTALLER), "uninstaller").unwrap();
+        let portable = dir.path().join("portable");
+        fs::create_dir(&portable).unwrap();
+        assert!(!windows_is_installed(&portable.join("postino.exe")));
+        // A folder with that name is not an uninstaller.
+        let fake = dir.path().join("fake");
+        fs::create_dir_all(fake.join(WINDOWS_UNINSTALLER)).unwrap();
+        assert!(!windows_is_installed(&fake.join("postino.exe")));
+        assert!(!windows_is_installed(Path::new("")));
     }
 
     #[test]

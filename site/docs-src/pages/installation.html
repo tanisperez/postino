@@ -9,7 +9,7 @@ description: Install Postino on Linux, Windows or macOS from an installer, a pac
     <thead><tr><th>System</th><th>Supported</th><th>Packages</th></tr></thead>
     <tbody>
         <tr><td>Linux</td><td>x86_64, Wayland or X11, a GPU driver with Vulkan</td><td><code>.deb</code>, <code>.rpm</code>, <code>.tar.gz</code>, APT and DNF repositories</td></tr>
-        <tr><td>Windows</td><td>Windows 10 and 11, 64 bit</td><td>Installer (<code>-setup.exe</code>), winget</td></tr>
+        <tr><td>Windows</td><td>Windows 10 and 11, 64 bit</td><td>Installer (<code>-setup.exe</code>), portable zip (<code>-portable.zip</code>), winget</td></tr>
         <tr><td>macOS</td><td>Apple silicon (M1 and later)</td><td>Disk image (<code>.dmg</code>), Homebrew cask</td></tr>
     </tbody>
 </table></div>
@@ -52,6 +52,10 @@ $ sudo zypper install postino
 ```
 <p>Postino on Windows updates itself. <code>winget upgrade</code> also picks up new versions.</p>
 
+<h3 id="portable">Portable zip</h3>
+<p>On a machine where running an installer is not allowed, download <code>Postino-…-windows-x86_64-portable.zip</code> instead. It holds <code>postino.exe</code>, the license and the notice. Unzip it anywhere you can run programs from, a folder in your profile or a USB drive, and double click <code>postino.exe</code>. There is nothing to install: no Start menu shortcut, no <code>.postino</code> file association and no entry in Apps. To remove it, delete the folder.</p>
+<p>A portable copy still keeps its <a href="settings.html">settings</a> and <a href="files-and-folders.html">logs</a> in your user folders, like the installed one, so it is portable in the sense of not needing an installer, not of leaving no trace. It does not replace itself either: see <a href="#updates">Updates</a>.</p>
+
 <h2>macOS</h2>
 <p>Download <code>Postino-…-macos-arm64.dmg</code>, open it and drag Postino to Applications. Or use Homebrew:</p>
 ```shell
@@ -70,24 +74,26 @@ $ xattr -dr com.apple.quarantine /Applications/Postino.app
     <li><strong>Windows:</strong> if SmartScreen shows <strong>Windows protected your PC</strong>, choose <strong>More info</strong> and then <strong>Run anyway</strong>.</li>
 </ul>
 
-<h2>Updates</h2>
+<h2 id="updates">Updates</h2>
 <div class="table"><table>
     <thead><tr><th>Installed from</th><th>How it updates</th></tr></thead>
     <tbody>
         <tr><td>apt, dnf, zypper</td><td>With your system updates. Postino never updates itself on Linux.</td></tr>
         <tr><td>Tarball</td><td>Download the new version from the releases page.</td></tr>
         <tr><td>Windows installer, winget</td><td>In-app updater, or <code>winget upgrade</code>.</td></tr>
+        <tr><td>Windows portable zip</td><td>The status bar tells you when a new version exists and opens the release page. Download the new zip and replace <code>postino.exe</code>.</td></tr>
         <tr><td>macOS disk image, Homebrew</td><td>In-app updater.</td></tr>
         <tr><td>Built from source</td><td>Pull and build again. Local builds have no updater.</td></tr>
     </tbody>
 </table></div>
 <p>The in-app updater checks once, a few seconds after launch, and never polls in the background. When a new version exists it downloads it, verifies its checksum and shows <strong>Update ready, restart</strong> in the status bar. Nothing is installed until you click it. You can turn the automatic check off in <a href="settings.html#about">Settings, About</a>, and check by hand from the command palette with <strong>Check for updates</strong>.</p>
+<p>A portable Windows copy checks the same way but downloads nothing, because running the installer from it would add a second copy of Postino. Postino tells it apart from an installed one by the uninstaller (<code>unins000.exe</code>) that the installer leaves next to <code>postino.exe</code>. When a newer version exists, the status bar shows <strong>Update … available, download</strong>. Clicking it opens the release page, where the new zip is. Close Postino, unzip the new <code>postino.exe</code> over the old one and start it again. Nothing is restarted for you.</p>
 
 <h2>Uninstall</h2>
 <ul>
     <li><strong>Debian and Ubuntu:</strong> <code>sudo apt remove postino</code>, then delete <code>/etc/apt/sources.list.d/postino.list</code> and <code>/etc/apt/keyrings/postino.asc</code> if you no longer want the repository.</li>
     <li><strong>Fedora:</strong> <code>sudo dnf remove postino</code> and delete <code>/etc/yum.repos.d/postino.repo</code>.</li>
-    <li><strong>Windows:</strong> Settings, Apps, Postino, Uninstall.</li>
+    <li><strong>Windows:</strong> Settings, Apps, Postino, Uninstall. A portable copy is not listed there: delete its folder.</li>
     <li><strong>macOS:</strong> drag Postino from Applications to the Trash, or <code>brew uninstall --cask postino</code>.</li>
 </ul>
 <p>Uninstalling never touches your workspaces. To remove your settings and logs as well, delete the folders listed in <a href="files-and-folders.html">Files and folders</a>.</p>

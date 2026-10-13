@@ -52,8 +52,14 @@ The release stays a draft until every asset is uploaded, so nobody sees a half-b
 | `Postino-X.Y.Z-macos-arm64.dmg` | macOS app, Apple silicon, ad-hoc signed |
 | `Postino-X.Y.Z-macos-arm64.app.tar.gz` | The same app, for the in-app updater |
 | `Postino-X.Y.Z-windows-x86_64-setup.exe` | Per-user Windows installer |
-| `latest.json` | Manifest read by the in-app updater: version, release page, and URL plus SHA-256 of the macOS and Windows assets |
+| `Postino-X.Y.Z-windows-x86_64-portable.zip` | Portable Windows build for machines where running an installer is not allowed: `postino.exe`, `LICENSE` and `NOTICE` at the top level of the zip, nothing to install |
+| `latest.json` | Manifest read by the in-app updater: version, release page, and URL plus SHA-256 of the macOS app archive and the Windows installer (not the portable zip) |
 | `SHA256SUMS` | SHA-256 of every asset above |
+
+The portable zip is built by the Windows job right after the installer, with `Compress-Archive`,
+from the same `postino.exe`. `latest.json` is written by globbing `Postino-*-windows-x86_64-setup.exe`,
+which the zip name does not match, so the manifest keeps pointing at the installer. The zip lands
+in `SHA256SUMS` like every other file in `dist`.
 
 Linux binaries are built on Ubuntu 22.04 (glibc 2.35). Inside the deb and rpm a pre-release
 version uses a tilde (`0.1.0~rc.1`) so it sorts before the final release. Every file name keeps
@@ -112,7 +118,7 @@ tag v0.3.0 pushed
   └─ check: tag == Cargo version, prerelease = tag contains "-"
       ├─ build-linux   (ubuntu-22.04)   cargo build --release, tar.gz, nfpm deb + rpm
       ├─ build-macos   (macos-latest)   cargo build --release, .app bundle, ad-hoc codesign, dmg, app.tar.gz
-      └─ build-windows (windows-latest) cargo build --release, Inno Setup installer
+      └─ build-windows (windows-latest) cargo build --release, Inno Setup installer, portable zip
           └─ publish: SHA256SUMS + latest.json, upload to the draft, mark it published
               └─ distribute (stable only, each job independent): website + APT + DNF repos on Pages, AUR
 ```
@@ -129,7 +135,7 @@ Installing registers the app and the `.postino` file type:
 | --- | --- |
 | Linux (deb, rpm, AUR) | `/usr/bin/postino`, `/usr/share/applications/codes.tanis.postino.desktop` (with `MimeType=application/x-postino;`), `/usr/share/mime/packages/codes.tanis.postino.xml` (glob `*.postino`), icons in `/usr/share/icons/hicolor/*/apps/`. The distro triggers refresh the MIME and desktop databases, nothing to script. |
 | macOS | `Postino.app` with `Info.plist`: `CFBundleIdentifier`, `CFBundleDocumentTypes` and `UTExportedTypeDeclarations` for the `postino` extension, and an `.icns` icon. LaunchServices registers it when the app lands in `/Applications`. |
-| Windows | Inno Setup, **per user** install (`%LOCALAPPDATA%\Programs\Postino`, no admin, so a self update never needs UAC). Start menu shortcut, optional desktop shortcut, `.postino` association under `HKCU\Software\Classes`, uninstaller in "Apps", and `CloseApplications=yes` so it can update a running Postino. |
+| Windows | Inno Setup, **per user** install (`%LOCALAPPDATA%\Programs\Postino`, no admin, so a self update never needs UAC). Start menu shortcut, optional desktop shortcut, `.postino` association under `HKCU\Software\Classes`, uninstaller in "Apps", and `CloseApplications=yes` so it can update a running Postino. The portable zip registers nothing: no shortcut, no file association, no uninstaller. |
 
 In the app:
 
@@ -190,7 +196,13 @@ Considered and left for later:
   version from the uninstall entry the Inno installer writes, so both update paths agree. Not set
   up yet (#44).
 - **Direct:** the setup exe from Releases.
-- **Updates:** in-app.
+- **Portable:** `Postino-X.Y.Z-windows-x86_64-portable.zip` from Releases, for corporate machines
+  where running an installer is not allowed. Unzip anywhere and run `postino.exe`. Settings and
+  logs stay where the installed app keeps them (`%APPDATA%\postino\` and
+  `%LOCALAPPDATA%\Postino\logs\`), so a portable copy still writes outside its folder; it only
+  needs no installer.
+- **Updates:** in-app for the installer. A portable copy only announces the new version and opens
+  the release page, see "In-app updater".
 
 ## The website
 
@@ -219,8 +231,9 @@ The `postino-update` crate (no UI, tested against a local `tiny_http` server) pl
 exists only on macOS and Windows.
 
 - **Compiled in only with `POSTINO_UPDATER=github`** at build time (`option_env!`), set only on
-  the macOS `.app` and the Windows installer. Otherwise the whole feature, its setting and its
-  menu entries are absent (deb, rpm, AUR and local builds).
+  the macOS `.app`, the Windows installer and the Windows portable zip (the same `postino.exe`).
+  Otherwise the whole feature, its setting and its menu entries are absent (deb, rpm, AUR and
+  local builds).
 - **Setting and command:** Settings, Advanced, "Check for updates automatically" (on by
   default), and a command palette entry "Check for updates".
 - **Check:** once, 10 s after startup, on the background executor. No timer and no polling, so
@@ -230,9 +243,19 @@ exists only on macOS and Windows.
   version using `semver`. GitHub redirects that URL to the newest stable release: no API, no
   token, no rate limit. Network and parse errors are logged at Warn and otherwise ignored for the
   background check (the manual check does show them).
-- **Download:** when a newer version exists, the asset for this platform is downloaded in the
-  background and its sha256 verified. Then a discreet indicator appears in the status bar
-  ("Update ready, restart") with a link to the release notes. Nothing installs without a click.
+- **Download:** when a newer version exists (and this is not a portable copy, see below), the
+  asset for this platform is downloaded in the background and its sha256 verified. Then a discreet
+  indicator appears in the status bar ("Update ready, restart") with a link to the release notes.
+  Nothing installs without a click.
+- **Portable Windows copy:** the installer always leaves `unins000.exe` next to `postino.exe`
+  (`postino_update::install::windows_is_installed`). A copy without it came from the zip, and
+  running the installer from it would install a second, separate copy, so it never does. It also
+  downloads nothing. When a newer version exists the status bar shows "Update X available,
+  download" and a click opens the release page, where the new zip is. There is no restart prompt.
+  The manual check and Settings, About say the same (a banner with a "Download" button, no
+  "Downloads to" path). The test is made once at startup (`AboutInfo::detect`) and an unknown
+  executable path counts as portable, the safe side. The decision logic is `is_portable` and
+  `ready_update` in `state/update.rs`, unit tested on Linux.
 - **Install on Windows:** run the downloaded installer with
   `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /relaunch=1` and quit. The installer replaces the
   files (closing Postino through the Restart Manager if needed) and relaunches it only because of

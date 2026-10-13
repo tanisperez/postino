@@ -36,20 +36,38 @@ pub fn should_check_at_startup(enabled: bool, setting: bool) -> bool {
     enabled && setting
 }
 
+/// Whether this copy is a portable Windows one. The installer leaves its uninstaller next to the
+/// exe, so a copy without it comes from the zip and must not run the installer (that would add a
+/// second, separate copy). With an unknown executable path the copy counts as portable, the safe
+/// side: the user is sent to the release page instead of getting a second install.
+pub fn is_portable(platform: Option<Platform>, exe: Option<&Path>) -> bool {
+    platform == Some(Platform::WindowsX86_64) && !exe.is_some_and(install::windows_is_installed)
+}
+
 /// Where downloaded updates are kept, `None` when the OS cache directory is unknown.
 pub fn download_dir() -> Option<PathBuf> {
     dirs::cache_dir().map(|base| base.join("postino").join("updates"))
 }
 
-/// An update that is downloaded and verified, waiting for the user to restart into it.
+/// A newer version the user can act on: downloaded and verified, waiting for a restart into it,
+/// or, for a portable copy, only announced.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReadyUpdate {
     /// The new version, as text.
     pub version: String,
-    /// The release page with the notes.
+    /// The release page with the notes (and, for a portable copy, the zip to download).
     pub notes_url: String,
-    /// The verified installer (Windows) or archive (macOS).
-    pub path: PathBuf,
+    /// The verified installer (Windows) or archive (macOS). `None` for a portable copy, which
+    /// downloads nothing: the user takes the new zip from the release page.
+    pub path: Option<PathBuf>,
+}
+
+impl ReadyUpdate {
+    /// Whether the user has to download the new version by hand, from [`Self::notes_url`], instead
+    /// of restarting into a downloaded one.
+    pub fn is_manual_download(&self) -> bool {
+        self.path.is_none()
+    }
 }
 
 /// What a check found.
@@ -148,26 +166,52 @@ pub fn needs_restart_confirmation(tabs: &TabsState) -> bool {
     tabs.open_tabs().iter().any(|tab| tab.dirty)
 }
 
-/// Checks the manifest and, for a newer version, downloads and verifies the asset. Blocking.
+/// Checks the manifest and, for a newer version, downloads and verifies the asset, unless this is
+/// a `portable` copy (see [`is_portable`]), which only learns that the version exists. Blocking.
 ///
 /// # Errors
 ///
 /// Whatever `postino_update` reports, or [`UpdateError::Io`] when there is no cache directory.
-pub fn check_and_download(platform: Platform) -> Result<CheckOutcome, UpdateError> {
+pub fn check_and_download(platform: Platform, portable: bool) -> Result<CheckOutcome, UpdateError> {
     let Some(update) =
         postino_update::check(&postino_update::manifest_url(), CURRENT_VERSION, platform)?
     else {
         return Ok(CheckOutcome::UpToDate);
     };
     log::info!("update available {}", update.version);
-    let dir = download_dir()
-        .ok_or_else(|| UpdateError::Io(std::io::Error::other("the cache directory is unknown")))?;
-    let path = postino_update::download(&update, &dir)?;
-    Ok(CheckOutcome::Ready(ReadyUpdate {
-        version: update.version.to_string(),
-        notes_url: update.notes_url,
+    let ready = ready_update(
+        update.version.to_string(),
+        update.notes_url.clone(),
+        portable,
+        || {
+            let dir = download_dir().ok_or_else(|| {
+                UpdateError::Io(std::io::Error::other("the cache directory is unknown"))
+            })?;
+            postino_update::download(&update, &dir)
+        },
+    )?;
+    Ok(CheckOutcome::Ready(ready))
+}
+
+/// The [`ReadyUpdate`] of a newer version: `download` runs for an installed copy, never for a
+/// `portable` one, which keeps no file.
+fn ready_update(
+    version: String,
+    notes_url: String,
+    portable: bool,
+    download: impl FnOnce() -> Result<PathBuf, UpdateError>,
+) -> Result<ReadyUpdate, UpdateError> {
+    let path = if portable {
+        log::info!("portable copy, not downloading the installer");
+        None
+    } else {
+        Some(download()?)
+    };
+    Ok(ReadyUpdate {
+        version,
+        notes_url,
         path,
-    }))
+    })
 }
 
 /// How an update is installed on a platform.
@@ -200,10 +244,14 @@ pub enum InstallOutcome {
 }
 
 /// Starts the installation of `ready`. Blocking (it unpacks the archive on macOS), so run it on
-/// the background executor. `exe` is the running executable.
+/// the background executor. `exe` is the running executable. An update with nothing downloaded
+/// (a portable copy) falls back to the release page.
 pub fn start_install(platform: Platform, ready: &ReadyUpdate, exe: &Path) -> InstallOutcome {
+    let Some(path) = ready.path.as_deref() else {
+        return InstallOutcome::Fallback;
+    };
     match install_method(platform) {
-        InstallMethod::WindowsInstaller => match install::spawn_windows_installer(&ready.path) {
+        InstallMethod::WindowsInstaller => match install::spawn_windows_installer(path) {
             Ok(()) => InstallOutcome::Quit,
             Err(error) => InstallOutcome::Failed(error.to_string()),
         },
@@ -211,7 +259,7 @@ pub fn start_install(platform: Platform, ready: &ReadyUpdate, exe: &Path) -> Ins
             let Some(bundle) = install::macos_bundle_from_exe(exe) else {
                 return InstallOutcome::Fallback;
             };
-            let staged = match install::macos_stage(&ready.path, &bundle) {
+            let staged = match install::macos_stage(path, &bundle) {
                 Ok(staged) => staged,
                 Err(UpdateError::Io(error))
                     if error.kind() == std::io::ErrorKind::PermissionDenied =>
@@ -230,6 +278,7 @@ pub fn start_install(platform: Platform, ready: &ReadyUpdate, exe: &Path) -> Ins
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used, clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::state::TabsState;
@@ -239,8 +288,23 @@ mod tests {
         ReadyUpdate {
             version: version.to_string(),
             notes_url: "https://example.com/notes".to_string(),
-            path: PathBuf::from("/tmp/postino-update"),
+            path: Some(PathBuf::from("/tmp/postino-update")),
         }
+    }
+
+    fn portable_ready(version: &str) -> ReadyUpdate {
+        ReadyUpdate {
+            path: None,
+            ..ready(version)
+        }
+    }
+
+    fn ready_with(
+        portable: bool,
+        download: impl FnOnce() -> Result<PathBuf, UpdateError>,
+    ) -> Result<ReadyUpdate, UpdateError> {
+        let notes_url = "https://example.com/notes".to_string();
+        ready_update("0.2.0".to_string(), notes_url, portable, download)
     }
 
     #[test]
@@ -250,6 +314,70 @@ mod tests {
         assert!(!enabled_for(None, mac));
         assert!(!enabled_for(Some("other"), mac));
         assert!(!enabled_for(Some("github"), None));
+    }
+
+    #[test]
+    fn only_a_windows_copy_without_the_uninstaller_is_portable() {
+        let windows = Some(Platform::WindowsX86_64);
+        let dir = tempfile::tempdir().unwrap();
+        let exe = dir.path().join("postino.exe");
+        std::fs::write(&exe, "exe").unwrap();
+        assert!(is_portable(windows, Some(&exe)));
+        std::fs::write(dir.path().join("unins000.exe"), "uninstaller").unwrap();
+        assert!(!is_portable(windows, Some(&exe)));
+    }
+
+    #[test]
+    fn an_unknown_executable_counts_as_portable_on_windows() {
+        assert!(is_portable(Some(Platform::WindowsX86_64), None));
+    }
+
+    #[test]
+    fn other_platforms_are_never_portable() {
+        let dir = tempfile::tempdir().unwrap();
+        let exe = dir.path().join("postino");
+        assert!(!is_portable(Some(Platform::MacosAarch64), Some(&exe)));
+        assert!(!is_portable(Some(Platform::MacosAarch64), None));
+        assert!(!is_portable(None, Some(&exe)));
+    }
+
+    #[test]
+    fn a_portable_copy_downloads_nothing() {
+        let ready = ready_with(true, || panic!("a portable copy must not download")).unwrap();
+        assert_eq!(ready, portable_ready("0.2.0"));
+        assert!(ready.is_manual_download());
+    }
+
+    #[test]
+    fn an_installed_copy_downloads_the_installer() {
+        let ready = ready_with(false, || Ok(PathBuf::from("/tmp/postino-update"))).unwrap();
+        assert_eq!(ready, self::ready("0.2.0"));
+        assert!(!ready.is_manual_download());
+    }
+
+    #[test]
+    fn a_failed_download_is_an_error() {
+        let result = ready_with(false, || Err(UpdateError::Network("down".to_string())));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn a_portable_update_is_kept_like_any_other() {
+        let mut state = UpdateState::default();
+        state.begin_check();
+        state.finish_check(&CheckOutcome::Ready(portable_ready("0.2.0")));
+        assert_eq!(state.ready(), Some(&portable_ready("0.2.0")));
+        assert!(!state.begin_check());
+    }
+
+    #[test]
+    fn a_portable_update_falls_back_to_the_release_page() {
+        let outcome = start_install(
+            Platform::WindowsX86_64,
+            &portable_ready("0.2.0"),
+            Path::new("C:/Tools/postino.exe"),
+        );
+        assert_eq!(outcome, InstallOutcome::Fallback);
     }
 
     #[test]

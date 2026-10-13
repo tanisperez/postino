@@ -133,6 +133,22 @@ jobs:
             "/DOutputDir=$PWD\dist" packaging\windows\postino.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      # Portable zip, for machines where running an installer is not allowed. Entries sit at the
+      # top level of the zip. It is not part of latest.json: its name does not match the setup
+      # glob there, and the in-app updater of a portable copy never downloads anything.
+      - name: Package the portable zip for Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $zip = Join-Path $PWD "dist\Postino-$env:VERSION-windows-x86_64-portable.zip"
+          Compress-Archive -Force -DestinationPath $zip -Path `
+            "target\${{ matrix.target }}\release\postino.exe", 'LICENSE', 'NOTICE'
+          Get-Item $zip | Format-List Name, Length
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

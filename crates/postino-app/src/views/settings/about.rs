@@ -207,6 +207,7 @@ fn render_managed_updates(
         .min_w_0()
         .gap(px(2.0))
         .child(div().child(t!("settings.about.check_now")));
+    // No download directory (a portable copy) means there is nothing to say about downloads.
     if let Some(dir) = &pane.info.download_dir {
         leading = leading.child(
             h_flex()
@@ -235,12 +236,36 @@ fn render_managed_updates(
     rows
 }
 
-/// The accent banner shown once an update is downloaded and verified.
+/// The accent banner shown once an update is downloaded and verified, or, for a portable copy,
+/// as soon as a newer version exists.
 fn render_ready_banner(
     weak: WeakEntity<AppView>,
     palette: &Palette,
     ready: &ReadyUpdate,
 ) -> AnyElement {
+    let version = ready.version.as_str();
+    let (title, text) = if ready.is_manual_download() {
+        (
+            t!("settings.about.available.title", version = version),
+            t!("settings.about.available.text"),
+        )
+    } else {
+        (
+            t!("settings.about.ready.title", version = version),
+            t!("settings.about.ready.text"),
+        )
+    };
+    let button = if ready.is_manual_download() {
+        let notes_url = ready.notes_url.clone();
+        PrimaryButton::new("about-download", t!("settings.about.available.download"))
+            .on_click(move |_, _, cx| cx.open_url(&notes_url))
+    } else {
+        PrimaryButton::new("about-restart", t!("settings.about.ready.restart")).on_click(
+            move |_, window, cx| {
+                let _ = weak.update(cx, |view, cx| view.request_update_restart(window, cx));
+            },
+        )
+    };
     h_flex()
         .items_center()
         .gap(px(12.0))
@@ -259,24 +284,15 @@ fn render_ready_banner(
                 .flex_1()
                 .min_w_0()
                 .gap(px(2.0))
-                .child(div().font_weight(FontWeight::MEDIUM).child(t!(
-                    "settings.about.ready.title",
-                    version = ready.version.as_str()
-                )))
+                .child(div().font_weight(FontWeight::MEDIUM).child(title))
                 .child(
                     div()
                         .text_color(palette.fg_muted)
                         .text_size(px(12.0))
-                        .child(t!("settings.about.ready.text")),
+                        .child(text),
                 ),
         )
-        .child(
-            PrimaryButton::new("about-restart", t!("settings.about.ready.restart")).on_click(
-                move |_, window, cx| {
-                    let _ = weak.update(cx, |view, cx| view.request_update_restart(window, cx));
-                },
-            ),
-        )
+        .child(button)
         .into_any_element()
 }
 

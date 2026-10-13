@@ -49,7 +49,7 @@ description: Every file Postino reads and writes, in your workspace and on your 
 <p>The current log is <code>postino.log</code>. It is rotated at 5 MB, and at most 10 files are kept. Settings, Advanced, Logging shows the path and has a button to open the folder.</p>
 
 <h3>Updates</h3>
-<p>On macOS and Windows, the updater downloads new versions to <code>postino/updates/</code> inside the system cache folder (<code>~/Library/Caches/</code> on macOS, <code>%LOCALAPPDATA%</code> on Windows) and verifies them before installing. Settings, About shows the exact path. Nothing is downloaded on Linux.</p>
+<p>On macOS and Windows, the updater downloads new versions to <code>postino/updates/</code> inside the system cache folder (<code>~/Library/Caches/</code> on macOS, <code>%LOCALAPPDATA%</code> on Windows) and verifies them before installing. Settings, About shows the exact path. Nothing is downloaded on Linux, nor by a <a href="installation.html#portable">portable Windows copy</a>, which only reads the manifest.</p>
 
 <h2>Resetting Postino</h2>
 <p>To start from scratch, quit Postino and delete the configuration folder. Your workspaces are not affected. To also remove the logs, delete the logs folder.</p>
@@ -58,6 +58,6 @@ description: Every file Postino reads and writes, in your workspace and on your 
 <p>Postino connects to:</p>
 <ul>
     <li>the servers of the requests you send, when you send them or run a load test;</li>
-    <li>on macOS and Windows builds with the updater, and only if <strong>Check for updates automatically</strong> is on or you check by hand, GitHub, to read the latest release manifest and download an update. No identifiers are sent.</li>
+    <li>on macOS and Windows builds with the updater, and only if <strong>Check for updates automatically</strong> is on or you check by hand, GitHub, to read the latest release manifest and download an update (a portable Windows copy only reads the manifest). No identifiers are sent.</li>
 </ul>
 <p>There is no telemetry, no crash reporting and no account.</p>

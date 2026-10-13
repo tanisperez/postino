@@ -3,7 +3,9 @@
 
 use std::path::PathBuf;
 
-use super::update::{CURRENT_VERSION, download_dir};
+use postino_update::Platform;
+
+use super::update::{CURRENT_VERSION, download_dir, is_portable};
 
 /// The repository page.
 pub const REPO_URL: &str = "https://github.com/tanisperez/postino";
@@ -37,20 +39,27 @@ pub struct AboutInfo {
     pub platform: String,
     /// The running executable, `None` when the OS cannot tell.
     pub exe: Option<PathBuf>,
-    /// Where updates are downloaded, `None` when the cache directory is unknown.
+    /// Where updates are downloaded, `None` when the cache directory is unknown or this is a
+    /// portable copy, which downloads nothing.
     pub download_dir: Option<PathBuf>,
+    /// Whether this is a portable Windows copy ([`is_portable`]), told by the files next to the
+    /// exe, so read here once and never in `render`.
+    pub portable: bool,
 }
 
 impl AboutInfo {
     /// Reads the build and the environment.
     pub fn detect() -> Self {
+        let exe = std::env::current_exe()
+            .ok()
+            .map(|exe| dunce::canonicalize(&exe).unwrap_or(exe));
+        let portable = is_portable(Platform::current(), exe.as_deref());
         Self {
             version: CURRENT_VERSION,
             platform: platform_label(std::env::consts::OS, std::env::consts::ARCH),
-            exe: std::env::current_exe()
-                .ok()
-                .map(|exe| dunce::canonicalize(&exe).unwrap_or(exe)),
-            download_dir: download_dir(),
+            exe,
+            download_dir: download_dir().filter(|_| !portable),
+            portable,
         }
     }
 }

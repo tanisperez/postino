@@ -241,7 +241,9 @@ postino crate); the app glue is `state/update.rs` (gate, ready state, install de
 tested) and `views/update.rs`. The feature exists only when built with `POSTINO_UPDATER=github`
 and `Platform::current()` is `Some` (`state::update::updater_enabled`); nothing is `cfg`-gated by
 OS, so it all compiles on Linux. One delayed check 10 s after startup, no timers or polling.
-Strings live in `locales/update.yml`.
+Strings live in `locales/update.yml`. A portable Windows copy (the zip, no `unins000.exe` next to
+the exe, `state::update::is_portable`, read once in `AboutInfo::detect`) never downloads or runs
+the installer: its `ReadyUpdate` has no `path` and the UI opens the release page instead.
 
 ## Releases
 
