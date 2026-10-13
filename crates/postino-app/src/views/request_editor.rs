@@ -50,8 +50,7 @@ const SEND_KEY_HINT: &str = "Cmd+\u{21b5}";
 const SEND_KEY_HINT: &str = "Ctrl+\u{21b5}";
 
 /// Which key-value table a row belongs to: routes an edit to the right field of the active tab's
-/// [`Request`], and, only for [`RowKind::Query`], triggers the Params/URL sync afterward (see
-/// `state::request_edit::sync_url_from_query`).
+/// [`Request`]. The Params table never rewrites the URL: the two are combined only when sending.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RowKind {
     /// The header list.
@@ -258,8 +257,8 @@ struct BodyMarkerHandles {
 impl RequestEditorEntities {
     /// Rebuilds every entity when `request`'s shape (see [`BuildKey`]) differs from what they
     /// were last built for, then, unconditionally, keeps the URL input's displayed text in sync
-    /// with `request.url` (needed even without a rebuild: editing the Params table rewrites the
-    /// URL without changing the build key, see [`BuildKey`]'s docs). Returns whether a rebuild
+    /// with `request.url`, in case something other than typing in it changed the URL without
+    /// changing the build key. Returns whether a rebuild
     /// happened, so the caller can reset [`AppView::editing_method`] (a fresh `method_input`
     /// entity would otherwise show empty while still claiming to be "being edited").
     fn sync(
@@ -534,8 +533,7 @@ impl AppView {
         cx.notify();
     }
 
-    /// Applies `f` to one row of a key-value table, then, for [`RowKind::Query`], re-syncs the
-    /// URL from the updated table.
+    /// Applies `f` to one row of a key-value table.
     fn edit_row(
         &mut self,
         tab_id: &str,
@@ -550,9 +548,6 @@ impl AppView {
             {
                 f(row);
             }
-            if kind == RowKind::Query {
-                request_edit::sync_url_from_query(request);
-            }
         });
     }
 
@@ -561,9 +556,6 @@ impl AppView {
         self.edit_active_request(tab_id, cx, |request| {
             if let Some(rows) = rows_for_mut(request, kind) {
                 request_edit::add_row(rows);
-            }
-            if kind == RowKind::Query {
-                request_edit::sync_url_from_query(request);
             }
         });
     }
@@ -596,9 +588,6 @@ impl AppView {
         self.edit_active_request(tab_id, cx, |request| {
             if let Some(rows) = rows_for_mut(request, kind) {
                 request_edit::remove_row(rows, index);
-            }
-            if kind == RowKind::Query {
-                request_edit::sync_url_from_query(request);
             }
         });
     }

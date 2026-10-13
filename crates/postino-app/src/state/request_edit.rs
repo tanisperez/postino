@@ -135,30 +135,6 @@ pub fn remove_row(rows: &mut Vec<KeyValue>, index: usize) {
     }
 }
 
-/// Rebuilds `request.url`'s query string from `request.query`, keeping everything before the
-/// first `?` unchanged. Only enabled rows with a non-empty key are included, in table order.
-///
-/// This is the one direction of the Params/URL sync: the Params
-/// table is the source of truth, and editing it rewrites the URL bar. Editing the URL bar
-/// directly does not rewrite the table back, on purpose: the URL is free text and may contain a
-/// `{{ }}` marker spanning what would otherwise be several parameters (for example
-/// `?{{extraParams}}`), which a naive "split on `&`" parser would mangle. Keeping the sync
-/// one-directional means typing in the URL bar is never fought by the app.
-pub fn sync_url_from_query(request: &mut Request) {
-    let base = request.url.split('?').next().unwrap_or("").to_string();
-    let pairs: Vec<String> = request
-        .query
-        .iter()
-        .filter(|row| row.enabled && !row.key.is_empty())
-        .map(|row| format!("{}={}", row.key, row.value))
-        .collect();
-    request.url = if pairs.is_empty() {
-        base
-    } else {
-        format!("{base}?{}", pairs.join("&"))
-    };
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -345,51 +321,5 @@ mod tests {
         let mut rows = vec![kv("a", "1")];
         remove_row(&mut rows, 5);
         assert_eq!(rows, vec![kv("a", "1")]);
-    }
-
-    #[test]
-    fn sync_url_from_query_appends_enabled_rows() {
-        let mut request = Request {
-            url: "https://example.com/users".to_string(),
-            query: vec![kv("page", "1"), kv("limit", "20")],
-            ..Request::default()
-        };
-        sync_url_from_query(&mut request);
-        assert_eq!(request.url, "https://example.com/users?page=1&limit=20");
-    }
-
-    #[test]
-    fn sync_url_from_query_skips_disabled_and_empty_key_rows() {
-        let mut disabled = kv("verbose", "true");
-        disabled.enabled = false;
-        let mut request = Request {
-            url: "https://example.com/users".to_string(),
-            query: vec![disabled, kv("", "ignored"), kv("page", "1")],
-            ..Request::default()
-        };
-        sync_url_from_query(&mut request);
-        assert_eq!(request.url, "https://example.com/users?page=1");
-    }
-
-    #[test]
-    fn sync_url_from_query_replaces_an_existing_query_string() {
-        let mut request = Request {
-            url: "https://example.com/users?old=1".to_string(),
-            query: vec![kv("page", "2")],
-            ..Request::default()
-        };
-        sync_url_from_query(&mut request);
-        assert_eq!(request.url, "https://example.com/users?page=2");
-    }
-
-    #[test]
-    fn sync_url_from_query_with_no_rows_strips_the_query_string() {
-        let mut request = Request {
-            url: "https://example.com/users?old=1".to_string(),
-            query: Vec::new(),
-            ..Request::default()
-        };
-        sync_url_from_query(&mut request);
-        assert_eq!(request.url, "https://example.com/users");
     }
 }
