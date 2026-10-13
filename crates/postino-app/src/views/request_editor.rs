@@ -10,6 +10,7 @@
 //! types; see [`RequestEditorEntities::sync`].
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
@@ -26,7 +27,7 @@ use gpui::Hsla;
 use postino_core::log_safe::is_sensitive_header;
 use postino_core::{Body, KeyValue, Method, Request, variable_spans};
 
-use crate::state::request_edit::{self, BodyKind};
+use crate::state::request_edit::{self, BodyKind, SortColumn, SortOrder};
 use crate::state::script_heuristics;
 use crate::state::ui_tabs::RequestTab;
 use crate::state::variable_hint::{self, VariableContext};
@@ -51,7 +52,7 @@ const SEND_KEY_HINT: &str = "Ctrl+\u{21b5}";
 
 /// Which key-value table a row belongs to: routes an edit to the right field of the active tab's
 /// [`Request`]. The Params table never rewrites the URL: the two are combined only when sending.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum RowKind {
     /// The header list.
     Headers,
@@ -246,6 +247,12 @@ pub(crate) struct RequestEditorEntities {
     /// The row whose key input takes the focus once the entities are rebuilt for it: the row
     /// that Tab in the last value just added ([`AppView::add_row_from_tab`]).
     focus_after_rebuild: Option<(RowKind, usize)>,
+    /// The last header click of each table of this tab ([`AppView::sort_table`]), for its arrow
+    /// and the next click's order. Cleared when another tab becomes active.
+    last_sort: HashMap<RowKind, (SortColumn, SortOrder)>,
+    /// Rebuild on the next sync even with the same [`BuildKey`]: sorting moves rows without
+    /// changing their count.
+    force_rebuild: bool,
 }
 
 /// The handles that style and explain the markers of the body editor.
@@ -269,7 +276,11 @@ impl RequestEditorEntities {
         cx: &mut Context<AppView>,
     ) -> bool {
         let key = BuildKey::of(tab_id, request);
-        let rebuilt = self.built_for.as_ref() != Some(&key);
+        let rebuilt =
+            std::mem::take(&mut self.force_rebuild) || self.built_for.as_ref() != Some(&key);
+        if self.built_for.as_ref().map(|built| built.tab_id.as_str()) != Some(tab_id) {
+            self.last_sort.clear();
+        }
         if rebuilt {
             self.rebuild(tab_id, request, window, cx);
             self.built_for = Some(key);
@@ -581,6 +592,28 @@ impl AppView {
         };
         self.request_editor.focus_after_rebuild = Some((kind, len));
         self.add_row(tab_id, kind, cx);
+    }
+
+    /// A click on the Key or Value header of a table: sorts its rows by that column, A to Z,
+    /// or Z to A on a second click (`state::request_edit::next_sort_order`). The inputs follow
+    /// their rows by index, so they are rebuilt.
+    fn sort_table(
+        &mut self,
+        tab_id: &str,
+        kind: RowKind,
+        column: SortColumn,
+        cx: &mut Context<Self>,
+    ) {
+        let last = self.request_editor.last_sort.get(&kind).copied();
+        let mut order = SortOrder::Ascending;
+        self.edit_active_request(tab_id, cx, |request| {
+            if let Some(rows) = rows_for_mut(request, kind) {
+                order = request_edit::next_sort_order(rows, last, column);
+                request_edit::sort_rows(rows, column, order);
+            }
+        });
+        self.request_editor.last_sort.insert(kind, (column, order));
+        self.request_editor.force_rebuild = true;
     }
 
     /// Removes a row from a key-value table.
@@ -1012,11 +1045,20 @@ impl AppView {
             );
         }
 
-        let add_weak = weak;
+        let add_weak = weak.clone();
         let add_tab_id = tab_id.to_string();
+        let sort_weak = weak;
+        let sort_tab_id = tab_id.to_string();
+        let last_sort = self.request_editor.last_sort.get(&kind).copied();
         table
             .on_add(move |_, cx| {
                 let _ = add_weak.update(cx, |view, cx| view.add_row(&add_tab_id, kind, cx));
+            })
+            .sort(request_edit::shown_sort(rows, last_sort))
+            .on_sort(move |column, _, cx| {
+                let _ = sort_weak.update(cx, |view, cx| {
+                    view.sort_table(&sort_tab_id, kind, column, cx)
+                });
             })
             .into_any_element()
     }

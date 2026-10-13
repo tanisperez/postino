@@ -174,6 +174,8 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
    left, a "Format" ghost button on the right, then the code editor in a bordered `raised` box
    with line numbers. The Params, Headers and Form tables have 30 px rows: a focused cell gets
    the 1 px `accent` border without the 3 px ring, which would spill over the rows around it.
+   Their Key and Value headers sort the rows on click (`fg` on hover), with an `arrow-up` or
+   `arrow-down` icon after the sorted one.
 5. **Response pane**: tab bar Body, Headers (count), Tests (`passed/total`), Console (count); on
    the right the status badge, time and size. Below, a Pretty/Raw segmented control on the left
    and `copy` and `search` icon buttons on the right, then the body with line numbers in a

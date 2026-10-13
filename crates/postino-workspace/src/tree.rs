@@ -83,7 +83,7 @@ fn is_request(node: &Node) -> bool {
 /// so `"item2"` sorts before `"item10"`. Everything else is compared case-insensitively,
 /// character by character. Ties (for example `"a"` versus `"A"`) are broken by the caller with a
 /// plain, case-sensitive comparison, so the overall order stays a total, stable order.
-pub(crate) fn natural_cmp(a: &str, b: &str) -> Ordering {
+pub fn natural_cmp(a: &str, b: &str) -> Ordering {
     let mut a_chars = a.chars().peekable();
     let mut b_chars = b.chars().peekable();
     loop {

@@ -19,6 +19,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
+use crate::state::request_edit::{SortColumn, SortOrder};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{KEY_VALUE_SIDE_COL_WIDTH, RADIUS_MD};
 
@@ -89,14 +90,20 @@ impl KeyValueRow {
     }
 }
 
+/// A header click handler, called with the column to sort by, see [`ToggleHandler`].
+type SortHandler = Rc<dyn Fn(SortColumn, &mut Window, &mut App)>;
+
 /// A key-value table: header row on `surface`, a checkbox column (30), key (1fr), value (1.4fr)
-/// and a delete column (30), plus a trailing "Add" row.
+/// and a delete column (30), plus a trailing "Add" row. With [`Self::on_sort`], the Key and Value
+/// headers sort the rows when clicked, and [`Self::sort`] shows an arrow next to the sorted one.
 #[derive(IntoElement)]
 pub struct KeyValueTable {
     id: ElementId,
     rows: Vec<KeyValueRow>,
     add_label: SharedString,
     on_add: Option<RowHandler>,
+    sort: Option<(SortColumn, SortOrder)>,
+    on_sort: Option<SortHandler>,
 }
 
 impl KeyValueTable {
@@ -107,6 +114,8 @@ impl KeyValueTable {
             rows: Vec::new(),
             add_label: t!("request.kv.add").into_owned().into(),
             on_add: None,
+            sort: None,
+            on_sort: None,
         }
     }
 
@@ -128,6 +137,21 @@ impl KeyValueTable {
         self.on_add = Some(Rc::new(handler));
         self
     }
+
+    /// Shows an arrow next to the header of the column the rows are sorted by.
+    pub fn sort(mut self, sort: Option<(SortColumn, SortOrder)>) -> Self {
+        self.sort = sort;
+        self
+    }
+
+    /// Makes the Key and Value headers clickable: a click calls `handler` with that column.
+    pub fn on_sort(
+        mut self,
+        handler: impl Fn(SortColumn, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_sort = Some(Rc::new(handler));
+        self
+    }
 }
 
 impl RenderOnce for KeyValueTable {
@@ -145,8 +169,22 @@ impl RenderOnce for KeyValueTable {
             .text_size(px(11.5))
             .text_color(palette.fg_subtle)
             .child(div().flex_none().w(side_col))
-            .child(div().flex_grow(1.0).child(t!("request.kv.key")))
-            .child(div().flex_grow(1.4).child(t!("common.value")))
+            .child(header_cell(
+                SortColumn::Key,
+                t!("request.kv.key").into(),
+                1.0,
+                self.sort,
+                self.on_sort.clone(),
+                palette.fg,
+            ))
+            .child(header_cell(
+                SortColumn::Value,
+                t!("common.value").into(),
+                1.4,
+                self.sort,
+                self.on_sort.clone(),
+                palette.fg,
+            ))
             .child(div().flex_none().w(side_col));
 
         let rows = self.rows.into_iter().enumerate().map(|(index, row)| {
@@ -230,6 +268,45 @@ impl RenderOnce for KeyValueTable {
             .children(rows)
             .child(add_row)
     }
+}
+
+/// Renders the Key or Value header, `flex_grow`-sized by `grow` with a zero basis like the cells
+/// below it, so an arrow never shifts the split. With `on_sort` it is clickable and hovers in
+/// `hover_color`; the arrow shows when `sort` names this column.
+fn header_cell(
+    column: SortColumn,
+    label: SharedString,
+    grow: f32,
+    sort: Option<(SortColumn, SortOrder)>,
+    on_sort: Option<SortHandler>,
+    hover_color: Hsla,
+) -> AnyElement {
+    let arrow = sort
+        .filter(|(sorted, _)| *sorted == column)
+        .map(|(_, order)| match order {
+            SortOrder::Ascending => gpui_kit::assets::IconName::ArrowUp,
+            SortOrder::Descending => gpui_kit::assets::IconName::ArrowDown,
+        });
+    let id = match column {
+        SortColumn::Key => "kv-sort-key",
+        SortColumn::Value => "kv-sort-value",
+    };
+    h_flex()
+        .id(id)
+        .flex_grow(grow)
+        .flex_basis(px(0.0))
+        .min_w_0()
+        .h_full()
+        .items_center()
+        .gap_1()
+        .child(label)
+        .children(arrow.map(|icon| Icon::new(icon).xsmall()))
+        .when_some(on_sort, |cell, handler| {
+            cell.cursor_pointer()
+                .hover(|style| style.text_color(hover_color))
+                .on_click(move |_, window, cx| handler(column, window, cx))
+        })
+        .into_any_element()
 }
 
 /// Renders one key or value cell, `flex_grow`-sized by `grow`. A text cell is colored and

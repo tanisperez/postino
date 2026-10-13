@@ -14,7 +14,7 @@ description: Methods, URLs, query parameters, headers, JSON, XML, text and form 
 <p>The URL may already include a query string (<code>/search?q=books</code>). Entries from the Params tab are appended to it when the request is sent.</p>
 
 <h2>Query parameters</h2>
-<p>The <strong>Params</strong> tab is a table of keys and values. Click <strong>Add</strong> to add a row, the checkbox to switch a row off without deleting it, and the remove button to delete it. Pressing <kbd>Tab</kbd> in the value of the last row also adds a row and puts the cursor in its key, unless that last row is still empty. The Headers and Form tables work the same way.</p>
+<p>The <strong>Params</strong> tab is a table of keys and values. Click <strong>Add</strong> to add a row, the checkbox to switch a row off without deleting it, and the remove button to delete it. Pressing <kbd>Tab</kbd> in the value of the last row also adds a row and puts the cursor in its key, unless that last row is still empty. Click the <strong>Key</strong> or <strong>Value</strong> header to sort the rows by that column, from A to Z, and click it again for Z to A. Sorting moves the rows themselves, so it changes the order in which they are sent and saved; numbers inside names sort by value, so <code>item2</code> comes before <code>item10</code>. An arrow next to the header shows the order until you edit the rows out of it. The Headers and Form tables work the same way.</p>
 <ul>
     <li>Enabled rows are appended to the URL when the request is sent, in table order, with <code>?</code> or <code>&amp;</code> as needed.</li>
     <li>Keys and values are percent-encoded for you, after variables are replaced. Write <code>q = rust books</code>, and <code>q=rust%20books</code> is sent.</li>

@@ -26,7 +26,7 @@ pub use error::WorkspaceError;
 pub use git::git_branch;
 pub use postman::ImportReport;
 pub use sanitize::sanitize_file_name;
-pub use tree::{Folder, Node, RequestEntry};
+pub use tree::{Folder, Node, RequestEntry, natural_cmp};
 pub use workspace::Workspace;
 
 /// The extension (without the leading dot) of a request file.
