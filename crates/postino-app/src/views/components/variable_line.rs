@@ -168,10 +168,15 @@ impl RenderOnce for VariableField {
             variable_spans(&self.text)
         };
         if spans.is_empty() {
+            let accent = cx.palette().accent;
             return Input::new(&self.input_state)
                 .context_menu(edit_menu(&self.input_state, cx))
                 .py_0()
                 .w_full()
+                // The default 3 px focus ring spills over the 30 px table rows around the cell,
+                // so a focused cell only gets the accent border.
+                .focus_ring(false)
+                .when(focused, |input| input.border_color(accent))
                 .into_any_element();
         }
 

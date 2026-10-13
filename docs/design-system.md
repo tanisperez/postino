@@ -172,7 +172,8 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
    (`Cmd ↵` on macOS). Underline tabs: Params, Headers, Body, Pre-request, Post-response, Docs,
    with counts in `fg_subtle`. Body tab: segmented control (JSON, Text, XML, Form, None) on the
    left, a "Format" ghost button on the right, then the code editor in a bordered `raised` box
-   with line numbers.
+   with line numbers. The Params, Headers and Form tables have 30 px rows: a focused cell gets
+   the 1 px `accent` border without the 3 px ring, which would spill over the rows around it.
 5. **Response pane**: tab bar Body, Headers (count), Tests (`passed/total`), Console (count); on
    the right the status badge, time and size. Below, a Pretty/Raw segmented control on the left
    and `copy` and `search` icon buttons on the right, then the body with line numbers in a
