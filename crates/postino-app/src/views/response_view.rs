@@ -23,6 +23,7 @@ use crate::state::response_render;
 use crate::state::settings::max_response_label;
 use crate::state::ui_tabs::ResponseTab;
 use crate::theme::PaletteExt;
+use crate::theme::metrics::RADIUS_MD;
 use crate::views::components::{
     IconButton, InlineMessage, InlineMessageKind, SegmentedControl, SegmentedItem, StatusBadge,
     StatusState, UnderlineTabItem, UnderlineTabs, edit_menu,
@@ -359,7 +360,6 @@ impl AppView {
         let header = h_flex()
             .items_center()
             .justify_between()
-            .px(px(14.0))
             .py(px(8.0))
             .child(toggle)
             .child(
@@ -374,9 +374,15 @@ impl AppView {
         // `min_h_0()` leaves that unset and the editor sizes to its content instead of the space
         // the wrapping `flex_1`/`min_h_0` div below makes available (see `views/request_editor.rs`'s
         // `render_editor_or_placeholder` doc comment for the `gpui-component` precedent).
+        // Padded and boxed like the request editor's body (`views/request_editor.rs`'s
+        // `render_body_tab` and `render_editor_or_placeholder`), so both panels line up.
         let body: AnyElement = match &self.response_editor.editor {
             Some(editor) => Editor::new(editor)
                 .context_menu(edit_menu(editor, cx))
+                .border_1()
+                .border_color(palette.border)
+                .rounded(px(RADIUS_MD))
+                .bg(palette.raised)
                 .h(relative(1.0))
                 .into_any_element(),
             None => div().into_any_element(),
@@ -384,6 +390,8 @@ impl AppView {
 
         v_flex()
             .size_full()
+            .p_2()
+            .gap_2()
             .child(header)
             .child(div().flex_1().min_h_0().child(body))
             .into_any_element()

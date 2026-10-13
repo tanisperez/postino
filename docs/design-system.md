@@ -175,9 +175,12 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
    with line numbers.
 5. **Response pane**: tab bar Body, Headers (count), Tests (`passed/total`), Console (count); on
    the right the status badge, time and size. Below, a Pretty/Raw segmented control on the left
-   and `copy` and `search` icon buttons on the right, then the body with line numbers.
-6. **Status bar** (24 px, `surface`, top border): `lock` icon and "Local only", the active file
-   id, a spacer, "Unsaved changes" when the active tab is dirty, "UTF-8".
+   and `copy` and `search` icon buttons on the right, then the body with line numbers in a
+   bordered `raised` box. The body tab has the same 8 px inset as the request pane's content, so
+   both boxes line up.
+6. **Status bar** (24 px, `surface`, top border): `hard-drive` icon and the workspace path (a
+   click opens the folder in the file manager), the git branch, a spacer, "Unsaved changes" when
+   the active tab is dirty, "UTF-8".
 
 Every dialog (Settings, Keyboard shortcuts, Code, New workspace, the name and confirmation
 dialogs, the command palette) is a modal card drawn by `components::modal`: `overlay` fill, radius
