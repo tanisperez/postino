@@ -1,7 +1,9 @@
 //! The status bar at the bottom of the main window: the workspace path with a `hard-drive` icon
-//! and, inside a git repository, the branch with a `git-branch` icon in the accent color, a spacer,
-//! "Unsaved changes" when the active tab is dirty, and "UTF-8".
+//! (a click opens the folder in the file manager) and, inside a git repository, the branch with a
+//! `git-branch` icon in the accent color, a spacer, "Unsaved changes" when the active tab is
+//! dirty, and "UTF-8".
 
+use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -47,16 +49,25 @@ impl AppView {
             .children(self.state.workspace.as_ref().map(|workspace| {
                 let path_label =
                     state::format::shorten_path(workspace.root(), dirs::home_dir().as_deref());
+                let root = workspace.root().to_path_buf();
+                let tooltip = SharedString::from(t!("shell.status_bar.open_folder"));
                 let branch = self.git_branch.clone();
                 h_flex()
                     .items_center()
                     .gap(px(16.0))
                     .child(
                         h_flex()
+                            .id("status-bar-workspace")
                             .items_center()
                             .gap(px(6.0))
+                            .cursor_pointer()
+                            .hover(|style| style.underline())
                             .child(Icon::new(gpui_kit::assets::IconName::HardDrive).small())
-                            .child(path_label),
+                            .child(path_label)
+                            .tooltip(move |window, cx| {
+                                Tooltip::new(tooltip.clone()).build(window, cx)
+                            })
+                            .on_click(move |_, _, cx| cx.open_with_system(&root)),
                     )
                     .children(branch.map(|branch| {
                         h_flex()
