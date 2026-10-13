@@ -404,6 +404,58 @@ fn create_request_fails_if_it_already_exists() {
 }
 
 #[test]
+fn duplicate_request_copies_the_file_next_to_it() {
+    let temp = TempDir::new().expect("temp dir");
+    let text = "# a comment kept as is\nGET https://example.com/login\n";
+    write_file(&temp.path().join("auth/Login.postino"), text);
+    let mut workspace = Workspace::open(temp.path()).expect("open workspace");
+
+    let id = workspace
+        .duplicate_request("auth/Login.postino", "copy")
+        .expect("duplicate");
+    assert_eq!(id, "auth/Login copy.postino");
+    let copied = fs::read_to_string(temp.path().join("auth/Login copy.postino")).expect("copy");
+    assert_eq!(copied, text);
+    assert!(workspace.load_request(&id).is_ok());
+}
+
+#[test]
+fn duplicate_request_numbers_the_name_when_it_is_taken() {
+    let temp = TempDir::new().expect("temp dir");
+    let mut workspace = Workspace::open(temp.path()).expect("open workspace");
+    workspace.create_request(None, "ping").expect("create");
+
+    let first = workspace.duplicate_request("ping.postino", "copy").unwrap();
+    let second = workspace.duplicate_request("ping.postino", "copy").unwrap();
+    let third = workspace.duplicate_request("ping.postino", "copy").unwrap();
+    assert_eq!(
+        [first, second, third],
+        [
+            "ping copy.postino",
+            "ping copy 2.postino",
+            "ping copy 3.postino"
+        ]
+    );
+}
+
+#[test]
+fn duplicate_request_refuses_a_folder_or_a_missing_request() {
+    let temp = TempDir::new().expect("temp dir");
+    let mut workspace = Workspace::open(temp.path()).expect("open workspace");
+    let folder = workspace
+        .create_folder(None, "auth")
+        .expect("create folder");
+    assert!(matches!(
+        workspace.duplicate_request(&folder, "copy"),
+        Err(WorkspaceError::NotFound(_))
+    ));
+    assert!(matches!(
+        workspace.duplicate_request("missing.postino", "copy"),
+        Err(WorkspaceError::NotFound(_))
+    ));
+}
+
+#[test]
 fn create_folder_fails_for_a_missing_parent() {
     let temp = TempDir::new().expect("temp dir");
     let mut workspace = Workspace::open(temp.path()).expect("open workspace");

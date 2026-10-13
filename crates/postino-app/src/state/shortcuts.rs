@@ -74,6 +74,13 @@ pub fn groups() -> Vec<ShortcutGroup> {
             ],
         },
         ShortcutGroup {
+            title: t!("shortcuts.group.sidebar").to_string(),
+            shortcuts: vec![
+                shortcut(t!("shortcuts.action.rename"), &["F2"]),
+                shortcut(t!("shortcuts.action.delete"), &["Delete"]),
+            ],
+        },
+        ShortcutGroup {
             title: t!("shortcuts.group.environments").to_string(),
             shortcuts: vec![
                 shortcut(
@@ -104,7 +111,7 @@ mod tests {
     #[test]
     fn every_group_and_shortcut_has_text_and_keys() {
         let groups = groups();
-        assert_eq!(groups.len(), 3);
+        assert_eq!(groups.len(), 4);
         for group in &groups {
             assert!(!group.title.is_empty());
             assert!(!group.shortcuts.is_empty());

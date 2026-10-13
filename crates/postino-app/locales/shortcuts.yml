@@ -20,6 +20,11 @@ _version: 2
   es: "Peticiones"
   gl: "Peticións"
   it: "Richieste"
+"shortcuts.group.sidebar":
+  en: "Sidebar"
+  es: "Barra lateral"
+  gl: "Barra lateral"
+  it: "Barra laterale"
 "shortcuts.group.environments":
   en: "Environments"
   es: "Entornos"
@@ -80,3 +85,13 @@ _version: 2
   es: "Sin entorno"
   gl: "Sen contorno"
   it: "Nessun ambiente"
+"shortcuts.action.rename":
+  en: "Rename the selected request or folder"
+  es: "Renombrar la petición o carpeta seleccionada"
+  gl: "Renomear a petición ou cartafol seleccionado"
+  it: "Rinomina la richiesta o cartella selezionata"
+"shortcuts.action.delete":
+  en: "Delete the selected request or folder"
+  es: "Eliminar la petición o carpeta seleccionada"
+  gl: "Eliminar a petición ou cartafol seleccionado"
+  it: "Elimina la richiesta o cartella selezionata"

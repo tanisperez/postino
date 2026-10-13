@@ -105,6 +105,16 @@ _version: 2
   es: "Prueba de carga..."
   gl: "Proba de carga..."
   it: "Test di carico..."
+"shell.sidebar.duplicate":
+  en: "Duplicate"
+  es: "Duplicar"
+  gl: "Duplicar"
+  it: "Duplica"
+"shell.sidebar.copy_suffix":
+  en: "copy"
+  es: "copia"
+  gl: "copia"
+  it: "copia"
 "shell.sidebar.request_name":
   en: "Request name"
   es: "Nombre de la petición"

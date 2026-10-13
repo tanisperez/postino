@@ -120,6 +120,44 @@ impl Workspace {
         Ok(id)
     }
 
+    /// Copies the request with the given id into the same folder and returns the copy's id.
+    ///
+    /// The copy is named after the original plus `suffix` (`Login copy` for `suffix` "copy"), or
+    /// plus a number from 2 up when that name is taken (`Login copy 2`). The file is copied byte
+    /// for byte, so its formatting and comments stay as they were.
+    pub fn duplicate_request(&mut self, id: &str, suffix: &str) -> Result<String, WorkspaceError> {
+        let path = id_to_path(&self.root, id)?;
+        if !has_request_extension(&path) || !path.is_file() {
+            return Err(WorkspaceError::NotFound(id.to_string()));
+        }
+        let parent = parent_dir(&path, id)?;
+        let stem = path
+            .file_stem()
+            .map(|stem| stem.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let mut number = 1;
+        let target = loop {
+            let name = if number == 1 {
+                format!("{stem} {suffix}")
+            } else {
+                format!("{stem} {suffix} {number}")
+            };
+            let candidate =
+                parent.join(format!("{}.{REQUEST_EXTENSION}", sanitize_file_name(&name)));
+            if !candidate.exists() {
+                break candidate;
+            }
+            number += 1;
+        };
+        fs::copy(&path, &target).map_err(|source| WorkspaceError::Io {
+            path: target.clone(),
+            source,
+        })?;
+        let new_id = path_to_id(&self.root, &target);
+        self.rescan()?;
+        Ok(new_id)
+    }
+
     /// Creates a new, empty folder named `name` inside the folder `parent_id` (or at the
     /// workspace root when `parent_id` is `None`), and returns its new id.
     ///

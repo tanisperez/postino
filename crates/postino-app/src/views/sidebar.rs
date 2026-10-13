@@ -17,6 +17,7 @@ use rust_i18n::t;
 use postino_core::Method;
 use postino_workspace::{Node, RequestEntry};
 
+use crate::actions::{DeleteSelectedEntry, RenameSelectedEntry};
 use crate::state;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
@@ -345,8 +346,8 @@ fn render_tree_row(
         .child(row)
 }
 
-/// Builds the right-click context menu for a tree entry: new request/folder (folders only),
-/// rename and delete (both kinds).
+/// Builds the right-click context menu for a tree entry: new request/folder (folders only), load
+/// test, duplicate (requests only), rename and delete.
 fn build_context_menu(
     weak: WeakEntity<AppView>,
     entry: &TreeEntry,
@@ -404,34 +405,51 @@ fn build_context_menu(
     ));
     menu = menu.separator();
 
+    if is_request {
+        let duplicate_weak = weak.clone();
+        let duplicate_id = id.clone();
+        menu = menu.item(PopupMenuItem::new(t!("shell.sidebar.duplicate")).on_click(
+            move |_, _window, cx| {
+                let _ =
+                    duplicate_weak.update(cx, |view, cx| view.duplicate(duplicate_id.clone(), cx));
+            },
+        ));
+    }
+
     let rename_weak = weak.clone();
     let rename_id = id.clone();
     let rename_name = current_name.clone();
+    // The actions only show their key next to the label: the click handler acts on the
+    // right-clicked entry, which need not be the selected one the keys act on.
     menu = menu.item(
-        PopupMenuItem::new(t!("common.rename")).on_click(move |_, window, cx| {
-            open_rename_dialog(
-                rename_weak.clone(),
-                rename_id.clone(),
-                rename_name.clone(),
-                window,
-                cx,
-            );
-        }),
+        PopupMenuItem::new(t!("common.rename"))
+            .action(Box::new(RenameSelectedEntry))
+            .on_click(move |_, window, cx| {
+                open_rename_dialog(
+                    rename_weak.clone(),
+                    rename_id.clone(),
+                    rename_name.clone(),
+                    window,
+                    cx,
+                );
+            }),
     );
 
     let delete_weak = weak.clone();
     let delete_id = id.clone();
     let delete_name = current_name;
     menu = menu.item(
-        PopupMenuItem::new(t!("common.delete")).on_click(move |_, window, cx| {
-            open_delete_confirmation(
-                delete_weak.clone(),
-                delete_id.clone(),
-                delete_name.clone(),
-                window,
-                cx,
-            );
-        }),
+        PopupMenuItem::new(t!("common.delete"))
+            .action(Box::new(DeleteSelectedEntry))
+            .on_click(move |_, window, cx| {
+                open_delete_confirmation(
+                    delete_weak.clone(),
+                    delete_id.clone(),
+                    delete_name.clone(),
+                    window,
+                    cx,
+                );
+            }),
     );
 
     menu
@@ -587,8 +605,9 @@ pub(crate) fn open_new_folder_dialog(
     );
 }
 
-/// Opens the dialog, pre-filled with `current_name`, to rename `id`.
-fn open_rename_dialog(
+/// Opens the dialog, pre-filled with `current_name`, to rename `id`. Also called by `F2` in the
+/// sidebar tree (`AppView::on_rename_selected_entry`).
+pub(crate) fn open_rename_dialog(
     view: WeakEntity<AppView>,
     id: String,
     current_name: String,
@@ -612,8 +631,9 @@ fn open_rename_dialog(
     );
 }
 
-/// Opens an in-app confirmation (never a native blocking dialog) before deleting `id`.
-fn open_delete_confirmation(
+/// Opens an in-app confirmation (never a native blocking dialog) before deleting `id`. Also
+/// called by `Delete` in the sidebar tree (`AppView::on_delete_selected_entry`).
+pub(crate) fn open_delete_confirmation(
     view: WeakEntity<AppView>,
     id: String,
     name: String,

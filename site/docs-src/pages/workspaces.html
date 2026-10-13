@@ -87,10 +87,11 @@ my-api/
 <p>A new request is written to disk right away as <code>GET https://example.com</code>, so it is a valid file from the start.</p>
 <p>Names are made safe for every operating system: control characters and the characters Windows does not allow (<code>&lt; &gt; : " / \ | ? *</code>) become <code>_</code>, trailing dots and spaces are removed, names are cut to 120 characters, and Windows device names such as <code>CON</code> or <code>NUL</code> are changed so the file can be created everywhere. If a file or folder with the same name already exists, Postino reports it and changes nothing.</p>
 
-<h2>Renaming, moving and deleting</h2>
+<h2>Duplicating, renaming, moving and deleting</h2>
 <ul>
-    <li><strong>Rename</strong> from the context menu renames the file or folder on disk and updates any open tab. A request keeps its <code>.postino</code> extension.</li>
-    <li><strong>Delete</strong> asks for confirmation and then removes the file, or the folder and everything inside it. It does not use the trash: the file is gone. If the workspace is in git, you can still recover it from there.</li>
+    <li><strong>Duplicate</strong> from a request's context menu copies its file into the same folder as <code>login copy.postino</code>, or <code>login copy 2.postino</code> and so on when that name is taken, and opens the copy. The word <em>copy</em> follows the language of the app. The file is copied as it is on disk: unsaved changes in an open tab are not copied.</li>
+    <li><strong>Rename</strong> from the context menu, or <kbd>F2</kbd> with the entry selected in the sidebar, renames the file or folder on disk and updates any open tab. A request keeps its <code>.postino</code> extension.</li>
+    <li><strong>Delete</strong> from the context menu, or <kbd>Delete</kbd> with the entry selected in the sidebar, asks for confirmation and then removes the file, or the folder and everything inside it. It does not use the trash: the file is gone. If the workspace is in git, you can still recover it from there.</li>
     <li><strong>Moving</strong> a request to another folder is not available inside Postino yet. Move the file with your file manager or with <code>git mv</code>; Postino picks up the change the next time the tree is scanned, for example when you create, rename or delete something, or reopen the workspace.</li>
 </ul>
 

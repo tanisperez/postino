@@ -19,10 +19,11 @@ use gpui_kit::component::{Root, TitleBar};
 use gpui_kit::*;
 
 use actions::{
-    CloseActiveTab, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, OpenWorkspace,
-    PreviousTab, SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3,
-    SelectEnvironment4, SelectEnvironment5, SelectEnvironment6, SelectEnvironment7,
-    SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+    CloseActiveTab, DeleteSelectedEntry, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts,
+    OpenWorkspace, PreviousTab, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1,
+    SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
+    SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
+    SelectNoEnvironment, SendActiveTab,
 };
 use state::settings::ThemeChoice;
 use views::AppView;
@@ -293,5 +294,12 @@ fn bind_keys(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("ctrl-tab", NextTab, None),
         KeyBinding::new("ctrl-shift-tab", PreviousTab, None),
+    ]);
+    // Only while the sidebar tree has the focus (gpui-base's `Tree` key context): in a text input
+    // these keys keep editing the text.
+    let tree = Some(gpui_kit::base::tree_key_context());
+    cx.bind_keys([
+        KeyBinding::new("delete", DeleteSelectedEntry, tree),
+        KeyBinding::new("f2", RenameSelectedEntry, tree),
     ]);
 }

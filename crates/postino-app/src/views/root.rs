@@ -24,10 +24,11 @@ use postino_script::QuickJsEngine;
 use postino_workspace::{Workspace, WorkspaceError};
 
 use crate::actions::{
-    CloseActiveTab, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, OpenWorkspace,
-    PreviousTab, SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3,
-    SelectEnvironment4, SelectEnvironment5, SelectEnvironment6, SelectEnvironment7,
-    SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+    CloseActiveTab, DeleteSelectedEntry, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts,
+    OpenWorkspace, PreviousTab, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1,
+    SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
+    SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
+    SelectNoEnvironment, SendActiveTab,
 };
 use crate::state::about::AboutInfo;
 use crate::state::debug_open::{self, DebugOpenTarget};
@@ -877,6 +878,31 @@ impl AppView {
         cx.notify();
     }
 
+    /// Copies the request `id` next to it (`Login copy`, see
+    /// [`postino_workspace::Workspace::duplicate_request`]) and opens the copy in a tab. The copy
+    /// is the saved file: unsaved edits in an open tab stay in that tab.
+    pub(crate) fn duplicate(&mut self, id: String, cx: &mut Context<Self>) {
+        let Some(workspace) = self.state.workspace.as_mut() else {
+            return;
+        };
+        match workspace.duplicate_request(&id, &t!("shell.sidebar.copy_suffix")) {
+            Ok(new_id) => {
+                log::debug!("duplicated {id} as {new_id}");
+                self.workspace_error = None;
+                self.refresh_tree_with(cx, |expansion| {
+                    state::tree_expansion::reveal(expansion, &new_id);
+                });
+                self.open_request(new_id, cx);
+                return;
+            }
+            Err(error) => {
+                log_workspace_error(&format!("duplicate {id}"), &error);
+                self.workspace_error = Some(error.to_string());
+            }
+        }
+        cx.notify();
+    }
+
     /// Deletes the request or folder `id`, closing any open tab under it.
     pub(crate) fn delete(&mut self, id: String, cx: &mut Context<Self>) {
         let Some(workspace) = self.state.workspace.as_mut() else {
@@ -999,6 +1025,38 @@ impl AppView {
     ) {
         self.state.tabs.activate_previous();
         self.refocus_after_tab_switch(window, cx);
+    }
+
+    /// Handles `Delete` while the sidebar tree has the focus (see `main.rs`'s `bind_keys`): asks
+    /// to delete the selected request or folder, like its context menu's "Delete".
+    fn on_delete_selected_entry(
+        &mut self,
+        _: &DeleteSelectedEntry,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some((id, name)) = self.selected_tree_entry(cx) {
+            sidebar::open_delete_confirmation(cx.weak_entity(), id, name, window, cx);
+        }
+    }
+
+    /// Handles `F2` while the sidebar tree has the focus (see `main.rs`'s `bind_keys`): opens the
+    /// rename dialog of the selected request or folder, like its context menu's "Rename".
+    fn on_rename_selected_entry(
+        &mut self,
+        _: &RenameSelectedEntry,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some((id, name)) = self.selected_tree_entry(cx) {
+            sidebar::open_rename_dialog(cx.weak_entity(), id, name, window, cx);
+        }
+    }
+
+    /// The id and label of the entry selected in the sidebar tree, if any.
+    fn selected_tree_entry(&self, cx: &App) -> Option<(String, String)> {
+        let item = self.tree_state.read(cx).selected_item()?;
+        Some((item.id.to_string(), item.label.to_string()))
     }
 
     /// The tab switch replaces the editor's inputs, so a focused one would vanish and leave
@@ -1408,6 +1466,8 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_close_tab_action))
             .on_action(cx.listener(Self::on_next_tab_action))
             .on_action(cx.listener(Self::on_previous_tab_action))
+            .on_action(cx.listener(Self::on_delete_selected_entry))
+            .on_action(cx.listener(Self::on_rename_selected_entry))
             .on_action(cx.listener(Self::on_select_environment_1))
             .on_action(cx.listener(Self::on_select_environment_2))
             .on_action(cx.listener(Self::on_select_environment_3))

@@ -50,5 +50,11 @@ actions!(
         NextTab,
         /// Activates the previous open tab, wrapping around (`Ctrl+Shift+Tab`).
         PreviousTab,
+        /// Asks to delete the request or folder selected in the sidebar (`Delete`, only while
+        /// the sidebar tree has the focus).
+        DeleteSelectedEntry,
+        /// Opens the rename dialog of the request or folder selected in the sidebar (`F2`, only
+        /// while the sidebar tree has the focus).
+        RenameSelectedEntry,
     ]
 );
