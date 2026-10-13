@@ -59,27 +59,37 @@ impl BodyKind {
     }
 }
 
-/// Switches `request.body` to `kind`.
+/// What the body kinds a request is not showing held, while its tab is open, so switching the
+/// body type and back restores them instead of starting empty. Never saved: only the body kind
+/// selected when saving is written to the file.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct BodyStash {
+    /// The raw text of the last JSON, Text or XML body.
+    text: Option<String>,
+    /// The fields of the last Form body.
+    form: Option<Vec<KeyValue>>,
+}
+
+/// Switches `request.body` to `kind`, putting what the current body holds in `stash` and
+/// restoring what `stash` holds for `kind`.
 ///
-/// The raw text is preserved across the JSON, Text and XML kinds, since they are all plain
-/// strings under the hood: switching from JSON to Text (for example, while writing a body that
-/// is not valid JSON yet) does not lose what was typed. Switching to or from Form necessarily
-/// starts empty (or restores whatever Form content there was, if switching back to Form without
-/// having changed it), since a list of fields cannot be recovered from raw text.
-pub fn set_body_kind(request: &mut Request, kind: BodyKind) {
-    let existing_text = match &request.body {
-        Body::Json(text) | Body::Text(text) | Body::Xml(text) => text.clone(),
-        Body::None | Body::Form(_) => String::new(),
-    };
+/// JSON, Text and XML share one raw text, since they are all plain strings under the hood:
+/// switching from JSON to Text (for example, while writing a body that is not valid JSON yet)
+/// keeps what was typed. Form fields cannot be recovered from raw text nor the other way round,
+/// so each keeps its own content in `stash`: switching from Form to JSON and back brings the
+/// fields back, and from JSON to None and back brings the text back.
+pub fn set_body_kind(request: &mut Request, kind: BodyKind, stash: &mut BodyStash) {
+    match std::mem::take(&mut request.body) {
+        Body::Json(text) | Body::Text(text) | Body::Xml(text) => stash.text = Some(text),
+        Body::Form(rows) => stash.form = Some(rows),
+        Body::None => {}
+    }
     request.body = match kind {
         BodyKind::None => Body::None,
-        BodyKind::Json => Body::Json(existing_text),
-        BodyKind::Text => Body::Text(existing_text),
-        BodyKind::Xml => Body::Xml(existing_text),
-        BodyKind::Form => match &request.body {
-            Body::Form(rows) => Body::Form(rows.clone()),
-            _ => Body::Form(Vec::new()),
-        },
+        BodyKind::Json => Body::Json(stash.text.take().unwrap_or_default()),
+        BodyKind::Text => Body::Text(stash.text.take().unwrap_or_default()),
+        BodyKind::Xml => Body::Xml(stash.text.take().unwrap_or_default()),
+        BodyKind::Form => Body::Form(stash.form.take().unwrap_or_default()),
     };
 }
 
@@ -173,7 +183,7 @@ mod tests {
             body: Body::Json("{}".to_string()),
             ..Request::default()
         };
-        set_body_kind(&mut request, BodyKind::Xml);
+        set_body_kind(&mut request, BodyKind::Xml, &mut BodyStash::default());
         assert_eq!(request.body, Body::Xml("{}".to_string()));
     }
 
@@ -183,7 +193,7 @@ mod tests {
             body: Body::Json("{}".to_string()),
             ..Request::default()
         };
-        set_body_kind(&mut request, BodyKind::Form);
+        set_body_kind(&mut request, BodyKind::Form, &mut BodyStash::default());
         assert_eq!(request.body, Body::Form(Vec::new()));
     }
 
@@ -193,7 +203,7 @@ mod tests {
             body: Body::Form(vec![kv("a", "1")]),
             ..Request::default()
         };
-        set_body_kind(&mut request, BodyKind::Form);
+        set_body_kind(&mut request, BodyKind::Form, &mut BodyStash::default());
         assert_eq!(request.body, Body::Form(vec![kv("a", "1")]));
     }
 
@@ -203,8 +213,61 @@ mod tests {
             body: Body::Text("hello".to_string()),
             ..Request::default()
         };
-        set_body_kind(&mut request, BodyKind::None);
+        set_body_kind(&mut request, BodyKind::None, &mut BodyStash::default());
         assert_eq!(request.body, Body::None);
+    }
+
+    #[test]
+    fn switching_from_form_and_back_restores_the_fields() {
+        let mut request = Request {
+            body: Body::Form(vec![kv("a", "1"), kv("b", "2")]),
+            ..Request::default()
+        };
+        let mut stash = BodyStash::default();
+        set_body_kind(&mut request, BodyKind::Json, &mut stash);
+        assert_eq!(request.body, Body::Json(String::new()));
+        set_body_kind(&mut request, BodyKind::Form, &mut stash);
+        assert_eq!(request.body, Body::Form(vec![kv("a", "1"), kv("b", "2")]));
+    }
+
+    #[test]
+    fn switching_to_form_and_back_restores_the_text() {
+        let mut request = Request {
+            body: Body::Json("{\"a\": 1}".to_string()),
+            ..Request::default()
+        };
+        let mut stash = BodyStash::default();
+        set_body_kind(&mut request, BodyKind::Form, &mut stash);
+        set_body_kind(&mut request, BodyKind::Text, &mut stash);
+        assert_eq!(request.body, Body::Text("{\"a\": 1}".to_string()));
+    }
+
+    #[test]
+    fn switching_to_none_and_back_restores_the_text() {
+        let mut request = Request {
+            body: Body::Xml("<a/>".to_string()),
+            ..Request::default()
+        };
+        let mut stash = BodyStash::default();
+        set_body_kind(&mut request, BodyKind::None, &mut stash);
+        assert_eq!(request.body, Body::None);
+        set_body_kind(&mut request, BodyKind::Xml, &mut stash);
+        assert_eq!(request.body, Body::Xml("<a/>".to_string()));
+    }
+
+    #[test]
+    fn the_stash_follows_the_latest_edit() {
+        let mut request = Request {
+            body: Body::Form(vec![kv("a", "1")]),
+            ..Request::default()
+        };
+        let mut stash = BodyStash::default();
+        set_body_kind(&mut request, BodyKind::Json, &mut stash);
+        set_body_kind(&mut request, BodyKind::Form, &mut stash);
+        request.body = Body::Form(vec![kv("b", "2")]);
+        set_body_kind(&mut request, BodyKind::None, &mut stash);
+        set_body_kind(&mut request, BodyKind::Form, &mut stash);
+        assert_eq!(request.body, Body::Form(vec![kv("b", "2")]));
     }
 
     #[test]

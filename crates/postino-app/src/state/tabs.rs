@@ -6,6 +6,7 @@ use postino_core::Request;
 
 use super::env_edit::{self, EnvEditTab};
 use super::load_test::LoadTestTab;
+use super::request_edit::{self, BodyKind, BodyStash};
 use super::welcome::{self, WelcomeTab};
 
 /// What one open tab shows: a request being edited, an environment being edited, or a load test in
@@ -37,6 +38,9 @@ pub struct OpenTab {
     /// Whether the tab has unsaved changes. Always `false` for a [`TabKind::LoadTest`] tab: it
     /// has nothing to save.
     pub dirty: bool,
+    /// What the body types the request is not showing held, see [`BodyStash`]. Empty for every
+    /// other kind of tab.
+    pub body_stash: BodyStash,
 }
 
 impl OpenTab {
@@ -53,6 +57,14 @@ impl OpenTab {
         match &mut self.kind {
             TabKind::Request(request) => Some(request),
             TabKind::Environment(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) => None,
+        }
+    }
+
+    /// Switches this tab's request body to `kind`, keeping what the other body types held (see
+    /// [`request_edit::set_body_kind`]). Does nothing for a tab that is not a request.
+    pub fn set_body_kind(&mut self, kind: BodyKind) {
+        if let TabKind::Request(request) = &mut self.kind {
+            request_edit::set_body_kind(request, kind, &mut self.body_stash);
         }
     }
 
@@ -216,6 +228,7 @@ impl TabsState {
             id,
             kind,
             dirty: false,
+            body_stash: BodyStash::default(),
         });
         let index = self.open.len() - 1;
         self.active = Some(index);

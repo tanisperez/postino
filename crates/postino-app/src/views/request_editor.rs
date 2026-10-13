@@ -460,6 +460,20 @@ impl AppView {
         cx.notify();
     }
 
+    /// Switches the body type of the tab `tab_id`, keeping what the other types held for when
+    /// the user switches back (`state::request_edit::BodyStash`), and marks the tab dirty.
+    fn set_body_kind(&mut self, tab_id: &str, kind: BodyKind, cx: &mut Context<Self>) {
+        let Some(index) = self.state.tabs.index_of(tab_id) else {
+            return;
+        };
+        let Some(tab) = self.state.tabs.get_mut(index) else {
+            return;
+        };
+        tab.set_body_kind(kind);
+        self.state.tabs.mark_dirty(index);
+        cx.notify();
+    }
+
     /// Enters custom-method edit mode: seeds `method_input` with `prefill` (the current custom
     /// token, or empty for a fresh "Custom..." pick, see [`UrlBar`]'s own "Custom..." handler) and
     /// shows it in place of the method dropdown. Deliberately does not write `prefill` into
@@ -837,9 +851,7 @@ impl AppView {
                     .selected(kind == current_kind)
                     .on_click(move |_, cx| {
                         let _ = select_weak.update(cx, |view, cx| {
-                            view.edit_active_request(&tab_id_owned, cx, |request| {
-                                request_edit::set_body_kind(request, kind);
-                            });
+                            view.set_body_kind(&tab_id_owned, kind, cx);
                         });
                     }),
             );
