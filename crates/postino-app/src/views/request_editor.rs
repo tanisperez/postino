@@ -14,8 +14,8 @@ use std::rc::Rc;
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::input::{
-    Editor, EditorState, InputEvent, InputState, TextDecoration, TextDecorationCollection,
-    Textarea, TextareaState,
+    Editor, EditorState, IndentInline, InputEvent, InputState, TextDecoration,
+    TextDecorationCollection, Textarea, TextareaState,
 };
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -244,6 +244,9 @@ pub(crate) struct RequestEditorEntities {
     pre_editor: Option<Entity<EditorState>>,
     post_editor: Option<Entity<EditorState>>,
     docs: Option<Entity<TextareaState>>,
+    /// The row whose key input takes the focus once the entities are rebuilt for it: the row
+    /// that Tab in the last value just added ([`AppView::add_row_from_tab`]).
+    focus_after_rebuild: Option<(RowKind, usize)>,
 }
 
 /// The handles that style and explain the markers of the body editor.
@@ -272,6 +275,11 @@ impl RequestEditorEntities {
             self.rebuild(tab_id, request, window, cx);
             self.built_for = Some(key);
             self.body_markers_built_for = None;
+            if let Some((kind, index)) = self.focus_after_rebuild.take()
+                && let Some(row) = self.table(kind).rows.get(index)
+            {
+                row.key.update(cx, |state, cx| state.focus(window, cx));
+            }
         }
 
         if let Some(url) = &self.url {
@@ -298,6 +306,15 @@ impl RequestEditorEntities {
         }
 
         rebuilt
+    }
+
+    /// The entities of the table that `kind` names.
+    fn table(&self, kind: RowKind) -> &KeyValueTableEntities {
+        match kind {
+            RowKind::Headers => &self.headers,
+            RowKind::Query => &self.query,
+            RowKind::Form => &self.form,
+        }
     }
 
     fn rebuild(
@@ -549,6 +566,29 @@ impl AppView {
                 request_edit::sync_url_from_query(request);
             }
         });
+    }
+
+    /// Tab in the value of a table's last row: appends an empty row and, once the editor has
+    /// rebuilt its inputs for it, puts the cursor in its key.
+    fn add_row_from_tab(&mut self, tab_id: &str, kind: RowKind, cx: &mut Context<Self>) {
+        let Some(len) = self
+            .state
+            .tabs
+            .active()
+            .and_then(|tab| tab.request())
+            .map(|request| match kind {
+                RowKind::Headers => request.headers.len(),
+                RowKind::Query => request.query.len(),
+                RowKind::Form => match &request.body {
+                    Body::Form(rows) => rows.len(),
+                    _ => 0,
+                },
+            })
+        else {
+            return;
+        };
+        self.request_editor.focus_after_rebuild = Some((kind, len));
+        self.add_row(tab_id, kind, cx);
     }
 
     /// Removes a row from a key-value table.
@@ -931,6 +971,33 @@ impl AppView {
             let toggle_tab_id = tab_id.to_string();
             let remove_weak = weak.clone();
             let remove_tab_id = tab_id.to_string();
+            let value = VariableField::new(
+                format!("kv-{}-{index}-value", kind as u8),
+                row_entities.value.clone(),
+                row.value.clone(),
+                context.clone(),
+            )
+            // The value of a sensitive header never shows in a tooltip, whatever the variable
+            // inside it is called.
+            .mask_all(kind == RowKind::Headers && is_sensitive_header(&row.key))
+            .on_chip_click(define_variable_click(&weak, &context));
+            // Tab in the last value adds a row, unless that row is still empty: then Tab moves
+            // on as usual. A single-line input lets `IndentInline` (its Tab) bubble up to here.
+            let is_last = index + 1 == rows.len();
+            let value = if is_last && !(row.key.is_empty() && row.value.is_empty()) {
+                let tab_weak = weak.clone();
+                let tab_tab_id = tab_id.to_string();
+                div()
+                    .w_full()
+                    .on_action(move |_: &IndentInline, _, cx| {
+                        let _ = tab_weak
+                            .update(cx, |view, cx| view.add_row_from_tab(&tab_tab_id, kind, cx));
+                    })
+                    .child(value)
+                    .into_any_element()
+            } else {
+                value.into_any_element()
+            };
             table = table.row(
                 KeyValueRow::with_elements(
                     VariableField::new(
@@ -940,16 +1007,7 @@ impl AppView {
                         context.clone(),
                     )
                     .on_chip_click(define_variable_click(&weak, &context)),
-                    VariableField::new(
-                        format!("kv-{}-{index}-value", kind as u8),
-                        row_entities.value.clone(),
-                        row.value.clone(),
-                        context.clone(),
-                    )
-                    // The value of a sensitive header never shows in a tooltip, whatever the
-                    // variable inside it is called.
-                    .mask_all(kind == RowKind::Headers && is_sensitive_header(&row.key))
-                    .on_chip_click(define_variable_click(&weak, &context)),
+                    value,
                 )
                 .enabled(row.enabled)
                 .on_toggle(move |enabled, _, cx| {
