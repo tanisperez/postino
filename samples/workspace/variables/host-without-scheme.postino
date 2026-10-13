@@ -1,0 +1,12 @@
+GET {{plainHost}}/anything/no-scheme
+
+::: post
+test("a URL without a scheme is sent over http", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().scheme).toBe("http");
+  expect(res.json().path).toBe("/anything/no-scheme");
+});
+
+::: docs
+`plainHost` has no scheme, like typing `localhost:8080` in the URL bar: Postino sends it over
+`http://`. Plain HTTP in either environment, so it never carries a certificate warning.

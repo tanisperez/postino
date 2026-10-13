@@ -78,7 +78,7 @@ bearer token from `/auth/login`, `--verbose` logs every request. After startup i
 | `bodies/` | `json`, `text`, `xml` and `form` bodies, disabled form fields, special characters, empty and invalid bodies, a `Content-Type` override, a body rewritten by a pre script. |
 | `responses/` | JSON, XML, HTML, text, CSV, UTF-8, empty, binary, image, gzip, chunked, and 1, 5 and 15 MB bodies. |
 | `auth/` | Basic, bearer, API key in a header and in the query, wrong credentials, login that stores a token, and a request that uses it. |
-| `variables/` | The lookup order (request, session, environment), `env.set` and `env.unset`, an unresolved variable, no recursive expansion, every template function. |
+| `variables/` | The lookup order (request, session, environment), `env.set` and `env.unset`, an unresolved variable, no recursive expansion, every template function, a host without a scheme (sent over HTTP). |
 | `scripting/` | Pre scripts changing headers, URL, method and body, every matcher, the `res` and `req` objects, `console`, a failing `test()` that does not stop the others, `util.*`, a fresh runtime per run. |
 | `status/` | One request per common status code. |
 | `redirects/` | A chain of three hops, and 301, 302, 303, 307 and 308. |
@@ -93,7 +93,7 @@ bearer token from `/auth/login`, `--verbose` logs every request. After startup i
 listener, so the whole suite also runs over TLS: with the default setting every response then
 carries a certificate warning. Both define the credentials, a few values used by `variables/`
 and one URL per certificate profile (`tlsSelfSignedUrl`, ...), which the `tls/` requests use in
-either environment.
+either environment, plus `plainHost`, the plain HTTP listener without a scheme.
 
 ## Certificates
 

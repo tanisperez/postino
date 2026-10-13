@@ -10,7 +10,7 @@ description: Methods, URLs, query parameters, headers, JSON, XML, text and form 
 <p>Choose <strong>Custom…</strong> and type any token, such as <code>PURGE</code>, <code>PROPFIND</code> or <code>REPORT</code>. Press <kbd>Enter</kbd> to confirm. A custom method may contain uppercase letters, digits and symbols but no lowercase letter: <code>M3THOD</code> is valid, <code>purge</code> is not. While the token is invalid, <kbd>Enter</kbd> keeps the editor open so you can fix it, and clicking away discards it.</p>
 
 <h2>URL</h2>
-<p>Type the full URL, including the scheme: <code>https://api.example.com/v1/users</code>. Use <code>{{variables}}</code> anywhere in it, typically for the host: <code>{{baseUrl}}/v1/users</code>. Variables are drawn as chips. A chip for a variable that does not resolve in the active environment is red; click it to define the variable. See <a href="environments.html#defining-a-variable-from-a-request">defining a variable from a request</a>.</p>
+<p>Type the full URL: <code>https://api.example.com/v1/users</code>. Without a scheme, Postino sends it over plain HTTP, so <code>localhost:8080/users</code> is sent as <code>http://localhost:8080/users</code>; type <code>https://</code> when you need it. The file keeps the URL as you typed it. Use <code>{{variables}}</code> anywhere in it, typically for the host: <code>{{baseUrl}}/v1/users</code>. Variables are drawn as chips. A chip for a variable that does not resolve in the active environment is red; click it to define the variable. See <a href="environments.html#defining-a-variable-from-a-request">defining a variable from a request</a>.</p>
 <p>The URL may already include a query string (<code>/search?q=books</code>). Entries from the Params tab are appended to it when the request is sent.</p>
 
 <h2>Query parameters</h2>
@@ -112,7 +112,7 @@ client_secret = {{clientSecret}}
 <ol class="steps">
     <li><strong>Variables.</strong> Collects the active environment and the variables set by scripts during this session.</li>
     <li><strong>Pre-request script.</strong> Runs it, if any. An error here stops the run and the request is not sent.</li>
-    <li><strong>Interpolation.</strong> Replaces every <code>{{ }}</code> marker in the URL, query, headers and body, and appends the query parameters.</li>
+    <li><strong>Interpolation.</strong> Replaces every <code>{{ }}</code> marker in the URL, query, headers and body, adds <code>http://</code> to a URL without a scheme, and appends the query parameters.</li>
     <li><strong>HTTP.</strong> Sends the request and reads the response.</li>
     <li><strong>Post-response script.</strong> Runs it, if any. An error here is reported, but the response is still shown.</li>
 </ol>

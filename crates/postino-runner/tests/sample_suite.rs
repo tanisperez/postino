@@ -237,6 +237,12 @@ fn mismatch(expect: &Expect, result: &RunResult) -> Option<String> {
     }
 }
 
+/// Whether `id` never goes through the HTTPS listener of the `secure` environment: the `tls/`
+/// requests use their own URLs, and a URL without a scheme is sent over plain HTTP.
+fn plain_http_only(id: &str) -> bool {
+    id.starts_with("tls/") || id == "variables/host-without-scheme.postino"
+}
+
 /// The text a certificate warning must contain, for the `tls/` requests.
 fn tls_reason(id: &str) -> Option<&'static str> {
     match id {
@@ -284,7 +290,7 @@ fn run_suite(server: &SampleServer, name: &str, secure: bool) -> Vec<String> {
             (None, Some(text)) if !secure => {
                 problems.push(format!("[{name}] {}: unexpected warning {text}", entry.id));
             }
-            (None, None) if secure && !entry.id.starts_with("tls/") => {
+            (None, None) if secure && !plain_http_only(&entry.id) => {
                 problems.push(format!(
                     "[{name}] {}: expected a certificate warning",
                     entry.id

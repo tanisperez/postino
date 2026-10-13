@@ -18,7 +18,8 @@ pub(crate) fn resolve(
 
     let interpolated_url = interpolate(&request.url, scope);
     warnings.extend(interpolated_url.warnings);
-    let url = append_query(interpolated_url.text, &request.query, scope, &mut warnings);
+    let url = with_default_scheme(interpolated_url.text);
+    let url = append_query(url, &request.query, scope, &mut warnings);
 
     let headers = resolve_fields(&request.headers, scope, &mut warnings);
     let body = resolve_body(&request.body, scope, &mut warnings);
@@ -31,6 +32,31 @@ pub(crate) fn resolve(
         body,
     };
     (resolved, warnings)
+}
+
+/// Prepends `http://` to a URL that names no scheme, as Postman does, so `localhost:8080/users`
+/// works as typed. An empty URL, or one that starts with a scheme (`https://`, `HTTP://`, ...),
+/// is returned unchanged.
+fn with_default_scheme(url: String) -> String {
+    if url.trim().is_empty() || has_scheme(&url) {
+        url
+    } else {
+        format!("http://{}", url.trim_start())
+    }
+}
+
+/// Whether `url` starts with `scheme://`, where the scheme is a letter followed by letters,
+/// digits, `+`, `-` or `.` (RFC 3986). A `://` later in the URL, as in
+/// `localhost/go?to=http://x`, does not count.
+fn has_scheme(url: &str) -> bool {
+    let Some((scheme, _)) = url.trim_start().split_once("://") else {
+        return false;
+    };
+    let mut chars = scheme.chars();
+    chars
+        .next()
+        .is_some_and(|first| first.is_ascii_alphabetic())
+        && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
 }
 
 /// Interpolates the enabled entries of `fields` (both key and value), skipping disabled ones.
@@ -195,6 +221,44 @@ mod tests {
             url: url.to_string(),
             ..Request::default()
         }
+    }
+
+    #[test]
+    fn a_url_without_a_scheme_defaults_to_http() {
+        let (resolved, _) = resolve(&base_request("localhost:8080/users"), &scope());
+        assert_eq!(resolved.url, "http://localhost:8080/users");
+    }
+
+    #[test]
+    fn a_url_with_a_scheme_is_kept() {
+        for url in [
+            "https://example.com",
+            "HTTP://example.com",
+            "http://localhost:1",
+        ] {
+            let (resolved, _) = resolve(&base_request(url), &scope());
+            assert_eq!(resolved.url, url);
+        }
+    }
+
+    #[test]
+    fn a_scheme_later_in_the_url_does_not_count() {
+        let (resolved, _) = resolve(&base_request("localhost/go?to=http://x"), &scope());
+        assert_eq!(resolved.url, "http://localhost/go?to=http://x");
+    }
+
+    #[test]
+    fn the_default_scheme_comes_before_the_query() {
+        let mut request = base_request("example.com/path");
+        request.query.push(KeyValue::new("page", "1"));
+        let (resolved, _) = resolve(&request, &scope());
+        assert_eq!(resolved.url, "http://example.com/path?page=1");
+    }
+
+    #[test]
+    fn an_empty_url_stays_empty() {
+        let (resolved, _) = resolve(&base_request(""), &scope());
+        assert_eq!(resolved.url, "");
     }
 
     #[test]
