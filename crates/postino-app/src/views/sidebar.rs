@@ -1,6 +1,10 @@
 //! The sidebar: a header with "new request" / "new folder" / "import" icon buttons, a filter input
 //! and the workspace's collection tree. Right-clicking a tree row still opens the rename/delete/new
 //! request/new folder context menu.
+//!
+//! A request moves to another folder by dragging it: the folder under the pointer (the row's own
+//! folder for a request row, the root below the last row) is highlighted with everything inside
+//! it, and dropping moves the file there (`state::tree_drop`).
 
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -21,7 +25,8 @@ use crate::actions::{DeleteSelectedEntry, RenameSelectedEntry};
 use crate::state;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
-    ICON_BUTTON_HEADER, MODAL_WIDTH_DEFAULT, RADIUS_MD, SIDEBAR_FILTER_HEIGHT, TREE_ROW_HEIGHT,
+    ICON_BUTTON_HEADER, MODAL_WIDTH_DEFAULT, RADIUS_MD, RADIUS_SM, SIDEBAR_FILTER_HEIGHT,
+    TREE_ROW_HEIGHT,
 };
 use crate::views::components::{
     ConfirmDialog, IconButton, MethodBadge, ModalPlacement, PrimaryButton, SecondaryButton,
@@ -34,6 +39,54 @@ use super::root::AppView;
 /// The extension every request file uses, used here only to tell a request row from a folder row
 /// when rendering.
 const REQUEST_EXTENSION: &str = ".postino";
+
+/// The value carried while a request is dragged in the tree, also rendered as the preview under
+/// the pointer.
+#[derive(Clone)]
+struct DraggedRequest {
+    id: String,
+    method: Option<Method>,
+    label: SharedString,
+}
+
+impl Render for DraggedRequest {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let palette = cx.palette();
+        h_flex()
+            .h(px(TREE_ROW_HEIGHT))
+            .items_center()
+            .gap(px(6.0))
+            .px_3()
+            .rounded(px(RADIUS_SM))
+            .border_1()
+            .border_color(palette.border_strong)
+            .bg(palette.bg)
+            .shadow(palette.shadow.clone())
+            .opacity(0.9)
+            .text_sm()
+            .text_color(palette.fg)
+            .children(self.method.clone().map(MethodBadge::inline))
+            .child(self.label.clone())
+    }
+}
+
+/// What a tree row needs to take part in moving a request by drag and drop.
+#[derive(Clone)]
+struct RowDrop {
+    view: WeakEntity<AppView>,
+    /// The folder a dragged request would go to (`""` for the root), `None` when there is none.
+    target: Option<String>,
+}
+
+/// The 1 px accent ring drawn inside the drop target: the target folder's row, or the whole tree
+/// for the root.
+fn drop_ring(palette: &crate::theme::Palette) -> Vec<BoxShadow> {
+    vec![
+        BoxShadow::new(px(0.0), px(0.0), palette.accent)
+            .spread_radius(px(1.0))
+            .inset(),
+    ]
+}
 
 impl AppView {
     /// Renders the sidebar: header, filter input, collection tree, and footer.
@@ -52,6 +105,18 @@ impl AppView {
         });
         let tree_state = self.tree_state.clone();
         let palette = cx.palette();
+        // A drag that ended outside the tree never dropped here: forget its target.
+        let drop_target = self
+            .sidebar_drop_target
+            .clone()
+            .filter(|_| cx.has_active_drag());
+        let root_is_target = drop_target.as_deref() == Some("");
+        let row_drop = RowDrop {
+            view: weak.clone(),
+            target: drop_target,
+        };
+        let move_weak = weak.clone();
+        let drop_weak = weak.clone();
         let mut methods_by_id = HashMap::new();
         if let Some(workspace) = self.state.workspace.as_ref() {
             collect_methods(workspace.tree(), &mut methods_by_id);
@@ -73,6 +138,26 @@ impl AppView {
                     .flex_1()
                     .min_h_0()
                     .px(px(6.0))
+                    .when(root_is_target, |this| this.shadow(drop_ring(&palette)))
+                    // Runs before the rows' own handlers (capture phase, back to front): the
+                    // root while inside the tree, until the row under the pointer says otherwise.
+                    .on_drag_move::<DraggedRequest>(move |event, _window, cx| {
+                        let inside = event.bounds.contains(&event.event.position);
+                        let request_id = event.drag(cx).id.clone();
+                        let view = move_weak.clone();
+                        let _ = view.update(cx, |view, _| {
+                            view.sidebar_drop_hover = inside.then(String::new);
+                        });
+                        cx.defer(move |cx| {
+                            let _ = view.update(cx, |view, cx| {
+                                view.commit_sidebar_drop(&request_id, cx);
+                            });
+                        });
+                    })
+                    .on_drop(move |dragged: &DraggedRequest, _window, cx| {
+                        let id = dragged.id.clone();
+                        let _ = drop_weak.update(cx, |view, cx| view.drop_on_sidebar(id, cx));
+                    })
                     .when_some(opening.clone(), |this, name| {
                         this.child(
                             div()
@@ -92,6 +177,7 @@ impl AppView {
                                     selected,
                                     methods_by_id.get(entry.item().id.as_ref()),
                                     &row_palette,
+                                    &row_drop,
                                 )
                             })
                             .context_menu(move |_ix, entry, menu, window, cx| {
@@ -102,6 +188,25 @@ impl AppView {
                     }),
             )
             .into_any_element()
+    }
+
+    /// The folder under the pointer, collected by the tree's drag move handlers, becomes the drop
+    /// target of `request_id` once all of them ran, repainting only when it changed.
+    fn commit_sidebar_drop(&mut self, request_id: &str, cx: &mut Context<Self>) {
+        let target = state::tree_drop::drop_target(request_id, self.sidebar_drop_hover.take());
+        if target != self.sidebar_drop_target {
+            self.sidebar_drop_target = target;
+            cx.notify();
+        }
+    }
+
+    /// A request dropped on the tree: moves it to the highlighted folder, if any.
+    fn drop_on_sidebar(&mut self, id: String, cx: &mut Context<Self>) {
+        self.sidebar_drop_hover = None;
+        match self.sidebar_drop_target.take() {
+            Some(folder) => self.move_request(id, folder, cx),
+            None => cx.notify(),
+        }
     }
 
     /// Re-applies the filter input's translated placeholder after a language change
@@ -286,12 +391,14 @@ const TREE_ROW_METHOD_GAP: f32 = 2.0;
 /// [`TREE_ROW_HEIGHT`] tall: `ListItem`'s own default padding is overridden below, since it would
 /// otherwise add to that height. Selected rows get `accent_text` label color (the `accent_subtle`
 /// background and the `hover` background come from `ListItem`'s own theme mapping, set up in
-/// `theme`).
+/// `theme`). A request row can be dragged; while one is, the rows of the target folder get the
+/// `hover` background and the folder's own row the accent ring.
 fn render_tree_row(
     entry: &TreeEntry,
     selected: bool,
     method: Option<&Method>,
     palette: &crate::theme::Palette,
+    drop: &RowDrop,
 ) -> ListItem {
     let item = entry.item();
     let is_request = item.id.ends_with(REQUEST_EXTENSION);
@@ -339,10 +446,39 @@ fn render_tree_row(
             .child(item.label.clone()),
     );
 
+    let id = item.id.to_string();
+    let in_target = drop
+        .target
+        .as_deref()
+        .is_some_and(|target| state::tree_drop::in_drop_target(&id, target));
+    let is_target_folder = drop.target.as_deref() == Some(id.as_str());
+    let drop_folder = state::tree_drop::row_drop_folder(&id, is_request).to_string();
+    let view = drop.view.clone();
+
     ListItem::new(item.id.clone())
         .selected(selected)
         .py(px(0.0))
         .px(px(8.0))
+        .when(in_target, |this| this.bg(palette.hover))
+        .when(is_target_folder, |this| this.shadow(drop_ring(palette)))
+        .when(is_request, |this| {
+            let dragged = DraggedRequest {
+                id: id.clone(),
+                method: method.cloned(),
+                label: item.label.clone(),
+            };
+            this.on_drag(dragged, |dragged, _, _, cx| cx.new(|_| dragged.clone()))
+        })
+        // After the tree container's handler: the row under the pointer names the folder.
+        .on_drag_move::<DraggedRequest>(move |event, _window, cx| {
+            if event.bounds.contains(&event.event.position) {
+                let _ = view.update(cx, |view, _| {
+                    if view.sidebar_drop_hover.is_some() {
+                        view.sidebar_drop_hover = Some(drop_folder.clone());
+                    }
+                });
+            }
+        })
         .child(row)
 }
 

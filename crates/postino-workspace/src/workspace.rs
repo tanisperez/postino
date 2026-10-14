@@ -18,7 +18,7 @@ use crate::{ENVIRONMENTS_FOLDER, MAX_WORKSPACE_ENTRIES, REQUEST_EXTENSION};
 ///
 /// [`Workspace::open`] scans the folder once, keeping the resulting tree in memory. Every method
 /// that changes the workspace (`save_request`, `create_request`, `create_folder`, `rename`,
-/// `delete`) re-scans the folder afterwards, so [`Workspace::tree`] always reflects what is on
+/// `move_request`, `delete`) re-scans the folder afterwards, so [`Workspace::tree`] always reflects what is on
 /// disk after the call returns successfully.
 #[derive(Debug)]
 pub struct Workspace {
@@ -218,6 +218,44 @@ impl Workspace {
         Ok(new_id)
     }
 
+    /// Moves the request with the given id into the folder `folder_id` (the workspace root when
+    /// `None`), keeping its file name, and returns its new id. Moving it to the folder it is
+    /// already in changes nothing and returns the same id.
+    ///
+    /// Fails with [`WorkspaceError::NotFound`] when the request or the folder does not exist,
+    /// and with [`WorkspaceError::AlreadyExists`] when the folder already has a file or folder
+    /// with that name: nothing is ever overwritten.
+    pub fn move_request(
+        &mut self,
+        id: &str,
+        folder_id: Option<&str>,
+    ) -> Result<String, WorkspaceError> {
+        let old_path = id_to_path(&self.root, id)?;
+        if !has_request_extension(&old_path) || !old_path.is_file() {
+            return Err(WorkspaceError::NotFound(id.to_string()));
+        }
+        let folder = self.resolve_existing_folder(folder_id)?;
+        let Some(file_name) = old_path.file_name() else {
+            return Err(WorkspaceError::InvalidId(id.to_string()));
+        };
+        let new_path = folder.join(file_name);
+        if new_path == old_path {
+            return Ok(id.to_string());
+        }
+        if new_path.exists() {
+            return Err(WorkspaceError::AlreadyExists(
+                file_name.to_string_lossy().into_owned(),
+            ));
+        }
+        fs::rename(&old_path, &new_path).map_err(|source| WorkspaceError::Io {
+            path: new_path.clone(),
+            source,
+        })?;
+        let new_id = path_to_id(&self.root, &new_path);
+        self.rescan()?;
+        Ok(new_id)
+    }
+
     /// Deletes the file or folder with the given id. Deleting a folder removes it and everything
     /// inside it.
     pub fn delete(&mut self, id: &str) -> Result<(), WorkspaceError> {
@@ -340,7 +378,8 @@ impl Workspace {
     }
 
     /// Resolves `parent_id` (or the workspace root when `None`) to an existing directory path,
-    /// used by [`Workspace::create_request`] and [`Workspace::create_folder`].
+    /// used by [`Workspace::create_request`], [`Workspace::create_folder`] and
+    /// [`Workspace::move_request`].
     fn resolve_existing_folder(&self, parent_id: Option<&str>) -> Result<PathBuf, WorkspaceError> {
         let path = match parent_id {
             Some(id) => id_to_path(&self.root, id)?,
