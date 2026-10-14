@@ -36,6 +36,9 @@ const GITIGNORE: &str = "\
 # Secrets and personal overrides of environments
 *.local.env
 
+# Personal order of environments
+environments/.order
+
 # Load test run history
 .postino/runs/
 ";

@@ -172,6 +172,18 @@ greeting = Hello, world
 <h3>Merging <code>.local.env</code></h3>
 <p>The two files are merged into one list: a key present in both keeps its position from <code>.env</code> and takes its value from <code>.local.env</code>; a key only in <code>.local.env</code> is added at the end. An environment needs at least one of the two files.</p>
 <p>The <code>environments/</code> folder at the root of the workspace is not a collection; it is never shown in the request tree.</p>
+<h3>Environment order</h3>
+<p>The optional <code>environments/.order</code> file sets the order of the environments, which the picker, the Environments panel and the <kbd>Ctrl</kbd> <kbd>1</kbd> to <kbd>Ctrl</kbd> <kbd>9</kbd> shortcuts follow. Postino writes it when you <a href="environments.html#ordering-environments">drag an environment</a>, but you can also edit it by hand:</p>
+```text title="environments/.order"
+local
+staging
+production
+```
+<ul>
+    <li>One environment name per line, without <code>.env</code>. Spaces around a name are ignored, and so are blank lines, repeated names and names that have no environment.</li>
+    <li>The listed environments come first, in this order. The others follow in natural order, which is the whole order when the file does not exist.</li>
+    <li>Renaming or deleting an environment in Postino updates its line.</li>
+</ul>
 
 <h2>Variables and template functions</h2>
 <p><code>{{name}}</code> markers are replaced in the URL, header names and values, query keys and values, form keys and values, and JSON, text and XML bodies. They are not replaced in scripts or docs. Resolution order, unknown variables and template functions are described in <a href="environments.html#resolution-order">Environments and variables</a> and <a href="template-functions.html">Template functions</a>.</p>

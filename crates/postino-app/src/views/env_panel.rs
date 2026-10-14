@@ -7,6 +7,10 @@
 //! the environment shown by the active tab is tinted. The "Active" tag follows the active
 //! environment, which the title bar's picker and the editor's "Use this environment" change.
 //! The "No environment" row deactivates it.
+//!
+//! Environments reorder by dragging their rows, like tabs: an accent line shows where the dragged
+//! one lands. Dropping it on "No environment" makes it the first, on the space below the list the
+//! last. The order is saved to `environments/.order` (`Workspace::set_environment_order`).
 
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::*;
@@ -15,7 +19,7 @@ use gpui_kit::*;
 use rust_i18n::t;
 
 use crate::state::env_color::env_color;
-use crate::state::env_panel::load_env_rows;
+use crate::state::env_panel::{load_env_rows, moved_order};
 use crate::state::number::format_integer;
 use crate::state::workspace_log::log_workspace_error;
 use crate::theme::metrics::{ENV_ROW_HEIGHT, ICON_BUTTON_HEADER, RADIUS_SM};
@@ -26,6 +30,49 @@ use super::root::AppView;
 
 /// The folder the panel lists, relative to the workspace root.
 const ENVIRONMENTS_FOLDER: &str = "environments";
+
+/// The value carried while an environment row is dragged, also rendered as the preview under
+/// the pointer.
+#[derive(Clone)]
+struct DraggedEnvironment {
+    /// The row's index in [`AppView::env_rows`].
+    index: usize,
+    name: SharedString,
+    color: Hsla,
+}
+
+impl Render for DraggedEnvironment {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let palette = cx.palette();
+        h_flex()
+            .h(px(ENV_ROW_HEIGHT))
+            .items_center()
+            .gap_2()
+            .px(px(8.0))
+            .rounded(px(RADIUS_SM))
+            .border_1()
+            .border_color(palette.border_strong)
+            .bg(palette.bg)
+            .shadow(palette.shadow.clone())
+            .opacity(0.9)
+            .text_color(palette.fg)
+            .child(
+                div()
+                    .flex_none()
+                    .size(px(7.0))
+                    .rounded_full()
+                    .bg(self.color),
+            )
+            .child(self.name.clone())
+    }
+}
+
+/// The 2 px accent line inside a row's top edge (`top`) or bottom edge, where a dragged
+/// environment lands.
+fn drop_line(accent: Hsla, top: bool) -> Vec<BoxShadow> {
+    let offset = if top { 2.0 } else { -2.0 };
+    vec![BoxShadow::new(px(0.0), px(offset), accent).inset()]
+}
 
 impl AppView {
     /// Reloads [`AppView::env_rows`] and the active environment's variables from disk. Call when
@@ -113,6 +160,30 @@ impl AppView {
         cx.notify();
     }
 
+    /// Moves the environment at `from` of [`AppView::env_rows`] to `to` (past the end for the
+    /// last place) and saves the new order, which the picker and the `Ctrl 1..9` shortcuts follow.
+    fn reorder_environment(&mut self, from: usize, to: usize, cx: &mut Context<Self>) {
+        let names: Vec<String> = self.env_rows.iter().map(|row| row.name.clone()).collect();
+        let Some(order) = moved_order(&names, from, to) else {
+            return;
+        };
+        let Some(workspace) = self.state.workspace.as_ref() else {
+            return;
+        };
+        match workspace.set_environment_order(&order) {
+            Ok(()) => {
+                log::debug!("reordered environments");
+                self.workspace_error = None;
+                self.refresh_environments();
+            }
+            Err(error) => {
+                log_workspace_error("save environment order", &error);
+                self.workspace_error = Some(error.to_string());
+            }
+        }
+        cx.notify();
+    }
+
     /// Renders the Environments panel.
     pub(crate) fn render_env_panel(
         &mut self,
@@ -157,6 +228,7 @@ impl AppView {
                 "env-row-none",
                 weak.clone(),
                 None,
+                None,
                 active.is_none() && selected.is_none(),
                 active.is_none(),
                 None,
@@ -167,6 +239,7 @@ impl AppView {
                 rows = rows.child(env_row(
                     ("env-row", index),
                     weak.clone(),
+                    Some(index),
                     Some(row.name.clone()),
                     selected.as_deref() == Some(row.name.as_str()),
                     active.as_deref() == Some(row.name.as_str()),
@@ -202,6 +275,16 @@ impl AppView {
                     .min_h_0()
                     .px(px(6.0))
                     .overflow_y_scroll()
+                    // Below the rows (and on "New environment"): the last place.
+                    .on_drop({
+                        let weak = weak.clone();
+                        move |dragged: &DraggedEnvironment, _window, cx| {
+                            let from = dragged.index;
+                            let _ = weak.update(cx, |view, cx| {
+                                view.reorder_environment(from, usize::MAX, cx);
+                            });
+                        }
+                    })
                     .child(rows),
             )
             .child(self.render_env_footer(&palette, &mono_font))
@@ -312,11 +395,13 @@ impl AppView {
 
 /// One environment row. `name` is `None` for "No environment" (a hollow ring dot, no count).
 /// The selected row is tinted, and the active one carries the "Active" tag when it is a named
-/// environment.
+/// environment. `index` is the row's place in [`AppView::env_rows`]: such a row can be dragged
+/// and takes a dragged environment in its place. "No environment" (`None`) takes it as the first.
 #[allow(clippy::too_many_arguments)]
 fn env_row(
     id: impl Into<ElementId>,
     weak: WeakEntity<AppView>,
+    index: Option<usize>,
     name: Option<String>,
     selected: bool,
     active: bool,
@@ -333,6 +418,16 @@ fn env_row(
         Some(name) => name.clone(),
         None => t!("common.no_environment").into_owned(),
     };
+    let accent = palette.accent;
+    let drop_weak = weak.clone();
+    let dragged = name
+        .as_ref()
+        .zip(index)
+        .map(|(name, index)| DraggedEnvironment {
+            index,
+            name: SharedString::from(name.clone()),
+            color: palette.env_color(env_color(name)),
+        });
 
     h_flex()
         .id(id)
@@ -372,6 +467,27 @@ fn env_row(
                     .text_color(palette.fg_subtle)
                     .child(format_integer(count as u64)),
             )
+        })
+        .when_some(dragged, |row, dragged| {
+            row.on_drag(dragged, |dragged, _, _, cx| cx.new(|_| dragged.clone()))
+        })
+        // The line marks where the dragged environment lands: above this row when it comes from
+        // below, below it when it comes from above, below "No environment" unless it is already
+        // the first.
+        .drag_over::<DraggedEnvironment>(move |style, dragged, _, _| {
+            let target = index.unwrap_or(0);
+            if dragged.index > target {
+                style.shadow(drop_line(accent, index.is_some()))
+            } else if dragged.index < target {
+                style.shadow(drop_line(accent, false))
+            } else {
+                style
+            }
+        })
+        .on_drop(move |dragged: &DraggedEnvironment, _window, cx| {
+            let from = dragged.index;
+            let to = index.unwrap_or(0);
+            let _ = drop_weak.update(cx, |view, cx| view.reorder_environment(from, to, cx));
         })
         .on_click(move |_, _, cx| {
             let name = name.clone();

@@ -1100,6 +1100,116 @@ fn save_environment_without_changes_for_a_file_does_not_create_it() {
     assert!(!env_dir(&temp).join("dev.local.env").exists());
 }
 
+/// Writes an empty `environments/<name>.env` for each name.
+fn write_environments(root: &Path, names: &[&str]) {
+    for name in names {
+        write_file(&root.join(format!("environments/{name}.env")), "");
+    }
+}
+
+#[test]
+fn list_environments_follows_the_order_file_then_natural_order() {
+    let temp = TempDir::new().expect("temp dir");
+    write_environments(temp.path(), &["dev", "local", "prod", "staging"]);
+    write_file(
+        &temp.path().join("environments/.order"),
+        "local\ngone\n\nprod\n",
+    );
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+
+    assert_eq!(
+        workspace.list_environments().expect("list"),
+        vec!["local", "prod", "dev", "staging"]
+    );
+}
+
+#[test]
+fn set_environment_order_writes_one_name_per_line() {
+    let temp = TempDir::new().expect("temp dir");
+    write_environments(temp.path(), &["dev", "local", "prod"]);
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+    assert_eq!(
+        workspace.list_environments().expect("list"),
+        vec!["dev", "local", "prod"]
+    );
+
+    let order: Vec<String> = ["local", "dev", "prod"].map(String::from).to_vec();
+    workspace.set_environment_order(&order).expect("set order");
+
+    assert_eq!(
+        fs::read_to_string(temp.path().join("environments/.order")).expect("read"),
+        "local\ndev\nprod\n"
+    );
+    assert_eq!(workspace.list_environments().expect("list"), order);
+}
+
+#[test]
+fn a_new_environment_goes_after_the_ordered_ones() {
+    let temp = TempDir::new().expect("temp dir");
+    write_environments(temp.path(), &["dev", "local"]);
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+    workspace
+        .set_environment_order(&["local".to_string(), "dev".to_string()])
+        .expect("set order");
+
+    workspace.create_environment("ci").expect("create");
+
+    assert_eq!(
+        workspace.list_environments().expect("list"),
+        vec!["local", "dev", "ci"]
+    );
+}
+
+#[test]
+fn renaming_and_deleting_an_environment_update_the_order_file() {
+    let temp = TempDir::new().expect("temp dir");
+    write_environments(temp.path(), &["dev", "local", "prod"]);
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+    let order: Vec<String> = ["prod", "local", "dev"].map(String::from).to_vec();
+    workspace.set_environment_order(&order).expect("set order");
+
+    workspace
+        .rename_environment("local", "laptop")
+        .expect("rename");
+    assert_eq!(
+        workspace.list_environments().expect("list"),
+        vec!["prod", "laptop", "dev"]
+    );
+
+    workspace.delete_environment("prod").expect("delete");
+    assert_eq!(
+        fs::read_to_string(temp.path().join("environments/.order")).expect("read"),
+        "laptop\ndev\n"
+    );
+}
+
+#[test]
+fn renaming_without_an_order_file_does_not_create_one() {
+    let temp = TempDir::new().expect("temp dir");
+    write_environments(temp.path(), &["dev", "local"]);
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+
+    workspace
+        .rename_environment("local", "laptop")
+        .expect("rename");
+    workspace.delete_environment("dev").expect("delete");
+
+    assert!(!temp.path().join("environments/.order").exists());
+}
+
+#[test]
+fn an_unreadable_order_file_keeps_the_natural_order() {
+    let temp = TempDir::new().expect("temp dir");
+    write_environments(temp.path(), &["dev", "local"]);
+    fs::create_dir_all(temp.path().join("environments/.order")).expect("order as a folder");
+    let workspace = Workspace::open(temp.path()).expect("open workspace");
+
+    assert_eq!(
+        workspace.list_environments().expect("list"),
+        vec!["dev", "local"]
+    );
+}
+
 #[test]
 fn rename_environment_moves_both_files() {
     let temp = TempDir::new().expect("temp dir");

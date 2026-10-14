@@ -216,6 +216,15 @@ override `<name>.env`. Add this to the workspace's `.gitignore`:
 The `environments/` folder itself is not shown as a collection in the sidebar; it is read
 separately.
 
+`environments/.order` is optional and sets the order of the environments: the picker, the
+Environments panel and the `Ctrl+1` to `Ctrl+9` shortcuts all follow it. One environment name per
+line, surrounding whitespace trimmed, blank and repeated lines skipped, names with no environment
+ignored. The listed environments come first, in file order, and the others after them in natural
+order; without the file the whole list is in natural order. Postino writes it (one name per line,
+each ended by `\n`) when the user drags an environment in the Environments panel, and renames or
+removes a line when that environment is renamed or deleted (`postino-workspace`, `env_order.rs`).
+The order is personal: the `.gitignore` of a new workspace ignores the file.
+
 Rules, exactly as implemented in `crates/postino-format/src/env.rs`:
 
 - One `KEY=value` per line, split on the **first** `=`.

@@ -55,7 +55,7 @@ apiKey=sk_test_51H...
 <h2>Switching environments</h2>
 <ul>
     <li>Click the environment pill in the title bar and choose one, or <strong>No environment</strong>.</li>
-    <li>Press <kbd>Ctrl</kbd> <kbd>1</kbd> to <kbd>Ctrl</kbd> <kbd>9</kbd> (<kbd>⌘</kbd> on macOS) for the first nine environments in alphabetical order, and <kbd>Ctrl</kbd> <kbd>0</kbd> for no environment.</li>
+    <li>Press <kbd>Ctrl</kbd> <kbd>1</kbd> to <kbd>Ctrl</kbd> <kbd>9</kbd> (<kbd>⌘</kbd> on macOS) for the first nine environments, in the order of the picker, and <kbd>Ctrl</kbd> <kbd>0</kbd> for no environment.</li>
     <li>Use the <strong>Environments</strong> group of the command palette.</li>
     <li>In the Environments panel, or in an environment's editor, choose <strong>Use this environment</strong>.</li>
 </ul>
@@ -71,6 +71,11 @@ apiKey=sk_test_51H...
         <tr><td>No environment</td><td>Hollow ring</td><td></td></tr>
     </tbody>
 </table></div>
+
+<h2>Ordering environments</h2>
+<p>Environments are listed in natural order of their names until you change it: drag an environment in the <strong>Environments</strong> panel and drop it where you want it. A line shows where it will land. Drop it on <strong>No environment</strong> to make it the first, or on the space below the list to make it the last.</p>
+<p>The picker, the command palette and the <kbd>Ctrl</kbd> <kbd>1</kbd> to <kbd>Ctrl</kbd> <kbd>9</kbd> shortcuts follow the new order right away, so the environment you use most can be <kbd>Ctrl</kbd> <kbd>1</kbd>. A new environment goes at the end.</p>
+<p>The order is saved in <code>environments/.order</code>, one name per line (see the <a href="file-format.html#environment-order">file format</a>). It is personal: a workspace created by Postino ignores the file in its <code>.gitignore</code>, so each person on the team keeps their own order. Remove that line from the <code>.gitignore</code> to share one order instead.</p>
 
 <h2>Resolution order</h2>
 <p>When Postino replaces <code>{{name}}</code>, it looks in these layers and uses the first one that has the variable:</p>

@@ -280,7 +280,9 @@ impl Workspace {
 
     /// Lists the names of the environments found in the top-level `environments/` folder (the
     /// file name of each `<name>.env` file, without the extension). Returns an empty list if the
-    /// folder does not exist. The result is sorted the same way the tree is (natural sort).
+    /// folder does not exist. The environments named in `environments/.order` come first, in
+    /// that order (see [`Workspace::set_environment_order`]); the rest follow sorted the same way
+    /// the tree is (natural sort).
     pub fn list_environments(&self) -> Result<Vec<String>, WorkspaceError> {
         let dir = self.root.join(ENVIRONMENTS_FOLDER);
         if !dir.is_dir() {
@@ -314,7 +316,10 @@ impl Workspace {
             }
         }
         names.sort_by(|a, b| crate::tree::natural_cmp(a, b).then_with(|| a.cmp(b)));
-        Ok(names)
+        Ok(crate::env_order::apply_order(
+            names,
+            &self.read_environment_order(),
+        ))
     }
 
     /// Loads the environment `name`, merging `environments/<name>.local.env` over

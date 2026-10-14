@@ -11,6 +11,7 @@
 
 mod create;
 mod env_edit;
+mod env_order;
 mod error;
 mod git;
 mod ids;

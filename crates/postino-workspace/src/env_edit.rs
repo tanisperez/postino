@@ -171,7 +171,8 @@ impl Workspace {
         Ok(())
     }
 
-    /// Renames the environment `old` to `new`: both its files. Fails with
+    /// Renames the environment `old` to `new`: both its files, and its line in
+    /// `environments/.order` when it has one. Fails with
     /// [`WorkspaceError::AlreadyExists`] if `new` already has either file, and with
     /// [`WorkspaceError::InvalidId`] if `new` is not a plain file name.
     pub fn rename_environment(&self, old: &str, new: &str) -> Result<(), WorkspaceError> {
@@ -195,11 +196,15 @@ impl Workspace {
         for (from, to) in moves {
             fs::rename(&from, &to).map_err(|source| WorkspaceError::Io { path: from, source })?;
         }
-        Ok(())
+        self.update_environment_order(|names| {
+            for name in names.iter_mut().filter(|name| *name == old) {
+                *name = new.to_string();
+            }
+        })
     }
 
-    /// Deletes both files of the environment `name`. Fails with
-    /// [`WorkspaceError::EnvironmentNotFound`] when neither exists.
+    /// Deletes both files of the environment `name`, and its line in `environments/.order` when
+    /// it has one. Fails with [`WorkspaceError::EnvironmentNotFound`] when neither file exists.
     pub fn delete_environment(&self, name: &str) -> Result<(), WorkspaceError> {
         validate_relative_path(name)?;
         let mut deleted = false;
@@ -210,11 +215,10 @@ impl Workspace {
                 deleted = true;
             }
         }
-        if deleted {
-            Ok(())
-        } else {
-            Err(WorkspaceError::EnvironmentNotFound(name.to_string()))
+        if !deleted {
+            return Err(WorkspaceError::EnvironmentNotFound(name.to_string()));
         }
+        self.update_environment_order(|names| names.retain(|listed| listed != name))
     }
 }
 
