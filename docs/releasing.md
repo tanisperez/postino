@@ -248,6 +248,11 @@ exists only on macOS and Windows.
   version using `semver`. GitHub redirects that URL to the newest stable release: no API, no
   token, no rate limit. Network and parse errors are logged at Warn and otherwise ignored for the
   background check (the manual check does show them).
+- **TLS:** the check and the download trust the OS certificate store (`ureq`'s
+  `platform-verifier`, Windows certificate store, macOS Keychain), not the bundled Mozilla roots.
+  Corporate networks that inspect TLS re-sign `github.com` with a company CA that IT installs only
+  there; with the Mozilla roots the check failed with `invalid peer certificate: UnknownIssuer`
+  (#111). Requests sent by the user still use the Mozilla roots (#114).
 - **Download:** when a newer version exists (and this is not a portable copy, see below), the
   asset for this platform is downloaded in the background and its sha256 verified. Then a discreet
   indicator appears in the status bar ("Update ready, restart") with a link to the release notes.

@@ -7,7 +7,8 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
-ureq = { workspace = true }
+# platform-verifier: trust the OS certificate store, see `agent` in src/lib.rs.
+ureq = { workspace = true, features = ["platform-verifier"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 semver = "1"

@@ -85,8 +85,14 @@ pub struct Update {
 }
 
 fn agent(global_timeout: Duration) -> ureq::Agent {
+    // The OS certificate store, not ureq's bundled Mozilla roots: a corporate network that
+    // inspects TLS re-signs github.com with a company CA that IT installs only there (#111).
+    let tls_config = ureq::tls::TlsConfig::builder()
+        .root_certs(ureq::tls::RootCerts::PlatformVerifier)
+        .build();
     // Redirects stay on (ureq's default): GitHub redirects release assets to another host.
     ureq::Agent::config_builder()
+        .tls_config(tls_config)
         .timeout_connect(Some(Duration::from_secs(10)))
         .timeout_global(Some(global_timeout))
         .max_redirects(10)

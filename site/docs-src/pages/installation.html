@@ -87,6 +87,7 @@ $ xattr -dr com.apple.quarantine /Applications/Postino.app
     </tbody>
 </table></div>
 <p>The in-app updater checks once, a few seconds after launch, and never polls in the background. When a new version exists it downloads it, verifies its checksum and shows <strong>Update ready, restart</strong> in the status bar. Nothing is installed until you click it. You can turn the automatic check off in <a href="settings.html#about">Settings, About</a>, and check by hand from the command palette with <strong>Check for updates</strong>.</p>
+<p>The updater trusts the same certificates as your system, like your browser does. On a company network that inspects secure connections, it works as long as the company certificate is installed in the system, which is usually done for you.</p>
 <p>A portable Windows copy checks the same way but downloads nothing, because running the installer from it would add a second copy of Postino. Postino tells it apart from an installed one by the uninstaller (<code>unins000.exe</code>) that the installer leaves next to <code>postino.exe</code>. When a newer version exists, the status bar shows <strong>Update … available, download</strong>. Clicking it opens the release page, where the new zip is. Close Postino, unzip the new <code>postino.exe</code> over the old one and start it again. Nothing is restarted for you.</p>
 
 <h2>Uninstall</h2>
