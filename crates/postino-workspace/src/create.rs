@@ -30,18 +30,28 @@ test("the server says hello", () => {
   expect(res.json().app).toBe("Postino");
 });"#;
 
+/// The `.gitignore` of every new workspace: the files that are personal or generated on each
+/// machine.
+const GITIGNORE: &str = "\
+# Secrets and personal overrides of environments
+*.local.env
+
+# Load test run history
+.postino/runs/
+";
+
 /// What [`create_workspace`] puts in a new workspace folder.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NewWorkspaceContent {
-    /// The example: `environments/local.env` (see [`EXAMPLE_ENVIRONMENT`]), `hello.postino`
-    /// (see [`EXAMPLE_REQUEST_ID`]) and a `.gitignore` that keeps `*.local.env` out of git. The
-    /// first Send works without editing anything.
+    /// The example: `environments/local.env` (see [`EXAMPLE_ENVIRONMENT`]) and `hello.postino`
+    /// (see [`EXAMPLE_REQUEST_ID`]). The first Send works without editing anything.
     Example,
-    /// Nothing, for a folder that is about to receive an import.
+    /// No requests or environments, for a folder that is about to receive an import.
     Empty,
 }
 
-/// Creates `root` (and its missing parents) as a new workspace folder holding `content`.
+/// Creates `root` (and its missing parents) as a new workspace folder holding `content` and a
+/// `.gitignore` (see [`GITIGNORE`]).
 ///
 /// `root` may be missing or an empty directory (hidden files count as content). Fails without
 /// writing anything with [`WorkspaceError::NotEmpty`] when `root` is a directory with anything
@@ -67,10 +77,10 @@ pub fn create_workspace(root: &Path, content: NewWorkspaceContent) -> Result<(),
         })?;
     }
 
-    match content {
-        NewWorkspaceContent::Empty => Ok(()),
-        NewWorkspaceContent::Example => write_example(root),
+    if content == NewWorkspaceContent::Example {
+        write_example(root)?;
     }
+    atomic_write(&root.join(".gitignore"), GITIGNORE)
 }
 
 /// Writes the files of [`NewWorkspaceContent::Example`] into the existing, empty folder `root`.
@@ -95,9 +105,7 @@ fn write_example(root: &Path) -> Result<(), WorkspaceError> {
     atomic_write(
         &root.join(EXAMPLE_REQUEST_ID),
         &postino_format::serialize(&request),
-    )?;
-
-    atomic_write(&root.join(".gitignore"), "*.local.env\n")
+    )
 }
 
 #[cfg(test)]
@@ -183,14 +191,18 @@ mod tests {
     }
 
     #[test]
-    fn empty_content_creates_just_the_folder() {
+    fn empty_content_creates_the_folder_with_only_the_gitignore() {
         let temp = tempfile::tempdir().expect("temp dir");
         let root = temp.path().join("imported");
 
         create_workspace(&root, NewWorkspaceContent::Empty).expect("create");
 
         assert!(root.is_dir());
-        assert_eq!(names_in(&root), Vec::<String>::new());
+        assert_eq!(names_in(&root), vec![".gitignore"]);
+        assert_eq!(
+            fs::read_to_string(root.join(".gitignore")).expect("read .gitignore"),
+            GITIGNORE
+        );
         assert!(Workspace::open(&root).expect("open").tree().is_empty());
     }
 
@@ -241,7 +253,7 @@ mod tests {
 
         assert_eq!(
             fs::read_to_string(root.join(".gitignore")).expect("read .gitignore"),
-            "*.local.env\n"
+            GITIGNORE
         );
     }
 }

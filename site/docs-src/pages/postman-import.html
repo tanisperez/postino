@@ -64,7 +64,7 @@ folder "Users": a test script is not imported at the folder level, only per requ
 ```
 
 <h2>Environments</h2>
-<p>A Postman environment export becomes <code>environments/&lt;name&gt;.env</code>. Variables of type <strong>secret</strong> go to <code>environments/&lt;name&gt;.local.env</code> instead, so they stay out of git once you add <code>*.local.env</code> to your <code>.gitignore</code>.</p>
+<p>A Postman environment export becomes <code>environments/&lt;name&gt;.env</code>. Variables of type <strong>secret</strong> go to <code>environments/&lt;name&gt;.local.env</code> instead, so they stay out of git: a workspace created for the import already ignores them, and in an existing folder you add <code>*.local.env</code> to your <code>.gitignore</code>.</p>
 
 <h2>After importing</h2>
 <ul>
