@@ -5,6 +5,7 @@
 //! [`root::AppView`], the single top-level view that owns the app state.
 
 pub mod command_palette;
+pub mod completion;
 pub mod components;
 pub mod define_variable;
 pub mod env_editor;
@@ -26,7 +27,6 @@ pub mod snippet_dialog;
 pub mod status_bar;
 pub mod title_bar;
 pub mod update;
-pub mod variable_completion;
 pub mod variable_hover;
 pub mod welcome;
 

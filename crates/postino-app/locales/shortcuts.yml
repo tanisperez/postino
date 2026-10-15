@@ -106,7 +106,7 @@ _version: 2
   gl: "Clic"
   it: "Clic"
 "shortcuts.action.complete_variable":
-  en: "Show the variables to insert"
-  es: "Mostrar las variables para insertar"
-  gl: "Amosar as variables para inserir"
-  it: "Mostra le variabili da inserire"
+  en: "Show suggestions: variables, header names and values"
+  es: "Mostrar sugerencias: variables, nombres y valores de cabeceras"
+  gl: "Amosar suxestións: variables, nomes e valores de cabeceiras"
+  it: "Mostra i suggerimenti: variabili, nomi e valori delle intestazioni"

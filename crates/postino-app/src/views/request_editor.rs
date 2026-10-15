@@ -101,12 +101,14 @@ impl BuildKey {
     }
 }
 
-/// A single-line field of the request editor that offers variable autocompletion
-/// (`views/variable_completion.rs`).
+/// A single-line field of the request editor that offers autocompletion (`views/completion.rs`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CompletionField {
     /// The URL input.
     Url,
+    /// The key input of a Params, Headers or Form row, by index. Only a Headers key offers
+    /// anything (header names).
+    Key(RowKind, usize),
     /// The value input of a Params, Headers or Form row, by index.
     Value(RowKind, usize),
 }
@@ -155,13 +157,19 @@ fn build_row(
     key.update(cx, |state, cx| state.set_value(row.key.clone(), window, cx));
     {
         let tab_id = tab_id.to_string();
-        cx.subscribe(&key, move |view, entity, event: &InputEvent, cx| {
-            if !matches!(event, InputEvent::Change) {
-                return;
-            }
-            let value = entity.read(cx).value().to_string();
-            view.edit_row(&tab_id, kind, index, cx, |row| row.key = value);
-        })
+        let field = CompletionField::Key(kind, index);
+        cx.subscribe(
+            &key,
+            move |view, entity, event: &InputEvent, cx| match event {
+                InputEvent::Change => {
+                    let value = entity.read(cx).value().to_string();
+                    view.edit_row(&tab_id, kind, index, cx, |row| row.key = value);
+                    view.on_completion_field_changed(field, cx);
+                }
+                InputEvent::Blur => view.on_completion_field_blurred(field, cx),
+                _ => {}
+            },
+        )
         .detach();
     }
 
@@ -683,7 +691,7 @@ impl AppView {
         };
         if self.request_editor.sync(&tab_id, &request, window, cx) {
             // The inputs the menu belonged to are gone.
-            self.variable_completion = None;
+            self.completion = None;
             // A fresh `method_input` (built empty) would otherwise show as "being edited" with
             // nothing in it: a rebuild happens on a tab switch or a row/body-kind change, none
             // of which should leave a stale custom-method editor open.
@@ -1109,12 +1117,30 @@ impl AppView {
         let editor = &self.request_editor;
         match field {
             CompletionField::Url => editor.url.clone(),
+            CompletionField::Key(kind, index) => editor
+                .table(kind)
+                .rows
+                .get(index)
+                .map(|row| row.key.clone()),
             CompletionField::Value(kind, index) => editor
                 .table(kind)
                 .rows
                 .get(index)
                 .map(|row| row.value.clone()),
         }
+    }
+
+    /// The header name of the row of `field`, for a Headers value cell.
+    pub(crate) fn completion_header_name(&self, field: CompletionField) -> Option<String> {
+        let CompletionField::Value(RowKind::Headers, index) = field else {
+            return None;
+        };
+        self.state
+            .tabs
+            .active()
+            .and_then(|tab| tab.request())
+            .and_then(|request| request.headers.get(index))
+            .map(|row| row.key.clone())
     }
 
     /// The completion field holding the focus, if any.
@@ -1127,6 +1153,9 @@ impl AppView {
         let editor = &self.request_editor;
         if editor.url.as_ref().is_some_and(focused) {
             return Some(CompletionField::Url);
+        }
+        if let Some(index) = editor.headers.rows.iter().position(|row| focused(&row.key)) {
+            return Some(CompletionField::Key(RowKind::Headers, index));
         }
         [RowKind::Query, RowKind::Headers, RowKind::Form]
             .into_iter()

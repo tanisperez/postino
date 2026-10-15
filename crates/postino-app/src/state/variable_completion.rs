@@ -1,11 +1,11 @@
-//! The variable autocompletion menu of the request editor's single-line fields (the URL and the
-//! values of Params, Headers and Form): where the typed `{{` marker is, what text a chosen
-//! variable replaces, which variables match what was typed, and the highlighted row. Plain Rust
-//! over the field's text and cursor, unit tested without a window; `views/variable_completion.rs`
-//! opens the menu, draws it and edits the input.
+//! The variables of the autocompletion menu (`state::completion`) in the URL and the values of
+//! Params, Headers and Form: where the typed `{{` marker is, what text a chosen variable replaces
+//! and which variables match what was typed. Plain Rust over the field's text and cursor, unit
+//! tested without a window.
 
 use std::ops::Range;
 
+use super::completion::{CompletionItem, rank};
 use super::variable_hint::Hint;
 
 /// The text a chosen variable replaces, and what was typed after `{{` to filter the list with.
@@ -72,57 +72,25 @@ pub fn marker(name: &str) -> String {
     format!("{{{{{name}}}}}")
 }
 
-/// The variables of `all` matching `query`, case-insensitively: names that start with it first,
-/// then names that contain it, each group in the order of `all`. Every one for an empty query.
+/// The variables of `all` matching `query`, ranked by [`rank`].
 pub fn filter(all: &[Hint], query: &str) -> Vec<Hint> {
-    let query = query.to_lowercase();
-    let mut starts = Vec::new();
-    let mut contains = Vec::new();
-    for hint in all {
-        let name = hint.name.to_lowercase();
-        if name.starts_with(&query) {
-            starts.push(hint.clone());
-        } else if name.contains(&query) {
-            contains.push(hint.clone());
-        }
-    }
-    starts.extend(contains);
-    starts
+    rank(all, query, |hint| hint.name.as_str())
+        .into_iter()
+        .cloned()
+        .collect()
 }
 
-/// The rows of an open menu and the highlighted one.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct CompletionMenu {
-    /// The matching variables, in the order shown.
-    pub items: Vec<Hint>,
-    /// The index of the highlighted row in `items`.
-    pub selected: usize,
-}
-
-impl CompletionMenu {
-    /// A menu showing `items`, the first one highlighted.
-    pub fn new(items: Vec<Hint>) -> Self {
-        Self { items, selected: 0 }
-    }
-
-    /// Highlights the next row, from the last back to the first.
-    pub fn select_next(&mut self) {
-        if !self.items.is_empty() {
-            self.selected = (self.selected + 1) % self.items.len();
-        }
-    }
-
-    /// Highlights the previous row, from the first round to the last.
-    pub fn select_previous(&mut self) {
-        if !self.items.is_empty() {
-            self.selected = self.selected.checked_sub(1).unwrap_or(self.items.len() - 1);
-        }
-    }
-
-    /// The highlighted variable, `None` when nothing matches.
-    pub fn selected(&self) -> Option<&Hint> {
-        self.items.get(self.selected)
-    }
+/// The menu rows for `hints`, each inserting its `{{name}}` marker in place of `replace`.
+pub fn items(hints: Vec<Hint>, replace: &Range<usize>) -> Vec<CompletionItem> {
+    hints
+        .into_iter()
+        .map(|hint| CompletionItem {
+            label: hint.name.clone(),
+            insert: marker(&hint.name),
+            replace: replace.clone(),
+            variable: Some(hint),
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -205,6 +173,15 @@ mod tests {
     }
 
     #[test]
+    fn items_insert_markers_in_place_of_the_trigger() {
+        let rows = items(hints(&["baseUrl"]), &(3..5));
+        assert_eq!(rows[0].label, "baseUrl");
+        assert_eq!(rows[0].insert, "{{baseUrl}}");
+        assert_eq!(rows[0].replace, 3..5);
+        assert!(rows[0].variable.is_some());
+    }
+
+    #[test]
     fn filter_puts_prefix_matches_before_substring_matches() {
         let all = hints(&["apiKey", "baseUrl", "authBase", "token"]);
         assert_eq!(names(&filter(&all, "BAS")), vec!["baseUrl", "authBase"]);
@@ -213,21 +190,5 @@ mod tests {
             vec!["apiKey", "baseUrl", "authBase", "token"]
         );
         assert!(filter(&all, "zzz").is_empty());
-    }
-
-    #[test]
-    fn the_highlighted_row_wraps_around() {
-        let mut menu = CompletionMenu::new(hints(&["a", "b", "c"]));
-        assert_eq!(menu.selected().map(|hint| hint.name.as_str()), Some("a"));
-        menu.select_previous();
-        assert_eq!(menu.selected().map(|hint| hint.name.as_str()), Some("c"));
-        menu.select_next();
-        menu.select_next();
-        assert_eq!(menu.selected().map(|hint| hint.name.as_str()), Some("b"));
-
-        let mut empty = CompletionMenu::new(Vec::new());
-        empty.select_next();
-        empty.select_previous();
-        assert_eq!(empty.selected(), None);
     }
 }

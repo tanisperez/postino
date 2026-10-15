@@ -4,6 +4,7 @@
 //! entities and renders it.
 
 pub mod about;
+pub mod completion;
 pub mod config;
 pub mod debug_open;
 pub mod define_variable;
@@ -11,6 +12,7 @@ pub mod env_color;
 pub mod env_edit;
 pub mod env_panel;
 pub mod format;
+pub mod header_completion;
 pub mod import;
 pub mod json_pretty;
 pub mod launch;

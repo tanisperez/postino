@@ -97,9 +97,9 @@ pub struct AppView {
     /// The folder row last pressed and whether it was expanded before the press, so a drag that
     /// starts there can undo the tree's toggle (`views/sidebar.rs`).
     pub(crate) sidebar_folder_press: Option<(String, bool)>,
-    /// The variable autocompletion menu of a request editor field, while it is open
-    /// (`views/variable_completion.rs`).
-    pub(crate) variable_completion: Option<crate::views::variable_completion::ActiveCompletion>,
+    /// The autocompletion menu of a request editor field, while it is open
+    /// (`views/completion.rs`).
+    pub(crate) completion: Option<crate::views::completion::ActiveCompletion>,
     /// The message of the last operation that failed, shown as a banner until the next
     /// successful operation clears it. `gpui` has no blocking error dialogs in this app by
     /// design (`AGENTS.md`: no native blocking dialogs), so failures show inline instead.
@@ -287,7 +287,7 @@ impl AppView {
             sidebar_drop_target: None,
             sidebar_selection: Default::default(),
             sidebar_folder_press: None,
-            variable_completion: None,
+            completion: None,
             workspace_error: None,
             request_editor: RequestEditorEntities::default(),
             response_editor: ResponseEditorEntities::default(),
@@ -1545,7 +1545,7 @@ impl Render for AppView {
         });
         let body = self.render_body(weak, window, cx);
         let status_bar = self.render_status_bar(cx);
-        let variable_completion = self.render_variable_completion(cx);
+        let completion = self.render_completion(cx);
 
         v_flex()
             .size_full()
@@ -1572,16 +1572,16 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_select_environment_8))
             .on_action(cx.listener(Self::on_select_environment_9))
             .on_action(cx.listener(Self::on_select_no_environment))
-            .on_action(cx.listener(Self::on_show_variable_completion))
-            .on_action(cx.listener(Self::on_next_variable_completion))
-            .on_action(cx.listener(Self::on_previous_variable_completion))
-            .on_action(cx.listener(Self::on_confirm_variable_completion))
-            .on_action(cx.listener(Self::on_dismiss_variable_completion))
+            .on_action(cx.listener(Self::on_show_completion))
+            .on_action(cx.listener(Self::on_next_completion))
+            .on_action(cx.listener(Self::on_previous_completion))
+            .on_action(cx.listener(Self::on_confirm_completion))
+            .on_action(cx.listener(Self::on_dismiss_completion))
             .child(title_bar)
             .children(error_banner)
             .child(body)
             .child(status_bar)
-            .children(variable_completion)
+            .children(completion)
             // The modal backdrop, see `Palette::scrim`. Paints only, so clicks still reach the
             // dialog's own (transparent) backdrop above it, which closes the dialog.
             .when(window.has_active_dialog(cx), |this| {

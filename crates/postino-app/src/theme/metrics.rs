@@ -92,10 +92,10 @@ pub const MENU_DOT_COLUMN_WIDTH: f32 = 13.0;
 pub const ENV_PILL_HEIGHT: f32 = 26.0;
 /// Height of the sidebar's filter input (see `docs/design-system.md`).
 pub const SIDEBAR_FILTER_HEIGHT: f32 = 28.0;
-/// Width of the variable autocompletion menu of the request editor's fields.
-pub const VARIABLE_MENU_WIDTH: f32 = 340.0;
-/// Rows the variable autocompletion menu shows before it scrolls.
-pub const VARIABLE_MENU_MAX_ROWS: f32 = 8.0;
+/// Width of the autocompletion menu of the request editor's fields.
+pub const COMPLETION_MENU_WIDTH: f32 = 340.0;
+/// Rows the autocompletion menu shows before it scrolls.
+pub const COMPLETION_MENU_MAX_ROWS: f32 = 8.0;
 
 /// Maximum width of the welcome tab's content column when it fills the window (no workspace
 /// open, so no sidebar).

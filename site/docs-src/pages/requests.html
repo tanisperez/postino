@@ -41,6 +41,16 @@ Authorization: Bearer {{token}}
 ```
 <p>Headers are sent in the order they appear. The order is kept exactly as written when the file is saved.</p>
 
+<h3 id="suggested-headers">Suggested headers</h3>
+<p>The Headers table suggests common headers while you type, in a menu below the cell:</p>
+<ul>
+    <li>In a name, part of it lists the matching common request headers, ignoring case, names that start with it first: <code>Acc</code> offers <code>Accept</code>, <code>Accept-Encoding</code>, <code>Accept-Language</code> and the rest.</li>
+    <li>In a value, part of it lists the usual values of that header. <code>Content-Type</code> and <code>Accept</code> offer media types such as <code>application/json</code>, <code>application/json; charset=utf-8</code>, <code>application/xml</code>, <code>text/plain</code>, <code>application/x-www-form-urlencoded</code> and <code>multipart/form-data</code> (<code>Accept</code> also <code>*/*</code>). <code>Authorization</code> offers <code>Bearer </code> and <code>Basic </code>, and <code>Cache-Control</code>, <code>Accept-Encoding</code>, <code>Connection</code>, <code>Prefer</code> and others offer their usual values too.</li>
+    <li>A suggestion replaces the whole cell, in its usual spelling. The menu closes when the cell already holds one of the suggestions or nothing matches, so your own headers are never in the way.</li>
+    <li><kbd>Ctrl</kbd> <kbd>Space</kbd> opens the menu on demand, listing every suggestion when the cell is empty or complete. In a value it lists the header's values first and then the variables, which are inserted at the cursor. Typing <code>{{</code> lists only the variables, see <a href="environments.html#autocompleting-variables">autocompleting variables</a>.</li>
+    <li>The keys are the same as for variables: <kbd>↑</kbd> and <kbd>↓</kbd> to move, <kbd>Enter</kbd>, <kbd>Tab</kbd> or a click to insert, <kbd>Esc</kbd> to close.</li>
+</ul>
+
 <h3>Automatic headers</h3>
 <ul>
     <li><strong>Content-Type:</strong> when the body is JSON, XML or Form and you have not set a <code>Content-Type</code> header yourself (in any letter case), Postino adds <code>application/json</code>, <code>application/xml</code> or <code>application/x-www-form-urlencoded</code>. A Text body gets no automatic content type: set one if your API needs it.</li>

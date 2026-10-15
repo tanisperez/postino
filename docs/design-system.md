@@ -131,8 +131,8 @@ Heights (px): title bar 40, open-tabs bar 36, response tab bar 36, request inner
 segmented control inner item 22, status badge 22, env pill 26, sidebar filter 28.
 
 Widths (px): sidebar 248 (resizable 180 to 480), activity rail 48 (buttons 34), search trigger
-360, window control 40, Send button min 100, method label 34, key-value side columns 30, variable
-autocompletion menu 340 (8 menu rows tall before it scrolls).
+360, window control 40, Send button min 100, method label 34, key-value side columns 30, autocompletion
+menu 340 (8 menu rows tall before it scrolls).
 
 Icon buttons (px): 24 small, 28 large, 22 in sidebar section headers. Status bar shortcuts button
 20.

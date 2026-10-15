@@ -56,16 +56,16 @@ actions!(
         /// Opens the rename dialog of the request or folder selected in the sidebar (`F2`, only
         /// while the sidebar tree has the focus).
         RenameSelectedEntry,
-        /// Opens the variable autocompletion menu in the focused URL or key-value value field
-        /// (`Ctrl+Space`).
-        ShowVariableCompletion,
-        /// Highlights the next variable of the open autocompletion menu (`Down`).
-        NextVariableCompletion,
-        /// Highlights the previous variable of the open autocompletion menu (`Up`).
-        PreviousVariableCompletion,
-        /// Inserts the highlighted variable of the open autocompletion menu (`Enter`, `Tab`).
-        ConfirmVariableCompletion,
+        /// Opens the autocompletion menu (variables, header names and values) in the focused URL
+        /// or key-value field (`Ctrl+Space`).
+        ShowCompletion,
+        /// Highlights the next row of the open autocompletion menu (`Down`).
+        NextCompletion,
+        /// Highlights the previous row of the open autocompletion menu (`Up`).
+        PreviousCompletion,
+        /// Inserts the highlighted row of the open autocompletion menu (`Enter`, `Tab`).
+        ConfirmCompletion,
         /// Closes the open autocompletion menu (`Escape`).
-        DismissVariableCompletion,
+        DismissCompletion,
     ]
 );
