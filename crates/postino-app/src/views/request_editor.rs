@@ -53,7 +53,7 @@ const SEND_KEY_HINT: &str = "Ctrl+\u{21b5}";
 /// Which key-value table a row belongs to: routes an edit to the right field of the active tab's
 /// [`Request`]. The Params table never rewrites the URL: the two are combined only when sending.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum RowKind {
+pub(crate) enum RowKind {
     /// The header list.
     Headers,
     /// The `::: query` section.
@@ -99,6 +99,16 @@ impl BuildKey {
             body_kind: BodyKind::of(&request.body),
         }
     }
+}
+
+/// A single-line field of the request editor that offers variable autocompletion
+/// (`views/variable_completion.rs`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CompletionField {
+    /// The URL input.
+    Url,
+    /// The value input of a Params, Headers or Form row, by index.
+    Value(RowKind, usize),
 }
 
 /// One key-value row's live `gpui` input entities.
@@ -161,13 +171,19 @@ fn build_row(
     });
     {
         let tab_id = tab_id.to_string();
-        cx.subscribe(&value, move |view, entity, event: &InputEvent, cx| {
-            if !matches!(event, InputEvent::Change) {
-                return;
-            }
-            let new_value = entity.read(cx).value().to_string();
-            view.edit_row(&tab_id, kind, index, cx, |row| row.value = new_value);
-        })
+        let field = CompletionField::Value(kind, index);
+        cx.subscribe(
+            &value,
+            move |view, entity, event: &InputEvent, cx| match event {
+                InputEvent::Change => {
+                    let new_value = entity.read(cx).value().to_string();
+                    view.edit_row(&tab_id, kind, index, cx, |row| row.value = new_value);
+                    view.on_completion_field_changed(field, cx);
+                }
+                InputEvent::Blur => view.on_completion_field_blurred(field, cx),
+                _ => {}
+            },
+        )
         .detach();
     }
 
@@ -340,13 +356,18 @@ impl RequestEditorEntities {
         });
         {
             let tab_id = tab_id.to_string();
-            cx.subscribe(&url, move |view, entity, event: &InputEvent, cx| {
-                if !matches!(event, InputEvent::Change) {
-                    return;
-                }
-                let value = entity.read(cx).value().to_string();
-                view.edit_active_request(&tab_id, cx, |request| request.url = value);
-            })
+            cx.subscribe(
+                &url,
+                move |view, entity, event: &InputEvent, cx| match event {
+                    InputEvent::Change => {
+                        let value = entity.read(cx).value().to_string();
+                        view.edit_active_request(&tab_id, cx, |request| request.url = value);
+                        view.on_completion_field_changed(CompletionField::Url, cx);
+                    }
+                    InputEvent::Blur => view.on_completion_field_blurred(CompletionField::Url, cx),
+                    _ => {}
+                },
+            )
             .detach();
         }
         self.url = Some(url);
@@ -661,6 +682,8 @@ impl AppView {
             return placeholder(cx, t!("request.empty.open_request"));
         };
         if self.request_editor.sync(&tab_id, &request, window, cx) {
+            // The inputs the menu belonged to are gone.
+            self.variable_completion = None;
             // A fresh `method_input` (built empty) would otherwise show as "being edited" with
             // nothing in it: a rebuild happens on a tab switch or a row/body-kind change, none
             // of which should leave a stale custom-method editor open.
@@ -1081,6 +1104,61 @@ fn define_variable_click(
 }
 
 impl AppView {
+    /// The input entity of `field` in the active tab, if it exists.
+    pub(crate) fn completion_input(&self, field: CompletionField) -> Option<Entity<InputState>> {
+        let editor = &self.request_editor;
+        match field {
+            CompletionField::Url => editor.url.clone(),
+            CompletionField::Value(kind, index) => editor
+                .table(kind)
+                .rows
+                .get(index)
+                .map(|row| row.value.clone()),
+        }
+    }
+
+    /// The completion field holding the focus, if any.
+    pub(crate) fn focused_completion_field(
+        &self,
+        window: &Window,
+        cx: &App,
+    ) -> Option<CompletionField> {
+        let focused = |input: &Entity<InputState>| input.focus_handle(cx).is_focused(window);
+        let editor = &self.request_editor;
+        if editor.url.as_ref().is_some_and(focused) {
+            return Some(CompletionField::Url);
+        }
+        [RowKind::Query, RowKind::Headers, RowKind::Form]
+            .into_iter()
+            .find_map(|kind| {
+                let index = editor
+                    .table(kind)
+                    .rows
+                    .iter()
+                    .position(|row| focused(&row.value))?;
+                Some(CompletionField::Value(kind, index))
+            })
+    }
+
+    /// Whether the menu of `field` hides every value: the value of a sensitive header, as its
+    /// tooltips do.
+    pub(crate) fn completion_masks_values(&self, field: CompletionField) -> bool {
+        let CompletionField::Value(RowKind::Headers, index) = field else {
+            return false;
+        };
+        self.state
+            .tabs
+            .active()
+            .and_then(|tab| tab.request())
+            .and_then(|request| request.headers.get(index))
+            .is_some_and(|row| is_sensitive_header(&row.key))
+    }
+
+    /// How the `{{ }}` markers of the active tab resolve, as of its last render.
+    pub(crate) fn request_editor_variable_context(&self) -> Rc<VariableContext> {
+        self.request_editor.variable_context.clone()
+    }
+
     /// Restyles the body editor's markers when the variable context or the colors changed since
     /// they were last styled.
     fn sync_body_markers(&mut self, cx: &mut Context<Self>) {

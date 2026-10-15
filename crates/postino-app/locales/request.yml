@@ -95,6 +95,16 @@ _version: 2
   es: "Oculto porque parece un secreto"
   gl: "Oculto porque parece un segredo"
   it: "Nascosto perché sembra un segreto"
+"request.variable.completion_no_environment":
+  en: "No environment selected, its variables are not listed"
+  es: "No hay ningún entorno seleccionado, sus variables no aparecen"
+  gl: "Non hai ningún contorno seleccionado, as súas variables non aparecen"
+  it: "Nessun ambiente selezionato, le sue variabili non sono elencate"
+"request.variable.completion_script":
+  en: "Set by the pre script"
+  es: "Definida por el script previo"
+  gl: "Definida polo script previo"
+  it: "Impostata dallo script pre"
 "request.variable.empty":
   en: "(empty)"
   es: "(vacío)"

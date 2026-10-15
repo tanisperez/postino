@@ -23,6 +23,16 @@ since = {{since}}
     <li>Scripts are not interpolated: inside <code>::: pre</code> and <code>::: post</code>, read variables with <code>vars.get()</code> and <code>env.get()</code>.</li>
 </ul>
 
+<h3 id="autocompleting-variables">Autocompleting variables</h3>
+<p>In the URL and in the values of the Params, Headers and Form tables, a menu lists the variables you can insert. It opens by itself when you type <code>{{</code>, or with <kbd>Ctrl</kbd> <kbd>Space</kbd> anywhere in the field (<kbd>Ctrl</kbd> on macOS too, since <kbd>⌘</kbd> <kbd>Space</kbd> is Spotlight).</p>
+<ul>
+    <li>It lists the variables of the active environment, the session variables set by scripts and the names the pre-request script sets with <code>vars.set()</code>, each with its value shortened. Values are hidden by the same rules as in the tooltips: a name that looks like a secret, or any variable in the value of a sensitive header such as <code>Authorization</code>.</li>
+    <li>What you type after <code>{{</code> filters the list, ignoring case: names that start with it come first, then names that contain it. The menu closes when nothing matches, or when you type something that cannot be part of a name, such as a space or the <code>(</code> of a <a href="template-functions.html">template function</a>.</li>
+    <li><kbd>↑</kbd> and <kbd>↓</kbd> move through the list, <kbd>Enter</kbd> or <kbd>Tab</kbd> insert the highlighted variable, and so does a click. <kbd>Esc</kbd> closes the menu; typing more of the name opens it again.</li>
+    <li>The variable is inserted as <code>{{name}}</code>. Inside a marker it replaces the whole marker, so <code>{{ba}}</code> becomes <code>{{baseUrl}}</code> with no extra braces. Outside one, <kbd>Ctrl</kbd> <kbd>Space</kbd> inserts it at the cursor, or in place of the selected text.</li>
+    <li>With no environment selected, the menu says so below the variables it can still offer.</li>
+</ul>
+
 <h2>Environment files</h2>
 <p>Environments live in the <code>environments/</code> folder at the root of the workspace. Each one is up to two files:</p>
 <dl>

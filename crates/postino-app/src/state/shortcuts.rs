@@ -72,6 +72,8 @@ pub fn groups() -> Vec<ShortcutGroup> {
             shortcuts: vec![
                 shortcut(t!("shortcuts.action.send"), &[modifier, "\u{21b5}"]),
                 shortcut(t!("shortcuts.action.save"), &[modifier, "S"]),
+                // Ctrl on macOS too: Cmd+Space is Spotlight.
+                shortcut(t!("shortcuts.action.complete_variable"), &["Ctrl", "Space"]),
             ],
         },
         ShortcutGroup {

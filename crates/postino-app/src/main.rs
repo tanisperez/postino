@@ -19,11 +19,12 @@ use gpui_kit::component::{Root, TitleBar};
 use gpui_kit::*;
 
 use actions::{
-    CloseActiveTab, DeleteSelectedEntry, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts,
-    OpenWorkspace, PreviousTab, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1,
-    SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
-    SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
-    SelectNoEnvironment, SendActiveTab,
+    CloseActiveTab, ConfirmVariableCompletion, DeleteSelectedEntry, DismissVariableCompletion,
+    NextTab, NextVariableCompletion, OpenCommandPalette, OpenSettings, OpenShortcuts,
+    OpenWorkspace, PreviousTab, PreviousVariableCompletion, RenameSelectedEntry, SaveActiveTab,
+    SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
+    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
+    SelectEnvironment9, SelectNoEnvironment, SendActiveTab, ShowVariableCompletion,
 };
 use state::settings::ThemeChoice;
 use views::AppView;
@@ -294,6 +295,19 @@ fn bind_keys(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("ctrl-tab", NextTab, None),
         KeyBinding::new("ctrl-shift-tab", PreviousTab, None),
+    ]);
+    // Variable autocompletion, in any text input. These are bound after gpui-kit's own input
+    // bindings, so they run first; the handlers (`views/variable_completion.rs`) act only on a
+    // request editor field with the menu open and otherwise let the input's binding run. Ctrl
+    // on every platform: Cmd+Space is Spotlight on macOS.
+    let input = Some("Input");
+    cx.bind_keys([
+        KeyBinding::new("ctrl-space", ShowVariableCompletion, input),
+        KeyBinding::new("down", NextVariableCompletion, input),
+        KeyBinding::new("up", PreviousVariableCompletion, input),
+        KeyBinding::new("enter", ConfirmVariableCompletion, input),
+        KeyBinding::new("tab", ConfirmVariableCompletion, input),
+        KeyBinding::new("escape", DismissVariableCompletion, input),
     ]);
     // Only while the sidebar tree has the focus (gpui-base's `Tree` key context): in a text input
     // these keys keep editing the text.

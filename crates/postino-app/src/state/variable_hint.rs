@@ -84,6 +84,27 @@ impl VariableContext {
         }
     }
 
+    /// Whether an environment is selected. Without one only the session overrides and the names
+    /// the pre script sets can resolve.
+    pub fn has_environment(&self) -> bool {
+        self.environment.is_some()
+    }
+
+    /// Every variable name a marker can resolve right now, each once, sorted case-insensitively:
+    /// the names the pre script sets, the enabled session overrides and the enabled variables of
+    /// the active environment.
+    pub fn names(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.script_names.iter().cloned().collect();
+        for entry in self.session_vars.iter().chain(&self.environment_vars) {
+            if entry.enabled && !entry.key.is_empty() {
+                names.push(entry.key.clone());
+            }
+        }
+        names.sort_by_key(|name| (name.to_lowercase(), name.clone()));
+        names.dedup();
+        names
+    }
+
     /// How `span` resolves. Layers are tried in the runner's order: the pre script, then the
     /// session overrides, then the environment.
     pub fn state(&self, span: &VariableSpan) -> VariableState {
@@ -165,23 +186,42 @@ pub struct Hint {
 /// `force_mask` hides the value whatever the name is, for a variable inside a sensitive header
 /// such as `Authorization`.
 pub fn hint(context: &VariableContext, span: &VariableSpan, force_mask: bool) -> Option<Hint> {
-    match context.state(span) {
+    hint_of(context, &span.name, span.kind, force_mask)
+}
+
+/// The tooltip content of every variable in [`VariableContext::names`], for the autocompletion
+/// menu. `force_mask` hides every value, as in [`hint`].
+pub fn completions(context: &VariableContext, force_mask: bool) -> Vec<Hint> {
+    context
+        .names()
+        .iter()
+        .filter_map(|name| hint_of(context, name, VariableKind::Variable, force_mask))
+        .collect()
+}
+
+fn hint_of(
+    context: &VariableContext,
+    name: &str,
+    kind: VariableKind,
+    force_mask: bool,
+) -> Option<Hint> {
+    match context.state_of(name, kind) {
         VariableState::Function | VariableState::Unknown => None,
         VariableState::ScriptDefined => Some(Hint {
-            name: span.name.clone(),
+            name: name.to_string(),
             value: None,
             masked: false,
             origin: None,
         }),
         VariableState::Resolved { value, origin } => {
-            let masked = !value.is_empty() && (force_mask || is_sensitive_header(&span.name));
+            let masked = !value.is_empty() && (force_mask || is_sensitive_header(name));
             let shown = if masked {
                 MASK.to_string()
             } else {
                 shorten(&value)
             };
             Some(Hint {
-                name: span.name.clone(),
+                name: name.to_string(),
                 value: Some(shown),
                 masked,
                 origin: Some(origin),
@@ -384,5 +424,50 @@ mod tests {
         assert_eq!(a, context(Some("dev"), &[("host", "x")]));
         assert_ne!(a, context(Some("dev"), &[("host", "y")]));
         assert_ne!(a, context(Some("prod"), &[("host", "x")]));
+    }
+
+    #[test]
+    fn completions_list_every_layer_once_with_the_value_that_wins() {
+        let mut env = vars(&[
+            ("baseUrl", "https://x"),
+            ("token", "secret"),
+            ("Other", "o"),
+        ]);
+        env.push(KeyValue {
+            key: "disabled".to_string(),
+            value: "d".to_string(),
+            enabled: false,
+        });
+        let context = VariableContext::new(
+            Some("dev".to_string()),
+            &env,
+            &vars(&[("baseUrl", "https://session")]),
+            HashSet::from(["fromScript".to_string()]),
+        );
+        let hints = completions(&context, false);
+        let names: Vec<&str> = hints.iter().map(|hint| hint.name.as_str()).collect();
+        assert_eq!(names, vec!["baseUrl", "fromScript", "Other", "token"]);
+        assert_eq!(hints[0].value.as_deref(), Some("https://session"));
+        assert_eq!(hints[0].origin, Some(Origin::Session));
+        assert_eq!(hints[1].value, None);
+        assert!(hints[3].masked);
+        assert!(completions(&context, true)[0].masked);
+        assert!(context.has_environment());
+    }
+
+    #[test]
+    fn without_an_environment_completions_keep_only_session_and_script_names() {
+        let context = VariableContext::new(
+            None,
+            &vars(&[("baseUrl", "https://x")]),
+            &vars(&[("token", "t")]),
+            HashSet::new(),
+        );
+        let names: Vec<String> = completions(&context, false)
+            .into_iter()
+            .map(|hint| hint.name)
+            .collect();
+        assert_eq!(names, vec!["token".to_string()]);
+        assert!(!context.has_environment());
     }
 }
