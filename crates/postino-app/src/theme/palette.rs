@@ -204,6 +204,10 @@ pub struct Palette {
     pub accent_text: Hsla,
     /// Selection background, variable chips.
     pub accent_subtle: Hsla,
+    /// Background of a selected list or tree row: `accent_subtle` at [`LIST_ACTIVE_ALPHA`], what
+    /// gpui-component makes of `list.active.background`, for rows that draw their selection
+    /// themselves (the sidebar's Ctrl+click picks).
+    pub list_active: Hsla,
     /// Hover background for rows and ghost buttons.
     pub hover: Hsla,
     /// Pressed/active background for rows, icon buttons and other hand-rolled clickable `div`s
@@ -304,6 +308,7 @@ impl Palette {
             accent_fg: hex(tokens.accent_fg),
             accent_text: hex(tokens.accent_text),
             accent_subtle: hex(tokens.accent_subtle),
+            list_active: hex(tokens.accent_subtle).opacity(LIST_ACTIVE_ALPHA),
             hover: hex(tokens.hover),
             pressed: hex(tokens.hover).blend(hex(tokens.border_strong).opacity(2.0 / 3.0)),
             accent_hover: shade(accent, sign * SHADE_STEP),
@@ -523,6 +528,10 @@ fn rgba(r: u8, g: u8, b: u8, a: f32) -> Hsla {
 /// The alpha byte appended to the accent's `#rrggbb` for the text selection highlight: `4d` is
 /// 0.3, the cap gpui-component applies to `selection.background`.
 const SELECTION_ALPHA_HEX: &str = "4d";
+
+/// The alpha gpui-component caps `list.active.background` at, so [`Palette::list_active`] matches
+/// the rows `ListItem` selects itself.
+const LIST_ACTIVE_ALPHA: f32 = 0.2;
 
 /// One `shade` step (GitHub #17 follow-up), in HSL lightness. `accent_hover`/`danger_hover` are
 /// one step, `accent_pressed`/`danger_pressed` two.

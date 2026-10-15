@@ -102,9 +102,6 @@ struct RowDrop {
     target: Option<String>,
     /// The rows picked with Ctrl+click, highlighted instead of the tree's own selection.
     picked: state::tree_selection::TreeSelection,
-    /// The background `ListItem` gives a selected row: `accent_subtle` as gpui-component clamps
-    /// its alpha, so a picked row looks exactly like the tree's selected one.
-    picked_bg: Hsla,
 }
 
 /// The 1 px accent ring drawn inside the drop target: the target folder's row, or the whole tree
@@ -144,7 +141,6 @@ impl AppView {
             view: weak.clone(),
             target: drop_target,
             picked: self.sidebar_selection.clone(),
-            picked_bg: cx.theme().list_active,
         };
         let move_weak = weak.clone();
         let drop_weak = weak.clone();
@@ -554,7 +550,7 @@ fn render_tree_row(
         .when(in_target, |this| this.bg(palette.hover))
         // `Tree` sets `selected` from its own single selection, so picked rows paint the same
         // background themselves.
-        .when(picked, |this| this.bg(drop.picked_bg))
+        .when(picked, |this| this.bg(palette.list_active))
         .when(is_target_folder, |this| this.shadow(drop_ring(palette)))
         // Before the tree's own handler, which selects the row (and opens a request): Ctrl+click
         // only picks it.

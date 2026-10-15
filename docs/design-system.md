@@ -50,7 +50,7 @@ Hex values copied from `theme/palette.rs`.
 | `fg_subtle` | `#8b8e9a` | `#6f7280` | Placeholders, icons, line numbers, counts |
 | `hover` | `#eceef2` | `#25272e` | Hover background |
 
-Derived at runtime (not hex literals): `pressed` is `hover` blended with 2/3 of `border_strong`.
+Derived at runtime (not hex literals): `pressed` is `hover` blended with 2/3 of `border_strong`. `list_active` is `accent_subtle` at alpha 0.2, the selected row background gpui-component's `ListItem` draws, for rows that paint their selection themselves.
 `accent_hover` and `danger_hover` shift the base color one step (0.07 lightness) toward black in
 light and toward white in dark. `accent_pressed` and `danger_pressed` shift two steps.
 
