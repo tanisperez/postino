@@ -23,6 +23,11 @@ pub enum WorkspaceError {
     #[error("{0:?} already exists")]
     AlreadyExists(String),
 
+    /// [`crate::Workspace::move_entry`] refused to move a folder into itself or into one of its
+    /// own subfolders.
+    #[error("{0:?} cannot be moved into itself")]
+    MoveIntoItself(String),
+
     /// [`crate::create_workspace`] refused a folder that already exists and has something inside,
     /// hidden files included.
     #[error("{0:?} already exists and is not empty")]

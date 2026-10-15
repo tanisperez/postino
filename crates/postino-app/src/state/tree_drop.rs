@@ -1,6 +1,6 @@
-//! Moving a request by dragging it onto another folder of the sidebar tree. Pure logic over
-//! workspace ids, so it is unit-tested without `gpui`; `views/sidebar.rs` tracks the folder under
-//! the pointer and `views/root.rs` moves the file. The workspace root is the folder `""`.
+//! Moving a request or a folder by dragging it onto another folder of the sidebar tree. Pure logic
+//! over workspace ids, so it is unit-tested without `gpui`; `views/sidebar.rs` tracks the folder
+//! under the pointer and `views/root.rs` moves the entry. The workspace root is the folder `""`.
 
 /// The folder holding `id`, `""` at the workspace root. `a/b/c.postino` gives `a/b`.
 pub fn parent_folder(id: &str) -> &str {
@@ -17,20 +17,33 @@ pub fn row_drop_folder(row_id: &str, is_request: bool) -> &str {
     }
 }
 
-/// Where `request_id` goes when dropped with the pointer over `hovered` (`None` outside the
-/// tree): `None` as well when it is the folder the request is already in, since nothing would
-/// change.
-pub fn drop_target(request_id: &str, hovered: Option<String>) -> Option<String> {
-    hovered.filter(|folder| folder != parent_folder(request_id))
+/// Whether `id` is the entry `ancestor` itself or lies anywhere below it.
+fn is_within(id: &str, ancestor: &str) -> bool {
+    id.strip_prefix(ancestor)
+        .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
+}
+
+/// Where the entry `id` (a request or a folder) goes when dropped with the pointer over `hovered`
+/// (`None` outside the tree): `None` as well when it is the folder the entry is already in, since
+/// nothing would change, and for a folder when it is the folder itself or one of its subfolders.
+pub fn drop_target(id: &str, hovered: Option<String>) -> Option<String> {
+    hovered.filter(|folder| folder != parent_folder(id) && !is_within(folder, id))
 }
 
 /// Whether the row `row_id` is drawn as part of the drop target `folder`: the folder's own row
 /// and every row below it. The root (`""`) highlights the whole tree instead, never single rows.
 pub fn in_drop_target(row_id: &str, folder: &str) -> bool {
-    !folder.is_empty()
-        && row_id
-            .strip_prefix(folder)
-            .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
+    !folder.is_empty() && is_within(row_id, folder)
+}
+
+/// The new id of `id` after the entry `old` moved to `new`: `id` itself when it is not `old` nor
+/// below it.
+pub fn moved_id(id: &str, old: &str, new: &str) -> String {
+    if is_within(id, old) {
+        format!("{new}{}", &id[old.len()..])
+    } else {
+        id.to_string()
+    }
 }
 
 #[cfg(test)]
@@ -67,6 +80,43 @@ mod tests {
         assert_eq!(
             drop_target("ping.postino", Some("auth/admin".into())),
             Some("auth/admin".to_string())
+        );
+    }
+
+    #[test]
+    fn a_folder_never_targets_itself_nor_its_subfolders() {
+        assert_eq!(drop_target("auth", Some("auth".into())), None);
+        assert_eq!(drop_target("auth", Some("auth/admin".into())), None);
+        assert_eq!(drop_target("auth", Some(String::new())), None);
+        assert_eq!(drop_target("a/auth", Some("a".into())), None);
+        assert_eq!(
+            drop_target("auth", Some("auth-extra".into())),
+            Some("auth-extra".to_string())
+        );
+        assert_eq!(
+            drop_target("a/auth", Some(String::new())),
+            Some(String::new())
+        );
+        assert_eq!(
+            drop_target("auth", Some("users/auth".into())),
+            Some("users/auth".to_string())
+        );
+    }
+
+    #[test]
+    fn moved_id_follows_the_entry_and_everything_below_it() {
+        assert_eq!(moved_id("auth", "auth", "users/auth"), "users/auth");
+        assert_eq!(
+            moved_id("auth/admin/reset.postino", "auth", "users/auth"),
+            "users/auth/admin/reset.postino"
+        );
+        assert_eq!(
+            moved_id("auth-extra/x.postino", "auth", "users/auth"),
+            "auth-extra/x.postino"
+        );
+        assert_eq!(
+            moved_id("a/ping.postino", "a/ping.postino", "ping.postino"),
+            "ping.postino"
         );
     }
 

@@ -18,7 +18,7 @@ use crate::{ENVIRONMENTS_FOLDER, MAX_WORKSPACE_ENTRIES, REQUEST_EXTENSION};
 ///
 /// [`Workspace::open`] scans the folder once, keeping the resulting tree in memory. Every method
 /// that changes the workspace (`save_request`, `create_request`, `create_folder`, `rename`,
-/// `move_request`, `delete`) re-scans the folder afterwards, so [`Workspace::tree`] always reflects what is on
+/// `move_entry`, `delete`) re-scans the folder afterwards, so [`Workspace::tree`] always reflects what is on
 /// disk after the call returns successfully.
 #[derive(Debug)]
 pub struct Workspace {
@@ -218,23 +218,29 @@ impl Workspace {
         Ok(new_id)
     }
 
-    /// Moves the request with the given id into the folder `folder_id` (the workspace root when
-    /// `None`), keeping its file name, and returns its new id. Moving it to the folder it is
-    /// already in changes nothing and returns the same id.
+    /// Moves the request or folder with the given id into the folder `folder_id` (the workspace
+    /// root when `None`), keeping its name, and returns its new id. A folder moves with everything
+    /// inside it. Moving an entry to the folder it is already in changes nothing and returns the
+    /// same id.
     ///
-    /// Fails with [`WorkspaceError::NotFound`] when the request or the folder does not exist,
-    /// and with [`WorkspaceError::AlreadyExists`] when the folder already has a file or folder
-    /// with that name: nothing is ever overwritten.
-    pub fn move_request(
+    /// Fails with [`WorkspaceError::NotFound`] when the entry or the folder does not exist, with
+    /// [`WorkspaceError::MoveIntoItself`] when a folder would go into itself or one of its own
+    /// subfolders, and with [`WorkspaceError::AlreadyExists`] when the folder already has a file
+    /// or folder with that name: nothing is ever overwritten.
+    pub fn move_entry(
         &mut self,
         id: &str,
         folder_id: Option<&str>,
     ) -> Result<String, WorkspaceError> {
         let old_path = id_to_path(&self.root, id)?;
-        if !has_request_extension(&old_path) || !old_path.is_file() {
+        let is_request = has_request_extension(&old_path) && old_path.is_file();
+        if !is_request && !old_path.is_dir() {
             return Err(WorkspaceError::NotFound(id.to_string()));
         }
         let folder = self.resolve_existing_folder(folder_id)?;
+        if !is_request && folder.starts_with(&old_path) {
+            return Err(WorkspaceError::MoveIntoItself(id.to_string()));
+        }
         let Some(file_name) = old_path.file_name() else {
             return Err(WorkspaceError::InvalidId(id.to_string()));
         };
@@ -379,7 +385,7 @@ impl Workspace {
 
     /// Resolves `parent_id` (or the workspace root when `None`) to an existing directory path,
     /// used by [`Workspace::create_request`], [`Workspace::create_folder`] and
-    /// [`Workspace::move_request`].
+    /// [`Workspace::move_entry`].
     fn resolve_existing_folder(&self, parent_id: Option<&str>) -> Result<PathBuf, WorkspaceError> {
         let path = match parent_id {
             Some(id) => id_to_path(&self.root, id)?,

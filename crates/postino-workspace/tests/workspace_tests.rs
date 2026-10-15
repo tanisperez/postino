@@ -519,7 +519,7 @@ fn move_request_into_a_folder_keeps_its_file_name() {
     let mut workspace = Workspace::open(temp.path()).expect("open workspace");
 
     let new_id = workspace
-        .move_request("auth/login.postino", Some("users"))
+        .move_entry("auth/login.postino", Some("users"))
         .expect("move request");
 
     assert_eq!(new_id, "users/login.postino");
@@ -546,12 +546,12 @@ fn move_request_to_the_root_and_into_a_subfolder() {
     let mut workspace = Workspace::open(temp.path()).expect("open workspace");
 
     let at_root = workspace
-        .move_request("a/b/ping.postino", None)
+        .move_entry("a/b/ping.postino", None)
         .expect("move to root");
     assert_eq!(at_root, "ping.postino");
 
     let nested = workspace
-        .move_request("ping.postino", Some("c/d"))
+        .move_entry("ping.postino", Some("c/d"))
         .expect("move into subfolder");
     assert_eq!(nested, "c/d/ping.postino");
     assert!(workspace.load_request("c/d/ping.postino").is_ok());
@@ -567,7 +567,7 @@ fn move_request_to_its_own_folder_changes_nothing() {
     let mut workspace = Workspace::open(temp.path()).expect("open workspace");
 
     let id = workspace
-        .move_request("auth/login.postino", Some("auth"))
+        .move_entry("auth/login.postino", Some("auth"))
         .expect("move to the same folder");
 
     assert_eq!(id, "auth/login.postino");
@@ -587,7 +587,7 @@ fn move_request_never_overwrites_a_file_with_the_same_name() {
     );
     let mut workspace = Workspace::open(temp.path()).expect("open workspace");
 
-    let result = workspace.move_request("a/ping.postino", Some("b"));
+    let result = workspace.move_entry("a/ping.postino", Some("b"));
 
     assert!(matches!(result, Err(WorkspaceError::AlreadyExists(name)) if name == "ping.postino"));
     assert_eq!(
@@ -616,25 +616,108 @@ fn move_request_fails_for_a_missing_request_folder_or_a_folder_id() {
     let mut workspace = Workspace::open(temp.path()).expect("open workspace");
 
     assert!(matches!(
-        workspace.move_request("a/missing.postino", None),
+        workspace.move_entry("a/missing.postino", None),
         Err(WorkspaceError::NotFound(_))
     ));
     assert!(matches!(
-        workspace.move_request("a/ping.postino", Some("missing")),
+        workspace.move_entry("a/ping.postino", Some("missing")),
         Err(WorkspaceError::NotFound(_))
     ));
     assert!(matches!(
-        workspace.move_request("a", None),
+        workspace.move_entry("a/missing", None),
         Err(WorkspaceError::NotFound(_))
     ));
     assert!(matches!(
-        workspace.move_request("../outside.postino", None),
+        workspace.move_entry("../outside.postino", None),
         Err(WorkspaceError::InvalidId(_))
     ));
     assert!(matches!(
-        workspace.move_request("a/ping.postino", Some("../..")),
+        workspace.move_entry("a/ping.postino", Some("../..")),
         Err(WorkspaceError::InvalidId(_))
     ));
+}
+
+#[test]
+fn move_entry_moves_a_folder_with_everything_inside() {
+    let temp = TempDir::new().expect("temp dir");
+    write_file(
+        &temp.path().join("auth/admin/reset.postino"),
+        "POST https://example.com/reset\n",
+    );
+    write_file(
+        &temp.path().join("auth/login.postino"),
+        "POST https://example.com/login\n",
+    );
+    write_file(&temp.path().join("users/.keep"), "");
+    let mut workspace = Workspace::open(temp.path()).expect("open workspace");
+
+    let new_id = workspace
+        .move_entry("auth", Some("users"))
+        .expect("move folder");
+
+    assert_eq!(new_id, "users/auth");
+    assert!(!temp.path().join("auth").exists());
+    assert!(workspace.load_request("users/auth/login.postino").is_ok());
+    assert!(
+        workspace
+            .load_request("users/auth/admin/reset.postino")
+            .is_ok()
+    );
+    let ids: Vec<&str> = workspace.tree().iter().map(Node::id).collect();
+    assert_eq!(ids, vec!["users"]);
+
+    let back = workspace
+        .move_entry("users/auth/admin", None)
+        .expect("move subfolder to the root");
+    assert_eq!(back, "admin");
+    assert!(workspace.load_request("admin/reset.postino").is_ok());
+}
+
+#[test]
+fn move_entry_never_moves_a_folder_into_itself_or_below_it() {
+    let temp = TempDir::new().expect("temp dir");
+    write_file(
+        &temp.path().join("a/b/ping.postino"),
+        "GET https://example.com\n",
+    );
+    write_file(&temp.path().join("ab/.keep"), "");
+    let mut workspace = Workspace::open(temp.path()).expect("open workspace");
+
+    assert!(matches!(
+        workspace.move_entry("a", Some("a")),
+        Err(WorkspaceError::MoveIntoItself(id)) if id == "a"
+    ));
+    assert!(matches!(
+        workspace.move_entry("a", Some("a/b")),
+        Err(WorkspaceError::MoveIntoItself(_))
+    ));
+    assert!(temp.path().join("a/b/ping.postino").is_file());
+
+    // A sibling whose name starts with the same letters is not a subfolder.
+    assert_eq!(
+        workspace.move_entry("a", Some("ab")).expect("move a"),
+        "ab/a"
+    );
+}
+
+#[test]
+fn move_entry_never_overwrites_a_folder_with_the_same_name() {
+    let temp = TempDir::new().expect("temp dir");
+    write_file(
+        &temp.path().join("a/auth/login.postino"),
+        "GET https://a.example.com\n",
+    );
+    write_file(
+        &temp.path().join("auth/ping.postino"),
+        "GET https://b.example.com\n",
+    );
+    let mut workspace = Workspace::open(temp.path()).expect("open workspace");
+
+    let result = workspace.move_entry("a/auth", None);
+
+    assert!(matches!(result, Err(WorkspaceError::AlreadyExists(name)) if name == "auth"));
+    assert!(temp.path().join("a/auth/login.postino").is_file());
+    assert!(temp.path().join("auth/ping.postino").is_file());
 }
 
 #[test]

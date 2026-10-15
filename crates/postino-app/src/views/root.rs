@@ -85,10 +85,10 @@ pub struct AppView {
     /// selection opens a tab exactly once instead of reloading the file from disk on every
     /// re-render (which would discard in-progress edits).
     pub(crate) last_selected_request: Option<String>,
-    /// While a request is dragged in the sidebar: the folder under the pointer during the current
+    /// While an entry is dragged in the sidebar: the folder under the pointer during the current
     /// move event, collected by the tree's handlers (`views/sidebar.rs`).
     pub(crate) sidebar_drop_hover: Option<String>,
-    /// While a request is dragged in the sidebar: the folder it would move to (`""` for the
+    /// While an entry is dragged in the sidebar: the folder it would move to (`""` for the
     /// root), highlighted in the tree. `None` when dropping would change nothing.
     pub(crate) sidebar_drop_target: Option<String>,
     /// The message of the last operation that failed, shown as a banner until the next
@@ -886,26 +886,37 @@ impl AppView {
         cx.notify();
     }
 
-    /// Moves the request `id` into `folder` (`""` for the workspace root), keeping its open tab,
-    /// unsaved edits and last response, and selects it there.
-    pub(crate) fn move_request(&mut self, id: String, folder: String, cx: &mut Context<Self>) {
+    /// Moves the request or folder `id` into `folder` (`""` for the workspace root), keeping the
+    /// open tabs, unsaved edits and last responses of every request it holds, the expand state of
+    /// a moved folder, and selects it there.
+    pub(crate) fn move_entry(&mut self, id: String, folder: String, cx: &mut Context<Self>) {
         let Some(workspace) = self.state.workspace.as_mut() else {
             return;
         };
         let folder_id = (!folder.is_empty()).then_some(folder.as_str());
-        match workspace.move_request(&id, folder_id) {
+        match workspace.move_entry(&id, folder_id) {
             Ok(new_id) => {
                 log::debug!("moved {id} to {new_id}");
                 self.state.tabs.rename_prefix(&id, &new_id);
-                if let Some(response) = self.responses.remove(&id) {
-                    self.responses.insert(new_id.clone(), response);
-                }
+                self.responses = std::mem::take(&mut self.responses)
+                    .into_iter()
+                    .map(|(key, response)| {
+                        (state::tree_drop::moved_id(&key, &id, &new_id), response)
+                    })
+                    .collect();
                 self.workspace_error = None;
                 self.refresh_tree_with(cx, |expansion| {
+                    state::tree_expansion::rename_prefix(expansion, &id, &new_id);
                     state::tree_expansion::reveal(expansion, &new_id);
                 });
-                // Selected without reopening it: its tab already follows the new id.
-                self.last_selected_request = Some(new_id.clone());
+                // Selected without reopening anything: the tabs already follow the new ids.
+                self.last_selected_request = if new_id.ends_with(".postino") {
+                    Some(new_id.clone())
+                } else {
+                    self.last_selected_request
+                        .take()
+                        .map(|selected| state::tree_drop::moved_id(&selected, &id, &new_id))
+                };
                 let new_id = SharedString::from(new_id);
                 self.tree_state.update(cx, |tree, cx| {
                     let index = tree.index_of(&new_id);
