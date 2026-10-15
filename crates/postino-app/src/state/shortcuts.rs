@@ -1,7 +1,8 @@
 //! The data behind the keyboard shortcuts cheat sheet (`F1`, or `Cmd+Shift+/` on macOS): the
 //! shortcuts grouped by area, with their translated labels and the keys to show as chips. It
-//! mirrors `main.rs`'s `bind_keys`, so a new key binding gets a row here. `views/shortcuts.rs`
-//! renders it; this module is plain data, unit tested without a window.
+//! mirrors `main.rs`'s `bind_keys`, so a new key binding gets a row here, plus the sidebar's
+//! Ctrl+click. `views/shortcuts.rs` renders it; this module is plain data, unit tested without a
+//! window.
 
 use rust_i18n::t;
 
@@ -78,6 +79,10 @@ pub fn groups() -> Vec<ShortcutGroup> {
             shortcuts: vec![
                 shortcut(t!("shortcuts.action.rename"), &["F2"]),
                 shortcut(t!("shortcuts.action.delete"), &["Delete"]),
+                shortcut(
+                    t!("shortcuts.action.pick"),
+                    &[modifier, &t!("shortcuts.key.click")],
+                ),
             ],
         },
         ShortcutGroup {

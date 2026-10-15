@@ -18,7 +18,7 @@ pub fn row_drop_folder(row_id: &str, is_request: bool) -> &str {
 }
 
 /// Whether `id` is the entry `ancestor` itself or lies anywhere below it.
-fn is_within(id: &str, ancestor: &str) -> bool {
+pub fn is_within(id: &str, ancestor: &str) -> bool {
     id.strip_prefix(ancestor)
         .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
 }

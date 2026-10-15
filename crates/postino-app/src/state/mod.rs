@@ -32,6 +32,7 @@ pub mod sidebar_filter;
 mod tabs;
 pub mod tree_drop;
 pub mod tree_expansion;
+pub mod tree_selection;
 pub mod ui_tabs;
 pub mod update;
 pub mod variable_hint;

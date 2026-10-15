@@ -91,6 +91,12 @@ pub struct AppView {
     /// While an entry is dragged in the sidebar: the folder it would move to (`""` for the
     /// root), highlighted in the tree. `None` when dropping would change nothing.
     pub(crate) sidebar_drop_target: Option<String>,
+    /// The sidebar entries picked with Ctrl+click (Cmd+click on macOS), moved together when one
+    /// of them is dragged.
+    pub(crate) sidebar_selection: state::tree_selection::TreeSelection,
+    /// The folder row last pressed and whether it was expanded before the press, so a drag that
+    /// starts there can undo the tree's toggle (`views/sidebar.rs`).
+    pub(crate) sidebar_folder_press: Option<(String, bool)>,
     /// The message of the last operation that failed, shown as a banner until the next
     /// successful operation clears it. `gpui` has no blocking error dialogs in this app by
     /// design (`AGENTS.md`: no native blocking dialogs), so failures show inline instead.
@@ -276,6 +282,8 @@ impl AppView {
             last_selected_request: None,
             sidebar_drop_hover: None,
             sidebar_drop_target: None,
+            sidebar_selection: Default::default(),
+            sidebar_folder_press: None,
             workspace_error: None,
             request_editor: RequestEditorEntities::default(),
             response_editor: ResponseEditorEntities::default(),
@@ -559,6 +567,7 @@ impl AppView {
             }
         }
         self.last_selected_request = None;
+        self.sidebar_selection.clear();
         self.new_env_input = None;
         self.env_editors.clear();
         self.sidebar_filter_pre_expansion = None;
@@ -651,6 +660,11 @@ impl AppView {
             .as_ref()
             .map_or(&[][..], |workspace| workspace.tree());
         self.load_targets.rebuild(nodes);
+        if !self.sidebar_selection.is_empty() {
+            let existing = state::tree_selection::ids_in(nodes);
+            self.sidebar_selection
+                .retain_existing(|id| existing.contains(id));
+        }
     }
 
     /// Called on every edit to [`Self::sidebar_filter_input`]. Narrows the tree while the filter is
@@ -886,47 +900,69 @@ impl AppView {
         cx.notify();
     }
 
-    /// Moves the request or folder `id` into `folder` (`""` for the workspace root), keeping the
-    /// open tabs, unsaved edits and last responses of every request it holds, the expand state of
-    /// a moved folder, and selects it there.
-    pub(crate) fn move_entry(&mut self, id: String, folder: String, cx: &mut Context<Self>) {
+    /// Moves the requests and folders `ids` into `folder` (`""` for the workspace root), keeping
+    /// the open tabs, unsaved edits and last responses of every request they hold and the expand
+    /// state of a moved folder. The selection follows them. One that cannot move (a name already
+    /// in `folder`) stays where it is and is reported, without stopping the others.
+    pub(crate) fn move_entries(
+        &mut self,
+        ids: Vec<String>,
+        folder: String,
+        cx: &mut Context<Self>,
+    ) {
         let Some(workspace) = self.state.workspace.as_mut() else {
             return;
         };
         let folder_id = (!folder.is_empty()).then_some(folder.as_str());
-        match workspace.move_entry(&id, folder_id) {
-            Ok(new_id) => {
-                log::debug!("moved {id} to {new_id}");
-                self.state.tabs.rename_prefix(&id, &new_id);
-                self.responses = std::mem::take(&mut self.responses)
-                    .into_iter()
-                    .map(|(key, response)| {
-                        (state::tree_drop::moved_id(&key, &id, &new_id), response)
-                    })
-                    .collect();
-                self.workspace_error = None;
-                self.refresh_tree_with(cx, |expansion| {
-                    state::tree_expansion::rename_prefix(expansion, &id, &new_id);
-                    state::tree_expansion::reveal(expansion, &new_id);
-                });
-                // Selected without reopening anything: the tabs already follow the new ids.
-                self.last_selected_request = if new_id.ends_with(".postino") {
-                    Some(new_id.clone())
-                } else {
-                    self.last_selected_request
-                        .take()
-                        .map(|selected| state::tree_drop::moved_id(&selected, &id, &new_id))
-                };
-                let new_id = SharedString::from(new_id);
-                self.tree_state.update(cx, |tree, cx| {
-                    let index = tree.index_of(&new_id);
-                    tree.set_selected_index(index, cx);
-                });
+        let mut moved = Vec::new();
+        let mut errors = Vec::new();
+        for id in ids {
+            match workspace.move_entry(&id, folder_id) {
+                Ok(new_id) => {
+                    log::debug!("moved {id} to {new_id}");
+                    moved.push((id, new_id));
+                }
+                Err(error) => {
+                    log_workspace_error(&format!("move {id}"), &error);
+                    errors.push(error.to_string());
+                }
             }
-            Err(error) => {
-                log_workspace_error(&format!("move {id}"), &error);
-                self.workspace_error = Some(error.to_string());
+        }
+        let mut selected = self
+            .tree_state
+            .read(cx)
+            .selected_item()
+            .map(|item| item.id.to_string());
+        for (id, new_id) in &moved {
+            self.state.tabs.rename_prefix(id, new_id);
+            self.responses = std::mem::take(&mut self.responses)
+                .into_iter()
+                .map(|(key, response)| (state::tree_drop::moved_id(&key, id, new_id), response))
+                .collect();
+            self.sidebar_selection.follow_move(id, new_id);
+            selected = selected.map(|selected| state::tree_drop::moved_id(&selected, id, new_id));
+            self.last_selected_request = self
+                .last_selected_request
+                .take()
+                .map(|request| state::tree_drop::moved_id(&request, id, new_id));
+        }
+        self.workspace_error = (!errors.is_empty()).then(|| errors.join("\n"));
+        self.refresh_tree_with(cx, |expansion| {
+            for (id, new_id) in &moved {
+                state::tree_expansion::rename_prefix(expansion, id, new_id);
+                state::tree_expansion::reveal(expansion, new_id);
             }
+        });
+        // Selected without reopening anything: the tabs already follow the new ids.
+        if let Some(selected) = selected {
+            if selected.ends_with(".postino") {
+                self.last_selected_request = Some(selected.clone());
+            }
+            let selected = SharedString::from(selected);
+            self.tree_state.update(cx, |tree, cx| {
+                let index = tree.index_of(&selected);
+                tree.set_selected_index(index, cx);
+            });
         }
         cx.notify();
     }

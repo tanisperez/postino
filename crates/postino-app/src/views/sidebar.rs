@@ -6,6 +6,9 @@
 //! row's own folder for a request row, the root below the last row) is highlighted with everything
 //! inside it, and dropping moves the entry there (`state::tree_drop`). A folder is never a target
 //! for itself nor for its own subfolders.
+//!
+//! Ctrl+click (Cmd+click on macOS) picks several rows (`state::tree_selection`); dragging one of
+//! them moves them all, and a plain click goes back to a single selection.
 
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -42,7 +45,8 @@ use super::root::AppView;
 const REQUEST_EXTENSION: &str = ".postino";
 
 /// The value carried while a request or a folder is dragged in the tree, also rendered as the
-/// preview under the pointer.
+/// preview under the pointer. `id` is the row grabbed; what moves is
+/// `TreeSelection::dragged_ids` of it, all the picked rows when it is one of them.
 #[derive(Clone)]
 struct DraggedEntry {
     id: String,
@@ -50,6 +54,8 @@ struct DraggedEntry {
     method: Option<Method>,
     is_folder: bool,
     label: SharedString,
+    /// How many entries move, set when the drag starts. The preview shows the count above one.
+    count: usize,
 }
 
 impl Render for DraggedEntry {
@@ -68,15 +74,23 @@ impl Render for DraggedEntry {
             .opacity(0.9)
             .text_sm()
             .text_color(palette.fg)
-            .when(self.is_folder, |this| {
+            .when(self.count > 1, |this| {
+                this.child(state::locale::plural(
+                    "shell.sidebar.dragged_items",
+                    self.count,
+                ))
+            })
+            .when(self.count <= 1 && self.is_folder, |this| {
                 this.child(
                     Icon::new(gpui_kit::assets::IconName::Folder)
                         .small()
                         .text_color(palette.fg_subtle),
                 )
             })
-            .children(self.method.clone().map(MethodBadge::inline))
-            .child(self.label.clone())
+            .when(self.count <= 1, |this| {
+                this.children(self.method.clone().map(MethodBadge::inline))
+                    .child(self.label.clone())
+            })
     }
 }
 
@@ -86,6 +100,11 @@ struct RowDrop {
     view: WeakEntity<AppView>,
     /// The folder a dragged entry would go to (`""` for the root), `None` when there is none.
     target: Option<String>,
+    /// The rows picked with Ctrl+click, highlighted instead of the tree's own selection.
+    picked: state::tree_selection::TreeSelection,
+    /// The background `ListItem` gives a selected row: `accent_subtle` as gpui-component clamps
+    /// its alpha, so a picked row looks exactly like the tree's selected one.
+    picked_bg: Hsla,
 }
 
 /// The 1 px accent ring drawn inside the drop target: the target folder's row, or the whole tree
@@ -124,6 +143,8 @@ impl AppView {
         let row_drop = RowDrop {
             view: weak.clone(),
             target: drop_target,
+            picked: self.sidebar_selection.clone(),
+            picked_bg: cx.theme().list_active,
         };
         let move_weak = weak.clone();
         let drop_weak = weak.clone();
@@ -201,21 +222,70 @@ impl AppView {
     }
 
     /// The folder under the pointer, collected by the tree's drag move handlers, becomes the drop
-    /// target of `entry_id` once all of them ran, repainting only when it changed.
+    /// target of the entries dragged by `entry_id` once all of them ran, repainting only when it
+    /// changed.
     fn commit_sidebar_drop(&mut self, entry_id: &str, cx: &mut Context<Self>) {
-        let target = state::tree_drop::drop_target(entry_id, self.sidebar_drop_hover.take());
+        let ids = self.sidebar_selection.dragged_ids(entry_id);
+        let target = state::tree_selection::drop_target_for(&ids, self.sidebar_drop_hover.take());
         if target != self.sidebar_drop_target {
             self.sidebar_drop_target = target;
             cx.notify();
         }
     }
 
-    /// A request or folder dropped on the tree: moves it to the highlighted folder, if any.
+    /// A request or folder dropped on the tree: moves it, with the other picked rows when it is
+    /// one of them, to the highlighted folder, if any.
     fn drop_on_sidebar(&mut self, id: String, cx: &mut Context<Self>) {
         self.sidebar_drop_hover = None;
         match self.sidebar_drop_target.take() {
-            Some(folder) => self.move_entry(id, folder, cx),
+            Some(folder) => {
+                let ids = self.sidebar_selection.dragged_ids(&id);
+                self.move_entries(ids, folder, cx);
+            }
             None => cx.notify(),
+        }
+    }
+
+    /// Ctrl+click on the row `id`: picks it, or unpicks it, next to the row the tree had selected.
+    /// That row loses the tree's selection once it is unpicked, so only picked rows look selected.
+    fn toggle_sidebar_pick(&mut self, id: &str, cx: &mut Context<Self>) {
+        let anchor = self
+            .tree_state
+            .read(cx)
+            .selected_item()
+            .map(|item| item.id.to_string());
+        self.sidebar_selection.toggle(id, anchor.as_deref());
+        if anchor.is_some_and(|anchor| !self.sidebar_selection.contains(&anchor)) {
+            self.tree_state
+                .update(cx, |tree, cx| tree.set_selected_index(None, cx));
+        }
+        cx.notify();
+    }
+
+    /// A folder grabbed to drag it: the tree expanded or collapsed it on the press, so this puts it
+    /// back as it was, keeping the rows under the pointer where they were, and selects it again.
+    fn undo_folder_press_toggle(&mut self, id: &str, cx: &mut Context<Self>) {
+        let Some((pressed, was_expanded)) = self.sidebar_folder_press.take() else {
+            return;
+        };
+        if pressed != id {
+            return;
+        }
+        self.refresh_tree_with(cx, |expansion| {
+            expansion.insert(pressed, was_expanded);
+        });
+        let id = SharedString::from(id.to_string());
+        self.tree_state.update(cx, |tree, cx| {
+            let index = tree.index_of(&id);
+            tree.set_selected_index(index, cx);
+        });
+    }
+
+    /// A plain click on a row: back to the tree's single selection.
+    fn clear_sidebar_picks(&mut self, cx: &mut Context<Self>) {
+        if !self.sidebar_selection.is_empty() {
+            self.sidebar_selection.clear();
+            cx.notify();
         }
     }
 
@@ -401,8 +471,9 @@ const TREE_ROW_METHOD_GAP: f32 = 2.0;
 /// [`TREE_ROW_HEIGHT`] tall: `ListItem`'s own default padding is overridden below, since it would
 /// otherwise add to that height. Selected rows get `accent_text` label color (the `accent_subtle`
 /// background and the `hover` background come from `ListItem`'s own theme mapping, set up in
-/// `theme`). Any row can be dragged; while one is, the rows of the target folder get the `hover`
-/// background and the folder's own row the accent ring.
+/// `theme`). While some rows are picked with Ctrl+click, they are the selected ones instead. Any
+/// row can be dragged; while one is, the rows of the target folder get the `hover` background and
+/// the folder's own row the accent ring.
 fn render_tree_row(
     entry: &TreeEntry,
     selected: bool,
@@ -412,6 +483,12 @@ fn render_tree_row(
 ) -> ListItem {
     let item = entry.item();
     let is_request = item.id.ends_with(REQUEST_EXTENSION);
+    let picked = drop.picked.contains(&item.id);
+    let selected = if drop.picked.is_empty() {
+        selected
+    } else {
+        picked
+    };
 
     let mut icon_slot = div()
         .flex_none()
@@ -464,21 +541,64 @@ fn render_tree_row(
     let is_target_folder = drop.target.as_deref() == Some(id.as_str());
     let drop_folder = state::tree_drop::row_drop_folder(&id, is_request).to_string();
     let view = drop.view.clone();
+    let pick_view = drop.view.clone();
+    let pick_id = id.clone();
+    let was_expanded = entry.is_expanded();
+    let click_view = drop.view.clone();
+    let preview_view = drop.view.clone();
 
     ListItem::new(item.id.clone())
         .selected(selected)
         .py(px(0.0))
         .px(px(8.0))
         .when(in_target, |this| this.bg(palette.hover))
+        // `Tree` sets `selected` from its own single selection, so picked rows paint the same
+        // background themselves.
+        .when(picked, |this| this.bg(drop.picked_bg))
         .when(is_target_folder, |this| this.shadow(drop_ring(palette)))
+        // Before the tree's own handler, which selects the row (and opens a request): Ctrl+click
+        // only picks it.
+        .on_mouse_down(MouseButton::Left, move |event, _window, cx| {
+            if event.modifiers.secondary() {
+                cx.stop_propagation();
+                let _ = pick_view.update(cx, |view, cx| view.toggle_sidebar_pick(&pick_id, cx));
+            } else if !is_request {
+                let _ = pick_view.update(cx, |view, _| {
+                    view.sidebar_folder_press = Some((pick_id.clone(), was_expanded));
+                });
+            }
+        })
+        // A click, never the end of a drag: a picked row can be grabbed to move them all.
+        .on_click(move |event, _window, cx| {
+            if !event.modifiers().secondary() {
+                let _ = click_view.update(cx, |view, cx| view.clear_sidebar_picks(cx));
+            }
+        })
         .on_drag(
             DraggedEntry {
                 id: id.clone(),
                 method: method.filter(|_| is_request).cloned(),
                 is_folder: !is_request,
                 label: item.label.clone(),
+                count: 1,
             },
-            |dragged, _, _, cx| cx.new(|_| dragged.clone()),
+            move |dragged, _, _, cx| {
+                if dragged.is_folder {
+                    let _ = preview_view.update(cx, |view, cx| {
+                        view.undo_folder_press_toggle(&dragged.id, cx);
+                    });
+                }
+                let count = preview_view.upgrade().map_or(1, |view| {
+                    view.read(cx)
+                        .sidebar_selection
+                        .dragged_ids(&dragged.id)
+                        .len()
+                });
+                cx.new(|_| DraggedEntry {
+                    count,
+                    ..dragged.clone()
+                })
+            },
         )
         // After the tree container's handler: the row under the pointer names the folder.
         .on_drag_move::<DraggedEntry>(move |event, _window, cx| {

@@ -115,6 +115,16 @@ _version: 2
   es: "Duplicar"
   gl: "Duplicar"
   it: "Duplica"
+"shell.sidebar.dragged_items.one":
+  en: "%{count} item"
+  es: "%{count} elemento"
+  gl: "%{count} elemento"
+  it: "%{count} elemento"
+"shell.sidebar.dragged_items.other":
+  en: "%{count} items"
+  es: "%{count} elementos"
+  gl: "%{count} elementos"
+  it: "%{count} elementi"
 "shell.sidebar.copy_suffix":
   en: "copy"
   es: "copia"

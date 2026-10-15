@@ -95,3 +95,13 @@ _version: 2
   es: "Eliminar la petición o carpeta seleccionada"
   gl: "Eliminar a petición ou cartafol seleccionado"
   it: "Elimina la richiesta o cartella selezionata"
+"shortcuts.action.pick":
+  en: "Select several requests or folders to move them together"
+  es: "Seleccionar varias peticiones o carpetas para moverlas juntas"
+  gl: "Seleccionar varias peticións ou cartafoles para movelos xuntos"
+  it: "Seleziona più richieste o cartelle per spostarle insieme"
+"shortcuts.key.click":
+  en: "Click"
+  es: "Clic"
+  gl: "Clic"
+  it: "Clic"
