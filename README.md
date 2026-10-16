@@ -74,8 +74,11 @@ cargo test --all-targets     # run the tests
 ```
 
 On Linux and macOS the `Makefile` wraps the usual commands (`make run`, `make release`,
-`make test`, `make lint`, ...). `make sample` starts a local test server and opens a workspace of
-about 140 requests that exercise every feature. Run `make help` for the full list.
+`make test`, `make lint`, ...). On Linux, `make install` builds and installs Postino for your
+user under `~/.local`, with its menu entry and icons, `make install-latest` installs the latest
+release instead, and `make uninstall` removes either. `make sample` starts a local test server and
+opens a workspace of about 140 requests that exercise every feature. Run `make help` for the full
+list.
 
 ## Documentation
 

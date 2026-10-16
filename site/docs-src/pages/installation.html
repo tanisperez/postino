@@ -40,6 +40,7 @@ $ sudo zypper install postino
 
 <h3>Tarball</h3>
 <p>The <code>.tar.gz</code> uses a <code>/usr</code>-like layout: <code>bin/postino</code>, plus the desktop entry, the MIME type and the icons under <code>share/</code>. Extract it anywhere and run <code>bin/postino</code>, or copy its contents under <code>~/.local</code> to get the menu entry. A tarball install does not update itself: download new versions from the releases page.</p>
+<p>From a clone of the repository, <code>make install-latest</code> does all of this for you: it downloads the tarball of the latest release, checks it against the release's <code>SHA256SUMS</code> and installs it under <code>~/.local</code>, with the menu entry and the <code>.postino</code> file type. Run it again to update, and <code>make uninstall</code> to remove it. Set <code>PREFIX</code> to install elsewhere.</p>
 
 <h3>What the Linux packages install</h3>
 <p>The <code>.deb</code> and <code>.rpm</code> packages install <code>/usr/bin/postino</code>, a desktop entry, the icons and a MIME type for <code>.postino</code> files. Your file manager then opens a <code>.postino</code> file with Postino on a double click.</p>
@@ -119,4 +120,4 @@ $ cd postino
 $ cargo run
 $ cargo build --release
 ```
-<p>The first command builds and starts a debug binary. The second builds an optimized binary in <code>target/release/postino</code>. A full build of gpui takes a while and several GB of disk space. See <a href="contributing.html">Contributing</a> for the development commands.</p>
+<p>The first command builds and starts a debug binary. The second builds an optimized binary in <code>target/release/postino</code>. On Linux, <code>make install</code> builds that optimized binary and installs it under <code>~/.local</code> (or <code>PREFIX</code>) with the menu entry, the icons and the <code>.postino</code> file type, and <code>make uninstall</code> removes it. A full build of gpui takes a while and several GB of disk space. See <a href="contributing.html">Contributing</a> for the development commands.</p>
