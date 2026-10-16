@@ -14,8 +14,13 @@ page body in HTML. Inside the body:
 
 The build fails, listing every problem, when a page in NAV has no source file, a source file is
 not in NAV, an internal link or anchor does not exist, or a page contains an em dash.
+
+It also writes two files at the root of the site, from NAV and the page headers, so they never
+fall behind the pages: sitemap.xml (the home page, the install page and every docs page) and
+llms.txt (llms.txt of this folder, with the list of docs pages filled in).
 """
 import html
+import json
 import re
 import sys
 from pathlib import Path
@@ -23,6 +28,7 @@ from string import Template
 
 HERE = Path(__file__).resolve().parent
 SITE = HERE.parent
+BASE = "https://postino.tanis.codes/"
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else SITE / "docs"
 
 # The sidebar, in order. It also sets the Previous and Next links and the breadcrumb.
@@ -148,6 +154,54 @@ def check_links(pages, errors):
                 errors.append(f"{name}: missing file ../{src}")
 
 
+def page_url(file):
+    return f"{BASE}docs/{'' if file == 'index.html' else file}"
+
+
+def json_ld(title, description, file, group):
+    """The page's structured data: a TechArticle and its breadcrumb."""
+    crumbs = [("Postino", BASE), ("Docs", page_url("index.html"))]
+    if file != "index.html":
+        crumbs.append((title, page_url(file)))
+    data = {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "TechArticle",
+                "headline": title,
+                "description": description,
+                "url": page_url(file),
+                "inLanguage": "en",
+                "articleSection": group,
+                "isPartOf": {"@type": "WebSite", "name": "Postino", "url": BASE},
+                "about": {"@type": "SoftwareApplication", "name": "Postino", "url": BASE},
+            },
+            {
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                    {"@type": "ListItem", "position": i + 1, "name": name, "item": url}
+                    for i, (name, url) in enumerate(crumbs)
+                ],
+            },
+        ],
+    }
+    return json.dumps(data, ensure_ascii=False, indent=4).replace("</", "<\\/")
+
+
+def write_root_files(order, metas):
+    urls = [BASE, f"{BASE}install.html"] + [page_url(file) for file, _, _ in order]
+    sitemap = "".join(f"    <url>\n        <loc>{url}</loc>\n    </url>\n" for url in urls)
+    (SITE / "sitemap.xml").write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{sitemap}</urlset>\n"
+    )
+    docs = [f"- [{metas[file]['title']}]({page_url(file)}): {metas[file]['description']}"
+            for file, _, _ in order]
+    llms = Template((HERE / "llms.txt").read_text()).substitute(docs="\n".join(docs))
+    (SITE / "llms.txt").write_text(llms)
+
+
 def main():
     template = Template((HERE / "template.html").read_text())
     order = [(file, label, group) for group, items in NAV for file, label in items]
@@ -159,15 +213,20 @@ def main():
     errors += [f"pages/{file}: not listed in NAV" for file in sorted(sources - listed)]
 
     pages = {}
+    metas = {}
     for i, (file, label, group) in enumerate(order):
         if file not in sources:
             continue
         head, body = (HERE / "pages" / file).read_text().split("\n---\n", 1)
         meta = dict(line.split(": ", 1) for line in head.strip().split("\n"))
+        meta.setdefault("title", label)
+        metas[file] = meta
         page = template.substitute(
-            title=meta.get("title", label),
+            title=meta["title"],
+            og_title=html.escape(f"{meta['title']} · Postino docs"),
             description=html.escape(meta["description"]),
             canonical="" if file == "index.html" else file,
+            json_ld=json_ld(meta["title"], meta["description"], file, group),
             nav=render_nav(file),
             group=group,
             body=render_body(body),
@@ -189,7 +248,8 @@ def main():
             stale.unlink()
     for file, page in pages.items():
         (OUT / file).write_text(page)
-    print(f"Built {len(pages)} pages into {OUT}")
+    write_root_files(order, metas)
+    print(f"Built {len(pages)} pages into {OUT}, and sitemap.xml and llms.txt")
 
 
 if __name__ == "__main__":

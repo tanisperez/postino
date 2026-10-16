@@ -5,6 +5,16 @@ Plain HTML, CSS and JavaScript, no dependencies. The only build step generates t
 documentation pages. How it is deployed: `docs/releasing.md`.
 
 - `index.html`, `install.html`: the pages.
+- `404.html`: the page GitHub Pages serves for any missing address. Its links are absolute.
+- SEO: every page has a description, a canonical URL, Open Graph and Twitter tags with the card
+  `img/og.png` (1200x630, rendered from `screenshots/og.html` by `screenshots/og-image.sh`). The
+  home page has JSON-LD (`WebSite`, `SoftwareApplication`), and every docs page a `TechArticle`
+  and its breadcrumb, written by `build.py`. `robots.txt`, `site.webmanifest` and `favicon.ico`
+  sit at the root.
+- `sitemap.xml` and `llms.txt` (a summary for language models, <https://llmstxt.org>): generated
+  at the root by `make docs`, ignored by git. The sitemap lists the home, install and every docs
+  page; `llms.txt` is `docs-src/llms.txt` with the docs pages and their descriptions filled in.
+  Keep its facts in line with the README and the pages.
 - `hello.json`: the response of the example request (`hello.postino`) that every new workspace
   gets, so its shape must not change: the example's test checks `app`.
 - `docs-src/`: the sources of the user documentation. Not published.
@@ -35,7 +45,7 @@ documentation pages. How it is deployed: `docs/releasing.md`.
   WOFF2 from the TTFs in `crates/postino-app/assets/fonts/` with `pyftsubset`.
 - `img/`: the logo (`packaging/icons/`) and the app screenshots, WebP only.
 - `screenshots/`: the tooling that regenerates `img/*-light.webp` and `img/*-dark.webp`
-  (`make screenshots`). It is not published.
+  (`make screenshots`) and the Open Graph card (`og-image.sh`). It is not published.
 
 Preview locally with `make site`, which builds the documentation and serves the site on
 <http://localhost:8000>. After editing a page, run `make docs` and reload.

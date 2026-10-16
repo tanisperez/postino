@@ -31,3 +31,9 @@ one dark version of each: `hero`, `scripts`, `palette`, `snippet`, `settings`,
 - `workspace/`: the demo workspace (`.postino` requests and `environments/*.env`).
 - `mock_server.py`: the API behind it. Run it by hand with `python3 mock_server.py [port]`.
 - `capture.sh`: the pipeline.
+
+# Open Graph card
+
+`og-image.sh` renders `og.html` with headless Chrome into `site/img/og.png` (1200x630): the logo,
+the tagline and `img/hero-dark.webp`, with the website's fonts. Run it again after the
+screenshots change.

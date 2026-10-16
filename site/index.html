@@ -4,18 +4,63 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Postino, a native HTTP client that keeps your requests in plain files</title>
-    <meta name="description" content="Postino is a fast, native, open source HTTP client for Linux, Windows and macOS. No account, no cloud, no telemetry: every request is a plain text file you can diff and commit.">
+    <meta name="description" content="Postino is a fast, native, open source HTTP client for Linux, Windows and macOS. No account, no cloud: every request is a plain text file you can commit.">
+    <meta name="author" content="Estanislao Pérez Nartallo">
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
     <link rel="canonical" href="https://postino.tanis.codes/">
+    <link rel="icon" href="favicon.ico" sizes="48x48">
     <link rel="icon" href="img/logo.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="img/icon-512.png">
+    <link rel="manifest" href="site.webmanifest">
     <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Postino">
+    <meta property="og:locale" content="en_US">
     <meta property="og:title" content="Postino, a native HTTP client">
     <meta property="og:description" content="No account, no cloud, no telemetry. Every request is a plain text file you can diff and commit.">
     <meta property="og:url" content="https://postino.tanis.codes/">
-    <meta property="og:image" content="https://postino.tanis.codes/img/hero-light.webp">
+    <meta property="og:image" content="https://postino.tanis.codes/img/og.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Postino, the HTTP client that keeps your requests in plain files: the app with a request and its JSON response.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Postino, a native HTTP client">
+    <meta name="twitter:description" content="No account, no cloud, no telemetry. Every request is a plain text file you can diff and commit.">
+    <meta name="twitter:image" content="https://postino.tanis.codes/img/og.png">
+    <meta name="twitter:image:alt" content="Postino, the HTTP client that keeps your requests in plain files: the app with a request and its JSON response.">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "WebSite",
+                "@id": "https://postino.tanis.codes/#website",
+                "name": "Postino",
+                "url": "https://postino.tanis.codes/",
+                "inLanguage": "en"
+            },
+            {
+                "@type": "SoftwareApplication",
+                "@id": "https://postino.tanis.codes/#app",
+                "name": "Postino",
+                "description": "A lightweight, native, open source HTTP client. No account, no cloud, no telemetry: every request is a plain text file you can diff and commit.",
+                "url": "https://postino.tanis.codes/",
+                "downloadUrl": "https://postino.tanis.codes/install.html",
+                "applicationCategory": "DeveloperApplication",
+                "operatingSystem": "Linux, Windows, macOS",
+                "image": "https://postino.tanis.codes/img/og.png",
+                "screenshot": "https://postino.tanis.codes/img/hero-light.webp",
+                "license": "https://www.apache.org/licenses/LICENSE-2.0",
+                "isAccessibleForFree": true,
+                "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+                "author": { "@type": "Person", "name": "Estanislao Pérez Nartallo", "url": "https://tanis.codes" },
+                "sameAs": ["https://github.com/tanisperez/postino"]
+            }
+        ]
+    }
+    </script>
     <link rel="preload" href="fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="css/style.css">

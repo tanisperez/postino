@@ -7,3 +7,5 @@
 
 # Generated from site/docs-src by `make docs` and by the website workflow.
 /site/docs/
+/site/sitemap.xml
+/site/llms.txt

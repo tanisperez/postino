@@ -1,0 +1,36 @@
+# Postino
+
+> Postino is a lightweight, native, open source HTTP client (an API client) for Linux, Windows and macOS. There is no account, no cloud and no telemetry: every request is a small plain text file (`.postino`) on your disk, so a collection is a folder you can read, diff and commit to git next to your code.
+
+Key facts:
+
+- Free and open source under the Apache License 2.0. Written in Rust, with the UI drawn on the GPU by gpui, the framework behind the Zed editor. No Electron, no web view.
+- Requests: any standard or custom method, query parameters and headers that can be switched on and off, and JSON, XML, text or form bodies. The response viewer shows status, timing and size, a formatted or raw body, headers, test results and console output.
+- Environments and variables: `{{name}}` variables, one `.env` file per environment for shared values and a gitignored `.local.env` file for secrets, which overrides it. Template functions such as `{{uuid()}}` generate values inline without a script.
+- Scripts and tests: JavaScript before (`::: pre`) and after (`::: post`) each request, in a sandboxed QuickJS engine, with `test()` and `expect()` assertions.
+- Load testing built in: virtual users, duration and ramp up, with live requests per second, p50, p95 and p99 latency and error rate, and a saved run history.
+- Imports Postman collections (v2.1) and environment exports. Exports any request as a curl command, a JavaScript fetch call or a Python requests call.
+- Keyboard first: Ctrl+K opens the command palette, Ctrl+Enter sends, Ctrl+1 to 9 switch environments (Cmd on macOS).
+- Light and dark themes. The interface speaks English, Spanish, Galician and Italian.
+- Status: verified on Linux. Windows and macOS builds have not been verified yet.
+
+## Website
+
+- [Home](https://postino.tanis.codes/): features, a demo video and screenshots.
+- [Download](https://postino.tanis.codes/install.html): installers for Windows, macOS and Linux (deb, rpm, tar.gz), the APT and DNF repositories, Homebrew and winget.
+
+## Documentation
+
+$docs
+
+## Source and releases
+
+- [Source code on GitHub](https://github.com/tanisperez/postino): the README covers the goals and building from source.
+- [Releases](https://github.com/tanisperez/postino/releases): every download, with SHA-256 checksums.
+- [Issues](https://github.com/tanisperez/postino/issues): bug reports and feature requests.
+
+## Optional
+
+- [File format specification](https://github.com/tanisperez/postino/blob/main/docs/format.md): the `.postino` format for developers.
+- [Architecture](https://github.com/tanisperez/postino/blob/main/docs/architecture.md): the crates and the reasons behind them.
+- [Author](https://tanis.codes): Estanislao Pérez Nartallo.
