@@ -744,16 +744,21 @@ impl AppView {
         }
         self.sync_body_markers(cx);
 
-        // The Body tab's code editor (JSON/Text/XML) scrolls its own content and needs a real,
-        // determinate height to fill: an ancestor `overflow_y_scroll()` container instead measures
-        // its child's intrinsic height, which collapses a `flex_1` editor to a couple of lines.
-        // Params/Headers/Form (a `KeyValueTable`), Pre/Post (a fixed-height editor, unaffected
-        // either way) and Docs are plain content with no scrolling of their own, so they still need
-        // it here.
-        let body_uses_code_editor = self.active_request_tab == RequestTab::Body
-            && matches!(request.body, Body::Json(_) | Body::Text(_) | Body::Xml(_));
+        // A code editor (the Body tab's JSON/Text/XML, Pre, Post) scrolls its own content and
+        // needs a real, determinate height to fill: an ancestor `overflow_y_scroll()` container
+        // instead measures its child's intrinsic height, which collapses a `flex_1` editor to a
+        // couple of lines, and an editor taller than the pane would be clipped where it cannot
+        // scroll the cursor into view (#128). Params/Headers/Form (a `KeyValueTable`) and Docs
+        // are plain content with no scrolling of their own, so they still need it here.
+        let uses_code_editor = match self.active_request_tab {
+            RequestTab::Body => {
+                matches!(request.body, Body::Json(_) | Body::Text(_) | Body::Xml(_))
+            }
+            RequestTab::Pre | RequestTab::Post => true,
+            _ => false,
+        };
         let content = div().id("request-editor-content").flex_1().min_h_0();
-        let content = if body_uses_code_editor {
+        let content = if uses_code_editor {
             content
         } else {
             content.overflow_y_scroll()
@@ -942,7 +947,6 @@ impl AppView {
                     .pre_editor
                     .as_ref()
                     .map(|script| script.editor.clone()),
-                false,
                 cx,
             ),
             RequestTab::Post => render_editor_or_placeholder(
@@ -951,7 +955,6 @@ impl AppView {
                     .post_editor
                     .as_ref()
                     .map(|script| script.editor.clone()),
-                false,
                 cx,
             ),
             RequestTab::Docs => match &self.request_editor.docs {
@@ -1028,7 +1031,7 @@ impl AppView {
                 cx,
             ),
             Body::Json(_) | Body::Text(_) | Body::Xml(_) => {
-                render_editor_or_placeholder(&self.request_editor.body_editor, true, cx)
+                render_editor_or_placeholder(&self.request_editor.body_editor, cx)
             }
         };
 
@@ -1294,10 +1297,9 @@ fn body_type_display_label(kind: BodyKind) -> String {
 
 /// Renders a code editor entity if present, or an empty placeholder (only possible transiently,
 /// before the first [`RequestEditorEntities::sync`] call), boxed in a bordered, `raised` container
-/// with line numbers. `fill` makes it grow to the rest of the pane's height (the Body tab);
-/// otherwise (Pre/Post) it keeps a fixed 320 px height.
+/// with line numbers, grown to the rest of the pane's height.
 ///
-/// `fill` uses `Editor::h(relative(1.0))`, not the generic `Styled::flex_1()`/`min_h_0()`:
+/// It uses `Editor::h(relative(1.0))`, not the generic `Styled::flex_1()`/`min_h_0()`:
 /// `Editor` has its own inherent `h(impl Into<DefiniteLength>)` (a `gpui-component` widget that
 /// needs a concrete height, in pixels or a percentage of its parent, to lay out its line-based
 /// content and gutter), applied before `refine_style` inside its own `RenderOnce` impl.
@@ -1307,24 +1309,18 @@ fn body_type_display_label(kind: BodyKind) -> String {
 /// (`gpui-component-0.6.6/src/inspector.rs`).
 fn render_editor_or_placeholder(
     editor: &Option<Entity<EditorState>>,
-    fill: bool,
     cx: &Context<AppView>,
 ) -> AnyElement {
     let palette = cx.palette();
     match editor {
-        Some(editor) => {
-            let editor = Editor::new(editor)
-                .context_menu(edit_menu(editor, cx))
-                .border_1()
-                .border_color(palette.border)
-                .rounded(px(RADIUS_MD))
-                .bg(palette.raised);
-            if fill {
-                editor.h(relative(1.0)).into_any_element()
-            } else {
-                editor.h(px(320.0)).into_any_element()
-            }
-        }
+        Some(editor) => Editor::new(editor)
+            .context_menu(edit_menu(editor, cx))
+            .border_1()
+            .border_color(palette.border)
+            .rounded(px(RADIUS_MD))
+            .bg(palette.raised)
+            .h(relative(1.0))
+            .into_any_element(),
         None => div().into_any_element(),
     }
 }
