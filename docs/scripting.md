@@ -233,3 +233,21 @@ the kind of script, for example:
 ```
 folder "Users": a test script is not imported at the folder level, only per request
 ```
+
+## 5. Editor autocompletion
+
+The `::: pre` and `::: post` editors complete the API above while typing (user guide:
+`site/docs-src/pages/scripting.html#autocompletion`). The pieces:
+
+- `postino_script::api::GLOBALS` is the schema: every global and member, with its kind,
+  parameters or type, a one or two sentence English description and whether it exists in pre,
+  post or both. A test in `api.rs` runs the real sandbox for both kinds of script and fails when
+  a global or member exists in one and not in the other, so a change to `prelude.js` or
+  `quickjs_engine.rs` must update the schema too.
+- `postino-app/src/state/script_completion.rs` decides what to offer for the text before the
+  cursor, with a small lexer (comments, strings, template literals) and a member chain read
+  backwards, no JavaScript parser. Its limits are listed in the module comment. It also builds
+  the `JsonShape` of a response body (its keys, bounded in depth and size) used after
+  `res.json()`.
+- `postino-app/src/views/script_completion.rs` is the editor's `CompletionProvider`. The JSON
+  shape is built on the background thread that sends the request, never while typing.

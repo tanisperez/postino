@@ -567,6 +567,60 @@ fn from_wire_console(lines: Vec<WireConsoleLine>) -> Vec<ConsoleLine> {
         .collect()
 }
 
+/// Runs `f` inside a sandbox set up exactly as for a real run (native `util` bindings, input
+/// and `prelude.js`), for a post script (`post` true) or a pre script, without running any user
+/// script. Lets the tests of `crate::api` inspect the globals the sandbox really defines.
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+pub(crate) fn with_sandbox<R>(post: bool, f: impl FnOnce(&Ctx<'_>) -> R) -> R {
+    let input = WireInput {
+        request: WireRequest {
+            method: "GET".to_string(),
+            url: "http://localhost".to_string(),
+            headers: Vec::new(),
+            body: String::new(),
+        },
+        vars: Vec::new(),
+        env: Vec::new(),
+        response: post.then(|| WireResponse {
+            status: 200,
+            headers: Vec::new(),
+            body: "{}".to_string(),
+            time_ms: 1.0,
+            size: 2,
+        }),
+    };
+    let runtime = Runtime::new().unwrap();
+    let context = Context::full(&runtime).unwrap();
+    context.with(|ctx| {
+        install_util(&ctx).unwrap();
+        let value = ctx
+            .json_parse(serde_json::to_string(&input).unwrap())
+            .unwrap();
+        ctx.globals().set("__input", value).unwrap();
+        eval_prelude(&ctx).unwrap();
+        f(&ctx)
+    })
+}
+
+/// The own property names of `globalThis` in a plain QuickJS context with the same intrinsics as
+/// the sandbox but none of its globals: the standard ECMAScript baseline.
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+pub(crate) fn baseline_global_names() -> std::collections::BTreeSet<String> {
+    let runtime = Runtime::new().unwrap();
+    let context = Context::full(&runtime).unwrap();
+    context.with(|ctx| {
+        let json: String = ctx
+            .eval("JSON.stringify(Object.getOwnPropertyNames(globalThis))")
+            .unwrap();
+        serde_json::from_str::<Vec<String>>(&json)
+            .unwrap()
+            .into_iter()
+            .collect()
+    })
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {

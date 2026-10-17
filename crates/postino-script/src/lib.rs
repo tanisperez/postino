@@ -9,6 +9,7 @@
 //! `rquickjs` type is ever exposed.
 #![warn(missing_docs)]
 
+pub mod api;
 mod engine;
 mod error;
 mod noop;

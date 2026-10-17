@@ -61,6 +61,7 @@ postino-app ──> postino-load ──> postino-runner ──> postino-script �
      │               │                  └─────────> postino-http ────> postino-core
      │               └──> postino-http, postino-script, postino-core
      ├──────> postino-runner
+     ├──────> postino-script (the script editors' autocompletion reads `postino_script::api`)
      ├──────> postino-workspace ─> postino-format ─> postino-core
      ├──────> postino-format (the Code snippet dialog renders `render_snippet` directly)
      └──────> postino-update (standalone, depends on no other postino crate)

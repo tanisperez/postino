@@ -32,6 +32,7 @@ use crate::actions::{
 };
 use crate::state::about::AboutInfo;
 use crate::state::debug_open::{self, DebugOpenTarget};
+use crate::state::script_completion::JsonShape;
 use crate::state::settings::{Settings, SettingsCategory};
 use crate::state::ui_tabs::{self, RequestTab, ResponseTab};
 use crate::state::workspace_log::{log_workspace_error, tree_counts};
@@ -126,6 +127,10 @@ pub struct AppView {
     pub(crate) responses: HashMap<String, RunResult>,
     /// Which response is stored per tab, so the Body tab can tell a new response from a re-render.
     pub(crate) response_generations: crate::state::response_render::ResponseGenerations,
+    /// The keys of each tab's last response body, for the post script's `res.json()`
+    /// completion. Built on the background thread that sent the request; absent when the body
+    /// is not JSON or is too big.
+    pub(crate) response_shapes: HashMap<String, Arc<JsonShape>>,
     /// The script engine every send uses. `Arc` so it is cheap to clone into each background
     /// send task; `QuickJsEngine` needs no per-run state, a fresh QuickJS runtime is created for
     /// every script run (see `postino-script`).
@@ -298,6 +303,7 @@ impl AppView {
             sending: None,
             responses: HashMap::new(),
             response_generations: Default::default(),
+            response_shapes: HashMap::new(),
             script_engine: Arc::new(QuickJsEngine),
             send_options,
             settings_category: SettingsCategory::default(),
