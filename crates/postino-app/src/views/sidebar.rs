@@ -333,6 +333,8 @@ impl AppView {
                             .h(px(SIDEBAR_FILTER_HEIGHT))
                             .py_0()
                             .bordered(false)
+                            // The row's `fg_subtle` is for the icon; typed text is plain `fg`.
+                            .text_color(palette.fg)
                             // Transparent so only the outer pill shows: without this, the `Input`'s
                             // own background paints a second, visible box inside it.
                             .bg(palette.bg.opacity(0.0)),
