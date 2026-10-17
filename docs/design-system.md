@@ -181,7 +181,8 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
    the tab, with the segmented control (None, Basic, Bearer, API key) centered at its top and
    the same 8 px vertical padding as the Body tab's, then rows, gap 8:
    a 96 px label in `fg_muted` and the field (the same chips and focus border as a table cell,
-   the password masked), a Header/Query param segmented control for an API key, and a warning
+   the password, token and API key value masked, with a 20 px `eye` / `eye-off` icon button at
+   their end), a Header/Query param segmented control for an API key, and a warning
    `InlineMessage` when a header or param written by hand is sent instead.
 5. **Response pane**: tab bar Body, Headers (count), Tests (`passed/total`), Console (count); on
    the right the status badge, time and size. Below, a Pretty/Raw segmented control on the left

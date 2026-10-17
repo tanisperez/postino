@@ -211,16 +211,17 @@ fn build_row(
 }
 
 /// Builds the input of one Auth tab field, pre-filled with `text`, and subscribes it to write
-/// typed changes back into the active tab's request. A password is masked.
+/// typed changes back into the active tab's request. A secret is masked unless `show_secrets`.
 fn build_auth_input(
     tab_id: &str,
     field: AuthField,
     text: &str,
+    show_secrets: bool,
     window: &mut Window,
     cx: &mut Context<AppView>,
 ) -> Entity<InputState> {
     let input = cx.new(|cx| {
-        let state = InputState::new(window, cx).masked(field == AuthField::Password);
+        let state = InputState::new(window, cx).masked(field.is_secret() && !show_secrets);
         match field {
             AuthField::KeyName => state.placeholder("X-API-Key"),
             _ => state,
@@ -368,6 +369,7 @@ impl RequestEditorEntities {
         &mut self,
         tab_id: &str,
         request: &Request,
+        show_auth_secrets: bool,
         window: &mut Window,
         cx: &mut Context<AppView>,
     ) -> bool {
@@ -378,7 +380,7 @@ impl RequestEditorEntities {
             self.last_sort.clear();
         }
         if rebuilt {
-            self.rebuild(tab_id, request, window, cx);
+            self.rebuild(tab_id, request, show_auth_secrets, window, cx);
             self.built_for = Some(key);
             self.body_markers_built_for = None;
             if let Some((kind, index)) = self.focus_after_rebuild.take()
@@ -427,6 +429,7 @@ impl RequestEditorEntities {
         &mut self,
         tab_id: &str,
         request: &Request,
+        show_auth_secrets: bool,
         window: &mut Window,
         cx: &mut Context<AppView>,
     ) {
@@ -488,7 +491,8 @@ impl RequestEditorEntities {
             .iter()
             .map(|&field| {
                 let text = auth_edit::field_value(&request.auth, field);
-                (field, build_auth_input(tab_id, field, text, window, cx))
+                let input = build_auth_input(tab_id, field, text, show_auth_secrets, window, cx);
+                (field, input)
             })
             .collect();
 
@@ -623,6 +627,25 @@ impl AppView {
         };
         tab.set_auth_kind(kind);
         self.state.tabs.mark_dirty(index);
+        cx.notify();
+    }
+
+    /// Shows the secret fields of the Auth tab of `tab_id` in plain text, or masks them again
+    /// (the eye button at their end). Per tab and never saved, so the tab is not marked dirty.
+    fn toggle_auth_secrets(&mut self, tab_id: &str, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(index) = self.state.tabs.index_of(tab_id) else {
+            return;
+        };
+        let Some(tab) = self.state.tabs.get_mut(index) else {
+            return;
+        };
+        tab.show_auth_secrets = !tab.show_auth_secrets;
+        let masked = !tab.show_auth_secrets;
+        for (field, input) in &self.request_editor.auth {
+            if field.is_secret() {
+                input.update(cx, |state, cx| state.set_masked(masked, window, cx));
+            }
+        }
         cx.notify();
     }
 
@@ -781,11 +804,15 @@ impl AppView {
             return placeholder(cx, t!("request.empty.open_request"));
         };
         let tab_id = tab.id.clone();
+        let show_auth_secrets = tab.show_auth_secrets;
         let Some(request) = tab.request().cloned() else {
             self.request_editor = RequestEditorEntities::default();
             return placeholder(cx, t!("request.empty.open_request"));
         };
-        if self.request_editor.sync(&tab_id, &request, window, cx) {
+        if self
+            .request_editor
+            .sync(&tab_id, &request, show_auth_secrets, window, cx)
+        {
             // The inputs the menu belonged to are gone.
             self.completion = None;
             // A fresh `method_input` (built empty) would otherwise show as "being edited" with
@@ -1095,17 +1122,31 @@ impl AppView {
             );
         }
         let context = self.request_editor.variable_context.clone();
+        let show_secrets = self
+            .state
+            .tabs
+            .active()
+            .is_some_and(|tab| tab.show_auth_secrets);
         for (field, input) in &self.request_editor.auth {
             let text = auth_edit::field_value(&request.auth, *field).to_string();
-            let value = VariableField::new(
+            let mut value = VariableField::new(
                 format!("auth-{field:?}"),
                 input.clone(),
                 text,
                 context.clone(),
             )
             .mask_all(field.is_secret())
-            .masked(*field == AuthField::Password)
+            .masked(field.is_secret() && !show_secrets)
             .on_chip_click(define_variable_click(&weak, &context));
+            if field.is_secret() {
+                let toggle_weak = weak.clone();
+                let toggle_tab_id = tab_id.to_string();
+                value = value.on_mask_toggle(move |window, cx| {
+                    let _ = toggle_weak.update(cx, |view, cx| {
+                        view.toggle_auth_secrets(&toggle_tab_id, window, cx);
+                    });
+                });
+            }
             content = content.child(row(field.label(), value.into_any_element()));
         }
         if let Auth::ApiKey { location, .. } = &request.auth {

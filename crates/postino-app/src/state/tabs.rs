@@ -46,6 +46,9 @@ pub struct OpenTab {
     /// What the auth types the request is not showing held, see [`AuthStash`]. Empty for every
     /// other kind of tab.
     pub auth_stash: AuthStash,
+    /// Whether the Auth tab shows its secret fields in plain text, switched by their eye button.
+    /// Never saved: a reopened tab masks them again.
+    pub show_auth_secrets: bool,
 }
 
 impl OpenTab {
@@ -243,6 +246,7 @@ impl TabsState {
             dirty: false,
             body_stash: BodyStash::default(),
             auth_stash: AuthStash::default(),
+            show_auth_secrets: false,
         });
         let index = self.open.len() - 1;
         self.active = Some(index);

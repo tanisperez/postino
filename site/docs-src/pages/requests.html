@@ -69,7 +69,8 @@ Authorization: Bearer {{token}}
     </tbody>
 </table></div>
 <ul>
-    <li>Every field takes <code>{{variables}}</code> and <a href="template-functions.html">template functions</a>, with the same chips and autocompletion as the Params and Headers values. The password is shown as dots. The values of the variables in the password, the token and the API key value are hidden in tooltips and menus.</li>
+    <li>Every field takes <code>{{variables}}</code> and <a href="template-functions.html">template functions</a>, with the same chips and autocompletion as the Params and Headers values. The password, the token and the API key value are shown as dots, except the <code>{{variables}}</code> in them, and the values of their variables are hidden in tooltips and menus.</li>
+    <li>The eye button at the end of a masked field shows its text, and clicking it again hides it. It applies to the tab, not to the file: the fields are masked again when the request is opened again.</li>
     <li>Variables are replaced before the Basic credentials are encoded, so <code>{{username}}</code> and <code>{{password}}</code> work as they are.</li>
     <li>Nothing is sent while the field a type needs is empty: the token, the API key name, or both the username and the password.</li>
     <li>A header you write yourself in the Headers tab wins: with an enabled <code>Authorization</code> header (in any letter case), Basic and Bearer add nothing, and the Auth tab says <strong>The Authorization header of the Headers tab is sent instead.</strong> The same goes for an API key and an enabled header with its name, or an enabled Params entry with its name when it goes in the query.</li>

@@ -180,3 +180,13 @@ _version: 2
   es: "Se envía en su lugar el parámetro %{name} de la pestaña Parámetros."
   gl: "Envíase no seu lugar o parámetro %{name} da lapela Parámetros."
   it: "Viene inviato invece il parametro %{name} della scheda Parametri."
+"request.auth.show_secret":
+  en: "Show"
+  es: "Mostrar"
+  gl: "Mostrar"
+  it: "Mostra"
+"request.auth.hide_secret":
+  en: "Hide"
+  es: "Ocultar"
+  gl: "Ocultar"
+  it: "Nascondi"

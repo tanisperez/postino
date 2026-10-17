@@ -8,6 +8,7 @@
 
 use std::rc::Rc;
 
+use gpui_kit::assets::IconName;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
@@ -18,6 +19,7 @@ use rust_i18n::t;
 use postino_core::{VariableKind, VariableSpan, variable_spans};
 
 use super::edit_menu::edit_menu;
+use super::icon_button::IconButton;
 use super::variable_chip::VariableChip;
 use crate::state::variable_hint::{Hint, Origin, VariableContext, hint};
 use crate::theme::PaletteExt;
@@ -26,6 +28,13 @@ use crate::theme::metrics::RADIUS_MD;
 /// A text-carrying handler (chip click), factored out because clippy's `type_complexity` flags
 /// the inline form.
 pub type TextHandler = Rc<dyn Fn(String, &mut Window, &mut App)>;
+
+/// A handler without arguments (the eye button of a masked field), factored out for the same
+/// reason as [`TextHandler`].
+pub type ActionHandler = Rc<dyn Fn(&mut Window, &mut App)>;
+
+/// The side of the eye button of a masked field.
+const MASK_TOGGLE_SIZE: f32 = 20.0;
 
 /// The lines of the tooltip for `hint`: `name = value`, where the value comes from, and a note
 /// when it is hidden.
@@ -122,8 +131,8 @@ fn mask_literals(text: &str) -> String {
     masked
 }
 
-/// A single-line field of the request editor (a Params, Headers or Form cell): the live `Input`
-/// while focused or while its text has no marker, a row of chips otherwise.
+/// A single-line field of the request editor (a Params, Headers or Form cell, an Auth field): the
+/// live `Input` while focused or while its text has no marker, a row of chips otherwise.
 #[derive(IntoElement)]
 pub struct VariableField {
     id: SharedString,
@@ -133,6 +142,7 @@ pub struct VariableField {
     mask_all: bool,
     masked: bool,
     on_chip_click: Option<TextHandler>,
+    on_mask_toggle: Option<ActionHandler>,
 }
 
 impl VariableField {
@@ -151,10 +161,11 @@ impl VariableField {
             mask_all: false,
             masked: false,
             on_chip_click: None,
+            on_mask_toggle: None,
         }
     }
 
-    /// Hides the text around the markers behind bullets while not focused, for a password. The
+    /// Hides the text around the markers behind bullets while not focused, for a secret. The
     /// input itself must be masked too (`InputState::masked`).
     pub fn masked(mut self, masked: bool) -> Self {
         self.masked = masked;
@@ -164,6 +175,14 @@ impl VariableField {
     /// Hides the value of every variable in the tooltips, for the value of a sensitive header.
     pub fn mask_all(mut self, mask_all: bool) -> Self {
         self.mask_all = mask_all;
+        self
+    }
+
+    /// Adds an eye button at the end of the field, which calls `handler` to switch between the
+    /// masked and the plain text. The handler changes both [`Self::masked`] and the input's own
+    /// masking.
+    pub fn on_mask_toggle(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
+        self.on_mask_toggle = Some(Rc::new(handler));
         self
     }
 
@@ -194,6 +213,21 @@ impl RenderOnce for VariableField {
         } else {
             variable_spans(&text)
         };
+        let mask_toggle = self.on_mask_toggle.map(|handler| {
+            let (icon, tooltip) = if self.masked {
+                (IconName::Eye, t!("request.auth.show_secret"))
+            } else {
+                (IconName::EyeOff, t!("request.auth.hide_secret"))
+            };
+            IconButton::new(SharedString::from(format!("{}-mask", self.id)), icon)
+                .box_size(MASK_TOGGLE_SIZE)
+                .tooltip(tooltip.into_owned())
+                .on_click(move |_, window, cx| {
+                    // The chips row around the button focuses the input on a click.
+                    cx.stop_propagation();
+                    handler(window, cx);
+                })
+        });
         if spans.is_empty() {
             let accent = cx.palette().accent;
             return Input::new(&self.input_state)
@@ -204,6 +238,7 @@ impl RenderOnce for VariableField {
                 // so a focused cell only gets the accent border.
                 .focus_ring(false)
                 .when(focused, |input| input.border_color(accent))
+                .when_some(mask_toggle, |input, toggle| input.suffix(toggle))
                 .into_any_element();
         }
 
@@ -234,7 +269,20 @@ impl RenderOnce for VariableField {
                 let end = gpui_kit::base::input::Position::new(0, u32::MAX);
                 input_state.update(cx, |state, cx| state.set_cursor_position(end, window, cx));
             })
-            .children(children)
+            .map(|row| match mask_toggle {
+                // The button stays at the end while the chips are clipped before it.
+                Some(toggle) => row
+                    .child(
+                        h_flex()
+                            .flex_1()
+                            .min_w_0()
+                            .overflow_hidden()
+                            .items_center()
+                            .children(children),
+                    )
+                    .child(div().flex_shrink_0().child(toggle)),
+                None => row.children(children),
+            })
             .into_any_element()
     }
 }
