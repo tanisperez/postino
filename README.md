@@ -5,9 +5,9 @@
 [![License](https://img.shields.io/github/license/tanisperez/postino)](LICENSE)
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS-blue)](https://postino.tanis.codes/install.html)
 
-A lightweight, native, open source HTTP client, without accounts and without cloud storage. Your
-requests live as plain files on your disk, and you decide where they go: git, a shared folder,
-or nowhere else.
+A lightweight, native, open source HTTP client, without accounts, telemetry or cloud storage.
+Your requests live as plain files on your disk, and you decide where they go: git, a shared
+folder, or nowhere else. Coming from Postman? Postino imports your collections and environments.
 
 [Website](https://postino.tanis.codes) · [Download](https://postino.tanis.codes/install.html) ·
 [Documentation](#documentation)
@@ -17,18 +17,7 @@ or nowhere else.
   <img src="site/img/hero-light.webp" alt="The Postino window: a sidebar with request folders, a GET request to a books API and its JSON response.">
 </picture>
 
-> Status: verified on Linux. Windows and macOS builds have not been verified yet.
-
-## Goals
-
-- Cross-platform desktop app: Linux, Windows and macOS.
-- Written in Rust, with the UI built on [`gpui`](https://crates.io/crates/gpui), the GPU-accelerated
-  framework behind the Zed editor.
-- A familiar layout: collections, requests, environments and a response viewer.
-- **No login, no telemetry, no online sync.** Nothing leaves your machine except the requests you
-  send, and an optional update check on macOS and Windows that sends no identifiers.
-- Requests are stored locally as human readable text files, designed to produce clean diffs in git.
-- Fully open source.
+> Status: verified on Linux and macOS. The Windows build has not been verified yet.
 
 Scripts and tests in JavaScript, before and after each request:
 
@@ -50,6 +39,29 @@ Load testing built in, with live throughput and latency:
   <source media="(prefers-color-scheme: dark)" srcset="site/img/loadtest-dark.webp">
   <img src="site/img/loadtest-light.webp" alt="The Load tests panel and a finished load test run with throughput and latency charts.">
 </picture>
+
+## Install
+
+Download the Windows installer or portable zip, the macOS disk image (Apple silicon) or the Linux
+packages from the [download page](https://postino.tanis.codes/install.html) or the
+[latest release](https://github.com/tanisperez/postino/releases/latest). On Linux, install from
+the signed repositories to get updates with the rest of your system:
+
+```
+# Debian and Ubuntu
+sudo curl -fsSLo /etc/apt/keyrings/postino.asc https://postino.tanis.codes/postino.asc
+echo "deb [signed-by=/etc/apt/keyrings/postino.asc] https://postino.tanis.codes/apt stable main" \
+    | sudo tee /etc/apt/sources.list.d/postino.list
+sudo apt update && sudo apt install postino
+
+# Fedora
+sudo curl -fsSLo /etc/yum.repos.d/postino.repo https://postino.tanis.codes/rpm/postino.repo
+sudo dnf install postino
+```
+
+The builds are not code signed yet. See
+[first launch](https://postino.tanis.codes/install.html#first-launch) if macOS or Windows asks before opening
+Postino.
 
 ## Building from source
 
@@ -87,12 +99,24 @@ list.
 
 ## Documentation
 
-The user guide is at <https://postino.tanis.codes/docs/>. Reference documents in this repository:
+The user guide is at <https://postino.tanis.codes/docs/>. Good places to start:
 
-- [`.postino` file format](docs/format.md): how requests, collections and environments are stored.
-- [Scripting](docs/scripting.md): pre-request and post-response scripts, tests and template
-  functions.
-- [Releasing](docs/releasing.md): how versions are built and published.
+- [Quick start](https://postino.tanis.codes/docs/quick-start.html): a first workspace, request
+  and environment.
+- [Importing from Postman](https://postino.tanis.codes/docs/postman-import.html): collections and
+  environments exported from Postman.
+- [Scripts and tests](https://postino.tanis.codes/docs/scripting.html): pre-request and
+  post-response scripts, with the full [Script API](https://postino.tanis.codes/docs/script-api.html).
+- [File format](https://postino.tanis.codes/docs/file-format.html): how requests, collections and
+  environments are stored.
+- [Working with git](https://postino.tanis.codes/docs/git.html): keeping requests in git next to your
+  code.
+
+To report a bug or work on the code, see
+[Contributing](https://postino.tanis.codes/docs/contributing.html). The developer documents live
+in [`docs/`](docs): the [architecture](docs/architecture.md), the format and scripting
+implementation references ([`format.md`](docs/format.md), [`scripting.md`](docs/scripting.md))
+and [releasing](docs/releasing.md).
 
 ## License
 
