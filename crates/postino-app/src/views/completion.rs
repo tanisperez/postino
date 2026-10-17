@@ -1,6 +1,7 @@
 //! The autocompletion menu of the request editor's single-line fields (see [`CompletionField`]):
-//! `{{ }}` variables in the URL and the values of Params, Headers and Form, and common header names
-//! and values in the Headers table.
+//! `{{ }}` variables in the URL, the values of Params, Headers and Form and the Auth fields, common
+//! header names and values in the Headers table, and header names in the name of an API key sent
+//! as a header.
 //!
 //! It opens with `Ctrl+Space`, or by itself while a `{{` marker or a header is being typed. The
 //! input keeps the focus the whole time: the arrow keys, `Enter`, `Tab` and `Escape` are bound in
@@ -109,9 +110,10 @@ impl AppView {
 
     /// What `field` offers for `text` with the cursor at `cursor` and `selection` selected.
     ///
-    /// Inside a `{{` marker, the variables. Otherwise a Headers key offers header names, and a
-    /// Headers value the usual values of its header; on demand (`explicit`, `Ctrl+Space`) the
-    /// value fields add the variables after them, inserted at the cursor.
+    /// Inside a `{{` marker, the variables. Otherwise a Headers key offers header names, a
+    /// Headers value the usual values of its header, and the name of an API key sent as a header
+    /// the header names too; on demand (`explicit`, `Ctrl+Space`) the value fields add the
+    /// variables after them, inserted at the cursor.
     fn completion_listing(
         &self,
         field: CompletionField,
@@ -151,6 +153,9 @@ impl AppView {
 
         let header_items = match self.completion_header_name(field) {
             Some(name) => header_completion::items(&header_values(&name), text, explicit),
+            None if self.completes_header_names(field) => {
+                header_completion::items(HEADER_NAMES, text, explicit)
+            }
             None => Vec::new(),
         };
         let mut listing = Listing {

@@ -13,6 +13,7 @@ pub const HEADER_NAMES: &[&str] = &[
     "Accept-Language",
     "Access-Control-Request-Headers",
     "Access-Control-Request-Method",
+    "Api-Key",
     "Authorization",
     "Cache-Control",
     "Connection",
@@ -189,6 +190,13 @@ mod tests {
             HEADER_NAMES.len()
         );
         assert_eq!(suggestions(HEADER_NAMES, "Acc", true)[0], "Accept");
+    }
+
+    #[test]
+    fn the_usual_api_key_headers_are_offered() {
+        let found = suggestions(HEADER_NAMES, "api", false);
+        assert_eq!(found[0], "Api-Key");
+        assert!(found.contains(&"X-API-Key"));
     }
 
     #[test]

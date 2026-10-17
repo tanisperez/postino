@@ -1419,6 +1419,26 @@ impl AppView {
             .map(|row| row.key.clone())
     }
 
+    /// Whether `field` is the name of an API key sent as a header, which offers header names
+    /// like a Headers key. Sent in the query, it offers none.
+    pub(crate) fn completes_header_names(&self, field: CompletionField) -> bool {
+        field == CompletionField::Auth(AuthField::KeyName)
+            && self
+                .state
+                .tabs
+                .active()
+                .and_then(|tab| tab.request())
+                .is_some_and(|request| {
+                    matches!(
+                        request.auth,
+                        Auth::ApiKey {
+                            location: ApiKeyLocation::Header,
+                            ..
+                        }
+                    )
+                })
+    }
+
     /// The completion field holding the focus, if any.
     pub(crate) fn focused_completion_field(
         &self,

@@ -49,6 +49,7 @@ Authorization: Bearer {{token}}
     <li>A suggestion replaces the whole cell, in its usual spelling. The menu closes when the cell already holds one of the suggestions or nothing matches, so your own headers are never in the way.</li>
     <li><kbd>Ctrl</kbd> <kbd>Space</kbd> opens the menu on demand, listing every suggestion when the cell is empty or complete. In a value it lists the header's values first and then the variables, which are inserted at the cursor. Typing <code>{{</code> lists only the variables, see <a href="environments.html#autocompleting-variables">autocompleting variables</a>.</li>
     <li>The keys are the same as for variables: <kbd>↑</kbd> and <kbd>↓</kbd> to move, <kbd>Enter</kbd>, <kbd>Tab</kbd> or a click to insert, <kbd>Esc</kbd> to close.</li>
+    <li>The <strong>Name</strong> of an API key in the <a href="#authentication">Auth tab</a> suggests the same header names while it is sent as a header (with <code>X-API-Key</code> and <code>Api-Key</code> among them), and none while it goes in the query.</li>
 </ul>
 
 <h3>Automatic headers</h3>
@@ -70,6 +71,7 @@ Authorization: Bearer {{token}}
 </table></div>
 <ul>
     <li>Every field takes <code>{{variables}}</code> and <a href="template-functions.html">template functions</a>, with the same chips and autocompletion as the Params and Headers values. The password, the token and the API key value are shown as dots, except the <code>{{variables}}</code> in them, and the values of their variables are hidden in tooltips and menus.</li>
+    <li>The API key <strong>Name</strong> suggests common header names while <strong>Add to</strong> is <strong>Header</strong>, like the names of the Headers table, see <a href="#suggested-headers">suggested headers</a>.</li>
     <li>The eye button at the end of a masked field shows its text, and clicking it again hides it. It applies to the tab, not to the file: the fields are masked again when the request is opened again.</li>
     <li>Variables are replaced before the Basic credentials are encoded, so <code>{{username}}</code> and <code>{{password}}</code> work as they are.</li>
     <li>Nothing is sent while the field a type needs is empty: the token, the API key name, or both the username and the password.</li>
