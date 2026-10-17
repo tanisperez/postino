@@ -19,6 +19,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
+use super::icon_button::IconButton;
 use crate::state::request_edit::{SortColumn, SortOrder};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
@@ -225,24 +226,14 @@ impl RenderOnce for KeyValueTable {
             let value_cell = key_value_cell(row.value, 1.4, text_color, enabled)
                 .pl(half_gap)
                 .into_any_element();
-            let delete_cell = div()
-                .id(("kv-delete", index))
-                .flex_none()
-                .w(side_col)
-                .flex()
-                .justify_center()
-                .cursor_pointer()
-                .rounded(px(4.0))
-                .hover(|style| style.bg(palette.hover))
-                .active(|style| style.bg(palette.pressed))
-                .child(
-                    Icon::new(IconName::Delete)
-                        .small()
-                        .text_color(palette.fg_subtle),
-                )
-                .when_some(delete_handler, |cell, handler| {
-                    cell.on_click(move |_, window, cx| handler(window, cx))
-                });
+            // A 24 px square button centered in the column, so its hover is not a wide strip.
+            let delete_cell = div().flex_none().w(side_col).flex().justify_center().child(
+                IconButton::new(("kv-delete", index), IconName::Delete)
+                    .tooltip(t!("common.delete"))
+                    .when_some(delete_handler, |button, handler| {
+                        button.on_click(move |_, window, cx| handler(window, cx))
+                    }),
+            );
 
             h_flex()
                 .h(px(KEY_VALUE_ROW_HEIGHT))
