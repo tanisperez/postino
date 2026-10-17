@@ -21,7 +21,9 @@ use rust_i18n::t;
 
 use crate::state::request_edit::{SortColumn, SortOrder};
 use crate::theme::PaletteExt;
-use crate::theme::metrics::{KEY_VALUE_CELL_GAP, KEY_VALUE_SIDE_COL_WIDTH, RADIUS_MD};
+use crate::theme::metrics::{
+    KEY_VALUE_CELL_GAP, KEY_VALUE_ROW_HEIGHT, KEY_VALUE_SIDE_COL_WIDTH, RADIUS_MD,
+};
 
 /// A [`KeyValueRow`]'s key or value cell: plain text (the gallery demo) or a caller-supplied
 /// element (a live `Input`, wired in by the request editor).
@@ -232,7 +234,7 @@ impl RenderOnce for KeyValueTable {
                 });
 
             h_flex()
-                .h(px(30.0))
+                .h(px(KEY_VALUE_ROW_HEIGHT))
                 .items_center()
                 .border_b_1()
                 .border_color(palette.border)

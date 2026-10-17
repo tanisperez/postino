@@ -174,9 +174,9 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
    (`Cmd ↵` on macOS). Underline tabs: Params, Headers, Auth, Body, Pre-request, Post-response, Docs,
    with counts in `fg_subtle`. Body tab: segmented control (JSON, Text, XML, Form, None) on the
    left, a "Format" ghost button on the right, then the code editor in a bordered `raised` box
-   with line numbers. The Params, Headers and Form tables have 30 px rows with 26 px fields
-   (input or chips), 2 px clear of the row above and below and 4 px apart: a focused cell gets
-   the 1 px `accent` border without the 3 px ring, which would spill over the rows around it.
+   with line numbers. The Params, Headers and Form tables have 34 px rows with 26 px fields
+   (input or chips), 4 px clear of the row lines above and below and 4 px apart: a focused cell
+   gets the 1 px `accent` border without the 3 px ring, which would spill over the rows around it.
    Their Key and Value headers sort the rows on click (`fg` on hover), with an `arrow-up` or
    `arrow-down` icon after the sorted one. Auth tab: one column up to 560 px wide, centered in
    the tab, with the segmented control (None, Basic, Bearer, API key) centered at its top and

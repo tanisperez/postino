@@ -233,11 +233,11 @@ impl RenderOnce for VariableField {
             return Input::new(&self.input_state)
                 .context_menu(edit_menu(&self.input_state, cx))
                 .py_0()
-                // The same height as the row of chips: the default 32 px overflows the 30 px
-                // table rows.
+                // The same height as the row of chips, smaller than the default 32 px so it stays
+                // clear of the table's row lines.
                 .h(px(VARIABLE_FIELD_HEIGHT))
                 .w_full()
-                // The default 3 px focus ring spills over the 30 px table rows around the cell,
+                // The default 3 px focus ring spills over the table rows around the cell,
                 // so a focused cell only gets the accent border.
                 .focus_ring(false)
                 .when(focused, |input| input.border_color(accent))
