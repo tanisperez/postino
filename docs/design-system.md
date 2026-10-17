@@ -31,6 +31,9 @@ Where things live (all under `crates/postino-app/src/`):
   sidebar filter, load test fields) sets `hover` on that container, which needs an `id` to
   render again when the pointer enters or leaves. Multi-line editors (body, scripts, docs) are
   not included.
+- Code editors (body, scripts, docs, response) sit in a `raised` box, and their line number
+  column shares that background (`editor.gutter.background`): no tinted strip, whose edge read as
+  a divider under a cursor at the start of a line.
 - A checkbox shows a halo on hover: 3 px around its box (`CHECKBOX_HALO_PADDING`, 22 px in all),
   radius `RADIUS_SM`, `pressed` on hover and `border_strong` while held, one step above the usual
   `hover` and `pressed`, which barely show on an area that small.

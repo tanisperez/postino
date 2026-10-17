@@ -474,6 +474,10 @@ pub(super) fn theme_colors_and_highlight(dark: bool) -> (serde_json::Value, serd
         "switch.thumb.background": tokens.accent_fg,
     });
     let highlight = serde_json::json!({
+        // The line number column of every code editor, the same `raised` as the box the editors
+        // sit in. Unset, it took gpui-component's input background, a lighter strip whose edge
+        // read as a divider right where a cursor at the start of a line is drawn.
+        "editor.gutter.background": tokens.raised,
         "syntax": {
             "property": { "color": tokens.syn_key },
             "string": { "color": tokens.syn_str },
