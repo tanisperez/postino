@@ -299,7 +299,25 @@ API key as secrets. For Windows, apply to SignPath once the project has some his
 ## Secrets
 
 Created as each channel is set up, all free: `AUR_SSH_KEY`, `GPG_PRIVATE_KEY` and
-`GPG_PASSPHRASE`, `HOMEBREW_TAP_TOKEN`, `WINGET_TOKEN`.
+`GPG_PASSPHRASE`, `HOMEBREW_TAP_TOKEN`, `WINGET_TOKEN`, `STATS_TOKEN`.
+
+## Download and traffic stats
+
+GitHub keeps the repository traffic (views, clones, referrers, popular pages) for 14 days only.
+The `Stats` workflow (`.github/workflows/stats.yml`, script in `.github/scripts/stats.py`) runs
+every day at 06:23 UTC, or by hand with `gh workflow run stats.yml`, and commits CSV files to the
+orphan `stats` branch, so `main` gets no daily commits:
+
+- `traffic/views.csv`, `traffic/clones.csv`: one row per day, merged with the previous runs.
+- `traffic/referrers.csv`, `traffic/paths.csv`: the 14 day top lists, one snapshot per run date.
+- `downloads.csv`: the download count of every release asset, one snapshot per run date.
+- `repo.csv`: stars, forks and watchers per run date.
+
+The traffic API does not accept `GITHUB_TOKEN`, it needs `STATS_TOKEN`: a fine-grained personal
+access token limited to this repository with the "Administration" permission set to read-only.
+Without it, the workflow saves only the downloads and the counters. Read the data with
+`git fetch origin stats && git show origin/stats:downloads.csv`. Clones are not a measure of
+interest: every workflow checkout counts as one.
 
 ## Later
 
