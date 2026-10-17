@@ -1,0 +1,12 @@
+GET {{baseUrl}}/api-key
+
+::: auth apikey
+name = X-API-Key
+value = {{apiKey}}
+in = header
+
+::: post
+test("the auth section sends the API key in a header", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().via).toBe("header");
+});

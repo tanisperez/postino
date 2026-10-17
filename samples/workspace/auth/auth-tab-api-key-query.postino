@@ -1,0 +1,13 @@
+GET {{baseUrl}}/api-key
+
+::: auth apikey
+name = api_key
+value = {{apiKey}}
+in = query
+
+::: post
+test("the auth section sends the API key in the query", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().via).toBe("query");
+  expect(req.url).toContain("api_key=sample-api-key");
+});

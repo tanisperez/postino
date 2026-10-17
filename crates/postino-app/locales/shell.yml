@@ -25,6 +25,11 @@ _version: 2
   es: "Parámetros"
   gl: "Parámetros"
   it: "Parametri"
+"shell.tab.auth":
+  en: "Auth"
+  es: "Autenticación"
+  gl: "Autenticación"
+  it: "Autenticazione"
 "shell.tab.pre":
   en: "Pre-request"
   es: "Script previo"

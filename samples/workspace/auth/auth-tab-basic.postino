@@ -1,0 +1,11 @@
+GET {{baseUrl}}/basic-auth/{{username}}/{{password}}
+
+::: auth basic
+username = {{username}}
+password = {{password}}
+
+::: post
+test("the auth section sends basic credentials", () => {
+  expect(res.status).toBe(200);
+  expect(req.headers.get("Authorization")).toBe("Basic ZGVtbzpkZW1vLXBhc3N3b3Jk");
+});

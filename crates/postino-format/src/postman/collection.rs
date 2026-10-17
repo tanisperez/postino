@@ -1,7 +1,7 @@
 //! Mapping a Postman collection (v2.1, v2.0 accepted when it parses the same) into an
 //! [`ImportPlan`]. The mapping is described in `docs/postman-import.md`.
 
-use postino_core::{Body, KeyValue, Method, Request};
+use postino_core::{ApiKeyLocation, Auth, Body, KeyValue, Method, Request};
 
 use super::error::PostmanError;
 use super::model::{
@@ -175,9 +175,7 @@ fn map_request(
             enabled: !header.disabled,
         });
     }
-    if let Some(auth) = auth {
-        headers.extend(auth_headers(auth, path, warnings));
-    }
+    let auth = auth.map_or(Auth::None, |auth| map_auth(auth, path, warnings));
 
     let body = map_body(request.body.as_ref(), path, warnings);
     let docs = request
@@ -191,6 +189,7 @@ fn map_request(
         url,
         headers,
         query,
+        auth,
         body,
         pre_script: map_script(events, "prerequest"),
         post_script: map_script(events, "test"),
@@ -283,14 +282,14 @@ fn parse_query_string(query: &str) -> Vec<KeyValue> {
         .collect()
 }
 
-/// Maps an `auth` block into the headers it implies: bearer,
-/// basic and apikey in header location become headers.
-fn auth_headers(auth: &RawAuth, path: &str, warnings: &mut Vec<String>) -> Vec<KeyValue> {
+/// Maps an `auth` block into the request's [`Auth`]: bearer, basic, and apikey in the header
+/// or the query.
+fn map_auth(auth: &RawAuth, path: &str, warnings: &mut Vec<String>) -> Auth {
     match auth.kind.as_str() {
         "bearer" => {
             let context = format!("{path}: auth bearer \"token\"");
             let token = find_param(&auth.bearer, "token", &context, warnings).unwrap_or_default();
-            vec![KeyValue::new("Authorization", format!("Bearer {token}"))]
+            Auth::Bearer { token }
         }
         "basic" => {
             let username_context = format!("{path}: auth basic \"username\"");
@@ -299,8 +298,7 @@ fn auth_headers(auth: &RawAuth, path: &str, warnings: &mut Vec<String>) -> Vec<K
                 .unwrap_or_default();
             let password = find_param(&auth.basic, "password", &password_context, warnings)
                 .unwrap_or_default();
-            let encoded = postino_core::functions::base64_encode(&format!("{username}:{password}"));
-            vec![KeyValue::new("Authorization", format!("Basic {encoded}"))]
+            Auth::Basic { username, password }
         }
         "apikey" => {
             let key_context = format!("{path}: auth apikey \"key\"");
@@ -311,21 +309,29 @@ fn auth_headers(auth: &RawAuth, path: &str, warnings: &mut Vec<String>) -> Vec<K
                 find_param(&auth.apikey, "value", &value_context, warnings).unwrap_or_default();
             let location = find_param(&auth.apikey, "in", &in_context, warnings)
                 .unwrap_or_else(|| "header".to_string());
-            if location == "header" {
-                vec![KeyValue::new(key, value)]
-            } else {
-                warnings.push(format!(
-                    "{path}: apikey auth in \"{location}\" is not supported, only header, skipped"
-                ));
-                Vec::new()
+            let location = match location.as_str() {
+                "header" => ApiKeyLocation::Header,
+                "query" => ApiKeyLocation::Query,
+                _ => {
+                    warnings.push(format!(
+                        "{path}: apikey auth in \"{location}\" is not supported, only header \
+                         and query, skipped"
+                    ));
+                    return Auth::None;
+                }
+            };
+            Auth::ApiKey {
+                name: key,
+                value,
+                location,
             }
         }
-        "noauth" | "" => Vec::new(),
+        "noauth" | "" => Auth::None,
         other => {
             warnings.push(format!(
                 "{path}: auth type \"{other}\" is not supported, skipped"
             ));
-            Vec::new()
+            Auth::None
         }
     }
 }

@@ -96,6 +96,10 @@ pub const SIDEBAR_FILTER_HEIGHT: f32 = 28.0;
 pub const COMPLETION_MENU_WIDTH: f32 = 340.0;
 /// Rows the autocompletion menu shows before it scrolls.
 pub const COMPLETION_MENU_MAX_ROWS: f32 = 8.0;
+/// Maximum width of the Auth tab's fields, label included.
+pub const AUTH_FORM_MAX_WIDTH: f32 = 560.0;
+/// Width of the labels in front of the Auth tab's fields.
+pub const AUTH_LABEL_WIDTH: f32 = 96.0;
 
 /// Maximum width of the welcome tab's content column when it fills the window (no workspace
 /// open, so no sidebar).

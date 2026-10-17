@@ -12,7 +12,7 @@ use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use postino_core::{Body, Environment, KeyValue, Method, Request, TemplateWarning};
+use postino_core::{Auth, Body, Environment, KeyValue, Method, Request, TemplateWarning};
 use postino_http::SendOptions;
 use postino_http::test_support::{CapturedRequest, StubResponse, TestServer};
 use postino_runner::{FailedStage, Runner, SessionEnv};
@@ -115,6 +115,50 @@ fn login_token_is_reused_in_the_next_request() {
         .find(|(name, _)| name.eq_ignore_ascii_case("authorization"))
         .map(|(_, value)| value.as_str());
     assert_eq!(authorization, Some("Bearer abc123"));
+}
+
+#[test]
+fn auth_uses_variables_set_by_the_pre_script_and_the_post_script_sees_it() {
+    let (server, rx, handle) = start_server(|_| StubResponse::new(200));
+    let runner = runner();
+    let environment = Environment::default();
+    let mut session = SessionEnv::new();
+
+    let request = Request {
+        method: Method::Get,
+        url: format!("{}/me", server.url()),
+        auth: Auth::Bearer {
+            token: "{{token}}".to_string(),
+        },
+        pre_script: r#"
+            if (!req.headers.get("Authorization")) {
+                vars.set("token", "from-pre");
+            }
+        "#
+        .to_string(),
+        post_script: r#"
+            test("the post script sees the auth header", () => {
+                expect(req.headers.get("Authorization")).toBe("Bearer from-pre");
+            });
+        "#
+        .to_string(),
+        ..Request::default()
+    };
+    let result = runner.run(&request, &environment, &mut session);
+    assert!(result.failed_stage.is_none(), "{:?}", result.failed_stage);
+    assert!(result.warnings.is_empty(), "{:?}", result.warnings);
+    assert_eq!(result.tests.len(), 1);
+    assert!(result.tests[0].passed, "{:?}", result.tests[0]);
+
+    drop(server);
+    handle.join().expect("test server thread panicked");
+    let captured = rx.recv_timeout(Duration::from_secs(1)).expect("request");
+    let authorization = captured
+        .headers
+        .iter()
+        .find(|(name, _)| name.eq_ignore_ascii_case("authorization"))
+        .map(|(_, value)| value.as_str());
+    assert_eq!(authorization, Some("Bearer from-pre"));
 }
 
 #[test]

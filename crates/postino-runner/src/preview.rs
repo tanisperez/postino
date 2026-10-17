@@ -6,7 +6,7 @@
 use std::collections::HashSet;
 
 use postino_core::{
-    Body, Environment, Request, ResolvedRequest, TemplateWarning, VarScope, VariableKind,
+    Auth, Body, Environment, Request, ResolvedRequest, TemplateWarning, VarScope, VariableKind,
     variable_spans,
 };
 
@@ -23,6 +23,8 @@ pub enum VariableLocation {
     /// A header, key or value. Carries the header's key as written in the request, so the UI
     /// can point at the right row even if the key itself is a marker.
     Header(String),
+    /// A field of the `::: auth` section.
+    Auth,
     /// The request body.
     Body,
 }
@@ -101,6 +103,18 @@ fn find_unknown_variables(request: &Request, scope: &VarScope) -> Vec<UnknownVar
     for header in request.headers.iter().filter(|header| header.enabled) {
         scan(&header.key, VariableLocation::Header(header.key.clone()));
         scan(&header.value, VariableLocation::Header(header.key.clone()));
+    }
+    match &request.auth {
+        Auth::None => {}
+        Auth::Basic { username, password } => {
+            scan(username, VariableLocation::Auth);
+            scan(password, VariableLocation::Auth);
+        }
+        Auth::Bearer { token } => scan(token, VariableLocation::Auth),
+        Auth::ApiKey { name, value, .. } => {
+            scan(name, VariableLocation::Auth);
+            scan(value, VariableLocation::Auth);
+        }
     }
     match &request.body {
         Body::Json(text) | Body::Text(text) | Body::Xml(text) => {
@@ -206,6 +220,22 @@ mod tests {
             vec![UnknownVariable {
                 name: "missing".to_string(),
                 location: VariableLocation::Body,
+            }]
+        );
+    }
+
+    #[test]
+    fn an_undefined_variable_in_the_auth_is_reported() {
+        let mut request = base_request("https://example.com");
+        request.auth = Auth::Bearer {
+            token: "{{token}}".to_string(),
+        };
+        let preview = preview(&request, &Environment::default(), &SessionEnv::new());
+        assert_eq!(
+            preview.unknown_variables,
+            vec![UnknownVariable {
+                name: "token".to_string(),
+                location: VariableLocation::Auth,
             }]
         );
     }

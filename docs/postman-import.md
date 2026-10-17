@@ -24,7 +24,7 @@ sanitized for every OS (Windows-reserved names and characters, trailing dots and
 | Body mode `raw` (language json, xml or text, text by default) | `::: body json`, `xml` or `text` |
 | Body mode `urlencoded` | `::: body form` |
 | Body modes `formdata`, `file` and `graphql` | Imported as an empty body, with a warning |
-| Auth `bearer`, `basic` and `apikey` (header location) | Headers |
+| Auth `bearer`, `basic` and `apikey` (header or query location) | `::: auth` section |
 | Description | `::: docs` section |
 | `{{var}}` | Kept as is, the syntax is compatible |
 | Collection `variable` array | `environments/<collection name>.env` |

@@ -13,6 +13,8 @@ pub enum RequestTab {
     Params,
     /// The header list, as an editable key-value table.
     Headers,
+    /// The `::: auth` section: type selector plus its fields.
+    Auth,
     /// The body: type selector plus a code editor (or a key-value table for a Form body).
     Body,
     /// The `::: pre` section, a JavaScript code editor.
@@ -25,9 +27,10 @@ pub enum RequestTab {
 
 impl RequestTab {
     /// Every tab, in the order the tab bar lists them.
-    pub const ALL: [RequestTab; 6] = [
+    pub const ALL: [RequestTab; 7] = [
         RequestTab::Params,
         RequestTab::Headers,
+        RequestTab::Auth,
         RequestTab::Body,
         RequestTab::Pre,
         RequestTab::Post,
@@ -39,6 +42,7 @@ impl RequestTab {
         match self {
             RequestTab::Params => t!("shell.tab.params"),
             RequestTab::Headers => t!("common.headers"),
+            RequestTab::Auth => t!("shell.tab.auth"),
             RequestTab::Body => t!("common.body"),
             RequestTab::Pre => t!("shell.tab.pre"),
             RequestTab::Post => t!("shell.tab.post"),

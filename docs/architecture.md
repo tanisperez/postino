@@ -141,7 +141,7 @@ workspace scanner skips hidden folders, so the history never shows up as a colle
 
 Each item is tracked as a GitHub issue:
 
-- Auth tab with Basic, Bearer and API key (#14), OAuth 2.0 (#15)
+- OAuth 2.0 (#15)
 - Multipart bodies and file uploads (#51), cookie jar UI (#52)
 - WebSocket (#53), GraphQL UI (#54), gRPC (#55)
 - Collection runner (#56), command line interface (#57)

@@ -5,16 +5,27 @@
 //! disabled headers, pre/test scripts, collection variables and both description forms.
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use postino_core::{Body, KeyValue, Method};
+use postino_core::{ApiKeyLocation, Auth, Body, KeyValue, Method};
 use postino_format::postman::{ImportFolder, parse_collection, parse_environment};
 use pretty_assertions::assert_eq;
 
 const COLLECTION: &str = include_str!("fixtures/postman_collection.json");
 const ENVIRONMENT: &str = include_str!("fixtures/postman_environment.json");
 
-/// The `Authorization: Basic ...` value implied by the "Auth" folder's basic auth
-/// (`admin:{{adminPass}}`, not resolved: Postman variables are kept as is).
-const AUTH_FOLDER_BASIC: &str = "Basic YWRtaW46e3thZG1pblBhc3N9fQ==";
+/// The "Auth" folder's basic auth (Postman variables are kept as is).
+fn auth_folder_basic() -> Auth {
+    Auth::Basic {
+        username: "admin".to_string(),
+        password: "{{adminPass}}".to_string(),
+    }
+}
+
+/// The collection's bearer auth.
+fn collection_bearer() -> Auth {
+    Auth::Bearer {
+        token: "{{collectionToken}}".to_string(),
+    }
+}
 
 fn find_folder<'a>(folders: &'a [ImportFolder], name: &str) -> &'a ImportFolder {
     folders
@@ -56,10 +67,8 @@ fn root_request_inherits_collection_bearer_auth() {
     assert_eq!(ping.docs, "");
     assert_eq!(ping.pre_script, "");
     assert_eq!(ping.post_script, "");
-    assert_eq!(
-        ping.headers,
-        vec![KeyValue::new("Authorization", "Bearer {{collectionToken}}")]
-    );
+    assert!(ping.headers.is_empty());
+    assert_eq!(ping.auth, collection_bearer());
 }
 
 #[test]
@@ -88,9 +97,9 @@ fn login_request_maps_headers_body_docs_and_folder_auth() {
         vec![
             KeyValue::new("Content-Type", "application/json"),
             debug_header,
-            KeyValue::new("Authorization", AUTH_FOLDER_BASIC),
         ]
     );
+    assert_eq!(login.auth, auth_folder_basic());
 }
 
 #[test]
@@ -135,14 +144,14 @@ fn nested_users_folder_inherits_auth_through_its_parent_folder() {
     );
     assert_eq!(list_users.docs, "Returns paginated users");
     assert_eq!(
-        list_users.headers,
-        vec![KeyValue::new("Authorization", AUTH_FOLDER_BASIC)],
+        list_users.auth,
+        auth_folder_basic(),
         "an \"inherit\" auth must pick up the parent folder's auth"
     );
 }
 
 #[test]
-fn explicit_noauth_request_gets_no_authorization_header() {
+fn explicit_noauth_request_gets_no_auth() {
     let plan = parse_collection(COLLECTION).expect("valid fixture collection");
     let auth_folder = find_folder(&plan.root.folders, "Auth");
     let users_folder = find_folder(&auth_folder.folders, "Users");
@@ -153,6 +162,7 @@ fn explicit_noauth_request_gets_no_authorization_header() {
         .find(|(name, _)| name == "Create user")
         .expect("Create user request");
     assert!(create_user.headers.is_empty());
+    assert_eq!(create_user.auth, Auth::None);
     assert_eq!(
         create_user.body,
         Body::Text("plain body {{name}}".to_string())
@@ -204,7 +214,7 @@ fn unsupported_body_modes_produce_a_warning_each() {
 }
 
 #[test]
-fn apikey_auth_in_header_location_becomes_a_header() {
+fn apikey_auth_in_header_location_is_kept() {
     let plan = parse_collection(COLLECTION).expect("valid fixture collection");
     let uploads = find_folder(&plan.root.folders, "Uploads");
     let (_, request) = uploads
@@ -212,14 +222,19 @@ fn apikey_auth_in_header_location_becomes_a_header() {
         .iter()
         .find(|(name, _)| name == "Api key header")
         .expect("Api key header request");
+    assert!(request.headers.is_empty());
     assert_eq!(
-        request.headers,
-        vec![KeyValue::new("X-Api-Key", "{{apiKey}}")]
+        request.auth,
+        Auth::ApiKey {
+            name: "X-Api-Key".to_string(),
+            value: "{{apiKey}}".to_string(),
+            location: ApiKeyLocation::Header,
+        }
     );
 }
 
 #[test]
-fn apikey_auth_in_query_location_is_not_supported_and_warns() {
+fn apikey_auth_in_query_location_is_kept() {
     let plan = parse_collection(COLLECTION).expect("valid fixture collection");
     let uploads = find_folder(&plan.root.folders, "Uploads");
     let (_, request) = uploads
@@ -227,11 +242,22 @@ fn apikey_auth_in_query_location_is_not_supported_and_warns() {
         .iter()
         .find(|(name, _)| name == "Api key query")
         .expect("Api key query request");
-    assert!(request.headers.is_empty());
+    assert!(request.query.is_empty());
+    assert_eq!(
+        request.auth,
+        Auth::ApiKey {
+            name: "token".to_string(),
+            value: "{{apiKey}}".to_string(),
+            location: ApiKeyLocation::Query,
+        }
+    );
     assert!(
-        plan.warnings
+        !plan
+            .warnings
             .iter()
-            .any(|warning| warning.contains("apikey") && warning.contains("query")),
+            .any(|warning| warning.contains("apikey")),
+        "{:?}",
+        plan.warnings
     );
 }
 
@@ -244,10 +270,8 @@ fn folder_without_its_own_auth_inherits_the_collection_auth() {
         .iter()
         .find(|(name, _)| name == "Form encoded")
         .expect("Form encoded request");
-    assert_eq!(
-        form_encoded.headers,
-        vec![KeyValue::new("Authorization", "Bearer {{collectionToken}}")]
-    );
+    assert!(form_encoded.headers.is_empty());
+    assert_eq!(form_encoded.auth, collection_bearer());
 }
 
 #[test]

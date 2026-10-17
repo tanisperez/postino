@@ -4,8 +4,8 @@ This document describes the `.postino` request file format and the `.env` enviro
 format as actually implemented in `crates/postino-format`. It is the reference for anyone
 writing or editing these files by hand, or building another tool that reads or writes them.
 
-A `.postino` file is one HTTP request: method, URL, headers, query parameters, a body, an
-optional pre-request script, an optional post-response script, and free-form docs. A collection
+A `.postino` file is one HTTP request: method, URL, headers, query parameters, an optional
+authorization, a body, an optional pre-request script, an optional post-response script, and free-form docs. A collection
 is just a folder of `.postino` files, so folders and files are what you see in git.
 
 ## 1. Example
@@ -100,12 +100,14 @@ line starting with `::: ` (three colons and a space): `::: <kind> [argument]`.
   right after the header block or between two sections.
 - Each section kind may appear **at most once**. A second `::: query`, or a second `::: body`
   even with a different type argument, is `duplicated section`.
-- An unrecognized kind is `unknown section kind`. The only recognized kinds are `query`, `body`,
-  `pre`, `post` and `docs`.
+- An unrecognized kind is `unknown section kind`. The only recognized kinds are `query`, `auth`,
+  `body`, `pre`, `post` and `docs`.
 - `query`, `pre`, `post` and `docs` take no argument; giving one (`::: pre extra`) is
   `section "pre" does not take an argument`.
 - `body` requires exactly one argument, its type: `json`, `text`, `xml` or `form`. No argument at
   all is `missing body type`; any other word is `unknown body type`.
+- `auth` requires exactly one argument, its type: `basic`, `bearer` or `apikey`. No argument at
+  all is `missing auth type`; any other word is `unknown auth type`.
 - The content of a section is every line after its marker, up to the next `::: ` marker or end of
   file. **Trailing blank lines of that content are dropped** (interior blank lines are kept, so a
   multi-paragraph `docs` section can have blank lines between paragraphs; only the ones right
@@ -118,7 +120,51 @@ following spaces) disables the entry, same convention as headers. A line without
 with an empty value (`verbose` alone becomes the key `verbose` with value `""`). Blank lines
 inside the section are ignored and produce no entry.
 
-### 5.2 `body <type>`
+### 5.2 `auth <type>`
+
+How the request authenticates. Each non-blank line is `field = value`, split on the first `=`,
+both sides trimmed, so a value can contain `=` but cannot start or end with spaces. A line whose
+first non-space character is `#` is a comment and is ignored (there is no disabled field). Every
+value may hold `{{ }}` markers and template functions.
+
+| Type | Fields |
+|---|---|
+| `basic` | `username`, `password` |
+| `bearer` | `token` |
+| `apikey` | `name` (the header or query parameter name), `value`, `in` (`header` or `query`) |
+
+- A field the type does not have is `unknown field "<field>" for auth "<type>"`; the same field
+  twice is `duplicated auth field`; a line without `=` is `invalid auth line`; an `in` other than
+  `header` or `query` is `invalid API key location`. Each error points at the offending line.
+- A field that is not written is empty, and `in` defaults to `header`.
+- The serializer writes the fields in the order of the table, leaves out the empty ones and
+  always writes `in`. A typed auth with every field empty is still written as a bare heading
+  (`::: auth bearer`), like an empty body (§5.3), since its type would otherwise be lost.
+
+```
+GET {{baseUrl}}/me
+
+::: auth apikey
+name = X-API-Key
+value = {{apiKey}}
+in = header
+```
+
+What is sent, applied by the runner after the pre script and while variables are replaced (§9),
+so a pre script's `vars.set()` reaches it:
+
+- `basic`: `Authorization: Basic <base64 of username:password>`, encoded after the markers are
+  replaced. Nothing is sent when both fields are empty.
+- `bearer`: `Authorization: Bearer <token>`. Nothing is sent when the token is empty.
+- `apikey`: a header, or a query parameter appended after the `::: query` entries and
+  percent-encoded like them. Nothing is sent when the name is empty.
+- An enabled header of the same name (ignoring case), or for `in = query` an enabled `::: query`
+  entry of the same name (case sensitive), wins: the auth adds nothing. Names are compared after
+  their markers are replaced.
+- The pre script's `req` does not include what the auth adds; the post script's `req`, which is
+  the request as sent, does.
+
+### 5.3 `body <type>`
 
 - `json`, `text`, `xml`: the section content is kept as raw text, joined back with `\n`.
 - `form`: the content uses the same `key = value` lines as `query` (including the `#` disable
@@ -129,19 +175,19 @@ inside the section are ignored and produce no entry.
   one section whose presence does not depend on whether it has any content, only on whether the
   request has a body at all (`Body::None` is what is actually omitted).
 
-### 5.3 `pre` / `post`
+### 5.4 `pre` / `post`
 
 Raw JavaScript text, run as described in `docs/scripting.md`.
 
-### 5.4 `docs`
+### 5.5 `docs`
 
 Free-form Markdown notes, raw text, not interpreted by Postino itself.
 
 ## 6. Canonical serialization order
 
 The serializer always writes, in this exact order: request line, headers, then (only if there is
-at least one non-empty section) a blank line followed by the sections `query`, `body`, `pre`,
-`post`, `docs` in that fixed order, each pair of sections separated by exactly one blank line. The
+at least one non-empty section) a blank line followed by the sections `query`, `auth`, `body`,
+`pre`, `post`, `docs` in that fixed order, each pair of sections separated by exactly one blank line. The
 file always ends with a single trailing `\n`.
 
 An important detail: **the blank line that separates the header block from the sections is only
@@ -154,9 +200,9 @@ GET https://example.com
 Accept: */*
 ```
 
-A section that is structurally absent is omitted entirely: an empty `query` list, `Body::None`, or
-an empty `pre_script`/`post_script`/`docs` string. See §5.2 for the one exception (a `body` whose
-type is set but whose text is empty).
+A section that is structurally absent is omitted entirely: an empty `query` list, `Auth::None`,
+`Body::None`, or an empty `pre_script`/`post_script`/`docs` string. See §5.2 and §5.3 for the two
+exceptions (an `auth` or a `body` whose type is set but whose content is empty).
 
 The parser accepts sections in any order and with any spacing; only the serializer is canonical.
 This is what keeps git diffs clean: two semantically identical requests always serialize to the
@@ -241,8 +287,8 @@ of the two files must exist for `load_environment` to succeed.
 ## 9. Variable resolution
 
 `{{name}}` (whitespace inside the braces is allowed: `{{ name }}`) is replaced wherever
-interpolation runs: the URL, header names and values, query keys and values, form field keys and
-values, and raw bodies (`json`/`text`/`xml`). Lookup order, **first hit wins**:
+interpolation runs: the URL, header names and values, query keys and values, the fields of the
+`auth` section, form field keys and values, and raw bodies (`json`/`text`/`xml`). Lookup order, **first hit wins**:
 
 1. request variables set by the pre script this run (`vars.set`);
 2. runtime environment overrides set by scripts (`env.set`), kept for the whole app session;

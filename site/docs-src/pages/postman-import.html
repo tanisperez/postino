@@ -35,7 +35,7 @@ description: Import Postman collections (v2.1 and v2.0) and environment exports 
         <tr><td>Raw body (JSON, XML or text)</td><td><code>::: body json</code>, <code>xml</code> or <code>text</code>; text when no language is set</td></tr>
         <tr><td>URL-encoded body</td><td><code>::: body form</code></td></tr>
         <tr><td>Form-data, file and GraphQL bodies</td><td>An empty body, with a warning</td></tr>
-        <tr><td>Bearer, Basic and API key (header) auth</td><td>The equivalent header</td></tr>
+        <tr><td>Bearer, Basic and API key auth (header or query)</td><td>The <code>::: auth</code> section, shown in the <a href="requests.html#authentication">Auth tab</a></td></tr>
         <tr><td>Auth set on the collection or a folder</td><td>Copied to every request below that inherits it</td></tr>
         <tr><td>Description</td><td>The <code>::: docs</code> section</td></tr>
         <tr><td><code>{{variable}}</code></td><td>Kept as is: the syntax is the same</td></tr>

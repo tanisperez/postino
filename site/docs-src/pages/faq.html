@@ -17,7 +17,7 @@ description: Frequently asked questions about Postino: accounts, cloud sync, pri
 <p>Only the requests you send. Builds for macOS and Windows also check GitHub for a new version once at startup, without any identifier, and you can turn that off. There is no telemetry and no crash reporting. See <a href="files-and-folders.html#network">Files and folders</a>.</p>
 
 <h2>Can I open my Postman collections?</h2>
-<p>Yes, import them: collections in format v2.1 (and v2.0) and environment exports. Requests, folders, headers, bodies, auth headers and variables are converted. Scripts are copied but commented out, because Postman's <code>pm.*</code> API is different. See <a href="postman-import.html">Importing from Postman</a>.</p>
+<p>Yes, import them: collections in format v2.1 (and v2.0) and environment exports. Requests, folders, headers, bodies, Basic, Bearer and API key auth and variables are converted. Scripts are copied but commented out, because Postman's <code>pm.*</code> API is different. See <a href="postman-import.html">Importing from Postman</a>.</p>
 
 <h2>Can I use .http files from my editor?</h2>
 <p>No. The <code>.postino</code> format was inspired by <code>.http</code> files, but it is not compatible with them: sections such as <code>::: body json</code> and <code>::: post</code> have no equivalent there. Converting one by hand is quick, since both are plain text.</p>
@@ -35,7 +35,7 @@ description: Frequently asked questions about Postino: accounts, cloud sync, pri
 <p>Not yet. Postino sends HTTP requests with JSON, XML, text or URL-encoded form bodies. A GraphQL query can be sent as a JSON body to the GraphQL endpoint. Multipart form data, file uploads, WebSockets and gRPC are not supported.</p>
 
 <h2>Is there an OAuth 2.0 helper?</h2>
-<p>Not yet. Get a token with a request to the token endpoint (a <code>::: body form</code> with <code>grant_type</code>, <code>client_id</code> and <code>client_secret</code>), save it with <code>env.set()</code> in the post-response script and send it as <code>Authorization: Bearer {{token}}</code>.</p>
+<p>Not yet. Get a token with a request to the token endpoint (a <code>::: body form</code> with <code>grant_type</code>, <code>client_id</code> and <code>client_secret</code>), save it with <code>env.set()</code> in the post-response script and send it with the <a href="requests.html#authentication">Auth tab</a> set to <strong>Bearer</strong> and <code>{{token}}</code>.</p>
 
 <h2>Can I run my requests in CI?</h2>
 <p>Not yet: Postino is a desktop app and has no headless runner.</p>

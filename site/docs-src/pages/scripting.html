@@ -44,7 +44,7 @@ env.set("orderId", res.json().id);
 <h2>When they run</h2>
 <ol class="steps">
     <li>The <strong>pre-request</strong> script runs first. It sees the request before variables are replaced, and can change its method, URL, headers and body, and set variables with <code>vars.set()</code>.</li>
-    <li>Postino replaces the <code>{{ }}</code> markers and sends the request.</li>
+    <li>Postino replaces the <code>{{ }}</code> markers, applies the <a href="requests.html#authentication">Auth tab</a> and sends the request.</li>
     <li>The <strong>post-response</strong> script runs with the response in <code>res</code> and the request as it was actually sent in <code>req</code>. It runs tests and can store values for later requests with <code>env.set()</code>.</li>
 </ol>
 <p>An empty script is skipped. An error in the pre-request script stops the run before anything is sent. An error in the post-response script is reported, but the response and the tests that already ran are still shown.</p>

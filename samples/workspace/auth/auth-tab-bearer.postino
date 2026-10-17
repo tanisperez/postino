@@ -1,0 +1,10 @@
+GET {{baseUrl}}/bearer
+
+::: auth bearer
+token = {{ base64Encode("bearer-from-auth") }}
+
+::: post
+test("the auth section sends a bearer token", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().token).toBe("YmVhcmVyLWZyb20tYXV0aA==");
+});
