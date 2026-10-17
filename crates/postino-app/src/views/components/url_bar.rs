@@ -305,6 +305,8 @@ impl RenderOnce for UrlBar {
         };
 
         h_flex()
+            // An id keeps the hover state, so entering and leaving renders again.
+            .id("url-bar")
             .h(px(URL_BAR_HEIGHT))
             .items_center()
             .rounded(px(RADIUS_MD))
@@ -322,7 +324,12 @@ impl RenderOnce for UrlBar {
             .border_color(if focused {
                 palette.accent
             } else {
-                palette.border_strong
+                palette.border
+            })
+            // The hover of every text input (`components/hover_input.rs`).
+            .when(!focused, |bar| {
+                let border_strong = palette.border_strong;
+                bar.hover(move |style| style.border_color(border_strong))
             })
             .when(focused, |bar| {
                 bar.shadow(vec![

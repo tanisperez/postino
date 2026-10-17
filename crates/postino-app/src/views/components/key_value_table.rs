@@ -22,7 +22,8 @@ use rust_i18n::t;
 use crate::state::request_edit::{SortColumn, SortOrder};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
-    KEY_VALUE_CELL_GAP, KEY_VALUE_ROW_HEIGHT, KEY_VALUE_SIDE_COL_WIDTH, RADIUS_MD,
+    CHECKBOX_HALO_PADDING, KEY_VALUE_CELL_GAP, KEY_VALUE_ROW_HEIGHT, KEY_VALUE_SIDE_COL_WIDTH,
+    RADIUS_MD, RADIUS_SM,
 };
 
 /// A [`KeyValueRow`]'s key or value cell: plain text (the gallery demo) or a caller-supplied
@@ -198,9 +199,19 @@ impl RenderOnce for KeyValueTable {
             } else {
                 palette.fg_subtle
             };
+            // One step above the usual `hover` and `pressed`, which barely show on an area this
+            // small.
+            let (hover, pressed) = (palette.pressed, palette.border_strong);
 
             let checkbox_cell = div().flex_none().w(side_col).flex().justify_center().child(
+                // A halo around the box on hover and while pressed. gpui-component's checkbox
+                // takes its box colors from the theme, so the box itself cannot change.
                 Checkbox::new(("kv-enabled", index))
+                    .p(px(CHECKBOX_HALO_PADDING))
+                    .rounded(px(RADIUS_SM))
+                    .cursor_pointer()
+                    .hover(move |style| style.bg(hover))
+                    .active(move |style| style.bg(pressed))
                     .checked(enabled)
                     .when_some(toggle_handler, |checkbox, handler| {
                         checkbox.on_click(move |checked, window, cx| handler(*checked, window, cx))

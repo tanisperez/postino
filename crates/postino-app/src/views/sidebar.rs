@@ -305,6 +305,8 @@ impl AppView {
             .pb(px(8.0))
             .child(
                 h_flex()
+                    // An id keeps the hover state, so entering and leaving renders again.
+                    .id("sidebar-filter")
                     .flex_1()
                     .h(px(SIDEBAR_FILTER_HEIGHT))
                     .items_center()
@@ -314,6 +316,11 @@ impl AppView {
                     .bg(palette.raised)
                     .border_1()
                     .border_color(palette.border)
+                    // The hover of every text input (`components/hover_input.rs`).
+                    .hover({
+                        let border_strong = palette.border_strong;
+                        move |style| style.border_color(border_strong)
+                    })
                     .text_color(palette.fg_subtle)
                     .child(Icon::new(gpui_kit::assets::IconName::ListFilter).small())
                     .child(

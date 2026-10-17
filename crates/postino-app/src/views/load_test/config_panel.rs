@@ -464,6 +464,8 @@ fn render_field(
     disabled: bool,
     cx: &App,
 ) -> AnyElement {
+    // An id keeps the pill's hover state, so entering and leaving renders again.
+    let pill_id = SharedString::from(format!("load-test-field-{label}"));
     let mut row = h_flex().justify_between().text_size(px(12.0)).child(
         div()
             .font_weight(FontWeight::MEDIUM)
@@ -475,12 +477,18 @@ fn render_field(
     }
 
     let mut pill = h_flex()
+        .id(pill_id)
         .h(px(CONTROL_HEIGHT))
         .items_center()
         .px(px(10.0))
         .rounded(px(RADIUS_MD - 1.0))
         .border_1()
-        .border_color(palette.border_strong)
+        .border_color(palette.border)
+        // The hover of every text input (`components/hover_input.rs`), not while a run disables it.
+        .when(!disabled, |pill| {
+            let border_strong = palette.border_strong;
+            pill.hover(move |style| style.border_color(border_strong))
+        })
         .bg(palette.raised)
         .font_family(mono_font.clone())
         .text_size(px(12.5));

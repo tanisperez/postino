@@ -90,6 +90,8 @@ pub const KEY_VALUE_SIDE_COL_WIDTH: f32 = 30.0;
 pub const VARIABLE_FIELD_HEIGHT: f32 = 26.0;
 /// Height of a `KeyValueTable` row: its fields are 4 px clear of the row lines above and below.
 pub const KEY_VALUE_ROW_HEIGHT: f32 = 34.0;
+/// Padding around a checkbox's 16 px box, the halo it shows on hover (22 px in all).
+pub const CHECKBOX_HALO_PADDING: f32 = 3.0;
 /// Space between the key and the value field of a `KeyValueTable` row, half on each side.
 pub const KEY_VALUE_CELL_GAP: f32 = 4.0;
 /// Width of the column that centers a colored dot in an `EnvMenu` row.

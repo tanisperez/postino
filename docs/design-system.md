@@ -24,6 +24,16 @@ Where things live (all under `crates/postino-app/src/`):
   in a second place.
 - Panels are flat (border only). Inputs and cards use `raised` plus a border. Menus, popovers and
   modals use `overlay` plus the shadow token. No shadows on fixed panels.
+- Every text input hovers like the search trigger: a `border` border at rest and `border_strong`
+  while the pointer is over it, then its own focus look (`accent`) once focused. An `Input` that
+  draws its own border goes through `HoverInput` (`components/hover_input.rs`), since
+  gpui-component's `Input` has no hover style; one whose border is drawn by a container (URL bar,
+  sidebar filter, load test fields) sets `hover` on that container, which needs an `id` to
+  render again when the pointer enters or leaves. Multi-line editors (body, scripts, docs) are
+  not included.
+- A checkbox shows a halo on hover: 3 px around its box (`CHECKBOX_HALO_PADDING`, 22 px in all),
+  radius `RADIUS_SM`, `pressed` on hover and `border_strong` while held, one step above the usual
+  `hover` and `pressed`, which barely show on an area that small.
 - The accent (indigo) is for the primary action, the selected row or tab, links and focus.
   Do not use it as decoration.
 - State colors are semantic: `success` green, `warning` amber, `danger` red, `info` blue. Each has
@@ -44,7 +54,7 @@ Hex values copied from `theme/palette.rs`.
 | `overlay` | `#ffffff` | `#262830` | Menus, popovers, modals (fill) |
 | `scrim` | `#0a0b1073` | `#0a0b1073` | Dimmed backdrop behind a modal (same in both) |
 | `border` | `#e3e5ea` | `#2c2e36` | Default separator and border |
-| `border_strong` | `#cdd0d8` | `#3b3e48` | Control borders (inputs, buttons) |
+| `border_strong` | `#cdd0d8` | `#3b3e48` | Control borders (buttons, hovered inputs) |
 | `fg` | `#1b1c22` | `#e9eaee` | Primary text |
 | `fg_muted` | `#5c606e` | `#a0a3ae` | Secondary text, inactive tabs |
 | `fg_subtle` | `#8b8e9a` | `#6f7280` | Placeholders, icons, line numbers, counts |

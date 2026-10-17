@@ -1,5 +1,5 @@
-//! [`text_field`]: a single-line `Input` for dialogs and forms, with the app's edit menu and a
-//! line height that leaves room around the glyphs.
+//! [`text_field`]: a single-line `Input` for dialogs and forms, with the app's edit menu, the
+//! hover border of a [`HoverInput`] and a line height that leaves room around the glyphs.
 //!
 //! The selection highlight of an `Input` is as tall as its line. gpui-component's default line
 //! (1.25 rem) nearly fills a short box, so a selection touched both borders. A taller line, the
@@ -10,6 +10,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use super::edit_menu::edit_menu;
+use super::hover_input::HoverInput;
 
 /// Line height of a [`text_field`], and so the height of its selection highlight.
 const FIELD_LINE_HEIGHT: f32 = 22.0;
@@ -21,10 +22,15 @@ pub(crate) const FIELD_HEIGHT: f32 = 36.0;
 /// `Input` itself ignores a fixed height in a dialog's content.
 pub fn text_field(state: &Entity<InputState>, cx: &App) -> Div {
     div().w_full().h(px(FIELD_HEIGHT)).child(
-        Input::new(state)
-            .context_menu(edit_menu(state, cx))
-            .h_full()
-            .py_0()
-            .line_height(px(FIELD_LINE_HEIGHT)),
+        HoverInput::new(
+            ("text-field", state.entity_id()),
+            state,
+            Input::new(state)
+                .context_menu(edit_menu(state, cx))
+                .h_full()
+                .py_0()
+                .line_height(px(FIELD_LINE_HEIGHT)),
+        )
+        .h_full(),
     )
 }

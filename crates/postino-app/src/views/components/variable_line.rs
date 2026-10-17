@@ -19,6 +19,7 @@ use rust_i18n::t;
 use postino_core::{VariableKind, VariableSpan, variable_spans};
 
 use super::edit_menu::edit_menu;
+use super::hover_input::HoverInput;
 use super::icon_button::IconButton;
 use super::variable_chip::VariableChip;
 use crate::state::variable_hint::{Hint, Origin, VariableContext, hint};
@@ -230,7 +231,7 @@ impl RenderOnce for VariableField {
         });
         if spans.is_empty() {
             let accent = cx.palette().accent;
-            return Input::new(&self.input_state)
+            let input = Input::new(&self.input_state)
                 .context_menu(edit_menu(&self.input_state, cx))
                 .py_0()
                 // The same height as the row of chips, smaller than the default 32 px so it stays
@@ -241,11 +242,14 @@ impl RenderOnce for VariableField {
                 // so a focused cell only gets the accent border.
                 .focus_ring(false)
                 .when(focused, |input| input.border_color(accent))
-                .when_some(mask_toggle, |input, toggle| input.suffix(toggle))
+                .when_some(mask_toggle, |input, toggle| input.suffix(toggle));
+            return HoverInput::new(format!("{}-input", self.id), &self.input_state, input)
                 .into_any_element();
         }
 
         let input_state = self.input_state.clone();
+        let palette = cx.palette();
+        let border_strong = palette.border_strong;
         let children = marker_children(
             &self.id,
             &text,
@@ -264,7 +268,8 @@ impl RenderOnce for VariableField {
             .cursor_text()
             .px_3()
             .border_1()
-            .border_color(cx.palette().border_strong)
+            .border_color(palette.border)
+            .hover(move |style| style.border_color(border_strong))
             .rounded(px(RADIUS_MD))
             .on_click(move |_, window, cx| {
                 // `character: u32::MAX` clamps to the end of the line, which also focuses the

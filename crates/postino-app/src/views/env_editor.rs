@@ -29,9 +29,9 @@ use crate::state::workspace_log::log_workspace_error;
 use crate::theme::metrics::{MODAL_WIDTH_DEFAULT, RADIUS_MD, RADIUS_SM};
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{
-    ConfirmDialog, GhostButton, IconButton, InlineMessage, InlineMessageKind, ModalPlacement,
-    PrimaryButton, SecondaryButton, SegmentedControl, SegmentedItem, edit_menu, framed_dialog,
-    modal_body, modal_footer, modal_header, open_confirm_dialog,
+    ConfirmDialog, GhostButton, HoverInput, IconButton, InlineMessage, InlineMessageKind,
+    ModalPlacement, PrimaryButton, SecondaryButton, SegmentedControl, SegmentedItem, edit_menu,
+    framed_dialog, modal_body, modal_footer, modal_header, open_confirm_dialog,
 };
 
 use super::root::AppView;
@@ -609,11 +609,13 @@ impl AppView {
                     v_flex()
                         .child(modal_header(t!("environments.rename.title"), cx))
                         .child(
-                            modal_body().child(
+                            modal_body().child(HoverInput::new(
+                                "env-rename-input",
+                                &input,
                                 Input::new(&input)
                                     .context_menu(edit_menu(&input, cx))
                                     .py_0(),
-                            ),
+                            )),
                         )
                         .child(
                             modal_footer(cx)
@@ -1018,7 +1020,9 @@ fn render_toolbar(
         .px(px(20.0))
         .pt(px(12.0))
         .child(
-            div().w(px(220.0)).child(
+            div().w(px(220.0)).child(HoverInput::new(
+                "env-filter",
+                &entities.filter,
                 Input::new(&entities.filter)
                     .context_menu(edit_menu(&entities.filter, cx))
                     .h(px(CONTROL_HEIGHT))
@@ -1029,7 +1033,7 @@ fn render_toolbar(
                             .text_color(palette.fg_subtle),
                     )
                     .cleanable(true),
-            ),
+            )),
         )
         .child(
             SegmentedControl::new("env-scope")
