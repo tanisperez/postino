@@ -19,12 +19,12 @@ use gpui_kit::component::{Root, TitleBar};
 use gpui_kit::*;
 
 use actions::{
-    CloseActiveTab, ConfirmCompletion, DeleteSelectedEntry, DismissCompletion, NextCompletion,
-    NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, OpenWorkspace, PreviousCompletion,
-    PreviousTab, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1, SelectEnvironment2,
-    SelectEnvironment3, SelectEnvironment4, SelectEnvironment5, SelectEnvironment6,
-    SelectEnvironment7, SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
-    ShowCompletion,
+    CloseActiveTab, ConfirmCompletion, DeleteLine, DeleteSelectedEntry, DismissCompletion,
+    NextCompletion, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, OpenWorkspace,
+    PreviousCompletion, PreviousTab, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1,
+    SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
+    SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
+    SelectNoEnvironment, SendActiveTab, ShowCompletion,
 };
 use state::settings::ThemeChoice;
 use views::AppView;
@@ -309,6 +309,13 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("tab", ConfirmCompletion, input),
         KeyBinding::new("escape", DismissCompletion, input),
     ]);
+    // Delete the line, in any text input like the completion keys above, but the handler
+    // (`views/request_editor.rs`) acts only in a script editor and otherwise lets the key through.
+    // On macOS `Ctrl+D` is the system's "delete forward" in text fields, so it is VS Code's key.
+    #[cfg(target_os = "macos")]
+    cx.bind_keys([KeyBinding::new("cmd-shift-k", DeleteLine, input)]);
+    #[cfg(not(target_os = "macos"))]
+    cx.bind_keys([KeyBinding::new("ctrl-d", DeleteLine, input)]);
     // Only while the sidebar tree has the focus (gpui-base's `Tree` key context): in a text input
     // these keys keep editing the text.
     let tree = Some(gpui_kit::base::tree_key_context());

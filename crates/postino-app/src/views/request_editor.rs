@@ -27,7 +27,9 @@ use gpui::Hsla;
 use postino_core::log_safe::is_sensitive_header;
 use postino_core::{ApiKeyLocation, Auth, Body, KeyValue, Method, Request, variable_spans};
 
+use crate::actions::DeleteLine;
 use crate::state::auth_edit::{self, AuthField, AuthKind, Overridden};
+use crate::state::line_edit;
 use crate::state::request_edit::{self, BodyKind, SortColumn, SortOrder};
 use crate::state::script_completion::ScriptKind;
 use crate::state::script_heuristics;
@@ -1475,6 +1477,32 @@ impl AppView {
             .into_iter()
             .flatten()
             .find(|script| script.editor.focus_handle(cx).is_focused(window))
+    }
+
+    /// `Ctrl+D` (`Cmd+Shift+K` on macOS): deletes the lines of the selection in the focused
+    /// script editor, as one undo step (`state::line_edit`), or lets the key through elsewhere.
+    pub(crate) fn on_delete_line(
+        &mut self,
+        _: &DeleteLine,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(script) = self.focused_script_editor(window, cx) else {
+            cx.propagate();
+            return;
+        };
+        script.editor.clone().update(cx, |state, cx| {
+            let text = state.value();
+            let deletion = line_edit::delete_lines(&text, state.selected_range(), state.cursor());
+            if deletion.range.is_empty() {
+                return;
+            }
+            state.set_selected_range(deletion.range, cx);
+            state.replace("", window, cx);
+            state.set_selected_range(deletion.cursor..deletion.cursor, cx);
+            // `replace` is silent: emit the change the editor's subscription writes back.
+            cx.emit(InputEvent::Change);
+        });
     }
 
     /// Whether the menu of `field` hides every value: the value of a sensitive header or a

@@ -17,6 +17,7 @@ pub mod header_completion;
 pub mod import;
 pub mod json_pretty;
 pub mod launch;
+pub mod line_edit;
 pub mod load_panel;
 pub mod load_test;
 pub mod locale;

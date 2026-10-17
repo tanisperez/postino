@@ -110,3 +110,8 @@ _version: 2
   es: "Mostrar sugerencias: variables, nombres y valores de cabeceras"
   gl: "Amosar suxestións: variables, nomes e valores de cabeceiras"
   it: "Mostra i suggerimenti: variabili, nomi e valori delle intestazioni"
+"shortcuts.action.delete_line":
+  en: "Delete the line in a script editor"
+  es: "Borrar la línea en un editor de scripts"
+  gl: "Borrar a liña nun editor de scripts"
+  it: "Elimina la riga in un editor di script"

@@ -67,5 +67,8 @@ actions!(
         ConfirmCompletion,
         /// Closes the open autocompletion menu (`Escape`).
         DismissCompletion,
+        /// Deletes the lines of the selection in the focused `::: pre` or `::: post` script
+        /// editor (`Ctrl+D`, or `Cmd+Shift+K` on macOS, where `Ctrl+D` deletes forward).
+        DeleteLine,
     ]
 );

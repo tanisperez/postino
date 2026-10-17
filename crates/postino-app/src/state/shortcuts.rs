@@ -45,6 +45,16 @@ pub fn open_hint() -> String {
     open_keys().join("+")
 }
 
+/// The keys that delete the line in a script editor: `Ctrl+D`, or `Cmd+Shift+K` on macOS, where
+/// `Ctrl+D` deletes forward in every text field.
+fn delete_line_keys() -> Vec<String> {
+    if cfg!(target_os = "macos") {
+        keys(&["Cmd", "Shift", "K"])
+    } else {
+        keys(&["Ctrl", "D"])
+    }
+}
+
 /// Every shortcut, grouped. Built once when the cheat sheet opens.
 pub fn groups() -> Vec<ShortcutGroup> {
     let modifier = MODIFIER_KEY;
@@ -74,6 +84,10 @@ pub fn groups() -> Vec<ShortcutGroup> {
                 shortcut(t!("shortcuts.action.save"), &[modifier, "S"]),
                 // Ctrl on macOS too: Cmd+Space is Spotlight.
                 shortcut(t!("shortcuts.action.complete_variable"), &["Ctrl", "Space"]),
+                Shortcut {
+                    label: t!("shortcuts.action.delete_line").to_string(),
+                    keys: delete_line_keys(),
+                },
             ],
         },
         ShortcutGroup {
