@@ -2,7 +2,7 @@
 //! Pre-request, Post-response and Docs tabs.
 //!
 //! `gpui` entities for the editable fields (the URL input, the key-value table rows, the body
-//! and script code editors, the docs textarea) are expensive to keep in sync by hand on every
+//! script and docs code editors) are expensive to keep in sync by hand on every
 //! keystroke, so [`RequestEditorEntities`] rebuilds them only when what they need to show
 //! actually changes shape: a different tab becomes active, a row is added or removed, or the
 //! body's type (and so its editor language) or the auth type changes. Typing into an existing field never
@@ -16,7 +16,7 @@ use std::rc::Rc;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::input::{
     Editor, EditorState, IndentInline, InputEvent, InputState, TextDecoration,
-    TextDecorationCollection, Textarea, TextareaState,
+    TextDecorationCollection,
 };
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -342,7 +342,8 @@ pub(crate) struct RequestEditorEntities {
     /// What the script editors complete besides the API, refreshed on every render of the
     /// editor like `variable_context`.
     script_completion: Rc<RefCell<ScriptCompletionData>>,
-    docs: Option<Entity<TextareaState>>,
+    /// The Docs tab's editor: plain text, with line numbers like the script editors.
+    docs: Option<Entity<EditorState>>,
     /// The row whose key input takes the focus once the entities are rebuilt for it: the row
     /// that Tab in the last value just added ([`AppView::add_row_from_tab`]).
     focus_after_rebuild: Option<(RowKind, usize)>,
@@ -546,7 +547,7 @@ impl RequestEditorEntities {
             cx,
         ));
 
-        let docs = cx.new(|cx| TextareaState::new(window, cx));
+        let docs = cx.new(|cx| EditorState::new(window, cx).language("text"));
         docs.update(cx, |state, cx| {
             state.set_value(request.docs.clone(), window, cx)
         });
@@ -844,17 +845,17 @@ impl AppView {
         }
         self.sync_body_markers(cx);
 
-        // A code editor (the Body tab's JSON/Text/XML, Pre, Post) scrolls its own content and
+        // A code editor (the Body tab's JSON/Text/XML, Pre, Post, Docs) scrolls its own content and
         // needs a real, determinate height to fill: an ancestor `overflow_y_scroll()` container
         // instead measures its child's intrinsic height, which collapses a `flex_1` editor to a
         // couple of lines, and an editor taller than the pane would be clipped where it cannot
-        // scroll the cursor into view (#128). Params/Headers/Form (a `KeyValueTable`) and Docs
+        // scroll the cursor into view (#128). Params/Headers/Form (a `KeyValueTable`) and Auth
         // are plain content with no scrolling of their own, so they still need it here.
         let uses_code_editor = match self.active_request_tab {
             RequestTab::Body => {
                 matches!(request.body, Body::Json(_) | Body::Text(_) | Body::Xml(_))
             }
-            RequestTab::Pre | RequestTab::Post => true,
+            RequestTab::Pre | RequestTab::Post | RequestTab::Docs => true,
             _ => false,
         };
         let content = div().id("request-editor-content").flex_1().min_h_0();
@@ -1058,20 +1059,7 @@ impl AppView {
                     .map(|script| script.editor.clone()),
                 cx,
             ),
-            RequestTab::Docs => match &self.request_editor.docs {
-                Some(docs) => {
-                    let palette = cx.palette();
-                    Textarea::new(docs)
-                        .context_menu(edit_menu(docs, cx))
-                        .h(px(320.0))
-                        .border_1()
-                        .border_color(palette.border)
-                        .rounded(px(RADIUS_MD))
-                        .bg(palette.raised)
-                        .into_any_element()
-                }
-                None => div().into_any_element(),
-            },
+            RequestTab::Docs => render_editor_or_placeholder(&self.request_editor.docs, cx),
         }
     }
 
