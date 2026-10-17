@@ -21,7 +21,7 @@ use rust_i18n::t;
 
 use crate::state::request_edit::{SortColumn, SortOrder};
 use crate::theme::PaletteExt;
-use crate::theme::metrics::{KEY_VALUE_SIDE_COL_WIDTH, RADIUS_MD};
+use crate::theme::metrics::{KEY_VALUE_CELL_GAP, KEY_VALUE_SIDE_COL_WIDTH, RADIUS_MD};
 
 /// A [`KeyValueRow`]'s key or value cell: plain text (the gallery demo) or a caller-supplied
 /// element (a live `Input`, wired in by the request editor).
@@ -204,8 +204,14 @@ impl RenderOnce for KeyValueTable {
                         checkbox.on_click(move |checked, window, cx| handler(*checked, window, cx))
                     }),
             );
-            let key_cell = key_value_cell(row.key, 1.0, text_color, enabled);
-            let value_cell = key_value_cell(row.value, 1.4, text_color, enabled);
+            // Half the gap on each side of the split, so the key and the value fields never touch.
+            let half_gap = px(KEY_VALUE_CELL_GAP / 2.0);
+            let key_cell = key_value_cell(row.key, 1.0, text_color, enabled)
+                .pr(half_gap)
+                .into_any_element();
+            let value_cell = key_value_cell(row.value, 1.4, text_color, enabled)
+                .pl(half_gap)
+                .into_any_element();
             let delete_cell = div()
                 .id(("kv-delete", index))
                 .flex_none()
@@ -313,14 +319,13 @@ fn header_cell(
 /// struck through when disabled; an element cell (a live `Input`)
 /// keeps its own styling and is only dimmed when disabled, since it cannot be recolored or
 /// struck through generically.
-fn key_value_cell(cell: Cell, grow: f32, text_color: Hsla, enabled: bool) -> AnyElement {
+fn key_value_cell(cell: Cell, grow: f32, text_color: Hsla, enabled: bool) -> Div {
     match cell {
         Cell::Text(text) => div()
             .flex_grow(grow)
             .text_color(text_color)
             .when(!enabled, |cell| cell.line_through())
-            .child(text)
-            .into_any_element(),
+            .child(text),
         // A zero basis keeps the 1 : 1.4 split whatever the element's own width, which a row of
         // variable chips (not shrinkable, unlike an `Input`) would otherwise skew.
         Cell::Element(element) => div()
@@ -328,7 +333,6 @@ fn key_value_cell(cell: Cell, grow: f32, text_color: Hsla, enabled: bool) -> Any
             .flex_basis(px(0.0))
             .min_w_0()
             .when(!enabled, |cell| cell.opacity(0.5))
-            .child(element)
-            .into_any_element(),
+            .child(element),
     }
 }

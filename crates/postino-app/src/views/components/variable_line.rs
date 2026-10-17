@@ -23,7 +23,7 @@ use super::icon_button::IconButton;
 use super::variable_chip::VariableChip;
 use crate::state::variable_hint::{Hint, Origin, VariableContext, hint};
 use crate::theme::PaletteExt;
-use crate::theme::metrics::RADIUS_MD;
+use crate::theme::metrics::{RADIUS_MD, VARIABLE_FIELD_HEIGHT};
 
 /// A text-carrying handler (chip click), factored out because clippy's `type_complexity` flags
 /// the inline form.
@@ -233,6 +233,9 @@ impl RenderOnce for VariableField {
             return Input::new(&self.input_state)
                 .context_menu(edit_menu(&self.input_state, cx))
                 .py_0()
+                // The same height as the row of chips: the default 32 px overflows the 30 px
+                // table rows.
+                .h(px(VARIABLE_FIELD_HEIGHT))
                 .w_full()
                 // The default 3 px focus ring spills over the 30 px table rows around the cell,
                 // so a focused cell only gets the accent border.
@@ -254,7 +257,7 @@ impl RenderOnce for VariableField {
         h_flex()
             .id(self.id.clone())
             .w_full()
-            .h(px(26.0))
+            .h(px(VARIABLE_FIELD_HEIGHT))
             .items_center()
             .overflow_hidden()
             .whitespace_nowrap()

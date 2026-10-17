@@ -86,6 +86,11 @@ pub const ICON_BUTTON_LG: f32 = 28.0;
 pub const ICON_BUTTON_HEADER: f32 = 22.0;
 /// Width of the checkbox and delete columns of a `KeyValueTable`.
 pub const KEY_VALUE_SIDE_COL_WIDTH: f32 = 30.0;
+/// Height of a `VariableField` (its input or its row of chips): 2 px clear of the 30 px rows of
+/// a `KeyValueTable` above and below.
+pub const VARIABLE_FIELD_HEIGHT: f32 = 26.0;
+/// Space between the key and the value field of a `KeyValueTable` row, half on each side.
+pub const KEY_VALUE_CELL_GAP: f32 = 4.0;
 /// Width of the column that centers a colored dot in an `EnvMenu` row.
 pub const MENU_DOT_COLUMN_WIDTH: f32 = 13.0;
 /// Height of the title bar's `EnvPill` trigger (see `docs/design-system.md`).
