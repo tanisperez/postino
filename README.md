@@ -1,5 +1,10 @@
 # Postino
 
+[![Latest release](https://img.shields.io/github/v/release/tanisperez/postino)](https://github.com/tanisperez/postino/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/tanisperez/postino/build.yml?branch=main&label=build)](https://github.com/tanisperez/postino/actions/workflows/build.yml)
+[![License](https://img.shields.io/github/license/tanisperez/postino)](LICENSE)
+[![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS-blue)](https://postino.tanis.codes/install.html)
+
 A lightweight, native, open source HTTP client, without accounts and without cloud storage. Your
 requests live as plain files on your disk, and you decide where they go: git, a shared folder,
 or nowhere else.
