@@ -28,16 +28,20 @@ use postino_core::log_safe::is_sensitive_header;
 use postino_core::{Body, KeyValue, Method, Request, variable_spans};
 
 use crate::state::request_edit::{self, BodyKind, SortColumn, SortOrder};
+use crate::state::script_completion::ScriptKind;
 use crate::state::script_heuristics;
 use crate::state::ui_tabs::RequestTab;
 use crate::state::variable_hint::{self, VariableContext};
 use crate::theme::PaletteExt;
-use crate::theme::metrics::{RADIUS_MD, SEND_BUTTON_HEIGHT, SEND_BUTTON_MIN_WIDTH};
+use crate::theme::metrics::{
+    COMPLETION_MENU_WIDTH, RADIUS_MD, SEND_BUTTON_HEIGHT, SEND_BUTTON_MIN_WIDTH,
+};
 use crate::views::components::variable_chip::highlight_style;
 use crate::views::components::{
     GhostButton, KeyValueRow, KeyValueTable, PrimaryButton, SegmentedControl, SegmentedItem,
     UnderlineTabItem, UnderlineTabs, UrlBar, VariableField, edit_menu,
 };
+use crate::views::script_completion::{ScriptCompletionData, ScriptCompletionProvider};
 use crate::views::variable_hover::{BodyMarkers, VariableHover};
 
 use super::root::AppView;
@@ -214,17 +218,27 @@ fn body_language(body: &Body) -> Option<(&str, &'static str)> {
 }
 
 /// Builds a JavaScript code editor for a `::: pre` or `::: post` section, subscribed to write
-/// typed changes back into the active tab's request.
+/// typed changes back into the active tab's request, with its completion provider reading
+/// `completion_data`.
 fn make_script_editor(
     tab_id: &str,
     text: &str,
     field: ScriptField,
+    completion_data: &Rc<RefCell<ScriptCompletionData>>,
     window: &mut Window,
     cx: &mut Context<AppView>,
-) -> Entity<EditorState> {
+) -> ScriptEditor {
+    let kind = match field {
+        ScriptField::Pre => ScriptKind::Pre,
+        ScriptField::Post => ScriptKind::Post,
+    };
+    let completion = Rc::new(ScriptCompletionProvider::new(kind, completion_data.clone()));
     let editor = cx.new(|cx| EditorState::new(window, cx).language("javascript"));
     editor.update(cx, |state, cx| {
-        state.set_value(text.to_string(), window, cx)
+        state.set_value(text.to_string(), window, cx);
+        let lsp = state.lsp_mut();
+        lsp.completion_provider = Some(completion.clone());
+        lsp.completion_menu.max_width = px(COMPLETION_MENU_WIDTH);
     });
     let tab_id = tab_id.to_string();
     cx.subscribe(&editor, move |view, entity, event: &InputEvent, cx| {
@@ -238,7 +252,13 @@ fn make_script_editor(
         });
     })
     .detach();
-    editor
+    ScriptEditor { editor, completion }
+}
+
+/// A `::: pre` or `::: post` code editor and its completion provider, kept for `Ctrl+Space`.
+pub(crate) struct ScriptEditor {
+    pub(crate) editor: Entity<EditorState>,
+    pub(crate) completion: Rc<ScriptCompletionProvider>,
 }
 
 /// The `gpui` entities behind the request editor's editable fields, for whichever tab is
@@ -265,8 +285,11 @@ pub(crate) struct RequestEditorEntities {
     /// What `body_markers` was last styled for, so it is recomputed only when the context or
     /// the colors change (an edit recomputes it directly, see [`AppView::refresh_body_markers`]).
     body_markers_built_for: Option<(VariableContext, Hsla)>,
-    pre_editor: Option<Entity<EditorState>>,
-    post_editor: Option<Entity<EditorState>>,
+    pre_editor: Option<ScriptEditor>,
+    post_editor: Option<ScriptEditor>,
+    /// What the script editors complete besides the API, refreshed on every render of the
+    /// editor like `variable_context`.
+    script_completion: Rc<RefCell<ScriptCompletionData>>,
     docs: Option<Entity<TextareaState>>,
     /// The row whose key input takes the focus once the entities are rebuilt for it: the row
     /// that Tab in the last value just added ([`AppView::add_row_from_tab`]).
@@ -447,6 +470,7 @@ impl RequestEditorEntities {
             tab_id,
             &request.pre_script,
             ScriptField::Pre,
+            &self.script_completion,
             window,
             cx,
         ));
@@ -454,6 +478,7 @@ impl RequestEditorEntities {
             tab_id,
             &request.post_script,
             ScriptField::Post,
+            &self.script_completion,
             window,
             cx,
         ));
@@ -712,6 +737,11 @@ impl AppView {
         if *self.request_editor.variable_context != context {
             self.request_editor.variable_context = Rc::new(context);
         }
+        {
+            let mut data = self.request_editor.script_completion.borrow_mut();
+            data.variables = self.request_editor.variable_context.clone();
+            data.response = self.response_shapes.get(&tab_id).cloned();
+        }
         self.sync_body_markers(cx);
 
         // The Body tab's code editor (JSON/Text/XML) scrolls its own content and needs a real,
@@ -906,12 +936,24 @@ impl AppView {
                 cx,
             ),
             RequestTab::Body => self.render_body_tab(tab_id, request, cx),
-            RequestTab::Pre => {
-                render_editor_or_placeholder(&self.request_editor.pre_editor, false, cx)
-            }
-            RequestTab::Post => {
-                render_editor_or_placeholder(&self.request_editor.post_editor, false, cx)
-            }
+            RequestTab::Pre => render_editor_or_placeholder(
+                &self
+                    .request_editor
+                    .pre_editor
+                    .as_ref()
+                    .map(|script| script.editor.clone()),
+                false,
+                cx,
+            ),
+            RequestTab::Post => render_editor_or_placeholder(
+                &self
+                    .request_editor
+                    .post_editor
+                    .as_ref()
+                    .map(|script| script.editor.clone()),
+                false,
+                cx,
+            ),
             RequestTab::Docs => match &self.request_editor.docs {
                 Some(docs) => {
                     let palette = cx.palette();
@@ -1167,6 +1209,15 @@ impl AppView {
                     .position(|row| focused(&row.value))?;
                 Some(CompletionField::Value(kind, index))
             })
+    }
+
+    /// The script editor (`::: pre` or `::: post`) that has the focus, if any.
+    pub(crate) fn focused_script_editor(&self, window: &Window, cx: &App) -> Option<&ScriptEditor> {
+        let editor = &self.request_editor;
+        [&editor.pre_editor, &editor.post_editor]
+            .into_iter()
+            .flatten()
+            .find(|script| script.editor.focus_handle(cx).is_focused(window))
     }
 
     /// Whether the menu of `field` hides every value: the value of a sensitive header, as its

@@ -8,6 +8,9 @@
 //! focused input and otherwise let the input's own binding run (`cx.propagate()`). What the menu
 //! lists comes from `state::variable_completion` and `state::header_completion`; its rows and
 //! the highlighted one are a `state::completion::CompletionMenu`.
+//!
+//! The script code editors draw their own menu (`views/script_completion.rs`); `Ctrl+Space` and
+//! `Tab` reach it through the same actions.
 
 use std::ops::Range;
 
@@ -68,6 +71,7 @@ impl AppView {
     ) {
         match self.focused_completion_field(window, cx) {
             Some(field) => self.update_completion(field, true, cx),
+            None if self.show_script_completion(window, cx) => {}
             None => cx.propagate(),
         }
     }
@@ -274,7 +278,9 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         let Some(open) = self.focused_completion(window, cx) else {
-            cx.propagate();
+            if !self.confirm_script_completion(window, cx) {
+                cx.propagate();
+            }
             return;
         };
         match open.menu.selected().cloned() {

@@ -30,6 +30,17 @@ test("order created", () => {
 env.set("orderId", res.json().id);
 ```
 
+<h2 id="autocompletion">Autocompletion</h2>
+<p>The script editors suggest what fits where the cursor is, in a menu with a short description of the highlighted entry:</p>
+<ul>
+    <li><strong>Globals</strong> while you type a name: <code>re</code> offers <code>req</code>, and <code>res</code> too in a post-response script. <code>res</code> is never offered in a pre-request script, where it does not exist.</li>
+    <li><strong>Members</strong> after a dot: <code>req.</code>, <code>req.headers.</code>, <code>res.</code>, <code>vars.</code>, <code>env.</code>, <code>console.</code>, <code>util.</code>, and the matchers after <code>expect(value).</code> or <code>expect(value).not.</code>. A function shows its parameters, a property its type. Choosing a function inserts its name and the opening parenthesis, or both parentheses when it takes no arguments.</li>
+    <li><strong>Variable names</strong> inside the quotes of <code>vars.get("</code>, <code>vars.set("</code>, <code>env.get("</code>, <code>env.set("</code> and <code>env.unset("</code>: the active environment's, the session overrides and the names the script sets with <code>vars.set()</code>, each with its value, masked when it is a secret.</li>
+    <li><strong>Header names</strong> inside the quotes of <code>req.headers.get("</code>, <code>req.headers.set("</code>, <code>req.headers.remove("</code> and <code>res.headers.get("</code>.</li>
+    <li><strong>Response keys</strong> in a post-response script, after <code>res.json().</code> and further down the same path, such as <code>res.json().data.items[0].</code>, taken from the last response the tab received when its body is JSON of up to 20 MB. A variable assigned from it works the same: after <code>const body = res.json();</code>, <code>body.</code> offers the same keys. A key that is not a plain name is inserted as <code>["a-key"]</code>. Send the request once to get them.</li>
+</ul>
+<p>Nothing is suggested inside comments or other strings. The menu opens by itself while you type, and <kbd>Ctrl</kbd> <kbd>Space</kbd> opens it on demand, listing every global on an empty line. <kbd>↑</kbd> and <kbd>↓</kbd> move through it, <kbd>Enter</kbd> or <kbd>Tab</kbd> inserts the highlighted entry and <kbd>Esc</kbd> closes it.</p>
+
 <h2>When they run</h2>
 <ol class="steps">
     <li>The <strong>pre-request</strong> script runs first. It sees the request before variables are replaced, and can change its method, URL, headers and body, and set variables with <code>vars.set()</code>.</li>

@@ -19,6 +19,7 @@ pub mod new_workspace;
 pub mod request_editor;
 pub mod response_view;
 pub mod root;
+pub mod script_completion;
 pub mod send;
 pub mod settings;
 pub mod shortcuts;

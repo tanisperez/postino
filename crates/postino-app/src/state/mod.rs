@@ -27,6 +27,7 @@ pub mod palette;
 pub mod request_edit;
 pub mod response_render;
 pub mod run_log;
+pub mod script_completion;
 pub mod script_heuristics;
 pub mod settings;
 pub mod shortcuts;
