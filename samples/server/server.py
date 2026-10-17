@@ -115,6 +115,10 @@ def error_reply(status, message, headers=None):
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     server_version = "PostinoSampleServer/1.0"
+    # TCP_NODELAY, as real servers set it. The headers and the body go out in two writes, and on a
+    # kept-alive connection Nagle's algorithm holds the body until the client's delayed ACK, which
+    # adds about 40 ms to every response of a load test that reuses connections.
+    disable_nagle_algorithm = True
     profile = "http"  # overridden per listener
     tls = False
 

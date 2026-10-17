@@ -215,3 +215,28 @@ _version: 2
   es: "Comparar con"
   gl: "Comparar con"
   it: "Confronta con"
+"load_test.config.reuse_connections":
+  en: "Reuse connections"
+  es: "Reutilizar conexiones"
+  gl: "Reutilizar conexións"
+  it: "Riutilizza le connessioni"
+"load_test.config.reuse_connections_hint":
+  en: "Keep-alive, one connection per VU"
+  es: "Keep-alive, una conexión por VU"
+  gl: "Keep-alive, unha conexión por VU"
+  it: "Keep-alive, una connessione per VU"
+"load_test.connections.reused":
+  en: "Keep-alive"
+  es: "Keep-alive"
+  gl: "Keep-alive"
+  it: "Keep-alive"
+"load_test.connections.new":
+  en: "New connections"
+  es: "Conexiones nuevas"
+  gl: "Conexións novas"
+  it: "Nuove connessioni"
+"load_test.compare.connections_differ":
+  en: "One run reused connections and the other did not."
+  es: "Una ejecución reutilizó conexiones y la otra no."
+  gl: "Unha execución reutilizou conexións e a outra non."
+  it: "Un'esecuzione ha riutilizzato le connessioni e l'altra no."

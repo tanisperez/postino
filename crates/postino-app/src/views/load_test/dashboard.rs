@@ -182,6 +182,16 @@ fn run_with_day(number: u32, started_at_unix: u64, now: i64) -> String {
     )
 }
 
+/// How a run connected: "Keep-alive" when it reused its connections, "New connections" otherwise.
+fn connection_mode_label(reused: bool) -> String {
+    if reused {
+        t!("load_test.connections.reused")
+    } else {
+        t!("load_test.connections.new")
+    }
+    .into_owned()
+}
+
 /// The history list of previous runs for this tab's target, click to view.
 fn render_history_list(
     weak: WeakEntity<AppView>,
@@ -215,6 +225,12 @@ fn render_history_list(
                     header.started_at_unix,
                     now,
                 )))
+                .child(
+                    div()
+                        .text_size(px(12.0))
+                        .text_color(palette.fg_subtle)
+                        .child(connection_mode_label(header.reuse_connections)),
+                )
                 .child(
                     div()
                         .text_size(px(12.0))
@@ -280,6 +296,15 @@ fn render_header(
                 .child(div().size(px(6.0)).rounded_full().bg(badge_fg))
                 .child(badge_label),
         )
+        .when_some(load_test.run_reuse_connections, |row, reused| {
+            row.child(
+                div()
+                    .flex_none()
+                    .text_size(px(12.0))
+                    .text_color(palette.fg_muted)
+                    .child(connection_mode_label(reused)),
+            )
+        })
         .child(
             // With a minimum width, a narrow dashboard wraps the bar and the elapsed time onto
             // a second line instead of squeezing the bar to a stub.
@@ -1070,6 +1095,20 @@ fn render_compare_with(
                     ),
             );
         }
+    }
+
+    let modes_differ = selected
+        .zip(load_test.run_reuse_connections)
+        .is_some_and(|(header, reused)| header.reuse_connections != reused);
+    if modes_differ && load_test.compare_snapshot.is_some() {
+        card = card.child(
+            div()
+                .px(px(16.0))
+                .py(px(8.0))
+                .text_size(px(12.0))
+                .text_color(palette.warning)
+                .child(t!("load_test.compare.connections_differ")),
+        );
     }
 
     card.into_any_element()

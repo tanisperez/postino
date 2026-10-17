@@ -51,6 +51,7 @@ fn a_short_run_produces_samples_for_every_target_with_a_200_status_count() {
         ramp_up: Duration::ZERO,
         think_time: Duration::ZERO,
         stop_on_error_rate: None,
+        reuse_connections: false,
     };
 
     let run = LoadRun::start(config, Environment::default(), SessionEnv::new(), runner());
@@ -89,6 +90,7 @@ fn ramp_up_starts_fewer_virtual_users_early_than_late() {
         ramp_up: Duration::from_millis(400),
         think_time: Duration::from_millis(5),
         stop_on_error_rate: None,
+        reuse_connections: false,
     };
 
     let run = LoadRun::start(config, Environment::default(), SessionEnv::new(), runner());
@@ -126,6 +128,7 @@ fn stop_ends_the_run_promptly() {
         ramp_up: Duration::ZERO,
         think_time: Duration::ZERO,
         stop_on_error_rate: None,
+        reuse_connections: false,
     };
 
     let run = LoadRun::start(config, Environment::default(), SessionEnv::new(), runner());
@@ -161,6 +164,7 @@ fn a_server_returning_500_with_a_stop_on_error_rate_stops_the_run_early() {
         ramp_up: Duration::ZERO,
         think_time: Duration::ZERO,
         stop_on_error_rate: Some(0.1),
+        reuse_connections: false,
     };
 
     let started = Instant::now();
@@ -221,6 +225,7 @@ fn a_post_script_env_change_flows_to_the_next_target_of_the_same_virtual_user() 
         ramp_up: Duration::ZERO,
         think_time: Duration::from_millis(20),
         stop_on_error_rate: None,
+        reuse_connections: false,
     };
 
     let run = LoadRun::start(config, Environment::default(), SessionEnv::new(), runner());
@@ -248,4 +253,60 @@ fn a_post_script_env_change_flows_to_the_next_target_of_the_same_virtual_user() 
         }
     }
     assert!(me_requests_seen > 0, "expected at least one 'me' request");
+}
+
+/// Runs `vus` virtual users against a local server for a short while and returns how many
+/// requests the server answered and over how many connections (distinct client ports).
+fn requests_and_connections(vus: u32, reuse_connections: bool) -> (usize, usize) {
+    let server = TestServer::start();
+    let (tx, rx) = mpsc::channel();
+    let handle = server.serve(move |captured: CapturedRequest| {
+        let _ = tx.send(captured.remote_addr.map(|addr| addr.port()));
+        StubResponse::new(200)
+    });
+
+    let config = LoadConfig {
+        targets: vec![LoadTarget::new("a", get(server.url()))],
+        vus,
+        duration: Duration::from_millis(300),
+        ramp_up: Duration::ZERO,
+        think_time: Duration::from_millis(10),
+        stop_on_error_rate: None,
+        reuse_connections,
+    };
+    let summary =
+        LoadRun::start(config, Environment::default(), SessionEnv::new(), runner()).join();
+
+    drop(server);
+    handle.join().expect("test server thread panicked");
+
+    let ports: Vec<u16> = rx.try_iter().flatten().collect();
+    assert_eq!(ports.len() as u64, summary.snapshot.total);
+    let connections = ports.iter().collect::<std::collections::HashSet<_>>().len();
+    (ports.len(), connections)
+}
+
+#[test]
+fn reusing_connections_keeps_one_connection_per_virtual_user() {
+    let (requests, connections) = requests_and_connections(3, true);
+    assert!(
+        requests > 6,
+        "expected several iterations per virtual user, got {requests}"
+    );
+    assert_eq!(connections, 3);
+}
+
+#[test]
+fn without_reuse_every_request_opens_a_connection() {
+    let (requests, connections) = requests_and_connections(3, false);
+    assert!(
+        requests > 6,
+        "expected several iterations per virtual user, got {requests}"
+    );
+    // One connection per request. Not compared exactly: the OS may hand out a closed
+    // connection's port again.
+    assert!(
+        connections > requests / 2,
+        "{requests} requests over only {connections} connections"
+    );
 }

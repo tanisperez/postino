@@ -68,6 +68,11 @@ pub struct LoadConfigSummary {
     pub stop_on_error_rate: Option<f64>,
     /// How many targets (requests) the run looped over.
     pub target_count: usize,
+    /// Whether each virtual user reused its connections ([`LoadConfig::reuse_connections`]).
+    /// `#[serde(default)]` (`false`) for a run saved before this field existed: those runs
+    /// always opened a new connection per request.
+    #[serde(default)]
+    pub reuse_connections: bool,
 }
 
 impl From<&LoadConfig> for LoadConfigSummary {
@@ -80,6 +85,7 @@ impl From<&LoadConfig> for LoadConfigSummary {
             think_time_ms: u64::try_from(config.think_time.as_millis()).unwrap_or(u64::MAX),
             stop_on_error_rate: config.stop_on_error_rate,
             target_count: config.targets.len(),
+            reuse_connections: config.reuse_connections,
         }
     }
 }
@@ -139,6 +145,10 @@ pub struct RunRecordHeader {
     pub p95: u32,
     /// The error rate of the underlying [`RunRecord`] (`0.0` to `1.0`).
     pub error_rate: f64,
+    /// Whether the underlying run reused its connections, see
+    /// [`LoadConfigSummary::reuse_connections`].
+    #[serde(default)]
+    pub reuse_connections: bool,
 }
 
 impl From<&RunRecord> for RunRecordHeader {
@@ -152,6 +162,7 @@ impl From<&RunRecord> for RunRecordHeader {
             rps: record.snapshot.rps,
             p95: record.snapshot.p95,
             error_rate: record.snapshot.error_rate,
+            reuse_connections: record.config.reuse_connections,
         }
     }
 }
@@ -281,6 +292,7 @@ mod tests {
             ramp_up: Duration::from_secs(10),
             think_time: Duration::from_millis(500),
             stop_on_error_rate: Some(0.05),
+            reuse_connections: true,
         };
         RunRecord {
             number,
@@ -391,6 +403,28 @@ mod tests {
                 ("GET".to_string(), "list".to_string()),
             ]
         );
+    }
+
+    #[test]
+    fn a_run_saved_before_reuse_connections_existed_did_not_reuse_them() {
+        let dir = tempdir().expect("temp dir");
+        let mut value = serde_json::to_value(sample_record(1)).expect("serialize");
+        value["config"]
+            .as_object_mut()
+            .expect("config serializes as an object")
+            .remove("reuse_connections");
+        fs::create_dir_all(dir.path().join(".postino/runs")).expect("create runs dir");
+        fs::write(
+            dir.path().join(".postino/runs/0001.json"),
+            serde_json::to_string_pretty(&value).expect("serialize back to text"),
+        )
+        .expect("write old record");
+
+        assert!(!load(dir.path(), 1).expect("loads").config.reuse_connections);
+        assert!(!list(dir.path())[0].reuse_connections);
+        // A current record keeps it.
+        save(dir.path(), &sample_record(2)).expect("save should succeed");
+        assert!(list(dir.path())[0].reuse_connections);
     }
 
     #[test]

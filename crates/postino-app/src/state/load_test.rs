@@ -148,6 +148,8 @@ pub struct LoadTestConfigInputs {
     pub think_time_ms: String,
     /// Whether "Stop on errors" is on.
     pub stop_on_error: bool,
+    /// Whether "Reuse connections" is on.
+    pub reuse_connections: bool,
 }
 
 impl Default for LoadTestConfigInputs {
@@ -158,6 +160,7 @@ impl Default for LoadTestConfigInputs {
             ramp_up_secs: DEFAULT_RAMP_UP_SECS.to_string(),
             think_time_ms: DEFAULT_THINK_TIME_MS.to_string(),
             stop_on_error: true,
+            reuse_connections: true,
         }
     }
 }
@@ -173,6 +176,7 @@ impl LoadTestConfigInputs {
             ramp_up_secs: clamp_ramp_up_secs(&self.ramp_up_secs),
             think_time_ms: clamp_think_time_ms(&self.think_time_ms),
             stop_on_error_rate: self.stop_on_error.then_some(STOP_ON_ERROR_RATE),
+            reuse_connections: self.reuse_connections,
         }
     }
 }
@@ -191,6 +195,8 @@ pub struct ResolvedLoadTestConfig {
     pub think_time_ms: u64,
     /// The error rate threshold, when "Stop on errors" is on.
     pub stop_on_error_rate: Option<f64>,
+    /// Whether each virtual user reuses its connections (`postino_load::LoadConfig`).
+    pub reuse_connections: bool,
 }
 
 /// A load test tab's state: held as `crate::state::tabs::TabKind::LoadTest` inside an open tab.
@@ -237,6 +243,9 @@ pub struct LoadTestTab {
     /// [`crate::views::load_test::dashboard::target_row_label`]) only for a run saved before that
     /// `RunRecord` field existed.
     pub target_rows: Vec<(Method, String)>,
+    /// Whether the run shown reused its connections: set when a run starts and when a past run
+    /// is viewed, since the config panel may have changed since. `None` before the first run.
+    pub run_reuse_connections: Option<bool>,
 }
 
 impl LoadTestTab {
@@ -256,6 +265,7 @@ impl LoadTestTab {
             compare_snapshot: None,
             history: Vec::new(),
             target_rows: Vec::new(),
+            run_reuse_connections: None,
         }
     }
 
@@ -539,6 +549,14 @@ mod tests {
         );
         inputs.stop_on_error = false;
         assert_eq!(inputs.resolved().stop_on_error_rate, None);
+    }
+
+    #[test]
+    fn connections_are_reused_by_default() {
+        let mut inputs = LoadTestConfigInputs::default();
+        assert!(inputs.resolved().reuse_connections);
+        inputs.reuse_connections = false;
+        assert!(!inputs.resolved().reuse_connections);
     }
 
     #[test]

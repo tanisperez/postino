@@ -202,7 +202,9 @@ fn run_supervisor(
 }
 
 /// Runs on its own thread for the lifetime of one virtual user: loops over `config.targets` in
-/// order, sleeping `config.think_time` between iterations, until `shared.stop` is set.
+/// order, sleeping `config.think_time` between iterations, until `shared.stop` is set. With
+/// `config.reuse_connections`, every request goes through one client of its own, which keeps
+/// its connections open between them.
 ///
 /// Never panics: the only fallible step is locking `shared.metrics`, and that recovers from a
 /// poisoned lock instead of unwrapping (see [`lock_metrics`]), so a virtual user thread can
@@ -214,6 +216,7 @@ fn run_virtual_user(
     session_env: &mut SessionEnv,
     runner: &Runner,
 ) {
+    let client = config.reuse_connections.then(|| runner.client());
     'iterations: while !shared.stop.load(Ordering::SeqCst) {
         for (target_index, target) in config.targets.iter().enumerate() {
             if shared.stop.load(Ordering::SeqCst) {
@@ -221,7 +224,10 @@ fn run_virtual_user(
             }
 
             let started = Instant::now();
-            let result = runner.run(&target.request, environment, session_env);
+            let result = match &client {
+                Some(client) => runner.run_with(&target.request, environment, session_env, client),
+                None => runner.run(&target.request, environment, session_env),
+            };
             let latency = response_latency(&result, started.elapsed());
             let elapsed = shared.start.elapsed();
 

@@ -60,4 +60,9 @@ pub struct LoadConfig {
     /// for 5%), but only after at least 50 samples have been recorded, so a handful of early
     /// failures cannot stop a run before it has really started.
     pub stop_on_error_rate: Option<f64>,
+    /// Whether each virtual user keeps its connections open and reuses them (keep-alive), like a
+    /// real client: one [`postino_runner::Client`] per virtual user, created when it starts and
+    /// kept for the whole run. When `false`, every request opens a new connection (with its TLS
+    /// handshake over HTTPS) and closes it, measuring clients that always connect from scratch.
+    pub reuse_connections: bool,
 }

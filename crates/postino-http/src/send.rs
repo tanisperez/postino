@@ -1,6 +1,8 @@
-//! The `send` function: hands a [`ResolvedRequest`] to `ureq` and turns the result back into
-//! plain `postino-core` types.
+//! The `send` function and the [`Client`] type: hand a [`ResolvedRequest`] to `ureq` and turn
+//! the result back into plain `postino-core` types.
 
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::Instant;
 
 use postino_core::{ResolvedBody, ResolvedField, ResolvedRequest, Response, log_safe};
@@ -8,7 +10,9 @@ use postino_core::{ResolvedBody, ResolvedField, ResolvedRequest, Response, log_s
 use crate::error::HttpError;
 use crate::options::{InvalidCertificates, SendOptions};
 
-/// Sends a fully resolved request over HTTP and returns the response.
+/// Sends a fully resolved request over HTTP and returns the response, on a connection of its
+/// own: it is opened for this request (with its TLS handshake over HTTPS) and closed afterwards.
+/// [`Client::send`] keeps connections open between requests instead.
 ///
 /// 4xx and 5xx status codes are returned as a normal [`Response`], not as an [`HttpError`]:
 /// only failures that prevent us from getting any response at all (an invalid request, a
@@ -20,27 +24,111 @@ use crate::options::{InvalidCertificates, SendOptions};
 /// disabled, and the returned response carries a [`Response::tls_warning`]. This is safe for
 /// any method: a certificate error aborts the TLS handshake, before any request byte is written.
 pub fn send(request: &ResolvedRequest, options: &SendOptions) -> Result<Response, HttpError> {
-    if log::log_enabled!(log::Level::Trace) {
-        log_request(request);
-    }
-    let http_request = build_http_request(request)?;
-    let started = Instant::now();
+    // A client of its own, dropped with its connection once the response is read.
+    Client::new(options.clone()).send(request)
+}
 
-    let verify = options.invalid_certificates != InvalidCertificates::Accept;
-    let fallback = options.invalid_certificates == InvalidCertificates::SendWithWarning;
-    let (response, tls_warning) = match run(&build_agent(options, verify), &http_request) {
-        Err(error) if fallback && is_certificate_error(&error) => {
-            let warning = format!(
-                "TLS certificate not verified: {}",
-                certificate_reason(&error)
-            );
-            log::debug!("{warning}, sending again without verification");
-            let retry = run(&build_agent(options, false), &http_request).map_err(map_ureq_error)?;
-            (retry, Some(warning))
+/// Sends requests with keep-alive: the connection a request opens stays open after its response
+/// and is reused by the next request to the same scheme, host and port, skipping the TCP connect
+/// and the TLS handshake.
+///
+/// A client holds one connection pool. `ureq` keeps at most 3 idle connections per host and 10
+/// overall in it, so a client is meant to be used by one sender at a time (a load test creates
+/// one per virtual user), not shared by many threads sending at once: most of their connections
+/// would be closed when they go back to the pool.
+///
+/// With [`InvalidCertificates::SendWithWarning`], a host whose certificate is rejected once is
+/// remembered, and its later requests go straight to the connection without verification, with
+/// the same [`Response::tls_warning`].
+pub struct Client {
+    options: SendOptions,
+    /// Sends every request, verifying certificates unless they are always accepted.
+    agent: ureq::Agent,
+    /// Sends without verification, built the first time a certificate is rejected.
+    unverified: OnceLock<ureq::Agent>,
+    /// The warning of each origin (`scheme://host:port`) whose certificate was rejected.
+    unverified_origins: Mutex<HashMap<String, String>>,
+}
+
+impl Client {
+    /// A client that sends with `options`. No connection is opened until the first request.
+    #[must_use]
+    pub fn new(options: SendOptions) -> Self {
+        let verify = options.invalid_certificates != InvalidCertificates::Accept;
+        Self {
+            agent: build_agent(&options, verify),
+            options,
+            unverified: OnceLock::new(),
+            unverified_origins: Mutex::new(HashMap::new()),
         }
-        other => (other.map_err(map_ureq_error)?, None),
-    };
-    finish(response, started, tls_warning, options.max_response_size)
+    }
+
+    /// Sends a fully resolved request and returns the response, reusing an open connection to
+    /// its origin when there is one. Errors and certificate handling are those of [`send`].
+    pub fn send(&self, request: &ResolvedRequest) -> Result<Response, HttpError> {
+        if log::log_enabled!(log::Level::Trace) {
+            log_request(request);
+        }
+        let http_request = build_http_request(request)?;
+        let started = Instant::now();
+
+        let fallback = self.options.invalid_certificates == InvalidCertificates::SendWithWarning;
+        let origin = origin_of(&http_request);
+        let known_warning = if fallback {
+            self.origins().get(&origin).cloned()
+        } else {
+            None
+        };
+        let (response, tls_warning) = match known_warning {
+            Some(warning) => {
+                let response = run(self.unverified_agent(), &http_request);
+                (response.map_err(map_ureq_error)?, Some(warning))
+            }
+            None => match run(&self.agent, &http_request) {
+                Err(error) if fallback && is_certificate_error(&error) => {
+                    let warning = format!(
+                        "TLS certificate not verified: {}",
+                        certificate_reason(&error)
+                    );
+                    log::debug!("{warning}, sending again without verification");
+                    self.origins().insert(origin, warning.clone());
+                    let retry = run(self.unverified_agent(), &http_request);
+                    (retry.map_err(map_ureq_error)?, Some(warning))
+                }
+                other => (other.map_err(map_ureq_error)?, None),
+            },
+        };
+        finish(
+            response,
+            started,
+            tls_warning,
+            self.options.max_response_size,
+        )
+    }
+
+    /// The agent that sends without verifying certificates.
+    fn unverified_agent(&self) -> &ureq::Agent {
+        self.unverified
+            .get_or_init(|| build_agent(&self.options, false))
+    }
+
+    /// The origins whose certificate was rejected. Recovers from a poisoned lock: the map is
+    /// only read and inserted into, so it is never left half updated.
+    fn origins(&self) -> std::sync::MutexGuard<'_, HashMap<String, String>> {
+        self.unverified_origins
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
+/// The `scheme://host:port` a request goes to, the unit connections are reused for.
+fn origin_of(request: &ureq::http::Request<Vec<u8>>) -> String {
+    let uri = request.uri();
+    format!(
+        "{}://{}",
+        uri.scheme_str().unwrap_or_default(),
+        uri.authority().map_or("", |authority| authority.as_str())
+    )
 }
 
 /// Logs the request line and headers at Trace, with sensitive header values redacted and the

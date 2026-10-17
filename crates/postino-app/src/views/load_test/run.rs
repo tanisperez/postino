@@ -121,15 +121,17 @@ impl AppView {
             ramp_up: Duration::from_secs(resolved.ramp_up_secs),
             think_time: Duration::from_millis(resolved.think_time_ms),
             stop_on_error_rate: resolved.stop_on_error_rate,
+            reuse_connections: resolved.reuse_connections,
         };
         let config_summary = LoadConfigSummary::from(&config);
         log::info!(
-            "load test started: {} targets, {} virtual users for {} s (ramp up {} s, think time {} ms)",
+            "load test started: {} targets, {} virtual users for {} s (ramp up {} s, think time {} ms, reuse connections {})",
             config.targets.len(),
             config.vus,
             config.duration.as_secs(),
             config.ramp_up.as_secs(),
             config.think_time.as_millis(),
+            config.reuse_connections,
         );
         let started_at_unix = unix_now();
 
@@ -157,6 +159,7 @@ impl AppView {
             load_test.compare_with = None;
             load_test.compare_snapshot = None;
             load_test.target_rows = target_rows;
+            load_test.run_reuse_connections = Some(resolved.reuse_connections);
         });
 
         let run = LoadRun::start(config, environment, session_env, runner);

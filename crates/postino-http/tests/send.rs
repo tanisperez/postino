@@ -13,7 +13,7 @@ use std::time::Duration;
 
 use postino_core::{Method, ResolvedBody, ResolvedField, ResolvedRequest};
 use postino_http::test_support::{CapturedRequest, StubResponse, TestServer};
-use postino_http::{HttpError, InvalidCertificates, SendOptions};
+use postino_http::{Client, HttpError, InvalidCertificates, SendOptions};
 
 /// A bare request for `method` against `url`, no headers, no body.
 fn request_to(method: Method, url: impl Into<String>) -> ResolvedRequest {
@@ -346,10 +346,71 @@ fn fails_with_a_clear_error_when_the_body_exceeds_the_limit() {
     }
 }
 
+/// Sends three requests to one server through `send_three` and returns the client port of each,
+/// as the server saw it.
+fn client_ports(send_three: impl FnOnce(&str)) -> Vec<u16> {
+    let server = TestServer::start();
+    let (tx, rx) = mpsc::channel();
+    let handle = server.serve(move |captured| {
+        let _ = tx.send(captured.remote_addr.map(|addr| addr.port()));
+        StubResponse::new(200).with_body("ok")
+    });
+
+    send_three(&server.url());
+    let ports = (0..3)
+        .map(|_| {
+            rx.recv_timeout(Duration::from_secs(1))
+                .expect("a request")
+                .expect("a remote address")
+        })
+        .collect();
+
+    drop(server);
+    handle.join().expect("test server thread panicked");
+    ports
+}
+
+#[test]
+fn send_opens_a_new_connection_for_every_request() {
+    let ports = client_ports(|url| {
+        for _ in 0..3 {
+            postino_http::send(&request_to(Method::Get, url), &SendOptions::default())
+                .expect("sent");
+        }
+    });
+
+    assert_ne!(ports[0], ports[1]);
+    assert_ne!(ports[1], ports[2]);
+}
+
+#[test]
+fn a_client_reuses_its_connection() {
+    let client = Client::new(SendOptions::default());
+    let ports = client_ports(|url| {
+        for path in ["/a", "/b", "/c"] {
+            let response = client
+                .send(&request_to(Method::Get, format!("{url}{path}")))
+                .expect("sent");
+            assert_eq!(response.body, b"ok");
+        }
+    });
+
+    assert_eq!(ports[0], ports[1]);
+    assert_eq!(ports[1], ports[2]);
+}
+
 /// A one-shot HTTPS server with a self-signed certificate for `127.0.0.1`, built on `rustls`
 /// directly since `tiny_http` would need an extra TLS stack. Answers every connection with a 200
 /// and the body `secure`, and records the request line of each request it actually reads.
 fn start_tls_server() -> (String, mpsc::Receiver<String>, std::thread::JoinHandle<()>) {
+    start_tls_server_for(1)
+}
+
+/// [`start_tls_server`] answering `responses` requests, one per connection, out of
+/// `responses + 1` connections at most: one rejected handshake is all it allows.
+fn start_tls_server_for(
+    responses: usize,
+) -> (String, mpsc::Receiver<String>, std::thread::JoinHandle<()>) {
     use std::io::{Read, Write};
     use std::net::TcpListener;
 
@@ -375,8 +436,9 @@ fn start_tls_server() -> (String, mpsc::Receiver<String>, std::thread::JoinHandl
     let url = format!("https://{}", listener.local_addr().expect("local addr"));
     let (tx, rx) = mpsc::channel();
     let handle = std::thread::spawn(move || {
-        // Two connections at most: the rejected handshake and the retry.
-        for _ in 0..2 {
+        // The rejected handshake and one connection per response, at most.
+        let mut answered = 0;
+        for _ in 0..=responses {
             let Ok((tcp, _)) = listener.accept() else {
                 return;
             };
@@ -396,7 +458,10 @@ fn start_tls_server() -> (String, mpsc::Receiver<String>, std::thread::JoinHandl
             );
             stream.conn.send_close_notify();
             let _ = stream.flush();
-            return;
+            answered += 1;
+            if answered == responses {
+                return;
+            }
         }
     });
     (url, rx, handle)
@@ -426,6 +491,25 @@ fn untrusted_certificate_is_sent_anyway_with_a_warning() {
         requests.recv().expect("one request"),
         "POST /secure HTTP/1.1"
     );
+    handle.join().expect("server thread");
+}
+
+#[test]
+fn a_client_remembers_an_untrusted_certificate() {
+    // Two responses out of three connections: a second rejected handshake would leave the
+    // second request without an answer.
+    let (url, requests, handle) = start_tls_server_for(2);
+    let client = Client::new(SendOptions::default());
+
+    for _ in 0..2 {
+        let response = client
+            .send(&request_to(Method::Get, format!("{url}/secure")))
+            .expect("sent without verification");
+        assert_eq!(response.body, b"secure");
+        assert!(response.tls_warning.is_some());
+    }
+
+    assert_eq!(requests.iter().count(), 2);
     handle.join().expect("server thread");
 }
 

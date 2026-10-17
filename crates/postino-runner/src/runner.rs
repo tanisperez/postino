@@ -5,8 +5,8 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use postino_core::{Environment, KeyValue, Request, VarScope};
-use postino_http::SendOptions;
+use postino_core::{Environment, KeyValue, Request, ResolvedRequest, Response, VarScope};
+use postino_http::{Client, HttpError, SendOptions};
 use postino_script::{PostContext, PreContext, ScriptEngine};
 
 use crate::resolve::resolve;
@@ -35,7 +35,7 @@ impl Runner {
     }
 
     /// Runs `request` against `environment`, applying any environment changes the scripts make
-    /// to `session_env`.
+    /// to `session_env`. The request is sent on a new connection, closed afterwards.
     ///
     /// This never fails: every kind of failure (a pre script exception, a send error, a post
     /// script exception) is reported inside the returned [`RunResult`] instead of a top-level
@@ -46,6 +46,39 @@ impl Runner {
         request: &Request,
         environment: &Environment,
         session_env: &mut SessionEnv,
+    ) -> RunResult {
+        self.execute(request, environment, session_env, |resolved| {
+            postino_http::send(resolved, &self.options)
+        })
+    }
+
+    /// A [`Client`] that sends with this runner's options, for [`Self::run_with`].
+    #[must_use]
+    pub fn client(&self) -> Client {
+        Client::new(self.options.clone())
+    }
+
+    /// [`Self::run`], sending the request through `client`, which reuses its open connections
+    /// (keep-alive). `client` should come from [`Self::client`], so it has the same options.
+    pub fn run_with(
+        &self,
+        request: &Request,
+        environment: &Environment,
+        session_env: &mut SessionEnv,
+        client: &Client,
+    ) -> RunResult {
+        self.execute(request, environment, session_env, |resolved| {
+            client.send(resolved)
+        })
+    }
+
+    /// The pipeline behind [`Self::run`] and [`Self::run_with`], which only differ in `send`.
+    fn execute(
+        &self,
+        request: &Request,
+        environment: &Environment,
+        session_env: &mut SessionEnv,
+        send: impl FnOnce(&ResolvedRequest) -> Result<Response, HttpError>,
     ) -> RunResult {
         let mut console = Vec::new();
         let mut tests = Vec::new();
@@ -102,7 +135,7 @@ impl Runner {
         );
 
         // 3. Send.
-        let response = match postino_http::send(&resolved, &self.options) {
+        let response = match send(&resolved) {
             Ok(response) => response,
             Err(error) => {
                 return RunResult {

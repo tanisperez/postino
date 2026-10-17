@@ -19,6 +19,7 @@
 //! handle.join().expect("server thread panicked");
 //! ```
 
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 
@@ -36,6 +37,8 @@ pub struct CapturedRequest {
     pub headers: Vec<(String, String)>,
     /// The raw request body. Empty when the request had none.
     pub body: Vec<u8>,
+    /// The client's address. Two requests from the same port came over the same connection.
+    pub remote_addr: Option<SocketAddr>,
 }
 
 /// The response a [`TestServer`] handler wants to send back for one request.
@@ -165,6 +168,7 @@ fn capture(request: &mut tiny_http::Request) -> CapturedRequest {
         url,
         headers,
         body,
+        remote_addr: request.remote_addr().copied(),
     }
 }
 

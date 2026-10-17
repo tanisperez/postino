@@ -259,6 +259,21 @@ impl AppView {
         });
     }
 
+    /// Toggles the "Reuse connections" switch.
+    pub(crate) fn set_load_test_reuse_connections(
+        &mut self,
+        tab_id: &str,
+        checked: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if self.load_test_is_running(tab_id) {
+            return;
+        }
+        self.edit_load_test(tab_id, cx, |load_test| {
+            load_test.config.reuse_connections = checked
+        });
+    }
+
     /// Picks a run from the "Compare with" dropdown and loads its full snapshot.
     pub(crate) fn set_load_test_compare_with(
         &mut self,
@@ -342,6 +357,7 @@ impl AppView {
                 .iter()
                 .map(|(method, name)| (method.parse().unwrap_or_default(), name.clone()))
                 .collect();
+            load_test.run_reuse_connections = Some(record.config.reuse_connections);
             load_test.snapshot = Some(record.snapshot);
             load_test.compare_with = load_test
                 .history

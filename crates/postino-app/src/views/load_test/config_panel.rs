@@ -209,13 +209,40 @@ impl AppView {
                         is_running,
                         cx,
                     ))
-                    .child(render_stop_on_error_row(
-                        weak.clone(),
-                        tab_id,
-                        &palette,
-                        &load_test,
-                        is_running,
-                    )),
+                    .child({
+                        let weak = weak.clone();
+                        let tab_id = tab_id.to_string();
+                        render_switch_row(
+                            "load-test-stop-on-error",
+                            t!("load_test.config.stop_on_errors").into_owned(),
+                            t!("load_test.config.stop_on_errors_hint").into_owned(),
+                            load_test.config.stop_on_error,
+                            &palette,
+                            is_running,
+                            move |checked, cx| {
+                                let _ = weak.update(cx, |view, cx| {
+                                    view.set_load_test_stop_on_error(&tab_id, checked, cx);
+                                });
+                            },
+                        )
+                    })
+                    .child({
+                        let weak = weak.clone();
+                        let tab_id = tab_id.to_string();
+                        render_switch_row(
+                            "load-test-reuse-connections",
+                            t!("load_test.config.reuse_connections").into_owned(),
+                            t!("load_test.config.reuse_connections_hint").into_owned(),
+                            load_test.config.reuse_connections,
+                            &palette,
+                            is_running,
+                            move |checked, cx| {
+                                let _ = weak.update(cx, |view, cx| {
+                                    view.set_load_test_reuse_connections(&tab_id, checked, cx);
+                                });
+                            },
+                        )
+                    }),
             )
             .child(
                 v_flex()
@@ -487,15 +514,17 @@ fn render_field(
         .into_any_element()
 }
 
-/// The "Stop on errors" switch row.
-fn render_stop_on_error_row(
-    weak: WeakEntity<AppView>,
-    tab_id: &str,
+/// A switch row ("Stop on errors", "Reuse connections"): a label and a hint on the left, the
+/// switch on the right, dimmed while a run is in progress.
+fn render_switch_row(
+    id: &'static str,
+    label: String,
+    hint: String,
+    checked: bool,
     palette: &Palette,
-    load_test: &LoadTestTab,
     is_running: bool,
+    on_change: impl Fn(bool, &mut App) + 'static,
 ) -> AnyElement {
-    let tab_id = tab_id.to_string();
     h_flex()
         .items_center()
         .justify_between()
@@ -508,25 +537,19 @@ fn render_stop_on_error_row(
                     div()
                         .text_size(px(12.0))
                         .font_weight(FontWeight::MEDIUM)
-                        .child(t!("load_test.config.stop_on_errors")),
+                        .child(label),
                 )
                 .child(
                     div()
                         .text_size(px(12.0))
                         .text_color(palette.fg_subtle)
-                        .child(t!("load_test.config.stop_on_errors_hint")),
+                        .child(hint),
                 ),
         )
         .child(
-            Switch::new("load-test-stop-on-error")
-                .checked(load_test.config.stop_on_error)
-                .on_click(move |checked, _, cx| {
-                    let checked = *checked;
-                    let tab_id = tab_id.clone();
-                    let _ = weak.update(cx, |view, cx| {
-                        view.set_load_test_stop_on_error(&tab_id, checked, cx);
-                    });
-                }),
+            Switch::new(id)
+                .checked(checked)
+                .on_click(move |checked, _, cx| on_change(*checked, cx)),
         )
         .into_any_element()
 }

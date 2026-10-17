@@ -93,7 +93,11 @@ The load test engine uses one OS thread per virtual user, because `ureq` is bloc
 state is a handful of atomics (stop flag, active users) and one mutex-protected aggregator that
 each user locks briefly to record a sample. There are no channels and no async runtime. The UI
 polls a snapshot while a run is active; stopping works by an atomic flag that every wait checks
-in short sleeps. Finished runs are saved as JSON in `<workspace>/.postino/runs/<NNNN>.json`. The
+in short sleeps. With "Reuse connections" on (the default), each user sends through a
+`postino_http::Client` of its own (`Runner::run_with`), whose `ureq` agent keeps the connection
+open between requests; a shared one would not do, since `ureq` keeps at most 3 idle connections
+per host in a pool. Off, it calls `Runner::run`, which opens a new connection per request, as a
+normal send from a tab does. Finished runs are saved as JSON in `<workspace>/.postino/runs/<NNNN>.json`. The
 workspace scanner skips hidden folders, so the history never shows up as a collection.
 
 ## Files Postino writes

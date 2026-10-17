@@ -33,6 +33,7 @@ description: Run load tests against a request or a whole folder in Postino with 
         <tr><td>Ramp-up</td><td>10 s</td><td>0 s to 24 h</td><td>How long it takes to start every virtual user. Users start at even intervals: with 50 users and 10 s, one every 200 ms.</td></tr>
         <tr><td>Think time</td><td>0 ms</td><td>0 to 600,000 ms</td><td>The pause each virtual user takes after one pass over the target, before starting the next.</td></tr>
         <tr><td>Stop on errors</td><td>Off</td><td></td><td>Ends the run early when the error rate goes above 5%, once at least 50 requests have completed.</td></tr>
+        <tr><td>Reuse connections</td><td>On</td><td></td><td>Each virtual user keeps its connection open and reuses it (keep-alive), like a real client. Off, every request opens a new connection and closes it, see <a href="#connections">connections</a>.</td></tr>
     </tbody>
 </table></div>
 <p>A value outside its range is brought back into it when the run starts. Load tests use the active environment.</p>
@@ -43,11 +44,17 @@ description: Run load tests against a request or a whole folder in Postino with 
     <li>Every iteration runs the full pipeline: pre-request script, variables, HTTP, post-response script.</li>
     <li>Each virtual user has its own copy of the session variables. A collection that starts with a login request whose post-response script calls <code>env.set("token", …)</code> works as expected: each user logs in and uses its own token for the next requests.</li>
     <li>Stopping takes effect in well under a second, even during a long think time.</li>
+    <li>With <strong>Reuse connections</strong> on, each virtual user has its own connections, so 50 users against one server keep about 50 connections open.</li>
     <li>The run happens on your machine. Your own CPU and network are part of the measurement, so for serious numbers use a machine close to the server.</li>
 </ul>
 
+<h2 id="connections">Connections</h2>
+<p>With <strong>Reuse connections</strong> on, the default, a virtual user opens a connection with its first request and sends the next ones over it, as browsers and API clients do. Over HTTPS the TLS handshake happens once per user, not once per request, so the run measures your API rather than the cost of connecting.</p>
+<p>Turn it off to measure clients that always connect from scratch: every request opens a new connection, with its TCP connect and TLS handshake, and closes it afterwards. Expect fewer requests per second and higher latencies, mostly over HTTPS, and a server that may run out of ports or sockets sooner.</p>
+<p>A request to a server whose certificate is not trusted (with <a href="settings.html">Invalid certificates</a> set to <strong>Send with warning</strong>) is verified once per virtual user, and its later requests are sent without verification straight away.</p>
+
 <h2>Reading the dashboard</h2>
-<p>The dashboard updates live while the run is in progress. Its header shows the run number and state: <strong>Running</strong>, <strong>Finished</strong> (the full duration elapsed), <strong>Stopped</strong> (by hand or by Stop on errors) or <strong>Failed</strong> (the run could not start).</p>
+<p>The dashboard updates live while the run is in progress. Its header shows the run number and state: <strong>Running</strong>, <strong>Finished</strong> (the full duration elapsed), <strong>Stopped</strong> (by hand or by Stop on errors) or <strong>Failed</strong> (the run could not start), and how the run connected: <strong>Keep-alive</strong> or <strong>New connections</strong>.</p>
 <dl>
     <dt>Requests/s</dt>
     <dd>Throughput: the requests completed during the last full second.</dd>
@@ -74,10 +81,10 @@ description: Run load tests against a request or a whole folder in Postino with 
     <li>The error rate changes in percentage points: going from 2% to 5% is +3 points.</li>
     <li>Higher is better for Requests/s; lower is better for p95, p99 and Errors.</li>
 </ul>
-<p>Compare runs with the same configuration, or the difference says more about the settings than about your API.</p>
+<p>Compare runs with the same configuration, or the difference says more about the settings than about your API. When one of the two runs reused connections and the other did not, the comparison says so under its rows.</p>
 
 <h2>Run history</h2>
-<p>Every run is saved as a JSON file in <code>.postino/runs/</code> inside the workspace, numbered <code>0001.json</code>, <code>0002.json</code> and so on. A run file holds when it started, what it targeted, its configuration (without request bodies or secrets) and the final metrics. <strong>Previous runs</strong> lists them, newest first, and opening one shows its dashboard.</p>
+<p>Every run is saved as a JSON file in <code>.postino/runs/</code> inside the workspace, numbered <code>0001.json</code>, <code>0002.json</code> and so on. A run file holds when it started, what it targeted, its configuration (without request bodies or secrets) and the final metrics. <strong>Previous runs</strong> lists them, newest first, with how each one connected (<strong>Keep-alive</strong> or <strong>New connections</strong>), and opening one shows its dashboard. Runs saved before the <strong>Reuse connections</strong> option existed always opened new connections, and show as such.</p>
 <p>The Load tests panel of the sidebar lists the runs of the current session with their state and p95.</p>
 <p>Whether to commit <code>.postino/runs/</code> is up to you. Committing it keeps a performance history next to the code; ignoring it keeps the repository small. See <a href="git.html">Working with git</a>.</p>
 
