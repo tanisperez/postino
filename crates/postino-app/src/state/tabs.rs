@@ -4,6 +4,7 @@
 
 use postino_core::Request;
 
+use super::auth_edit::{self, AuthKind, AuthStash};
 use super::env_edit::{self, EnvEditTab};
 use super::load_test::LoadTestTab;
 use super::request_edit::{self, BodyKind, BodyStash};
@@ -14,8 +15,9 @@ use super::welcome::{self, WelcomeTab};
 /// [`TabKind::Environment`].
 #[derive(Debug, Clone, PartialEq)]
 pub enum TabKind {
-    /// A request open for editing.
-    Request(Request),
+    /// A request open for editing. Boxed, like `LoadTest`, since its auth makes it far larger
+    /// than the other boxed variants (clippy's `large_enum_variant`).
+    Request(Box<Request>),
     /// An environment editor tab (`state::env_edit`). Boxed for the same reason as `LoadTest`.
     Environment(Box<EnvEditTab>),
     /// A load test tab. Boxed: `LoadTestTab` is far larger than `Request` (it carries the run
@@ -41,13 +43,16 @@ pub struct OpenTab {
     /// What the body types the request is not showing held, see [`BodyStash`]. Empty for every
     /// other kind of tab.
     pub body_stash: BodyStash,
+    /// What the auth types the request is not showing held, see [`AuthStash`]. Empty for every
+    /// other kind of tab.
+    pub auth_stash: AuthStash,
 }
 
 impl OpenTab {
     /// This tab's request, if it is a [`TabKind::Request`].
     pub fn request(&self) -> Option<&Request> {
         match &self.kind {
-            TabKind::Request(request) => Some(request),
+            TabKind::Request(request) => Some(request.as_ref()),
             TabKind::Environment(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) => None,
         }
     }
@@ -55,7 +60,7 @@ impl OpenTab {
     /// This tab's request, mutably, if it is a [`TabKind::Request`].
     pub fn request_mut(&mut self) -> Option<&mut Request> {
         match &mut self.kind {
-            TabKind::Request(request) => Some(request),
+            TabKind::Request(request) => Some(request.as_mut()),
             TabKind::Environment(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) => None,
         }
     }
@@ -65,6 +70,14 @@ impl OpenTab {
     pub fn set_body_kind(&mut self, kind: BodyKind) {
         if let TabKind::Request(request) = &mut self.kind {
             request_edit::set_body_kind(request, kind, &mut self.body_stash);
+        }
+    }
+
+    /// Switches this tab's request auth to `kind`, keeping what the other auth types held (see
+    /// [`auth_edit::set_auth_kind`]). Does nothing for a tab that is not a request.
+    pub fn set_auth_kind(&mut self, kind: AuthKind) {
+        if let TabKind::Request(request) = &mut self.kind {
+            auth_edit::set_auth_kind(request, kind, &mut self.auth_stash);
         }
     }
 
@@ -160,7 +173,7 @@ impl TabsState {
             self.active = Some(index);
             return index;
         }
-        self.push_and_activate(id, TabKind::Request(request))
+        self.push_and_activate(id, TabKind::Request(Box::new(request)))
     }
 
     /// Opens `edit` as the editor tab of its environment and makes it active. If that
@@ -229,6 +242,7 @@ impl TabsState {
             kind,
             dirty: false,
             body_stash: BodyStash::default(),
+            auth_stash: AuthStash::default(),
         });
         let index = self.open.len() - 1;
         self.active = Some(index);

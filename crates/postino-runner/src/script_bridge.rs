@@ -2,8 +2,8 @@
 //! plain `postino-script` types a `::: pre`/`::: post` script sees, plus the "apply mutations
 //! back" side of that trip. See `docs/scripting.md` for the script API.
 //!
-//! A script only sees and can change `method`, `url`, `headers` and `body` (never `query`, the
-//! scripts themselves or `docs`), and only ever sees *enabled* headers and form fields: a
+//! A script only sees and can change `method`, `url`, `headers` and `body` (never `query`,
+//! `auth`, the scripts themselves or `docs`), and only ever sees *enabled* headers and form fields: a
 //! disabled entry is invisible to the script and is carried through unchanged, appended after
 //! whatever headers or form fields the script leaves behind. Scripts have no notion of a
 //! disabled entry, so anything they add or keep is always enabled.
@@ -49,7 +49,7 @@ pub(crate) fn resolved_to_script_request(resolved: &ResolvedRequest) -> ScriptRe
 }
 
 /// Applies the script's mutations back onto `original`, producing the working [`Request`] used
-/// for the rest of the pipeline. Everything a script cannot see (`query`, the scripts
+/// for the rest of the pipeline. Everything a script cannot see (`query`, `auth`, the scripts
 /// themselves, `docs`) is carried over unchanged from `original`.
 pub(crate) fn apply_script_request(original: &Request, script_request: ScriptRequest) -> Request {
     let method = match script_request.method.parse::<Method>() {
@@ -64,6 +64,7 @@ pub(crate) fn apply_script_request(original: &Request, script_request: ScriptReq
         headers: merge_back(&original.headers, script_request.headers),
         body: body_from_script_text(&original.body, script_request.body),
         query: original.query.clone(),
+        auth: original.auth.clone(),
         pre_script: original.pre_script.clone(),
         post_script: original.post_script.clone(),
         docs: original.docs.clone(),

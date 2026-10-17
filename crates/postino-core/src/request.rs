@@ -1,5 +1,6 @@
 //! The editable request model, as stored in a `.postino` file.
 
+use crate::auth::Auth;
 use crate::body::Body;
 use crate::key_value::KeyValue;
 use crate::method::Method;
@@ -18,6 +19,8 @@ pub struct Request {
     pub headers: Vec<KeyValue>,
     /// The `::: query` section, in file order. Disabled entries are kept but not sent.
     pub query: Vec<KeyValue>,
+    /// The `::: auth` section. [`Auth::None`] when absent.
+    pub auth: Auth,
     /// The request body.
     pub body: Body,
     /// The `::: pre` section, raw JavaScript. Empty when absent.
@@ -40,6 +43,7 @@ mod tests {
         assert_eq!(request.url, "");
         assert!(request.headers.is_empty());
         assert!(request.query.is_empty());
+        assert_eq!(request.auth, Auth::None);
         assert_eq!(request.body, Body::None);
         assert_eq!(request.pre_script, "");
         assert_eq!(request.post_script, "");

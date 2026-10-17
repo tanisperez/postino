@@ -1,11 +1,11 @@
-//! The request editor panel: method + URL bar, Send/Cancel, and the Params, Headers, Body,
+//! The request editor panel: method + URL bar, Send/Cancel, and the Params, Headers, Auth, Body,
 //! Pre-request, Post-response and Docs tabs.
 //!
 //! `gpui` entities for the editable fields (the URL input, the key-value table rows, the body
 //! and script code editors, the docs textarea) are expensive to keep in sync by hand on every
 //! keystroke, so [`RequestEditorEntities`] rebuilds them only when what they need to show
 //! actually changes shape: a different tab becomes active, a row is added or removed, or the
-//! body's type (and so its editor language) changes. Typing into an existing field never
+//! body's type (and so its editor language) or the auth type changes. Typing into an existing field never
 //! triggers a rebuild, which is what lets it keep focus and cursor position while the user
 //! types; see [`RequestEditorEntities::sync`].
 
@@ -25,8 +25,9 @@ use rust_i18n::t;
 
 use gpui::Hsla;
 use postino_core::log_safe::is_sensitive_header;
-use postino_core::{Body, KeyValue, Method, Request, variable_spans};
+use postino_core::{ApiKeyLocation, Auth, Body, KeyValue, Method, Request, variable_spans};
 
+use crate::state::auth_edit::{self, AuthField, AuthKind, Overridden};
 use crate::state::request_edit::{self, BodyKind, SortColumn, SortOrder};
 use crate::state::script_completion::ScriptKind;
 use crate::state::script_heuristics;
@@ -34,12 +35,14 @@ use crate::state::ui_tabs::RequestTab;
 use crate::state::variable_hint::{self, VariableContext};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
-    COMPLETION_MENU_WIDTH, RADIUS_MD, SEND_BUTTON_HEIGHT, SEND_BUTTON_MIN_WIDTH,
+    AUTH_FORM_MAX_WIDTH, AUTH_LABEL_WIDTH, COMPLETION_MENU_WIDTH, RADIUS_MD, SEND_BUTTON_HEIGHT,
+    SEND_BUTTON_MIN_WIDTH,
 };
 use crate::views::components::variable_chip::highlight_style;
 use crate::views::components::{
-    GhostButton, KeyValueRow, KeyValueTable, PrimaryButton, SegmentedControl, SegmentedItem,
-    UnderlineTabItem, UnderlineTabs, UrlBar, VariableField, edit_menu,
+    GhostButton, InlineMessage, InlineMessageKind, KeyValueRow, KeyValueTable, PrimaryButton,
+    SegmentedControl, SegmentedItem, UnderlineTabItem, UnderlineTabs, UrlBar, VariableField,
+    edit_menu,
 };
 use crate::views::script_completion::{ScriptCompletionData, ScriptCompletionProvider};
 use crate::views::variable_hover::{BodyMarkers, VariableHover};
@@ -78,8 +81,9 @@ enum ScriptField {
 /// Everything about the active tab's shape that requires [`RequestEditorEntities`] to be
 /// rebuilt. Row and script *content* is deliberately not part of this key: editing content must
 /// never rebuild the entities, or the field being typed into would lose focus on every
-/// keystroke. Only counts (which change when a row is added or removed) and the body's kind
-/// (which changes the body editor's language) are tracked.
+/// keystroke. Only counts (which change when a row is added or removed), the body's kind
+/// (which changes the body editor's language) and the auth's kind (which changes its fields) are
+/// tracked.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct BuildKey {
     tab_id: String,
@@ -87,6 +91,7 @@ struct BuildKey {
     query_len: usize,
     form_len: usize,
     body_kind: BodyKind,
+    auth_kind: AuthKind,
 }
 
 impl BuildKey {
@@ -101,6 +106,7 @@ impl BuildKey {
             query_len: request.query.len(),
             form_len,
             body_kind: BodyKind::of(&request.body),
+            auth_kind: AuthKind::of(&request.auth),
         }
     }
 }
@@ -115,6 +121,8 @@ pub(crate) enum CompletionField {
     Key(RowKind, usize),
     /// The value input of a Params, Headers or Form row, by index.
     Value(RowKind, usize),
+    /// A field of the Auth tab.
+    Auth(AuthField),
 }
 
 /// One key-value row's live `gpui` input entities.
@@ -202,6 +210,45 @@ fn build_row(
     RowEntities { key, value }
 }
 
+/// Builds the input of one Auth tab field, pre-filled with `text`, and subscribes it to write
+/// typed changes back into the active tab's request. A password is masked.
+fn build_auth_input(
+    tab_id: &str,
+    field: AuthField,
+    text: &str,
+    window: &mut Window,
+    cx: &mut Context<AppView>,
+) -> Entity<InputState> {
+    let input = cx.new(|cx| {
+        let state = InputState::new(window, cx).masked(field == AuthField::Password);
+        match field {
+            AuthField::KeyName => state.placeholder("X-API-Key"),
+            _ => state,
+        }
+    });
+    input.update(cx, |state, cx| {
+        state.set_value(text.to_string(), window, cx)
+    });
+    let tab_id = tab_id.to_string();
+    let completion = CompletionField::Auth(field);
+    cx.subscribe(
+        &input,
+        move |view, entity, event: &InputEvent, cx| match event {
+            InputEvent::Change => {
+                let value = entity.read(cx).value().to_string();
+                view.edit_active_request(&tab_id, cx, |request| {
+                    auth_edit::set_field(&mut request.auth, field, value)
+                });
+                view.on_completion_field_changed(completion, cx);
+            }
+            InputEvent::Blur => view.on_completion_field_blurred(completion, cx),
+            _ => {}
+        },
+    )
+    .detach();
+    input
+}
+
 /// The body editor's language for a request's current body, and the raw text to load into it.
 /// `None` for a body kind that has no code editor of its own (`None` or `Form`, which uses the
 /// key-value table instead).
@@ -276,6 +323,8 @@ pub(crate) struct RequestEditorEntities {
     headers: KeyValueTableEntities,
     query: KeyValueTableEntities,
     form: KeyValueTableEntities,
+    /// The inputs of the Auth tab, one per field of the request's auth kind, in display order.
+    auth: Vec<(AuthField, Entity<InputState>)>,
     body_editor: Option<Entity<EditorState>>,
     /// How the `{{ }}` markers resolve right now, refreshed on every render of the editor. Every
     /// field that shows markers reads it.
@@ -434,6 +483,14 @@ impl RequestEditorEntities {
             }
             _ => KeyValueTableEntities::default(),
         };
+        self.auth = AuthKind::of(&request.auth)
+            .fields()
+            .iter()
+            .map(|&field| {
+                let text = auth_edit::field_value(&request.auth, field);
+                (field, build_auth_input(tab_id, field, text, window, cx))
+            })
+            .collect();
 
         self.body_markers = None;
         self.body_editor = body_language(&request.body).map(|(text, language)| {
@@ -551,6 +608,20 @@ impl AppView {
             return;
         };
         tab.set_body_kind(kind);
+        self.state.tabs.mark_dirty(index);
+        cx.notify();
+    }
+
+    /// Switches the auth type of the tab `tab_id`, keeping what the other types held for when
+    /// the user switches back (`state::auth_edit::AuthStash`), and marks the tab dirty.
+    fn set_auth_kind(&mut self, tab_id: &str, kind: AuthKind, cx: &mut Context<Self>) {
+        let Some(index) = self.state.tabs.index_of(tab_id) else {
+            return;
+        };
+        let Some(tab) = self.state.tabs.get_mut(index) else {
+            return;
+        };
+        tab.set_auth_kind(kind);
         self.state.tabs.mark_dirty(index);
         cx.notify();
     }
@@ -940,6 +1011,7 @@ impl AppView {
                 &self.request_editor.headers,
                 cx,
             ),
+            RequestTab::Auth => self.render_auth_tab(tab_id, request, cx),
             RequestTab::Body => self.render_body_tab(tab_id, request, cx),
             RequestTab::Pre => render_editor_or_placeholder(
                 &self
@@ -972,6 +1044,110 @@ impl AppView {
                 None => div().into_any_element(),
             },
         }
+    }
+
+    /// Renders the Auth tab: the auth type selector, then a labeled field per value of the
+    /// selected type (and where an API key goes), and a warning when a header or param written
+    /// by hand is sent instead.
+    fn render_auth_tab(&self, tab_id: &str, request: &Request, cx: &Context<Self>) -> AnyElement {
+        let weak = cx.weak_entity();
+        let palette = cx.palette();
+        let current_kind = AuthKind::of(&request.auth);
+
+        let mut type_selector = SegmentedControl::new("auth-type");
+        for kind in AuthKind::ALL {
+            let select_weak = weak.clone();
+            let tab_id_owned = tab_id.to_string();
+            type_selector = type_selector.item(
+                SegmentedItem::new(kind.label())
+                    .selected(kind == current_kind)
+                    .on_click(move |_, cx| {
+                        let _ = select_weak.update(cx, |view, cx| {
+                            view.set_auth_kind(&tab_id_owned, kind, cx);
+                        });
+                    }),
+            );
+        }
+
+        let label = |text: String| {
+            div()
+                .w(px(AUTH_LABEL_WIDTH))
+                .flex_shrink_0()
+                .text_color(palette.fg_muted)
+                .child(text)
+        };
+        let row = |text: String, field: AnyElement| {
+            h_flex()
+                .gap_3()
+                .items_center()
+                .child(label(text))
+                .child(div().flex_1().min_w_0().child(field))
+        };
+
+        let mut content = v_flex().gap_2().max_w(px(AUTH_FORM_MAX_WIDTH));
+        if current_kind == AuthKind::None {
+            content = content.child(
+                div()
+                    .p_2()
+                    .text_color(palette.fg_muted)
+                    .child(t!("request.auth.empty")),
+            );
+        }
+        let context = self.request_editor.variable_context.clone();
+        for (field, input) in &self.request_editor.auth {
+            let text = auth_edit::field_value(&request.auth, *field).to_string();
+            let value = VariableField::new(
+                format!("auth-{field:?}"),
+                input.clone(),
+                text,
+                context.clone(),
+            )
+            .mask_all(field.is_secret())
+            .masked(*field == AuthField::Password)
+            .on_chip_click(define_variable_click(&weak, &context));
+            content = content.child(row(field.label(), value.into_any_element()));
+        }
+        if let Auth::ApiKey { location, .. } = &request.auth {
+            let mut selector = SegmentedControl::new("auth-api-key-location");
+            for (option, text) in [
+                (ApiKeyLocation::Header, t!("request.auth.in_header")),
+                (ApiKeyLocation::Query, t!("request.auth.in_query")),
+            ] {
+                let select_weak = weak.clone();
+                let tab_id_owned = tab_id.to_string();
+                selector = selector.item(
+                    SegmentedItem::new(text.into_owned())
+                        .selected(option == *location)
+                        .on_click(move |_, cx| {
+                            let _ = select_weak.update(cx, |view, cx| {
+                                view.edit_active_request(&tab_id_owned, cx, |request| {
+                                    auth_edit::set_api_key_location(&mut request.auth, option)
+                                });
+                            });
+                        }),
+                );
+            }
+            content = content.child(row(
+                t!("request.auth.add_to").into_owned(),
+                h_flex().child(selector).into_any_element(),
+            ));
+        }
+        if let Some(overridden) = auth_edit::overridden_by(request) {
+            let text = match overridden {
+                Overridden::Header(name) => t!("request.auth.header_wins", name = name),
+                Overridden::Param(name) => t!("request.auth.param_wins", name = name),
+            };
+            content = content.child(div().pt_1().child(InlineMessage::new(
+                InlineMessageKind::Warning,
+                text.into_owned(),
+            )));
+        }
+
+        v_flex()
+            .gap_2()
+            .child(h_flex().items_center().py(px(8.0)).child(type_selector))
+            .child(content)
+            .into_any_element()
     }
 
     /// Renders the Body tab: the body type selector, a "Format" button (JSON bodies only) and
@@ -1172,6 +1348,11 @@ impl AppView {
                 .rows
                 .get(index)
                 .map(|row| row.value.clone()),
+            CompletionField::Auth(field) => editor
+                .auth
+                .iter()
+                .find(|(shown, _)| *shown == field)
+                .map(|(_, input)| input.clone()),
         }
     }
 
@@ -1202,6 +1383,9 @@ impl AppView {
         if let Some(index) = editor.headers.rows.iter().position(|row| focused(&row.key)) {
             return Some(CompletionField::Key(RowKind::Headers, index));
         }
+        if let Some((field, _)) = editor.auth.iter().find(|(_, input)| focused(input)) {
+            return Some(CompletionField::Auth(*field));
+        }
         [RowKind::Query, RowKind::Headers, RowKind::Form]
             .into_iter()
             .find_map(|kind| {
@@ -1223,9 +1407,12 @@ impl AppView {
             .find(|script| script.editor.focus_handle(cx).is_focused(window))
     }
 
-    /// Whether the menu of `field` hides every value: the value of a sensitive header, as its
-    /// tooltips do.
+    /// Whether the menu of `field` hides every value: the value of a sensitive header or a
+    /// secret Auth field, as its tooltips do.
     pub(crate) fn completion_masks_values(&self, field: CompletionField) -> bool {
+        if let CompletionField::Auth(field) = field {
+            return field.is_secret();
+        }
         let CompletionField::Value(RowKind::Headers, index) = field else {
             return false;
         };

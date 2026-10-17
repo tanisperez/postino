@@ -2,7 +2,7 @@ title: Building requests
 description: Methods, URLs, query parameters, headers, JSON, XML, text and form bodies, docs, sending and cancelling requests in Postino.
 ---
 <h1>Building requests</h1>
-<p class="lead">A request is a method, a URL, headers, query parameters, an optional body, two optional scripts and free notes. This page covers each part as you see it in the request editor, and how it is stored in the file.</p>
+<p class="lead">A request is a method, a URL, headers, query parameters, an optional authorization, an optional body, two optional scripts and free notes. This page covers each part as you see it in the request editor, and how it is stored in the file.</p>
 
 <h2>Method</h2>
 <p>Click the method at the left of the URL bar to pick <code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>, <code>HEAD</code> or <code>OPTIONS</code>. Each standard method has its own color in the sidebar and the tabs.</p>
@@ -57,17 +57,41 @@ Authorization: Bearer {{token}}
     <li>The HTTP client adds the usual transport headers, such as <code>Host</code> and <code>Content-Length</code>.</li>
 </ul>
 
-<h3>Authentication</h3>
-<p>Postino has no separate Auth tab yet. Authentication is a header:</p>
+<h2 id="authentication">Authentication</h2>
+<p>The <strong>Auth</strong> tab starts with a selector: <strong>None</strong>, <strong>Basic</strong>, <strong>Bearer</strong> or <strong>API key</strong>. Each type shows its own fields, and Postino builds the header for you when the request is sent:</p>
 <div class="table"><table>
-    <thead><tr><th>Scheme</th><th>Header</th></tr></thead>
+    <thead><tr><th>Type</th><th>Fields</th><th>Sent as</th></tr></thead>
     <tbody>
-        <tr><td>Bearer token</td><td><code>Authorization: Bearer {{token}}</code></td></tr>
-        <tr><td>Basic</td><td><code>Authorization: Basic {{ base64Encode("user:password") }}</code></td></tr>
-        <tr><td>API key</td><td><code>X-Api-Key: {{apiKey}}</code>, or whatever header your API expects</td></tr>
+        <tr><td>Basic</td><td><strong>Username</strong>, <strong>Password</strong></td><td><code>Authorization: Basic</code> and the Base64 of <code>username:password</code></td></tr>
+        <tr><td>Bearer</td><td><strong>Token</strong></td><td><code>Authorization: Bearer &lt;token&gt;</code></td></tr>
+        <tr><td>API key</td><td><strong>Name</strong>, <strong>Value</strong>, <strong>Add to</strong> (<strong>Header</strong> or <strong>Query param</strong>)</td><td>A header, or a query parameter added after the Params entries</td></tr>
+        <tr><td>None</td><td>Nothing</td><td>Nothing</td></tr>
     </tbody>
 </table></div>
-<p>To log in once and reuse the token, see <a href="scripting.html#log-in-once-reuse-the-token">log in once, reuse the token</a>.</p>
+<ul>
+    <li>Every field takes <code>{{variables}}</code> and <a href="template-functions.html">template functions</a>, with the same chips and autocompletion as the Params and Headers values. The password is shown as dots. The values of the variables in the password, the token and the API key value are hidden in tooltips and menus.</li>
+    <li>Variables are replaced before the Basic credentials are encoded, so <code>{{username}}</code> and <code>{{password}}</code> work as they are.</li>
+    <li>Nothing is sent while the field a type needs is empty: the token, the API key name, or both the username and the password.</li>
+    <li>A header you write yourself in the Headers tab wins: with an enabled <code>Authorization</code> header (in any letter case), Basic and Bearer add nothing, and the Auth tab says <strong>The Authorization header of the Headers tab is sent instead.</strong> The same goes for an API key and an enabled header with its name, or an enabled Params entry with its name when it goes in the query.</li>
+    <li>Switching the type keeps what the other types held while the tab is open, so switching back brings the fields back. Only the type selected when you save is written to the file.</li>
+    <li>The auth is applied after the pre-request script, so a token the script sets with <code>vars.set()</code> reaches <code>{{token}}</code>. See <a href="script-api.html#req">the script API</a>.</li>
+</ul>
+<p>In the file it is the <code>::: auth</code> section, one <code>field = value</code> line per field:</p>
+```postino title="users/me.postino"
+GET {{baseUrl}}/me
+
+::: auth bearer
+token = {{token}}
+```
+```postino title="reports/daily.postino"
+GET {{baseUrl}}/reports/daily
+
+::: auth apikey
+name = api_key
+value = {{apiKey}}
+in = query
+```
+<p>A plain <code>Authorization: Bearer {{token}}</code> header still works the same. To log in once and reuse the token, see <a href="scripting.html#log-in-once-reuse-the-token">log in once, reuse the token</a>. OAuth 2.0 is not built in yet, see the <a href="faq.html">FAQ</a>.</p>
 
 <h2>Body</h2>
 <p>The <strong>Body</strong> tab starts with a selector: <strong>JSON</strong>, <strong>Text</strong>, <strong>XML</strong>, <strong>Form</strong> or <strong>None</strong>.</p>

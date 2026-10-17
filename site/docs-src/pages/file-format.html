@@ -67,6 +67,7 @@ Creates a user. Needs an admin token.
     <thead><tr><th>Marker</th><th>Content</th></tr></thead>
     <tbody>
         <tr><td><code>::: query</code></td><td>Query parameters, <code>key = value</code> lines</td></tr>
+        <tr><td><code>::: auth basic</code>, <code>bearer</code> or <code>apikey</code></td><td>Authorization, <code>field = value</code> lines</td></tr>
         <tr><td><code>::: body json</code></td><td>Raw JSON text</td></tr>
         <tr><td><code>::: body text</code></td><td>Raw text</td></tr>
         <tr><td><code>::: body xml</code></td><td>Raw XML text</td></tr>
@@ -79,7 +80,7 @@ Creates a user. Needs an admin token.
 <ul>
     <li>Kinds are case sensitive: <code>::: Query</code> is an error.</li>
     <li>Each kind appears at most once. A second <code>::: body</code>, even of another type, is an error.</li>
-    <li><code>query</code>, <code>pre</code>, <code>post</code> and <code>docs</code> take no argument. <code>body</code> requires exactly one: <code>json</code>, <code>text</code>, <code>xml</code> or <code>form</code>.</li>
+    <li><code>query</code>, <code>pre</code>, <code>post</code> and <code>docs</code> take no argument. <code>body</code> requires exactly one: <code>json</code>, <code>text</code>, <code>xml</code> or <code>form</code>. <code>auth</code> requires exactly one too: <code>basic</code>, <code>bearer</code> or <code>apikey</code>.</li>
     <li>A section's content is every line up to the next marker or the end of the file. Blank lines at the end of a section are dropped; blank lines inside it are kept.</li>
     <li>Blank lines between sections are ignored. Any other line where a section marker is expected is an error.</li>
     <li>Sections can be written in any order. Postino writes them in a fixed order (see below).</li>
@@ -103,6 +104,30 @@ filter = price>=10
 verbose
 ```
 
+<h3 id="auth-section">Auth section</h3>
+<p>The <code>auth</code> section holds what the <a href="requests.html#authentication">Auth tab</a> shows, one <code>field = value</code> line per field:</p>
+<div class="table"><table>
+    <thead><tr><th>Type</th><th>Fields</th></tr></thead>
+    <tbody>
+        <tr><td><code>basic</code></td><td><code>username</code>, <code>password</code></td></tr>
+        <tr><td><code>bearer</code></td><td><code>token</code></td></tr>
+        <tr><td><code>apikey</code></td><td><code>name</code>, <code>value</code>, <code>in</code> (<code>header</code> or <code>query</code>)</td></tr>
+    </tbody>
+</table></div>
+<ul>
+    <li>Each line is split at the first <code>=</code>, both sides trimmed. A value can contain <code>=</code>, but its spaces at the start and the end are dropped.</li>
+    <li>A line starting with <code>#</code> is a comment. Blank lines are ignored.</li>
+    <li>A field the type does not have, the same field twice, a line without <code>=</code> or an <code>in</code> other than <code>header</code> or <code>query</code> is an error.</li>
+    <li>A missing field is empty, and <code>in</code> is <code>header</code> when missing. Postino writes the fields in the order above, leaves out the empty ones and always writes <code>in</code>.</li>
+</ul>
+```postino
+GET https://api.example.com/me
+
+::: auth basic
+username = {{username}}
+password = {{password}}
+```
+
 <h3>Empty bodies</h3>
 <p>A body section is written even when it is empty, because its type matters: <code>::: body json</code> with nothing below it is an empty JSON body, and a script can fill it through <code>req.body</code>. A request without a body has no body section at all.</p>
 
@@ -111,10 +136,10 @@ verbose
 <ol>
     <li>The request line.</li>
     <li>The headers, in their order.</li>
-    <li>If there is at least one section, one blank line and then the sections in this fixed order: <code>query</code>, <code>body</code>, <code>pre</code>, <code>post</code>, <code>docs</code>, separated by exactly one blank line.</li>
+    <li>If there is at least one section, one blank line and then the sections in this fixed order: <code>query</code>, <code>auth</code>, <code>body</code>, <code>pre</code>, <code>post</code>, <code>docs</code>, separated by exactly one blank line.</li>
     <li>A single trailing newline.</li>
 </ol>
-<p>Empty sections are left out, except a typed empty body. A request with only a method, a URL and headers has no blank line at the end:</p>
+<p>Empty sections are left out, except a typed empty body or auth (<code>::: auth bearer</code> with no token). A request with only a method, a URL and headers has no blank line at the end:</p>
 ```postino
 GET https://example.com
 Accept: */*
@@ -174,4 +199,4 @@ greeting = Hello, world
 <p>The <code>environments/</code> folder at the root of the workspace is not a collection; it is never shown in the request tree.</p>
 
 <h2>Variables and template functions</h2>
-<p><code>{{name}}</code> markers are replaced in the URL, header names and values, query keys and values, form keys and values, and JSON, text and XML bodies. They are not replaced in scripts or docs. Resolution order, unknown variables and template functions are described in <a href="environments.html#resolution-order">Environments and variables</a> and <a href="template-functions.html">Template functions</a>.</p>
+<p><code>{{name}}</code> markers are replaced in the URL, header names and values, query keys and values, the fields of the auth section, form keys and values, and JSON, text and XML bodies. They are not replaced in scripts or docs. Resolution order, unknown variables and template functions are described in <a href="environments.html#resolution-order">Environments and variables</a> and <a href="template-functions.html">Template functions</a>.</p>

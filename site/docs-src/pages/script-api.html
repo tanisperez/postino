@@ -36,6 +36,7 @@ description: Reference of every global available to Postino pre-request and post
     <li>Assigning <code>req.body</code> on a request whose file has no body section has no effect: the script cannot choose a body type. Add an empty <code>::: body json</code> (or another type) to the file first.</li>
     <li>Disabled headers are invisible to the script and are kept unchanged in the request.</li>
     <li>Query parameters, scripts and docs are not visible to scripts. To change a query parameter, edit <code>req.url</code>.</li>
+    <li>The <a href="requests.html#authentication">Auth tab</a> is applied after the pre-request script, so the header or parameter it adds is not in <code>req</code> there, and variables the script sets with <code>vars.set()</code> reach its fields. The post-response script sees it in <code>req</code>, as it was sent.</li>
     <li>In a post-response script, every write throws, for example <code>req.url is read-only in a post script</code> or <code>headers are read-only in a post script</code>.</li>
 </ul>
 

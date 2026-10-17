@@ -1,0 +1,11 @@
+GET {{baseUrl}}/bearer
+Authorization: Bearer written-by-hand
+
+::: auth bearer
+token = from-the-auth-tab
+
+::: post
+test("an Authorization header written by hand wins over the auth section", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().token).toBe("written-by-hand");
+});

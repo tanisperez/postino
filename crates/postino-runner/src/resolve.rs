@@ -1,10 +1,11 @@
 //! Turning a [`Request`] into a [`ResolvedRequest`] ready to send: interpolating every `{{ }}`
 //! marker, keeping only enabled headers, query and form entries, appending the query string to
-//! the URL and setting a default `Content-Type` when the body implies one.
+//! the URL, applying the `::: auth` section and setting a default `Content-Type` when the body
+//! implies one.
 
 use postino_core::{
-    Body, KeyValue, Request, ResolvedBody, ResolvedField, ResolvedRequest, TemplateWarning,
-    VarScope, functions, interpolate,
+    ApiKeyLocation, Auth, Body, KeyValue, Request, ResolvedBody, ResolvedField, ResolvedRequest,
+    TemplateWarning, VarScope, functions, interpolate,
 };
 
 /// Interpolates `request` into a [`ResolvedRequest`], collecting every [`TemplateWarning`] found
@@ -19,9 +20,23 @@ pub(crate) fn resolve(
     let interpolated_url = interpolate(&request.url, scope);
     warnings.extend(interpolated_url.warnings);
     let url = with_default_scheme(interpolated_url.text);
-    let url = append_query(url, &request.query, scope, &mut warnings);
 
-    let headers = resolve_fields(&request.headers, scope, &mut warnings);
+    let mut headers = resolve_fields(&request.headers, scope, &mut warnings);
+    let mut auth_query = None;
+    match resolve_auth(&request.auth, scope, &mut warnings) {
+        Some((ApiKeyLocation::Header, field)) => {
+            // An enabled header of the same name, written by hand, wins.
+            if !headers
+                .iter()
+                .any(|header| header.name.eq_ignore_ascii_case(&field.name))
+            {
+                headers.push(field);
+            }
+        }
+        Some((ApiKeyLocation::Query, field)) => auth_query = Some(field),
+        None => {}
+    }
+    let url = append_query(url, &request.query, auth_query, scope, &mut warnings);
     let body = resolve_body(&request.body, scope, &mut warnings);
     let headers = apply_default_content_type(headers, &request.body);
 
@@ -81,17 +96,79 @@ fn resolve_fields(
         .collect()
 }
 
+/// Interpolates the `::: auth` section into the header (or, for an API key sent in the query,
+/// the query entry) it adds, and where that goes. `None` when there is no auth, or when the
+/// field it cannot do without is empty: the token of a bearer, the name of an API key, both the
+/// user name and the password of a basic auth.
+fn resolve_auth(
+    auth: &Auth,
+    scope: &VarScope,
+    warnings: &mut Vec<TemplateWarning>,
+) -> Option<(ApiKeyLocation, ResolvedField)> {
+    let mut resolve = |text: &str| {
+        let interpolated = interpolate(text, scope);
+        warnings.extend(interpolated.warnings);
+        interpolated.text
+    };
+    match auth {
+        Auth::None => None,
+        Auth::Basic { username, password } => {
+            if username.is_empty() && password.is_empty() {
+                return None;
+            }
+            let credentials = format!("{}:{}", resolve(username), resolve(password));
+            Some((
+                ApiKeyLocation::Header,
+                ResolvedField {
+                    name: "Authorization".to_string(),
+                    value: format!("Basic {}", functions::base64_encode(&credentials)),
+                },
+            ))
+        }
+        Auth::Bearer { token } => {
+            if token.is_empty() {
+                return None;
+            }
+            Some((
+                ApiKeyLocation::Header,
+                ResolvedField {
+                    name: "Authorization".to_string(),
+                    value: format!("Bearer {}", resolve(token)),
+                },
+            ))
+        }
+        Auth::ApiKey {
+            name,
+            value,
+            location,
+        } => {
+            if name.is_empty() {
+                return None;
+            }
+            Some((
+                *location,
+                ResolvedField {
+                    name: resolve(name),
+                    value: resolve(value),
+                },
+            ))
+        }
+    }
+}
+
 /// Interpolates the enabled `::: query` entries and appends them to `base_url` as a query
 /// string, percent-encoding each key and value with [`functions::url_encode`]. Appends with `&`
 /// when `base_url` already has a query string (contains `?`), with a leading `?` otherwise.
-/// Returns `base_url` unchanged when there are no enabled query entries.
+/// `auth` (an API key sent in the query) goes last, unless an enabled entry already has its name.
+/// Returns `base_url` unchanged when there is nothing to append.
 fn append_query(
     base_url: String,
     query: &[KeyValue],
+    auth: Option<ResolvedField>,
     scope: &VarScope,
     warnings: &mut Vec<TemplateWarning>,
 ) -> String {
-    let pairs: Vec<(String, String)> = query
+    let mut pairs: Vec<(String, String)> = query
         .iter()
         .filter(|entry| entry.enabled)
         .map(|entry| {
@@ -102,6 +179,11 @@ fn append_query(
             (key.text, value.text)
         })
         .collect();
+    if let Some(field) = auth
+        && !pairs.iter().any(|(key, _)| *key == field.name)
+    {
+        pairs.push((field.name, field.value));
+    }
 
     if pairs.is_empty() {
         return base_url;
@@ -439,5 +521,128 @@ mod tests {
             warnings,
             vec![TemplateWarning::UnknownVariable("missing".to_string())]
         );
+    }
+    fn header<'a>(resolved: &'a ResolvedRequest, name: &str) -> Vec<&'a str> {
+        resolved
+            .headers
+            .iter()
+            .filter(|header| header.name.eq_ignore_ascii_case(name))
+            .map(|header| header.value.as_str())
+            .collect()
+    }
+
+    #[test]
+    fn basic_auth_adds_an_encoded_authorization_header() {
+        let mut request = base_request("http://example.com");
+        request.auth = Auth::Basic {
+            username: "{{user}}".to_string(),
+            password: "pass".to_string(),
+        };
+        let environment = [KeyValue::new("user", "demo")];
+        let scope = VarScope {
+            environment: &environment,
+            ..VarScope::default()
+        };
+
+        let (resolved, warnings) = resolve(&request, &scope);
+        assert!(warnings.is_empty());
+        // base64("demo:pass")
+        assert_eq!(
+            header(&resolved, "authorization"),
+            vec!["Basic ZGVtbzpwYXNz"]
+        );
+    }
+
+    #[test]
+    fn bearer_auth_adds_an_authorization_header() {
+        let mut request = base_request("http://example.com");
+        request.auth = Auth::Bearer {
+            token: "{{token}}".to_string(),
+        };
+
+        let (resolved, warnings) = resolve(&request, &scope());
+        assert_eq!(header(&resolved, "authorization"), vec!["Bearer {{token}}"]);
+        assert_eq!(
+            warnings,
+            vec![TemplateWarning::UnknownVariable("token".to_string())]
+        );
+    }
+
+    #[test]
+    fn an_enabled_header_written_by_hand_wins_over_the_auth() {
+        let mut request = base_request("http://example.com");
+        request
+            .headers
+            .push(KeyValue::new("authorization", "Bearer by-hand"));
+        request.auth = Auth::Bearer {
+            token: "from-auth".to_string(),
+        };
+
+        let (resolved, _) = resolve(&request, &scope());
+        assert_eq!(header(&resolved, "authorization"), vec!["Bearer by-hand"]);
+
+        request.headers[0].enabled = false;
+        let (resolved, _) = resolve(&request, &scope());
+        assert_eq!(header(&resolved, "authorization"), vec!["Bearer from-auth"]);
+    }
+
+    #[test]
+    fn api_key_in_a_header() {
+        let mut request = base_request("http://example.com");
+        request.auth = Auth::ApiKey {
+            name: "X-API-Key".to_string(),
+            value: "k".to_string(),
+            location: ApiKeyLocation::Header,
+        };
+
+        let (resolved, _) = resolve(&request, &scope());
+        assert_eq!(header(&resolved, "x-api-key"), vec!["k"]);
+        assert_eq!(resolved.url, "http://example.com");
+    }
+
+    #[test]
+    fn api_key_in_the_query_goes_after_the_query_entries() {
+        let mut request = base_request("http://example.com?a=1");
+        request.query.push(KeyValue::new("page", "2"));
+        request.auth = Auth::ApiKey {
+            name: "api key".to_string(),
+            value: "k&v".to_string(),
+            location: ApiKeyLocation::Query,
+        };
+
+        let (resolved, _) = resolve(&request, &scope());
+        assert_eq!(
+            resolved.url,
+            "http://example.com?a=1&page=2&api%20key=k%26v"
+        );
+        assert!(header(&resolved, "api key").is_empty());
+
+        request.query[0] = KeyValue::new("api key", "by-hand");
+        let (resolved, _) = resolve(&request, &scope());
+        assert_eq!(resolved.url, "http://example.com?a=1&api%20key=by-hand");
+    }
+
+    #[test]
+    fn an_auth_without_its_required_field_adds_nothing() {
+        for auth in [
+            Auth::Basic {
+                username: String::new(),
+                password: String::new(),
+            },
+            Auth::Bearer {
+                token: String::new(),
+            },
+            Auth::ApiKey {
+                name: String::new(),
+                value: "k".to_string(),
+                location: ApiKeyLocation::Query,
+            },
+        ] {
+            let mut request = base_request("http://example.com");
+            request.auth = auth;
+            let (resolved, _) = resolve(&request, &scope());
+            assert!(resolved.headers.is_empty());
+            assert_eq!(resolved.url, "http://example.com");
+        }
     }
 }

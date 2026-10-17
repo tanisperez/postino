@@ -31,7 +31,10 @@ The request about to be sent (in `pre`) or the request as it was actually sent (
 `req.headers.set(...)`, `req.body = "..."`. Values assigned with `set`/`body`/`method`/`url` are
 converted with `String(value)`. Writing `req.body` when the request's body is `Body::None` (no
 body section in the file) is silently ignored: the script has no way to say what *type* of body
-it would want to create, so the write has no effect on what is actually sent.
+it would want to create, so the write has no effect on what is actually sent. The `::: auth`
+section is not part of `req` either: it is applied after the pre script, so a header it adds is
+not visible here, and a `vars.set()` in the pre script reaches its `{{ }}` markers
+(`docs/format.md`, §5.2).
 
 **In `post`**, `req` is read-only: `req.method =`, `req.url =`, `req.body =`,
 `req.headers.set(...)` and `req.headers.remove(...)` all throw. `req` here reflects the fully

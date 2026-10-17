@@ -4,7 +4,7 @@
 //! [`Request`] back into canonically formatted text, and `serialize(parse(text)) == text` for
 //! every canonically formatted file (section 3.3).
 
-use postino_core::{Body, KeyValue, Method, Request};
+use postino_core::{ApiKeyLocation, Auth, Body, KeyValue, Method, Request};
 
 /// The section marker prefix.
 const SECTION_PREFIX: &str = "::: ";
@@ -38,7 +38,8 @@ pub enum ParseErrorKind {
     /// A non-blank line was found where a section marker (`::: kind`) was expected.
     #[error("expected a section marker (\"::: kind\"), found {0:?}")]
     ExpectedSection(String),
-    /// A `::: kind` line uses a kind that is not `query`, `body`, `pre`, `post` or `docs`.
+    /// A `::: kind` line uses a kind that is not `query`, `auth`, `body`, `pre`, `post` or
+    /// `docs`.
     #[error("unknown section kind {0:?}")]
     UnknownSection(String),
     /// A section kind appears more than once in the file.
@@ -53,6 +54,29 @@ pub enum ParseErrorKind {
     /// `::: body <type>` uses a type that is not `json`, `text`, `xml` or `form`.
     #[error("unknown body type {0:?}, expected json, text, xml or form")]
     UnknownBodyType(String),
+    /// `::: auth` was written without a type.
+    #[error("missing auth type, expected \"::: auth <type>\"")]
+    MissingAuthType,
+    /// `::: auth <type>` uses a type that is not `basic`, `bearer` or `apikey`.
+    #[error("unknown auth type {0:?}, expected basic, bearer or apikey")]
+    UnknownAuthType(String),
+    /// A line of the `auth` section is not `field = value`.
+    #[error("invalid auth line {0:?}, expected \"field = value\"")]
+    InvalidAuthLine(String),
+    /// A field of the `auth` section is not one its type has.
+    #[error("unknown field {field:?} for auth {auth:?}")]
+    UnknownAuthField {
+        /// The auth type, as written after `::: auth`.
+        auth: String,
+        /// The field name.
+        field: String,
+    },
+    /// A field appears more than once in the `auth` section.
+    #[error("duplicated auth field {0:?}")]
+    DuplicatedAuthField(String),
+    /// The `in` field of an `apikey` auth is not `header` or `query`.
+    #[error("invalid API key location {0:?}, expected header or query")]
+    InvalidApiKeyLocation(String),
 }
 
 /// Parses the text of a `.postino` file into a [`Request`].
@@ -109,7 +133,7 @@ pub fn parse(text: &str) -> Result<Request, ParseError> {
         }
         let marker_line = index + 1;
         let (kind, argument) = split_kind_argument(&line[SECTION_PREFIX.len()..]);
-        if !matches!(kind, "query" | "body" | "pre" | "post" | "docs") {
+        if !matches!(kind, "query" | "auth" | "body" | "pre" | "post" | "docs") {
             return Err(ParseError {
                 line: marker_line,
                 kind: ParseErrorKind::UnknownSection(kind.to_string()),
@@ -134,6 +158,9 @@ pub fn parse(text: &str) -> Result<Request, ParseError> {
             "query" => {
                 require_no_argument(kind, argument, marker_line)?;
                 request.query = parse_key_value_lines(content);
+            }
+            "auth" => {
+                request.auth = parse_auth_section(argument, content, marker_line)?;
             }
             "body" => {
                 request.body = parse_body_section(argument, content, marker_line)?;
@@ -267,6 +294,99 @@ fn parse_body_section(
     }
 }
 
+/// Parses a `::: auth <type>` section into an [`Auth`], dispatching on `argument`.
+///
+/// Each non-blank line is `field = value`, split on the first `=`, both sides trimmed. A line
+/// whose first non-space character is `#` is a comment. A field that is not written is empty,
+/// and `in` defaults to `header`.
+fn parse_auth_section(
+    argument: &str,
+    content: &[&str],
+    marker_line: usize,
+) -> Result<Auth, ParseError> {
+    let fields: &[&str] = match argument {
+        "" => {
+            return Err(ParseError {
+                line: marker_line,
+                kind: ParseErrorKind::MissingAuthType,
+            });
+        }
+        "basic" => &["username", "password"],
+        "bearer" => &["token"],
+        "apikey" => &["name", "value", "in"],
+        other => {
+            return Err(ParseError {
+                line: marker_line,
+                kind: ParseErrorKind::UnknownAuthType(other.to_string()),
+            });
+        }
+    };
+
+    let mut values: Vec<(&str, String)> = Vec::new();
+    for (offset, line) in content.iter().enumerate() {
+        let line_number = marker_line + offset + 1;
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let Some((field, value)) = trimmed.split_once('=') else {
+            return Err(ParseError {
+                line: line_number,
+                kind: ParseErrorKind::InvalidAuthLine(line.to_string()),
+            });
+        };
+        let field = field.trim();
+        let Some(known) = fields.iter().find(|known| **known == field) else {
+            return Err(ParseError {
+                line: line_number,
+                kind: ParseErrorKind::UnknownAuthField {
+                    auth: argument.to_string(),
+                    field: field.to_string(),
+                },
+            });
+        };
+        if values.iter().any(|(seen, _)| seen == known) {
+            return Err(ParseError {
+                line: line_number,
+                kind: ParseErrorKind::DuplicatedAuthField(field.to_string()),
+            });
+        }
+        if *known == "in" && !matches!(value.trim(), "header" | "query") {
+            return Err(ParseError {
+                line: line_number,
+                kind: ParseErrorKind::InvalidApiKeyLocation(value.trim().to_string()),
+            });
+        }
+        values.push((known, value.trim().to_string()));
+    }
+
+    let mut take = |field: &str| {
+        values
+            .iter_mut()
+            .find(|(name, _)| *name == field)
+            .map(|(_, value)| std::mem::take(value))
+            .unwrap_or_default()
+    };
+    Ok(match argument {
+        "basic" => Auth::Basic {
+            username: take("username"),
+            password: take("password"),
+        },
+        "bearer" => Auth::Bearer {
+            token: take("token"),
+        },
+        _ => Auth::ApiKey {
+            name: take("name"),
+            value: take("value"),
+            location: if take("in") == "query" {
+                ApiKeyLocation::Query
+            } else {
+                ApiKeyLocation::Header
+            },
+        },
+    })
+}
+
 /// Unescapes and joins raw section content lines back into a single multi-line string, used by
 /// `pre`, `post`, `docs` and the raw `body` types (`json`, `text`, `xml`).
 fn join_content(lines: &[&str]) -> String {
@@ -338,8 +458,8 @@ fn starts_with_section_marker_ignoring_backslashes(line: &str) -> bool {
 /// Serializes a [`Request`] into the canonical `.postino` text form.
 ///
 /// The output always uses `\n` line endings and ends with a single trailing `\n`. Sections are
-/// written in the canonical order `query`, `body`, `pre`, `post`, `docs`; empty sections are
-/// omitted.
+/// written in the canonical order `query`, `auth`, `body`, `pre`, `post`, `docs`; empty sections
+/// are omitted.
 pub fn serialize(request: &Request) -> String {
     let mut out = String::new();
     out.push_str(&request.method.to_string());
@@ -371,7 +491,7 @@ pub fn serialize(request: &Request) -> String {
 
 /// Builds the list of non-empty sections to serialize, in canonical order.
 ///
-/// A section is omitted only when it is structurally absent: an empty `query` list,
+/// A section is omitted only when it is structurally absent: an empty `query` list, `Auth::None`,
 /// `Body::None`, or an empty `pre_script`/`post_script`/`docs` string. A body whose type is set
 /// but whose text happens to be empty (`Body::Json(String::new())`) is still written, with a
 /// heading and no content lines, so it round-trips back to the same `Body` variant.
@@ -385,6 +505,32 @@ fn build_sections(request: &Request) -> Vec<(String, Vec<String>)> {
             .map(format_query_or_form_line)
             .collect();
         sections.push(("::: query".to_string(), content));
+    }
+
+    let auth_section = match &request.auth {
+        Auth::None => None,
+        Auth::Basic { username, password } => Some((
+            "basic",
+            auth_lines(&[("username", username), ("password", password)]),
+        )),
+        Auth::Bearer { token } => Some(("bearer", auth_lines(&[("token", token)]))),
+        Auth::ApiKey {
+            name,
+            value,
+            location,
+        } => {
+            let location = match location {
+                ApiKeyLocation::Header => "header",
+                ApiKeyLocation::Query => "query",
+            };
+            Some((
+                "apikey",
+                auth_lines(&[("name", name), ("value", value), ("in", location)]),
+            ))
+        }
+    };
+    if let Some((type_name, content)) = auth_section {
+        sections.push((format!("::: auth {type_name}"), content));
     }
 
     let body_section = match &request.body {
@@ -420,6 +566,16 @@ fn split_raw(text: &str) -> Vec<String> {
         return Vec::new();
     }
     text.split('\n').map(str::to_string).collect()
+}
+
+/// Formats the fields of an `auth` section as `field = value` lines, in the given order. An empty
+/// field is left out: it reads back as empty.
+fn auth_lines(fields: &[(&str, &str)]) -> Vec<String> {
+    fields
+        .iter()
+        .filter(|(_, value)| !value.is_empty())
+        .map(|(field, value)| format!("{field} = {value}"))
+        .collect()
 }
 
 /// Formats a `query`/`form` entry as a `key = value` line, with a `# ` prefix when disabled.
@@ -768,6 +924,9 @@ env.set(\"userId\", res.json().id);\n";
             url: "{{baseUrl}}/x".to_string(),
             headers: vec![KeyValue::new("Accept", "*/*")],
             query: vec![KeyValue::new("page", "1")],
+            auth: Auth::Bearer {
+                token: "{{token}}".to_string(),
+            },
             body: Body::Json("{}".to_string()),
             pre_script: "vars.set(\"a\", 1);".to_string(),
             post_script: "test(\"ok\", () => {});".to_string(),
@@ -775,6 +934,119 @@ env.set(\"userId\", res.json().id);\n";
         };
         let text = serialize(&request);
         assert_eq!(parse(&text).expect("valid serialized request"), request);
+    }
+
+    #[test]
+    fn auth_sections_round_trip() {
+        for text in [
+            "GET https://a.test\n\n::: auth basic\nusername = demo\npassword = {{password}}\n",
+            "GET https://a.test\n\n::: auth bearer\ntoken = {{token}}\n",
+            "GET https://a.test\n\n::: auth apikey\nname = X-API-Key\nvalue = k\nin = header\n",
+            "GET https://a.test\n\n::: auth apikey\nname = api_key\nvalue = k\nin = query\n",
+        ] {
+            let request = parse(text).expect("valid auth section");
+            assert_eq!(serialize(&request), text);
+        }
+    }
+
+    #[test]
+    fn auth_section_is_parsed_into_its_fields() {
+        let request = parse("GET https://a.test\n\n::: auth basic\nusername = demo\n")
+            .expect("valid auth section");
+        assert_eq!(
+            request.auth,
+            Auth::Basic {
+                username: "demo".to_string(),
+                password: String::new(),
+            }
+        );
+
+        let request = parse(
+            "GET https://a.test\n\n::: auth apikey\n# a comment\n\n value = a=b \nname = k\n",
+        )
+        .expect("valid auth section");
+        assert_eq!(
+            request.auth,
+            Auth::ApiKey {
+                name: "k".to_string(),
+                value: "a=b".to_string(),
+                location: ApiKeyLocation::Header,
+            }
+        );
+    }
+
+    #[test]
+    fn auth_section_goes_between_query_and_body() {
+        let request = Request {
+            url: "https://a.test".to_string(),
+            query: vec![KeyValue::new("page", "1")],
+            auth: Auth::Bearer {
+                token: "t".to_string(),
+            },
+            body: Body::Json("{}".to_string()),
+            ..Request::default()
+        };
+        assert_eq!(
+            serialize(&request),
+            "GET https://a.test\n\n::: query\npage = 1\n\n::: auth bearer\ntoken = t\n\n\
+             ::: body json\n{}\n"
+        );
+    }
+
+    #[test]
+    fn auth_section_with_empty_fields_keeps_its_type() {
+        let request = Request {
+            url: "https://a.test".to_string(),
+            auth: Auth::Bearer {
+                token: String::new(),
+            },
+            ..Request::default()
+        };
+        let text = serialize(&request);
+        assert_eq!(text, "GET https://a.test\n\n::: auth bearer\n");
+        assert_eq!(parse(&text).expect("valid auth section"), request);
+    }
+
+    #[test]
+    fn auth_section_errors() {
+        let error = |text: &str| parse(text).expect_err("invalid auth section");
+        assert_eq!(
+            error("GET https://a.test\n\n::: auth\n"),
+            ParseError {
+                line: 3,
+                kind: ParseErrorKind::MissingAuthType
+            }
+        );
+        assert_eq!(
+            error("GET https://a.test\n\n::: auth digest\n").kind,
+            ParseErrorKind::UnknownAuthType("digest".to_string())
+        );
+        assert_eq!(
+            error("GET https://a.test\n\n::: auth bearer\ntoken = a\nnope\n"),
+            ParseError {
+                line: 5,
+                kind: ParseErrorKind::InvalidAuthLine("nope".to_string())
+            }
+        );
+        assert_eq!(
+            error("GET https://a.test\n\n::: auth bearer\nusername = a\n").kind,
+            ParseErrorKind::UnknownAuthField {
+                auth: "bearer".to_string(),
+                field: "username".to_string(),
+            }
+        );
+        assert_eq!(
+            error("GET https://a.test\n\n::: auth bearer\ntoken = a\ntoken = b\n").kind,
+            ParseErrorKind::DuplicatedAuthField("token".to_string())
+        );
+        assert_eq!(
+            error("GET https://a.test\n\n::: auth apikey\nin = cookie\n").kind,
+            ParseErrorKind::InvalidApiKeyLocation("cookie".to_string())
+        );
+        assert_eq!(
+            error("GET https://a.test\n\n::: auth bearer\n\n::: auth basic\n").kind,
+            ParseErrorKind::DuplicatedSection("auth".to_string())
+        );
     }
 
     #[test]

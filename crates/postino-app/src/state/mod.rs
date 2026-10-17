@@ -4,6 +4,7 @@
 //! entities and renders it.
 
 pub mod about;
+pub mod auth_edit;
 pub mod completion;
 pub mod config;
 pub mod debug_open;

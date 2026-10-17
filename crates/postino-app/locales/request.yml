@@ -110,3 +110,73 @@ _version: 2
   es: "(vacío)"
   gl: "(baleiro)"
   it: "(vuoto)"
+"request.auth.none":
+  en: "None"
+  es: "Ninguna"
+  gl: "Ningunha"
+  it: "Nessuna"
+"request.auth.basic":
+  en: "Basic"
+  es: "Básica"
+  gl: "Básica"
+  it: "Basic"
+"request.auth.bearer":
+  en: "Bearer"
+  es: "Bearer"
+  gl: "Bearer"
+  it: "Bearer"
+"request.auth.api_key":
+  en: "API key"
+  es: "Clave de API"
+  gl: "Chave de API"
+  it: "Chiave API"
+"request.auth.empty":
+  en: "This request sends no authorization."
+  es: "Esta petición no envía autenticación."
+  gl: "Esta petición non envía autenticación."
+  it: "Questa richiesta non invia autenticazione."
+"request.auth.username":
+  en: "Username"
+  es: "Usuario"
+  gl: "Usuario"
+  it: "Nome utente"
+"request.auth.password":
+  en: "Password"
+  es: "Contraseña"
+  gl: "Contrasinal"
+  it: "Password"
+"request.auth.token":
+  en: "Token"
+  es: "Token"
+  gl: "Token"
+  it: "Token"
+"request.auth.name":
+  en: "Name"
+  es: "Nombre"
+  gl: "Nome"
+  it: "Nome"
+"request.auth.add_to":
+  en: "Add to"
+  es: "Enviar en"
+  gl: "Enviar en"
+  it: "Invia in"
+"request.auth.in_header":
+  en: "Header"
+  es: "Cabecera"
+  gl: "Cabeceira"
+  it: "Intestazione"
+"request.auth.in_query":
+  en: "Query param"
+  es: "Parámetro de consulta"
+  gl: "Parámetro de consulta"
+  it: "Parametro di query"
+"request.auth.header_wins":
+  en: "The %{name} header of the Headers tab is sent instead."
+  es: "Se envía en su lugar la cabecera %{name} de la pestaña Cabeceras."
+  gl: "Envíase no seu lugar a cabeceira %{name} da lapela Cabeceiras."
+  it: "Viene inviata invece l'intestazione %{name} della scheda Intestazioni."
+"request.auth.param_wins":
+  en: "The %{name} param of the Params tab is sent instead."
+  es: "Se envía en su lugar el parámetro %{name} de la pestaña Parámetros."
+  gl: "Envíase no seu lugar o parámetro %{name} da lapela Parámetros."
+  it: "Viene inviato invece il parametro %{name} della scheda Parametri."

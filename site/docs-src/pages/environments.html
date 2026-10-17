@@ -24,7 +24,7 @@ since = {{since}}
 </ul>
 
 <h3 id="autocompleting-variables">Autocompleting variables</h3>
-<p>In the URL and in the values of the Params, Headers and Form tables, a menu lists the variables you can insert. It opens by itself when you type <code>{{</code>, or with <kbd>Ctrl</kbd> <kbd>Space</kbd> anywhere in the field (<kbd>Ctrl</kbd> on macOS too, since <kbd>⌘</kbd> <kbd>Space</kbd> is Spotlight).</p>
+<p>In the URL, in the values of the Params, Headers and Form tables and in the fields of the Auth tab, a menu lists the variables you can insert. It opens by itself when you type <code>{{</code>, or with <kbd>Ctrl</kbd> <kbd>Space</kbd> anywhere in the field (<kbd>Ctrl</kbd> on macOS too, since <kbd>⌘</kbd> <kbd>Space</kbd> is Spotlight).</p>
 <ul>
     <li>It lists the variables of the active environment, the session variables set by scripts and the names the pre-request script sets with <code>vars.set()</code>, each with its value shortened. Values are hidden by the same rules as in the tooltips: a name that looks like a secret, or any variable in the value of a sensitive header such as <code>Authorization</code>.</li>
     <li>What you type after <code>{{</code> filters the list, ignoring case: names that start with it come first, then names that contain it. The menu closes when nothing matches, or when you type something that cannot be part of a name, such as a space or the <code>(</code> of a <a href="template-functions.html">template function</a>.</li>

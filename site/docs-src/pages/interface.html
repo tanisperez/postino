@@ -97,12 +97,13 @@ description: A tour of the Postino window: title bar, activity rail, sidebar, ta
 <p>Close it like any tab, with its close button or <kbd>Ctrl</kbd> <kbd>W</kbd>. Opening a workspace, from the welcome tab or anywhere else, also closes it, because a workspace always opens with fresh tabs. If you close it while no workspace is open, the main area says <strong>Create a workspace or open a folder to get started.</strong> and offers the <strong>New workspace…</strong> and <strong>Open folder…</strong> buttons.</p>
 
 <h2>Request editor</h2>
-<p>The top half of a request tab. The <strong>URL bar</strong> joins the method selector and the URL, and shows <code>{{variables}}</code> as chips. Next to it are the <strong>Send</strong> button and <strong>Code</strong>, which opens the <a href="code-snippets.html">code snippet</a> dialog. Below, six tabs, each with a count when it has content:</p>
+<p>The top half of a request tab. The <strong>URL bar</strong> joins the method selector and the URL, and shows <code>{{variables}}</code> as chips. Next to it are the <strong>Send</strong> button and <strong>Code</strong>, which opens the <a href="code-snippets.html">code snippet</a> dialog. Below, seven tabs, each with a count when it has content:</p>
 <div class="table"><table>
     <thead><tr><th>Tab</th><th>Contents</th><th>Stored in the file as</th></tr></thead>
     <tbody>
         <tr><td>Params</td><td>Query parameters, a key and value table</td><td><code>::: query</code></td></tr>
         <tr><td>Headers</td><td>Request headers, a key and value table</td><td>Lines after the request line</td></tr>
+        <tr><td>Auth</td><td>None, Basic, Bearer or API key, with its fields</td><td><code>::: auth &lt;type&gt;</code></td></tr>
         <tr><td>Body</td><td>JSON, Text, XML, Form or None, with a code editor and a <strong>Format</strong> button</td><td><code>::: body &lt;type&gt;</code></td></tr>
         <tr><td>Pre-request</td><td>JavaScript run before sending</td><td><code>::: pre</code></td></tr>
         <tr><td>Post-response</td><td>JavaScript run after the response arrives</td><td><code>::: post</code></td></tr>

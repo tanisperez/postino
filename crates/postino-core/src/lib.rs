@@ -6,6 +6,7 @@
 //! `docs/format.md`.
 #![warn(missing_docs)]
 
+mod auth;
 mod body;
 mod environment;
 pub mod functions;
@@ -16,6 +17,7 @@ mod method;
 mod request;
 mod response;
 
+pub use auth::{ApiKeyLocation, Auth};
 pub use body::Body;
 pub use environment::Environment;
 pub use functions::{Arg, FunctionError};

@@ -171,13 +171,17 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
    editor or a load test fills the area below the bar in place of items 4 and 5.
 4. **Request pane**: URL bar (method selector and URL joined in one bordered `raised` box, method
    in its color, variables shown as chips) plus the primary Send button with its `Ctrl ↵` hint
-   (`Cmd ↵` on macOS). Underline tabs: Params, Headers, Body, Pre-request, Post-response, Docs,
+   (`Cmd ↵` on macOS). Underline tabs: Params, Headers, Auth, Body, Pre-request, Post-response, Docs,
    with counts in `fg_subtle`. Body tab: segmented control (JSON, Text, XML, Form, None) on the
    left, a "Format" ghost button on the right, then the code editor in a bordered `raised` box
    with line numbers. The Params, Headers and Form tables have 30 px rows: a focused cell gets
    the 1 px `accent` border without the 3 px ring, which would spill over the rows around it.
    Their Key and Value headers sort the rows on click (`fg` on hover), with an `arrow-up` or
-   `arrow-down` icon after the sorted one.
+   `arrow-down` icon after the sorted one. Auth tab: segmented control (None, Basic, Bearer, API
+   key) with the same 8 px vertical padding as the Body tab's, then up to 560 px of rows, gap 8:
+   a 96 px label in `fg_muted` and the field (the same chips and focus border as a table cell,
+   the password masked), a Header/Query param segmented control for an API key, and a warning
+   `InlineMessage` when a header or param written by hand is sent instead.
 5. **Response pane**: tab bar Body, Headers (count), Tests (`passed/total`), Console (count); on
    the right the status badge, time and size. Below, a Pretty/Raw segmented control on the left
    and `copy` and `search` icon buttons on the right, then the body with line numbers in a
@@ -311,5 +315,5 @@ Decisions taken in the redesign: the main screen is the "flat panes" direction (
 response below, panels separated by borders, no shadows); the other direction explored (a
 boxed layout with its own error panel) was discarded. Errors and warnings are `InlineMessage`
 strips (warning, danger, success, with a "Define" action on unknown variables), never a
-full-width red banner. Auth and OAuth 2.0 had no screen designed and are tracked as issues #14
-and #15.
+full-width red banner. OAuth 2.0 had no screen designed and is tracked as issue #15. The Auth
+tab (#14) was designed in code after the Body tab.

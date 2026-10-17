@@ -109,6 +109,19 @@ pub fn marker_children(
     children
 }
 
+/// `text` with every character outside its `{{ }}` markers replaced by a bullet.
+fn mask_literals(text: &str) -> String {
+    let mut masked = String::with_capacity(text.len());
+    let mut cursor = 0;
+    for span in variable_spans(text) {
+        masked.extend(text[cursor..span.range.start].chars().map(|_| '\u{2022}'));
+        masked.push_str(&text[span.range.clone()]);
+        cursor = span.range.end;
+    }
+    masked.extend(text[cursor..].chars().map(|_| '\u{2022}'));
+    masked
+}
+
 /// A single-line field of the request editor (a Params, Headers or Form cell): the live `Input`
 /// while focused or while its text has no marker, a row of chips otherwise.
 #[derive(IntoElement)]
@@ -118,6 +131,7 @@ pub struct VariableField {
     text: SharedString,
     context: Rc<VariableContext>,
     mask_all: bool,
+    masked: bool,
     on_chip_click: Option<TextHandler>,
 }
 
@@ -135,8 +149,16 @@ impl VariableField {
             text: text.into(),
             context,
             mask_all: false,
+            masked: false,
             on_chip_click: None,
         }
+    }
+
+    /// Hides the text around the markers behind bullets while not focused, for a password. The
+    /// input itself must be masked too (`InputState::masked`).
+    pub fn masked(mut self, masked: bool) -> Self {
+        self.masked = masked;
+        self
     }
 
     /// Hides the value of every variable in the tooltips, for the value of a sensitive header.
@@ -162,10 +184,15 @@ impl RenderOnce for VariableField {
             .read(cx)
             .focus_handle(cx)
             .is_focused(window);
-        let spans = if focused || !self.text.contains("{{") {
+        let text = if self.masked {
+            SharedString::from(mask_literals(&self.text))
+        } else {
+            self.text.clone()
+        };
+        let spans = if focused || !text.contains("{{") {
             Vec::new()
         } else {
-            variable_spans(&self.text)
+            variable_spans(&text)
         };
         if spans.is_empty() {
             let accent = cx.palette().accent;
@@ -183,7 +210,7 @@ impl RenderOnce for VariableField {
         let input_state = self.input_state.clone();
         let children = marker_children(
             &self.id,
-            &self.text,
+            &text,
             &spans,
             &self.context,
             self.mask_all,
@@ -209,5 +236,21 @@ impl RenderOnce for VariableField {
             })
             .children(children)
             .into_any_element()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::mask_literals;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn mask_literals_keeps_only_the_markers() {
+        assert_eq!(mask_literals("pässw"), "\u{2022}".repeat(5));
+        assert_eq!(
+            mask_literals("a{{ secret }}bc"),
+            "\u{2022}{{ secret }}\u{2022}\u{2022}"
+        );
+        assert_eq!(mask_literals("{{x}}"), "{{x}}");
     }
 }
