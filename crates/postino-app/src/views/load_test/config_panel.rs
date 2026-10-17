@@ -12,7 +12,7 @@ use rust_i18n::t;
 
 use crate::state::load_test::{LoadTestConfigInputs, LoadTestTab, LoadTestTarget, TargetKind};
 use crate::state::locale;
-use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
+use crate::theme::metrics::{CONTROL_HEIGHT, INPUT_PADDING_X, RADIUS_MD};
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{
     DangerButton, PrimaryButton, SegmentedControl, SegmentedItem, edit_menu, select_trigger,
@@ -496,6 +496,7 @@ fn render_field(
         pill = pill.child(
             Input::new(entity)
                 .context_menu(edit_menu(entity, cx))
+                .px(px(INPUT_PADDING_X))
                 .flex_1()
                 .h(px(CONTROL_HEIGHT))
                 .py_0()

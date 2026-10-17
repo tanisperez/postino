@@ -24,6 +24,9 @@ Where things live (all under `crates/postino-app/src/`):
   in a second place.
 - Panels are flat (border only). Inputs and cards use `raised` plus a border. Menus, popovers and
   modals use `overlay` plus the shadow token. No shadows on fixed panels.
+- A single-line input's text sits 9 px from its border (`INPUT_PADDING_X`, 1 px less than
+  gpui-component's default), and so does the text of a `VariableField`'s row of chips, so
+  focusing a field does not move its text. The URL bar keeps its own 8 px.
 - Every text input hovers like the search trigger: a `border` border at rest and `border_strong`
   while the pointer is over it, then its own focus look (`accent`) once focused. An `Input` that
   draws its own border goes through `HoverInput` (`components/hover_input.rs`), since

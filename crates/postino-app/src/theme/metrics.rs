@@ -86,6 +86,9 @@ pub const ICON_BUTTON_LG: f32 = 28.0;
 pub const ICON_BUTTON_HEADER: f32 = 22.0;
 /// Width of the checkbox and delete columns of a `KeyValueTable`.
 pub const KEY_VALUE_SIDE_COL_WIDTH: f32 = 30.0;
+/// Horizontal padding of a single-line input's text, 1 px less than gpui-component's default 10.
+/// A `VariableField`'s row of chips uses it too, so focusing the field does not move its text.
+pub const INPUT_PADDING_X: f32 = 9.0;
 /// Height of a `VariableField` (its input or its row of chips).
 pub const VARIABLE_FIELD_HEIGHT: f32 = 26.0;
 /// Height of a `KeyValueTable` row: its fields are 4 px clear of the row lines above and below.

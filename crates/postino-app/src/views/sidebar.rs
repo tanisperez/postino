@@ -29,8 +29,8 @@ use crate::actions::{DeleteSelectedEntry, RenameSelectedEntry};
 use crate::state;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
-    ICON_BUTTON_HEADER, MODAL_WIDTH_DEFAULT, RADIUS_MD, RADIUS_SM, SIDEBAR_FILTER_HEIGHT,
-    TREE_ROW_HEIGHT,
+    ICON_BUTTON_HEADER, INPUT_PADDING_X, MODAL_WIDTH_DEFAULT, RADIUS_MD, RADIUS_SM,
+    SIDEBAR_FILTER_HEIGHT, TREE_ROW_HEIGHT,
 };
 use crate::views::components::{
     ConfirmDialog, IconButton, MethodBadge, ModalPlacement, PrimaryButton, SecondaryButton,
@@ -326,6 +326,7 @@ impl AppView {
                     .child(
                         Input::new(&self.sidebar_filter_input)
                             .context_menu(edit_menu(&self.sidebar_filter_input, cx))
+                            .px(px(INPUT_PADDING_X))
                             .h(px(SIDEBAR_FILTER_HEIGHT))
                             .py_0()
                             .bordered(false)

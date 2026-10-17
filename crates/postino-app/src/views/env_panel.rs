@@ -18,7 +18,7 @@ use crate::state::env_color::env_color;
 use crate::state::env_panel::load_env_rows;
 use crate::state::number::format_integer;
 use crate::state::workspace_log::log_workspace_error;
-use crate::theme::metrics::{ENV_ROW_HEIGHT, ICON_BUTTON_HEADER, RADIUS_SM};
+use crate::theme::metrics::{ENV_ROW_HEIGHT, ICON_BUTTON_HEADER, INPUT_PADDING_X, RADIUS_SM};
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{IconButton, SectionLabel, edit_menu};
 
@@ -234,6 +234,7 @@ impl AppView {
                 div().flex_1().min_w_0().child(
                     Input::new(input)
                         .context_menu(edit_menu(input, cx))
+                        .px(px(INPUT_PADDING_X))
                         .h(px(ENV_ROW_HEIGHT - 2.0))
                         .py_0()
                         .bordered(false)

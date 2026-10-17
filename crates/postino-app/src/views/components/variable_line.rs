@@ -24,7 +24,7 @@ use super::icon_button::IconButton;
 use super::variable_chip::VariableChip;
 use crate::state::variable_hint::{Hint, Origin, VariableContext, hint};
 use crate::theme::PaletteExt;
-use crate::theme::metrics::{RADIUS_MD, VARIABLE_FIELD_HEIGHT};
+use crate::theme::metrics::{INPUT_PADDING_X, RADIUS_MD, VARIABLE_FIELD_HEIGHT};
 
 /// A text-carrying handler (chip click), factored out because clippy's `type_complexity` flags
 /// the inline form.
@@ -233,6 +233,7 @@ impl RenderOnce for VariableField {
             let accent = cx.palette().accent;
             let input = Input::new(&self.input_state)
                 .context_menu(edit_menu(&self.input_state, cx))
+                .px(px(INPUT_PADDING_X))
                 .py_0()
                 // The same height as the row of chips, smaller than the default 32 px so it stays
                 // clear of the table's row lines.
@@ -266,7 +267,7 @@ impl RenderOnce for VariableField {
             .overflow_hidden()
             .whitespace_nowrap()
             .cursor_text()
-            .px_3()
+            .px(px(INPUT_PADDING_X))
             .border_1()
             .border_color(palette.border)
             .hover(move |style| style.border_color(border_strong))

@@ -26,7 +26,7 @@ use crate::state::env_color::env_color;
 use crate::state::env_edit::{EnvEditTab, EnvScope, EnvValidationError, EnvVarRow, RowNote};
 use crate::state::number::format_integer;
 use crate::state::workspace_log::log_workspace_error;
-use crate::theme::metrics::{MODAL_WIDTH_DEFAULT, RADIUS_MD, RADIUS_SM};
+use crate::theme::metrics::{INPUT_PADDING_X, MODAL_WIDTH_DEFAULT, RADIUS_MD, RADIUS_SM};
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{
     ConfirmDialog, GhostButton, HoverInput, IconButton, InlineMessage, InlineMessageKind,
@@ -614,6 +614,7 @@ impl AppView {
                                 &input,
                                 Input::new(&input)
                                     .context_menu(edit_menu(&input, cx))
+                                    .px(px(INPUT_PADDING_X))
                                     .py_0(),
                             )),
                         )
@@ -1025,6 +1026,7 @@ fn render_toolbar(
                 &entities.filter,
                 Input::new(&entities.filter)
                     .context_menu(edit_menu(&entities.filter, cx))
+                    .px(px(INPUT_PADDING_X))
                     .h(px(CONTROL_HEIGHT))
                     .py_0()
                     .prefix(

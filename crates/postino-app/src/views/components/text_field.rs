@@ -11,6 +11,7 @@ use gpui_kit::*;
 
 use super::edit_menu::edit_menu;
 use super::hover_input::HoverInput;
+use crate::theme::metrics::INPUT_PADDING_X;
 
 /// Line height of a [`text_field`], and so the height of its selection highlight.
 const FIELD_LINE_HEIGHT: f32 = 22.0;
@@ -27,6 +28,7 @@ pub fn text_field(state: &Entity<InputState>, cx: &App) -> Div {
             state,
             Input::new(state)
                 .context_menu(edit_menu(state, cx))
+                .px(px(INPUT_PADDING_X))
                 .h_full()
                 .py_0()
                 .line_height(px(FIELD_LINE_HEIGHT)),
