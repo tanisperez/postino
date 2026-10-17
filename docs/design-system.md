@@ -177,8 +177,9 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
    with line numbers. The Params, Headers and Form tables have 30 px rows: a focused cell gets
    the 1 px `accent` border without the 3 px ring, which would spill over the rows around it.
    Their Key and Value headers sort the rows on click (`fg` on hover), with an `arrow-up` or
-   `arrow-down` icon after the sorted one. Auth tab: segmented control (None, Basic, Bearer, API
-   key) with the same 8 px vertical padding as the Body tab's, then up to 560 px of rows, gap 8:
+   `arrow-down` icon after the sorted one. Auth tab: one column up to 560 px wide, centered in
+   the tab, with the segmented control (None, Basic, Bearer, API key) centered at its top and
+   the same 8 px vertical padding as the Body tab's, then rows, gap 8:
    a 96 px label in `fg_muted` and the field (the same chips and focus border as a table cell,
    the password masked), a Header/Query param segmented control for an API key, and a warning
    `InlineMessage` when a header or param written by hand is sent instead.

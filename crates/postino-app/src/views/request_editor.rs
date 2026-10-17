@@ -1046,9 +1046,9 @@ impl AppView {
         }
     }
 
-    /// Renders the Auth tab: the auth type selector, then a labeled field per value of the
-    /// selected type (and where an API key goes), and a warning when a header or param written
-    /// by hand is sent instead.
+    /// Renders the Auth tab, centered: the auth type selector, then a labeled field per value of
+    /// the selected type (and where an API key goes), and a warning when a header or param
+    /// written by hand is sent instead.
     fn render_auth_tab(&self, tab_id: &str, request: &Request, cx: &Context<Self>) -> AnyElement {
         let weak = cx.weak_entity();
         let palette = cx.palette();
@@ -1084,11 +1084,12 @@ impl AppView {
                 .child(div().flex_1().min_w_0().child(field))
         };
 
-        let mut content = v_flex().gap_2().max_w(px(AUTH_FORM_MAX_WIDTH));
+        let mut content = v_flex().gap_2();
         if current_kind == AuthKind::None {
             content = content.child(
                 div()
                     .p_2()
+                    .text_center()
                     .text_color(palette.fg_muted)
                     .child(t!("request.auth.empty")),
             );
@@ -1143,10 +1144,18 @@ impl AppView {
             )));
         }
 
-        v_flex()
-            .gap_2()
-            .child(h_flex().items_center().py(px(8.0)).child(type_selector))
-            .child(content)
+        // The selector and the form share one column, centered in the tab.
+        h_flex()
+            .w_full()
+            .justify_center()
+            .child(
+                v_flex()
+                    .w_full()
+                    .max_w(px(AUTH_FORM_MAX_WIDTH))
+                    .gap_2()
+                    .child(h_flex().justify_center().py(px(8.0)).child(type_selector))
+                    .child(content),
+            )
             .into_any_element()
     }
 
