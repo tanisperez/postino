@@ -174,7 +174,7 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
    while no workspace is open and none is being opened, so the main area takes the whole width
    (the welcome tab, below). The sidebar has: header
    "COLLECTIONS" with new request and new folder icon buttons, a filter input with the
-   `list-filter` icon, the tree (chevron for folders, 34 px method label for requests; selected
+   `list-filter` icon 8 px before its text, like the search trigger, the tree (chevron for folders, 34 px method label for requests; selected
    row `accent_subtle` background with `accent_text` label, hover `hover`), and a footer with a
    top border: `hard-drive` icon and the `~`-shortened workspace path, then `git-branch` and the
    branch name (omitted outside a git repo).

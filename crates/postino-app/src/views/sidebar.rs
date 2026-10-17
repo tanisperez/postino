@@ -326,7 +326,10 @@ impl AppView {
                     .child(
                         Input::new(&self.sidebar_filter_input)
                             .context_menu(edit_menu(&self.sidebar_filter_input, cx))
-                            .px(px(INPUT_PADDING_X))
+                            // No left padding: the row's 8 px gap already separates the text
+                            // from the icon, as in the title bar's search trigger.
+                            .pl_0()
+                            .pr(px(INPUT_PADDING_X))
                             .h(px(SIDEBAR_FILTER_HEIGHT))
                             .py_0()
                             .bordered(false)
