@@ -43,6 +43,14 @@ caret, selection and border, tree chevrons, checkboxes, switches). The mapping i
   opaque color.
 - `hover` has to be set on `list.hover.background`, `button.hover.background` and
   `table.hover.background`: the last two do not fall back to the first.
+- A `.hover()` or `.active()` style replaces the element's background, it does not paint over
+  it. With the translucent `hover` and `pressed` tokens, an element whose resting fill is opaque
+  must hover with `Palette::hover_over(fill)`, or it shows what is under it.
+- `Button`'s `.ghost()` hovers with `accent` (half of it in dark) and switches the text to
+  `accent.foreground`, whatever `Styled` colors the instance sets, and its border takes the
+  variant's border color on hover, which erased the border of bordered pickers. `Custom`
+  (`ButtonCustomVariant`) has the same border rule: its `color` is the border on hover and
+  press. `NeutralButtonExt` wraps both rules.
 - `raised` maps to `secondary.background`, `overlay` to `popover.background`, `border_strong` to
   `input.border`, `accent_text` to `link`.
 - The modal backdrop is a different field from the modal fill: the theme's `overlay` key is the

@@ -29,6 +29,7 @@ use crate::theme::{self, Palette, PaletteExt};
 
 use super::components::{
     GhostButton, IconButton, MODAL_INNER_RADIUS, ModalPlacement, ThemeCard, framed_dialog,
+    switch_halo,
 };
 use super::root::AppView;
 
@@ -720,13 +721,18 @@ fn render_interface_section(
             palette,
             t!("settings.interface.welcome"),
             Some(t!("settings.interface.welcome_description")),
-            Switch::new("settings-show-welcome")
-                .checked(settings.show_welcome)
-                .on_click(move |checked, window, cx| {
-                    let checked = *checked;
-                    let _ = weak.update(cx, |view, cx| view.set_show_welcome(checked, window, cx));
-                })
-                .into_any_element(),
+            switch_halo(
+                "settings-show-welcome-halo",
+                Switch::new("settings-show-welcome")
+                    .checked(settings.show_welcome)
+                    .on_click(move |checked, window, cx| {
+                        let checked = *checked;
+                        let _ =
+                            weak.update(cx, |view, cx| view.set_show_welcome(checked, window, cx));
+                    }),
+                palette,
+            )
+            .into_any_element(),
         ))
         .into_any_element()
 }
@@ -996,8 +1002,8 @@ fn stepper_button(
         .border_1()
         .border_color(palette.border_strong)
         .bg(palette.raised)
-        .hover(|style| style.bg(palette.hover))
-        .active(|style| style.bg(palette.pressed))
+        .hover(|style| style.bg(palette.hover_over(palette.raised)))
+        .active(|style| style.bg(palette.pressed_over(palette.raised)))
         .child(Icon::new(icon).small())
         .on_click(move |_, window, cx| on_click(window, cx))
 }

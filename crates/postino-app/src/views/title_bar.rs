@@ -4,7 +4,7 @@
 //! `TitleBar`, so nothing here adds them. The search trigger opens the command palette
 //! (`views/command_palette.rs`); the settings gear opens Settings (`views/settings.rs`).
 
-use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -19,6 +19,7 @@ use crate::theme::metrics::{
     ENV_PILL_HEIGHT, MENU_DOT_COLUMN_WIDTH, MENU_ROW_HEIGHT, RADIUS_MD, SEARCH_TRIGGER_WIDTH,
     TITLE_BAR_HEIGHT,
 };
+use crate::views::components::NeutralButtonExt;
 
 use super::root::AppView;
 use super::{new_workspace, sidebar};
@@ -47,9 +48,11 @@ impl AppView {
                 .child(render_logo(&palette))
                 .child(div().font_weight(FontWeight::SEMIBOLD).child("Postino"))
                 .child(div().w(px(1.0)).h(px(16.0)).mx(px(4.0)).bg(palette.border))
-                .child(no_drag(
-                    self.render_workspace_switcher(weak.clone(), &palette),
-                ))
+                .child(no_drag(self.render_workspace_switcher(
+                    weak.clone(),
+                    &palette,
+                    cx,
+                )))
                 .child(div().flex_1())
                 .child(no_drag(self.render_env_picker(weak.clone(), cx)))
                 .child(no_drag(render_settings_gear(weak.clone(), &palette))),
@@ -83,7 +86,12 @@ impl AppView {
     /// Renders the workspace switcher: the folder icon, the open workspace's folder name (or a
     /// placeholder), a chevron, and its dropdown menu (recent workspaces, then "New workspace..."
     /// and "Open folder...").
-    fn render_workspace_switcher(&self, weak: WeakEntity<Self>, palette: &Palette) -> AnyElement {
+    fn render_workspace_switcher(
+        &self,
+        weak: WeakEntity<Self>,
+        palette: &Palette,
+        cx: &App,
+    ) -> AnyElement {
         let label = self
             .state
             .workspace
@@ -100,7 +108,7 @@ impl AppView {
         let recent_is_empty = recent.is_empty();
 
         Button::new("workspace-switcher")
-            .ghost()
+            .neutral_ghost(cx, palette.fg_muted)
             .h(px(ENV_PILL_HEIGHT))
             .px_2()
             .rounded(px(RADIUS_MD - 2.0))

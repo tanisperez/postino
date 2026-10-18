@@ -82,7 +82,8 @@ const LIGHT: Tokens = Tokens {
     accent_fg: "#ffffff",
     accent_text: "#3f47c4",
     accent_subtle: "#e8e9fd",
-    hover: "#eceef2",
+    // `fg` at 7.5%: a translucent layer, so a hover shows on every surface (#138).
+    hover: "#1b1c2213",
     success: "#1d8657",
     success_subtle: "#e2f4ea",
     warning: "#9a6500",
@@ -131,7 +132,9 @@ const DARK: Tokens = Tokens {
     accent_fg: "#ffffff",
     accent_text: "#a3a9ff",
     accent_subtle: "#272b4d",
-    hover: "#25272e",
+    // White at 5%: a translucent layer, so a hover shows on every surface (#138). The opaque
+    // #25272e used before was almost `raised` and darker than `overlay`, invisible on both.
+    hover: "#ffffff0d",
     success: "#4fc88f",
     success_subtle: "#15302a",
     warning: "#e8b75a",
@@ -208,13 +211,14 @@ pub struct Palette {
     /// gpui-component makes of `list.active.background`, for rows that draw their selection
     /// themselves (the sidebar's Ctrl+click picks).
     pub list_active: Hsla,
-    /// Hover background for rows and ghost buttons.
+    /// Hover background for rows, buttons and controls. Translucent (#138): it darkens (light)
+    /// or lightens (dark) whatever surface is under it, so the same token reads on `bg`,
+    /// `surface`, `raised` and `overlay` alike.
     pub hover: Hsla,
     /// Pressed/active background for rows, icon buttons and other hand-rolled clickable `div`s
     /// (GitHub #17). Not one of the design's own tokens (the design system defines no `:active`
-    /// state), so it is derived rather than a second hex literal to keep in sync by hand:
-    /// `hover` blended two-thirds of the way toward `border_strong`, the next step up the same
-    /// bg -> surface -> raised -> border -> border_strong progression `hover` already sits in.
+    /// state), so it is derived rather than a second hex literal to keep in sync by hand: the
+    /// `hover` layer at [`PRESSED_ALPHA_FACTOR`] times its alpha, translucent like it.
     pub pressed: Hsla,
     /// `PrimaryButton`'s hover fill (GitHub #17 follow-up): `accent` shifted one [`SHADE_STEP`]
     /// toward white in the dark theme, toward black in the light theme (see [`shade`]), so hover
@@ -310,7 +314,13 @@ impl Palette {
             accent_subtle: hex(tokens.accent_subtle),
             list_active: hex(tokens.accent_subtle).opacity(LIST_ACTIVE_ALPHA),
             hover: hex(tokens.hover),
-            pressed: hex(tokens.hover).blend(hex(tokens.border_strong).opacity(2.0 / 3.0)),
+            pressed: {
+                let hover = hex(tokens.hover);
+                Hsla {
+                    a: hover.a * PRESSED_ALPHA_FACTOR,
+                    ..hover
+                }
+            },
             accent_hover: shade(accent, sign * SHADE_STEP),
             accent_pressed: shade(accent, sign * SHADE_STEP * 2.0),
             danger_hover: shade(danger, sign * SHADE_STEP),
@@ -354,6 +364,19 @@ impl Palette {
     /// `color-mix(... 14%, transparent)`. Used by the `MethodBadge` component's `pill` variant.
     pub fn method_badge_bg(&self, method: &Method) -> Hsla {
         self.method_color(method).opacity(0.14)
+    }
+
+    /// `hover` composited over the opaque `surface`: the hover fill of a control whose resting
+    /// background is `surface`. A `.hover()` style replaces the background instead of layering
+    /// over it, so a raised control given the bare translucent `hover` would show what is under
+    /// it. Controls with a transparent resting background use `hover` itself.
+    pub fn hover_over(&self, surface: Hsla) -> Hsla {
+        surface.blend(self.hover)
+    }
+
+    /// `pressed` composited over the opaque `surface`, see [`Self::hover_over`].
+    pub fn pressed_over(&self, surface: Hsla) -> Hsla {
+        surface.blend(self.pressed)
     }
 
     /// The status badge's foreground and background for a response status code: 2xx `success`, 3xx
@@ -460,8 +483,9 @@ pub(super) fn theme_colors_and_highlight(dark: bool) -> (serde_json::Value, serd
         "button.primary.active.background": hex_string(palette.accent_pressed),
         "button.secondary.background": tokens.raised,
         "button.secondary.foreground": tokens.fg,
-        "button.secondary.hover.background": tokens.hover,
-        "button.secondary.active.background": hex_string(palette.pressed),
+        // Over `raised`, the secondary button's own fill: a hover style replaces the fill.
+        "button.secondary.hover.background": hex_string(palette.hover_over(palette.raised)),
+        "button.secondary.active.background": hex_string(palette.pressed_over(palette.raised)),
         "button.danger.background": tokens.danger,
         "button.danger.foreground": tokens.accent_fg,
         "button.danger.hover.background": hex_string(palette.danger_hover),
@@ -537,6 +561,11 @@ const SELECTION_ALPHA_HEX: &str = "4d";
 /// the rows `ListItem` selects itself.
 const LIST_ACTIVE_ALPHA: f32 = 0.2;
 
+/// How much stronger [`Palette::pressed`] is than the translucent `hover` layer it is derived
+/// from: about the step the opaque tokens used to have (hover blended two-thirds of the way
+/// toward `border_strong`).
+const PRESSED_ALPHA_FACTOR: f32 = 2.2;
+
 /// One `shade` step (GitHub #17 follow-up), in HSL lightness. `accent_hover`/`danger_hover` are
 /// one step, `accent_pressed`/`danger_pressed` two.
 const SHADE_STEP: f32 = 0.07;
@@ -554,18 +583,24 @@ fn shade(color: Hsla, delta: f32) -> Hsla {
     }
 }
 
-/// Formats an opaque [`Hsla`] as a `#rrggbb` string, for the handful of [`Palette`] colors that
-/// are computed at runtime ([`shade`]) rather than copied from a [`Tokens`] literal, so
-/// [`theme_colors_and_highlight`] can still hand them to the JSON theme family as plain strings
-/// like every other color in it.
+/// Formats an [`Hsla`] as a `#rrggbb` string, or `#rrggbbaa` when it is translucent
+/// ([`Palette::pressed`]), for the handful of [`Palette`] colors that are computed at runtime
+/// ([`shade`]) rather than copied from a [`Tokens`] literal, so [`theme_colors_and_highlight`]
+/// can still hand them to the JSON theme family as plain strings like every other color in it.
 fn hex_string(color: Hsla) -> String {
     let rgba = Rgba::from(color);
-    format!(
+    let byte = |channel: f32| (channel * 255.0).round() as u8;
+    let rgb = format!(
         "#{:02x}{:02x}{:02x}",
-        (rgba.r * 255.0).round() as u8,
-        (rgba.g * 255.0).round() as u8,
-        (rgba.b * 255.0).round() as u8,
-    )
+        byte(rgba.r),
+        byte(rgba.g),
+        byte(rgba.b)
+    );
+    if byte(rgba.a) == 0xff {
+        rgb
+    } else {
+        format!("{rgb}{:02x}", byte(rgba.a))
+    }
 }
 
 #[cfg(test)]
@@ -655,20 +690,45 @@ mod tests {
         assert_eq!(palette.env_color(EnvColor::Success), palette.success);
     }
 
-    /// `pressed` (GitHub #17) has no design token of its own: it must land strictly between
-    /// `hover` and `border_strong`, the two literals it is derived from, and differ from both so
-    /// a hover-then-press sequence is visibly distinct at every step.
+    /// `pressed` (GitHub #17) has no design token of its own: it is the `hover` layer, same
+    /// color, more opaque, so a hover-then-press sequence is visibly distinct.
     #[test]
-    fn pressed_sits_between_hover_and_border_strong() {
+    fn pressed_is_a_stronger_hover_layer() {
         for palette in [Palette::light(), Palette::dark()] {
-            assert_ne!(palette.pressed, palette.hover);
-            assert_ne!(palette.pressed, palette.border_strong);
-            let hover_rgba = Rgba::from(palette.hover);
-            let strong_rgba = Rgba::from(palette.border_strong);
-            let pressed_rgba = Rgba::from(palette.pressed);
-            let min = hover_rgba.r.min(strong_rgba.r);
-            let max = hover_rgba.r.max(strong_rgba.r);
-            assert!(pressed_rgba.r >= min && pressed_rgba.r <= max);
+            assert!(palette.hover.a < 1.0);
+            assert!(palette.pressed.a > palette.hover.a);
+            assert!(palette.pressed.a < 1.0);
+            assert_eq!(
+                Hsla {
+                    a: 1.0,
+                    ..palette.pressed
+                },
+                Hsla {
+                    a: 1.0,
+                    ..palette.hover
+                },
+                "pressed keeps the hover color"
+            );
+        }
+    }
+
+    /// The translucent `hover` and `pressed` (#138) must show on every surface a control sits
+    /// on. The opaque dark `hover` they replaced was 2 levels above `raised` and 1 below
+    /// `overlay`, invisible on both.
+    #[test]
+    fn hover_and_pressed_show_on_every_surface() {
+        // The mean of the R, G and B differences, in 0..=255 levels.
+        fn distance(a: Hsla, b: Hsla) -> f32 {
+            let (a, b) = (Rgba::from(a), Rgba::from(b));
+            ((a.r - b.r).abs() + (a.g - b.g).abs() + (a.b - b.b).abs()) / 3.0 * 255.0
+        }
+        for palette in [Palette::light(), Palette::dark()] {
+            for surface in [palette.bg, palette.surface, palette.raised, palette.overlay] {
+                let hovered = surface.blend(palette.hover);
+                let pressed = surface.blend(palette.pressed);
+                assert!(distance(surface, hovered) >= 9.0, "hover on {surface:?}");
+                assert!(distance(hovered, pressed) >= 9.0, "pressed on {surface:?}");
+            }
         }
     }
 
@@ -710,6 +770,10 @@ mod tests {
             assert_eq!(
                 colors["button.danger.active.background"],
                 hex_string(palette.danger_pressed)
+            );
+            assert_eq!(
+                colors["button.secondary.hover.background"],
+                hex_string(palette.hover_over(palette.raised))
             );
         }
     }

@@ -40,6 +40,7 @@ use crate::theme::metrics::{
     AUTH_FORM_MAX_WIDTH, AUTH_LABEL_WIDTH, COMPLETION_MENU_WIDTH, RADIUS_MD, SEND_BUTTON_HEIGHT,
     SEND_BUTTON_MIN_WIDTH,
 };
+use crate::views::components::NeutralButtonExt;
 use crate::views::components::variable_chip::highlight_style;
 use crate::views::components::{
     GhostButton, InlineMessage, InlineMessageKind, KeyValueRow, KeyValueTable, PrimaryButton,
@@ -948,7 +949,7 @@ impl AppView {
                 )
                 .child(
                     Button::new("cancel-send")
-                        .ghost()
+                        .neutral_ghost(cx, cx.palette().fg_muted)
                         .small()
                         .label(t!("common.cancel"))
                         .on_click(move |_, _, cx| {

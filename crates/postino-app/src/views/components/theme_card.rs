@@ -8,7 +8,9 @@ use gpui_kit::*;
 use rust_i18n::t;
 
 use crate::state::settings::ThemeChoice;
-use crate::theme::metrics::{RADIUS_LG, RADIUS_SM, THEME_PREVIEW_HEIGHT, THEME_PREVIEW_PADDING};
+use crate::theme::metrics::{
+    CHECKBOX_HALO_PADDING, RADIUS_LG, RADIUS_SM, THEME_PREVIEW_HEIGHT, THEME_PREVIEW_PADDING,
+};
 use crate::theme::{Palette, PaletteExt};
 
 type ClickHandler = Box<dyn Fn(&ClickEvent, &mut Window, &mut App)>;
@@ -78,12 +80,35 @@ impl RenderOnce for ThemeCard {
             palette.border_strong
         };
 
+        // Hovering anywhere on the card lights its frame and the halo around its radio (#138).
+        // The selected card's frame is already `accent`, so only the halo changes there.
+        let group = SharedString::from(match self.choice {
+            ThemeChoice::System => "theme-card-system",
+            ThemeChoice::Light => "theme-card-light",
+            ThemeChoice::Dark => "theme-card-dark",
+        });
+        let (frame_hover, frame_pressed) = (palette.fg_subtle, palette.fg_muted);
+        let (halo_hover, halo_pressed) = (palette.pressed, palette.border_strong);
+
         let mut radio = div().size(px(14.0)).rounded_full().border_color(ring_color);
         radio = if selected {
             radio.border_4()
         } else {
-            radio.border_1()
+            // Brighter on hover, or the ring would melt into the halo around it.
+            radio
+                .border_1()
+                .group_hover(group.clone(), move |style| style.border_color(frame_hover))
         };
+        // The checkbox's halo: 3 px around the ring, kept out of the layout by a negative margin.
+        let radio = div()
+            .id(SharedString::from(format!("{group}-radio")))
+            .flex_none()
+            .p(px(CHECKBOX_HALO_PADDING))
+            .m(px(-CHECKBOX_HALO_PADDING))
+            .rounded_full()
+            .group_hover(group.clone(), move |style| style.bg(halo_hover))
+            .group_active(group.clone(), move |style| style.bg(halo_pressed))
+            .child(radio);
 
         // A real border, not a `box-shadow` ring (an `N px` spread shadow): a spread, zero-blur,
         // zero-offset shadow on a `rounded()` + `overflow_hidden()` box rendered as a filled halo
@@ -93,6 +118,7 @@ impl RenderOnce for ThemeCard {
         // corners and border. The selected frame's thicker border eats one pixel of padding, so
         // the mini window stays put when the selection changes.
         let mut preview_box = div()
+            .id(SharedString::from(format!("{group}-frame")))
             .flex()
             .h(px(THEME_PREVIEW_HEIGHT))
             .rounded(px(RADIUS_LG))
@@ -105,7 +131,13 @@ impl RenderOnce for ThemeCard {
         preview_box = if selected {
             preview_box.border_2().p(px(THEME_PREVIEW_PADDING - 1.0))
         } else {
-            preview_box.border_1().p(px(THEME_PREVIEW_PADDING))
+            preview_box
+                .border_1()
+                .p(px(THEME_PREVIEW_PADDING))
+                .group_hover(group.clone(), move |style| style.border_color(frame_hover))
+                .group_active(group.clone(), move |style| {
+                    style.border_color(frame_pressed)
+                })
         };
         // gpui clips children to a rectangle, not to rounded corners, so each half rounds its own
         // outer corners inside the mini window's 1 px border.
@@ -153,9 +185,8 @@ impl RenderOnce for ThemeCard {
             .flex_1()
             .min_w_0()
             .gap(px(8.0))
+            .group(group)
             .cursor_pointer()
-            .hover(|style| style.opacity(0.85))
-            .active(|style| style.opacity(0.7))
             .child(preview_box.child(mini_window))
             .child(
                 h_flex()

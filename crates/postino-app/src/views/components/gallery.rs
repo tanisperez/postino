@@ -19,7 +19,7 @@ use super::{
     InlineMessage, InlineMessageKind, KeyValueRow, KeyValueTable, MethodBadge, PrimaryButton,
     SecondaryButton, SectionLabel, SegmentedControl, SegmentedItem, StatusBadge, StatusState,
     ThemeCard, UnderlineTabItem, UnderlineTabs, UrlBar, VariableChip, select_label_row,
-    select_trigger,
+    select_trigger, switch_halo,
 };
 use crate::state::settings::ThemeChoice;
 use crate::state::variable_hint::VariableContext;
@@ -57,8 +57,8 @@ impl AppView {
                     .child(section("Open tabs", render_document_tabs()))
                     .child(section("Methods", render_methods()))
                     .child(section("Status", render_status()))
-                    .child(section("Controls", render_controls()))
-                    .child(section("Select", render_select(&palette)))
+                    .child(section("Controls", render_controls(&palette)))
+                    .child(section("Select", render_select(&palette, cx)))
                     .child(section("Menu", render_menu(&palette)))
                     .child(section("Key-value table", render_key_value_table()))
                     .child(section("Inline messages", render_inline_messages()))
@@ -248,7 +248,7 @@ fn render_status() -> impl IntoElement {
 
 /// The "Controls" swatch: checked/unchecked [`Checkbox`], a checked [`Radio`], on/off
 /// [`Switch`], and a small folder/request tree mock (reusing [`MethodBadge`]'s `label` variant).
-fn render_controls() -> impl IntoElement {
+fn render_controls(palette: &crate::theme::Palette) -> impl IntoElement {
     v_flex()
         .gap_3()
         .child(
@@ -258,8 +258,16 @@ fn render_controls() -> impl IntoElement {
                 .child(Checkbox::new("gallery-checkbox-on").checked(true))
                 .child(Checkbox::new("gallery-checkbox-off").checked(false))
                 .child(Radio::new("gallery-radio").checked(true))
-                .child(Switch::new("gallery-switch-on").checked(true))
-                .child(Switch::new("gallery-switch-off").checked(false)),
+                .child(switch_halo(
+                    "gallery-switch-on-halo",
+                    Switch::new("gallery-switch-on").checked(true),
+                    palette,
+                ))
+                .child(switch_halo(
+                    "gallery-switch-off-halo",
+                    Switch::new("gallery-switch-off").checked(false),
+                    palette,
+                )),
         )
         .child(
             v_flex()
@@ -295,9 +303,9 @@ fn render_controls() -> impl IntoElement {
 }
 
 /// The "Select" swatch: a `select_trigger` with its label row, as in the Settings selects.
-fn render_select(palette: &crate::theme::Palette) -> impl IntoElement {
+fn render_select(palette: &crate::theme::Palette, cx: &App) -> impl IntoElement {
     h_flex().child(
-        select_trigger("gallery-select", palette)
+        select_trigger("gallery-select", palette, cx)
             .w(px(220.0))
             .text_color(palette.fg)
             .child(select_label_row(div().child("staging"), palette)),

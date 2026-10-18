@@ -277,6 +277,51 @@ impl RenderOnce for GhostButton {
     }
 }
 
+/// Neutral hover and pressed fills for a gpui-kit [`Button`] built by hand (icon buttons,
+/// pickers that open a dropdown menu), the same `hover`/`pressed` tokens as [`GhostButton`] and
+/// every hand-rolled row (#138). `.ghost()` is not used for these: its hover is gpui-component's
+/// accent tinted formula, and it swaps the text color (`ButtonVariant::hovered`).
+pub trait NeutralButtonExt: Sized {
+    /// Transparent at rest, `foreground` text, `hover` and `pressed` fills.
+    fn neutral_ghost(self, cx: &App, foreground: Hsla) -> Self;
+
+    /// A bordered control with the opaque `rest` fill (a picker box): `hover` and `pressed`
+    /// composited over `rest`, `foreground` text, a `border` border at rest and `border_strong`
+    /// while hovered or pressed, like a text input. The caller sets the border width. `Custom`
+    /// paints its border in its `color` on hover and press (`ButtonVariant::border_color`), so
+    /// `color` is `border_strong` here; the resting border and fill set on the instance win over
+    /// the ones `Custom` derives from it.
+    fn neutral_bordered(self, cx: &App, rest: Hsla, border: Hsla, foreground: Hsla) -> Self;
+}
+
+impl NeutralButtonExt for Button {
+    fn neutral_ghost(self, cx: &App, foreground: Hsla) -> Self {
+        let palette = cx.palette();
+        let transparent = palette.bg.opacity(0.0);
+        self.custom(
+            ButtonCustomVariant::new(cx)
+                .color(transparent)
+                .foreground(foreground)
+                .hover(palette.hover)
+                .active(palette.pressed),
+        )
+        .bg(transparent)
+    }
+
+    fn neutral_bordered(self, cx: &App, rest: Hsla, border: Hsla, foreground: Hsla) -> Self {
+        let palette = cx.palette();
+        self.custom(
+            ButtonCustomVariant::new(cx)
+                .color(palette.border_strong)
+                .foreground(foreground)
+                .hover(palette.hover_over(rest))
+                .active(palette.pressed_over(rest)),
+        )
+        .bg(rest)
+        .border_color(border)
+    }
+}
+
 /// A destructive action: `danger` background, white text.
 #[derive(IntoElement)]
 pub struct DangerButton {

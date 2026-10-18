@@ -37,9 +37,26 @@ Where things live (all under `crates/postino-app/src/`):
 - Code editors (body, scripts, docs, response) sit in a `raised` box, and their line number
   column shares that background (`editor.gutter.background`): no tinted strip, whose edge read as
   a divider under a cursor at the start of a line.
+- Every clickable thing has a hover and a pressed state. `hover` and `pressed` are translucent,
+  so the same token shows on `bg`, `surface`, `raised` and `overlay` (the opaque dark `hover`
+  used before was invisible on `raised` and `overlay`). A gpui `.hover()` style replaces the
+  background instead of layering over it: an element with an opaque resting fill (a `raised`
+  control, the selected segment, the active tab, a tinted chip) hovers with
+  `Palette::hover_over(fill)` and presses with `Palette::pressed_over(fill)`; one with a
+  transparent resting fill uses `hover` and `pressed` as they are.
+- A gpui-kit `Button` built by hand never uses `.ghost()`: its hover is an accent tint that also
+  changes the text color. `NeutralButtonExt` (`components/buttons.rs`) gives the neutral look:
+  `neutral_ghost` for a borderless button (icon buttons, the workspace switcher, the method
+  picker), `neutral_bordered` for a picker box (environment pill, `select_trigger`), which keeps
+  its border and takes `border_strong` on hover, like a text input.
+- A select (the Settings selects, `select_trigger`) hovers like a secondary button and shows an
+  `accent` border while it has the focus or its list is open.
 - A checkbox shows a halo on hover: 3 px around its box (`CHECKBOX_HALO_PADDING`, 22 px in all),
   radius `RADIUS_SM`, `pressed` on hover and `border_strong` while held, one step above the usual
-  `hover` and `pressed`, which barely show on an area that small.
+  `hover` and `pressed`, which barely show on an area that small. A switch shows the same halo,
+  pill shaped (`switch_halo`), and so does the radio of a theme card, whose ring brightens to
+  `fg_subtle` with it. Hovering a theme card also brings its frame to `fg_subtle`
+  (`fg_muted` while pressed); a card never dims.
 - The accent (indigo) is for the primary action, the selected row or tab, links and focus.
   Do not use it as decoration.
 - State colors are semantic: `success` green, `warning` amber, `danger` red, `info` blue. Each has
@@ -64,9 +81,9 @@ Hex values copied from `theme/palette.rs`.
 | `fg` | `#1b1c22` | `#e9eaee` | Primary text |
 | `fg_muted` | `#5c606e` | `#a0a3ae` | Secondary text, inactive tabs |
 | `fg_subtle` | `#8b8e9a` | `#6f7280` | Placeholders, icons, line numbers, counts |
-| `hover` | `#eceef2` | `#25272e` | Hover background |
+| `hover` | `#1b1c2213` | `#ffffff0d` | Hover background, a translucent layer (`fg` at 7.5%, white at 5%) |
 
-Derived at runtime (not hex literals): `pressed` is `hover` blended with 2/3 of `border_strong`. `list_active` is `accent_subtle` at alpha 0.2, the selected row background gpui-component's `ListItem` draws, for rows that paint their selection themselves.
+Derived at runtime (not hex literals): `pressed` is the `hover` layer at 2.2 times its alpha. `list_active` is `accent_subtle` at alpha 0.2, the selected row background gpui-component's `ListItem` draws, for rows that paint their selection themselves.
 `accent_hover` and `danger_hover` shift the base color one step (0.07 lightness) toward black in
 light and toward white in dark. `accent_pressed` and `danger_pressed` shift two steps.
 
@@ -310,7 +327,7 @@ Where the code differs from `Welcome.dc.html`:
 
 `buttons` (primary, secondary, danger, ghost), `card`, `document_tabs`, `edit_menu`, `env_pill`,
 `icon_button`, `inline_message`, `key_value_table`, `method_badge`, `section_label`,
-`segmented_control`, `select_trigger`, `status_badge`, `text_field`, `theme_card`,
+`segmented_control`, `select_trigger`, `status_badge`, `switch_halo`, `text_field`, `theme_card`,
 `underline_tabs`, `url_bar`, `variable_chip`, plus `modal` (the frame every dialog shares).
 Reuse one before writing a new widget, and add new ones to the gallery.
 

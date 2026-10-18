@@ -10,7 +10,7 @@
 
 use std::rc::Rc;
 
-use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::*;
@@ -20,6 +20,7 @@ use rust_i18n::t;
 
 use postino_core::{Method, VariableSpan};
 
+use super::NeutralButtonExt;
 use super::edit_menu::edit_menu;
 use super::variable_line::{TextHandler, marker_children};
 use crate::state::variable_hint::VariableContext;
@@ -189,7 +190,7 @@ impl UrlBar {
         };
 
         Button::new("url-bar-method")
-            .ghost()
+            .neutral_ghost(cx, palette.fg_muted)
             .h(px(URL_BAR_HEIGHT))
             .px_3()
             .border_r_1()

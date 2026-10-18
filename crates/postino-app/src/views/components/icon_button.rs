@@ -1,19 +1,20 @@
 //! [`IconButton`]: a small icon-only ghost button, in the 24 and 28 px sizes.
 //!
-//! Wraps gpui-kit's [`Button`] (ghost variant): its click, hover, disabled and tooltip handling
-//! already work as is; only the icon color is pinned to [`crate::theme::Palette::fg_muted`]
-//! through [`PaletteExt`], since a plain ghost button's default text color is not one of the
-//! `ThemeConfigColors` fields the palette populates.
+//! Wraps gpui-kit's [`Button`]: its click, disabled and tooltip handling work as is. The icon
+//! color is pinned to [`crate::theme::Palette::fg_muted`] and the hover and pressed fills are the
+//! neutral `hover`/`pressed` tokens ([`NeutralButtonExt::neutral_ghost`]), not the ghost
+//! variant's accent tinted hover (#138).
 
-use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::button::Button;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use super::NeutralButtonExt;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::ICON_BUTTON_LG;
 
-/// An icon-only ghost button, a 24 or 28 px square.
+/// An icon-only button without a border, a 24 or 28 px square.
 #[derive(IntoElement)]
 pub struct IconButton {
     id: ElementId,
@@ -87,7 +88,7 @@ impl RenderOnce for IconButton {
         };
 
         let mut button = Button::new(self.id)
-            .ghost()
+            .neutral_ghost(cx, palette.fg_muted)
             .with_size(size)
             .icon(self.icon)
             .text_color(palette.fg_muted)
