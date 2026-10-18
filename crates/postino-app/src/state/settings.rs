@@ -52,12 +52,12 @@ pub enum ThemeChoice {
     Dark,
 }
 
-impl From<ThemeChoice> for telaio::ThemeChoice {
+impl From<ThemeChoice> for telaio_ui::ThemeChoice {
     fn from(choice: ThemeChoice) -> Self {
         match choice {
-            ThemeChoice::System => telaio::ThemeChoice::System,
-            ThemeChoice::Light => telaio::ThemeChoice::Light,
-            ThemeChoice::Dark => telaio::ThemeChoice::Dark,
+            ThemeChoice::System => telaio_ui::ThemeChoice::System,
+            ThemeChoice::Light => telaio_ui::ThemeChoice::Light,
+            ThemeChoice::Dark => telaio_ui::ThemeChoice::Dark,
         }
     }
 }

@@ -8,7 +8,7 @@
 use gpui_kit::Hsla;
 
 use postino_core::Method;
-pub use telaio::{Palette, PaletteExt, Tone};
+pub use telaio_ui::{Palette, PaletteExt, Tone};
 
 use crate::state::env_color::EnvColor;
 
@@ -73,11 +73,11 @@ impl PostinoColors for Palette {
     fn method_color(&self, method: &Method) -> Hsla {
         let tokens = if self.dark { &DARK } else { &LIGHT };
         match method {
-            Method::Get => telaio::palette::hex(tokens.get),
-            Method::Post => telaio::palette::hex(tokens.post),
-            Method::Put => telaio::palette::hex(tokens.put),
-            Method::Patch => telaio::palette::hex(tokens.patch),
-            Method::Delete => telaio::palette::hex(tokens.delete),
+            Method::Get => telaio_ui::palette::hex(tokens.get),
+            Method::Post => telaio_ui::palette::hex(tokens.post),
+            Method::Put => telaio_ui::palette::hex(tokens.put),
+            Method::Patch => telaio_ui::palette::hex(tokens.patch),
+            Method::Delete => telaio_ui::palette::hex(tokens.delete),
             Method::Head | Method::Options | Method::Custom(_) => self.fg_muted,
         }
     }

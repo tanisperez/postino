@@ -42,7 +42,7 @@ documentation pages. How it is deployed: `docs/releasing.md`.
   header button, keeps that choice in `localStorage` and sets `data-theme` on `<html>`. Without
   JavaScript the page still follows the system and the button is hidden.
 - `fonts/`: Geist and Geist Mono (SIL OFL 1.1, `fonts/OFL.txt`), subset to Latin and converted to
-  WOFF2 from the TTFs bundled by the telaio crate (`crates/telaio/assets/fonts/`) with `pyftsubset`.
+  WOFF2 from the TTFs bundled by the telaio crate (`crates/telaio-ui/assets/fonts/`) with `pyftsubset`.
 - `img/`: the logo (`packaging/icons/`) and the app screenshots, WebP only.
 - `video/`: the demo video of the home page, as AV1 WebM, H.264 MP4 and a WebP poster. It plays
   muted and in a loop; `js/demo.js` stops it and shows the controls with reduced motion.

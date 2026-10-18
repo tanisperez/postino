@@ -19,7 +19,7 @@ pub use document_tabs::{DocumentTab, DocumentTabs};
 pub use env_pill::{EnvMenuItem, EnvPill};
 pub use method_badge::MethodBadge;
 pub use status_badge::{StatusState, status_badge};
-pub use telaio::components::{
+pub use telaio_ui::components::{
     Card, ConfirmDialog, DangerButton, GhostButton, HoverInput, IconButton, InlineMessage,
     InlineMessageKind, KeyValueRow, KeyValueTable, MODAL_INNER_RADIUS, ModalPlacement,
     NeutralButtonExt, PrimaryButton, SecondaryButton, SectionLabel, SegmentedControl,

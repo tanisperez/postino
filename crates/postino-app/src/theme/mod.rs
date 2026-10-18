@@ -2,7 +2,7 @@
 //! Postino's own, plus the domain colors in [`palette`]), layout metrics, and the "Postino
 //! Light"/"Postino Dark" theme family built from the settings' fonts.
 //!
-//! [`install`] does the startup work through `telaio::install`: register the bundled fonts, load
+//! [`install`] does the startup work through `telaio_ui::install`: register the bundled fonts, load
 //! the theme family into gpui-kit's `ThemeRegistry` and install the palettes `cx.palette()`
 //! reads. [`apply_settings`] does the same live after a Settings change.
 
@@ -21,7 +21,7 @@ use crate::state::settings::Settings;
 /// opening any window; the window's own `ThemeChoice::apply` call is what makes the loaded
 /// family actually visible.
 pub fn install(cx: &mut App, settings: &Settings) {
-    telaio::install(cx, &theme_family(settings));
+    telaio_ui::install(cx, &theme_family(settings));
 }
 
 /// Rebuilds the "Postino Light"/"Postino Dark" themes from `settings` and assigns them as the
@@ -29,12 +29,12 @@ pub fn install(cx: &mut App, settings: &Settings) {
 /// immediately). The caller still has to apply the theme choice afterwards to repaint the
 /// window with the new config.
 pub fn apply_settings(cx: &mut App, settings: &Settings) {
-    telaio::apply(cx, &theme_family(settings));
+    telaio_ui::apply(cx, &theme_family(settings));
 }
 
 /// The theme family: telaio's default tokens, which are Postino's, and the settings' fonts.
-fn theme_family(settings: &Settings) -> telaio::ThemeFamily {
-    telaio::ThemeFamily::new("Postino").fonts(telaio::Fonts {
+fn theme_family(settings: &Settings) -> telaio_ui::ThemeFamily {
+    telaio_ui::ThemeFamily::new("Postino").fonts(telaio_ui::Fonts {
         ui_family: settings.ui_font.clone().into(),
         ui_size: settings.ui_font_size,
         mono_family: settings.mono_font.clone().into(),

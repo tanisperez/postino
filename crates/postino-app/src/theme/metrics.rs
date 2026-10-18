@@ -7,7 +7,7 @@
 #![allow(dead_code)]
 
 // The sizes of the standard components and the radius scale, shared with Vano and Nastro.
-pub use telaio::metrics::*;
+pub use telaio_ui::metrics::*;
 
 /// Height of the title bar.
 pub const TITLE_BAR_HEIGHT: f32 = 40.0;

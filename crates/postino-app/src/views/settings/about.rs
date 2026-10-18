@@ -139,12 +139,12 @@ fn render_identity(
                                 .text_color(palette.accent_text)
                                 .hover(|style| style.underline())
                                 .child("telaio")
-                                .on_click(|_, _, cx| cx.open_url(telaio::REPOSITORY)),
+                                .on_click(|_, _, cx| cx.open_url(telaio_ui::REPOSITORY)),
                         )
                         .child(
                             div()
                                 .font_family(mono_font_family.clone())
-                                .child(telaio::VERSION),
+                                .child(telaio_ui::VERSION),
                         ),
                 ),
         )

@@ -28,7 +28,7 @@ use crate::views::components::{
     InlineMessage, InlineMessageKind, ModalPlacement, PrimaryButton, SecondaryButton,
     framed_dialog, modal_body, modal_footer, modal_header, text_field,
 };
-use telaio::components::text_field::FIELD_HEIGHT;
+use telaio_ui::components::text_field::FIELD_HEIGHT;
 
 use super::import_menu::PendingImport;
 use super::root::AppView;

@@ -5213,7 +5213,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sys-locale",
- "telaio",
+ "telaio-ui",
  "tempfile",
  "toml 0.8.23",
  "windows-sys 0.61.2",
@@ -7010,9 +7010,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "telaio"
+name = "telaio-ui"
 version = "0.1.1"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.1.1#d99fa5e0863fc526d0b93462fd09793e2754c973"
 dependencies = [
  "gpui-kit",
  "rust-i18n",

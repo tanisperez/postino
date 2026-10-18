@@ -139,7 +139,7 @@ pub fn remove_row(rows: &mut Vec<KeyValue>, index: usize) {
 }
 
 // The key-value table's sort column and direction, owned by telaio's `KeyValueTable`.
-pub use telaio::components::{SortColumn, SortOrder};
+pub use telaio_ui::components::{SortColumn, SortOrder};
 
 /// Compares two rows by `column`, in the sidebar's natural order (`item2` before `item10`, case
 /// ignored), with a case-sensitive tie break so the order is total.

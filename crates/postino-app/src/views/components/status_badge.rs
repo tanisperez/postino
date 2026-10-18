@@ -2,7 +2,7 @@
 //! colored by the status code ([`status_tone`]).
 
 use rust_i18n::t;
-use telaio::components::StatusBadge;
+use telaio_ui::components::StatusBadge;
 
 use crate::state::response_render;
 use crate::theme::palette::status_tone;

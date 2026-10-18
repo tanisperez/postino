@@ -38,12 +38,13 @@ Expo/React Native conventions here.
   and `gpui-base` and pins `gpui-pre` 0.3.7 (`cargo tree -d --depth 0 | grep gpui` must stay
   empty). Since 0.7.0 `Root` renders the dialog, sheet and notification layers itself; views
   must not render them again.
-- Design system: [`telaio`](https://github.com/tanisperez/telaio) (#139), a crate shared with
-  Vano and Nastro: palette tokens, the gpui-kit theme builder, metrics, the Geist fonts and the
-  standard components (buttons, modals, tabs, badges, key-value table, ...). It is a git
-  dependency pinned to a tag in `[workspace.dependencies]`, with the same gpui-kit pin. To change
-  telaio and Postino together, add a local `[patch."https://github.com/tanisperez/telaio"]`
-  entry pointing at `../telaio/crates/telaio` and never commit it. Postino's own domain widgets
+- Design system: [`telaio`](https://github.com/tanisperez/telaio) (#139), shared with Vano and
+  Nastro. Its `telaio-ui` crate has the palette tokens, the gpui-kit theme builder, metrics, the
+  Geist fonts and the standard components (buttons, modals, tabs, badges, key-value table, ...).
+  telaio's crates are git dependencies pinned to one tag in `[workspace.dependencies]`, with the
+  same gpui-kit pin. To change telaio and Postino together, add a local
+  `[patch."https://github.com/tanisperez/telaio"]` entry pointing each crate at
+  `../telaio/crates/<crate>` and never commit it. Postino's own domain widgets
   (method badge, URL bar, env pill, variable chips, document tabs) and colors (methods, status
   codes, environments, `theme::PostinoColors`) stay here.
 - MVP scope: HTTP methods (standard or custom), URL, query params, headers, body (json/text/

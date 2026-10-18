@@ -90,7 +90,7 @@ impl AppView {
     /// view changes a value; there is no separate "Save" action.
     fn apply_settings_live(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         theme::apply_settings(cx, &self.state.settings);
-        telaio::ThemeChoice::from(self.state.settings.theme).apply(Some(window), cx);
+        telaio_ui::ThemeChoice::from(self.state.settings.theme).apply(Some(window), cx);
         // The next request, normal or load test, reads these options.
         self.send_options.invalid_certificates =
             self.state.settings.invalid_tls_certificates.to_http();

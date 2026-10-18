@@ -160,7 +160,7 @@ fn main() {
             let opened = cx.open_window(window_options, move |window, cx| {
                 // "System" keeps matching the OS light/dark setting, including if the user
                 // changes it while Postino is running; an explicit choice sets the mode once.
-                telaio::ThemeChoice::from(theme_choice).apply(Some(window), cx);
+                telaio_ui::ThemeChoice::from(theme_choice).apply(Some(window), cx);
 
                 let view = cx.new(|cx| {
                     AppView::new(
