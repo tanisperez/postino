@@ -46,7 +46,9 @@ unwrap_used = "warn"
 expect_used = "warn"
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+# `deny`, not `forbid`, so a single function may opt out with `#[allow(unsafe_code)]`: the Windows
+# `AttachConsole` call that `postino --help` needs (`postino-app/src/main.rs`, #136).
+unsafe_code = "deny"
 
 # Measured on 2026-09-30 (#34): fat LTO gives an 8% smaller binary and slightly lower RSS than
 # thin, with no measurable runtime difference, for about 25% more release build time. Panics stay

@@ -38,6 +38,11 @@ postino-script = { path = "../postino-script" }
 postino-load = { path = "../postino-load" }
 postino-update = { path = "../postino-update" }
 
+# `AttachConsole`, so `--help` and `--version` reach the terminal from a GUI subsystem binary.
+# Already in the tree at this version (async-io, through gpui-base).
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_System_Console"] }
+
 [target.'cfg(windows)'.build-dependencies]
 embed-resource = "3"
 

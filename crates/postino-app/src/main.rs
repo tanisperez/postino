@@ -12,6 +12,7 @@ mod views;
 
 rust_i18n::i18n!("locales", fallback = "en");
 
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use gpui_kit::component::theme::{Theme, ThemeMode};
@@ -37,6 +38,14 @@ const APP_ID: &str = "codes.tanis.postino";
 const APP_NAME: &str = "Postino";
 
 fn main() {
+    // `--help` and `--version` print and exit before anything else: no settings, no log.
+    if let Some(action) = state::cli::parse(std::env::args_os().nth(1).as_deref()) {
+        attach_parent_console();
+        // A closed stdout (`postino --help | head -1`) is not worth a panic.
+        let _ = std::io::stdout().write_all(action.output().as_bytes());
+        return;
+    }
+
     // Settings first, for the log level: the logger is installed before anything else runs, so
     // every later message (gpui's own included) reaches the log file.
     let settings = state::settings::load_settings();
@@ -216,6 +225,23 @@ fn main() {
         .detach();
     });
 }
+
+/// Lets a Windows GUI subsystem binary print to the console it was started from. Without it,
+/// stdout goes nowhere. Does nothing when there is no parent console (a double click). The
+/// shell does not wait for a GUI program, so the output lands after its prompt.
+#[cfg(windows)]
+#[allow(unsafe_code)]
+fn attach_parent_console() {
+    use windows_sys::Win32::System::Console::{ATTACH_PARENT_PROCESS, AttachConsole};
+    // SAFETY: takes a plain process id and touches no memory of ours; failure is harmless.
+    unsafe {
+        AttachConsole(ATTACH_PARENT_PROCESS);
+    }
+}
+
+/// Other platforms keep the terminal's stdout.
+#[cfg(not(windows))]
+fn attach_parent_console() {}
 
 /// Logs where and how Postino runs: the first lines of every session, and the ones a bug report
 /// needs first.

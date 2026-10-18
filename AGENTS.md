@@ -155,8 +155,8 @@ Galician, Italian.
 - Strings cached outside `render` (input placeholders) are re-applied by `AppView::relocalize`
   when the language changes.
 - Not translated: log messages, errors produced by the library crates (shown verbatim inside a
-  translated frame), HTTP literals (methods, header names, MIME types), keyboard shortcut labels
-  and the `POSTINO_OPEN=components` gallery.
+  translated frame), HTTP literals (methods, header names, MIME types), keyboard shortcut labels,
+  the `POSTINO_OPEN=components` gallery and the `--help`/`--version` output.
 - Numbers shown to the user go through `state::number` (`format_integer`, `format_decimal`,
   `format_signed_decimal`, `icu_decimal` with CLDR data, formatter cached per language). Never in
   logs, snippets, run history JSON or the number inputs the user types in.

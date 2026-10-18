@@ -1,12 +1,12 @@
 title: Command line
-description: Start Postino from a terminal with a workspace folder or a request file, and the environment variables it reads at startup.
+description: Start Postino from a terminal with a workspace folder or a request file, print its help or version, and the environment variables it reads at startup.
 ---
 <h1>Command line</h1>
 <p class="lead">Postino is a desktop app, but it can be started from a terminal to open a given folder or request, and a few environment variables change how it starts.</p>
 
 <h2>Usage</h2>
 ```shell
-$ postino [PATH]
+$ postino [OPTIONS] [PATH]
 ```
 <p>The binary is <code>postino</code> on Linux (installed to <code>/usr/bin</code> by the packages), <code>postino.exe</code> in <code>%LOCALAPPDATA%\Programs\Postino</code> on Windows, and <code>/Applications/Postino.app/Contents/MacOS/postino</code> on macOS.</p>
 <div class="table"><table>
@@ -26,7 +26,22 @@ $ postino ~/code/shop/api-requests
 $ postino ~/code/shop/api-requests/orders/create.postino
 ```
 <p>Starting Postino with a path never opens the welcome tab, whatever the <a href="settings.html">Welcome tab at startup</a> setting says: you asked for something specific. The only exception is the path that cannot be opened, in the table above. Opening a <code>.postino</code> file from your file manager counts as a path.</p>
-<p>Only the first argument is read. Postino is not single instance: running it again, or double clicking a <code>.postino</code> file while it runs, starts a second window process.</p>
+<p>Only the first argument is read, so an option and a path are never combined. Postino is not single instance: running it again, or double clicking a <code>.postino</code> file while it runs, starts a second window process.</p>
+
+<h2 id="options">Options</h2>
+<p>These print to the terminal and exit with code 0, without opening the window, reading the settings or writing to the log.</p>
+<div class="table"><table>
+    <thead><tr><th>Option</th><th>Prints</th></tr></thead>
+    <tbody>
+        <tr><td><code>-h</code>, <code>--help</code></td><td>A summary of the usage, the options and the environment variables below, with a link to this page.</td></tr>
+        <tr><td><code>-V</code>, <code>--version</code></td><td>The name and version, such as <code>Postino 0.2.0</code>.</td></tr>
+    </tbody>
+</table></div>
+```shell
+$ postino --version
+Postino 0.2.0
+```
+<p>The output is always in English, whatever the <a href="settings.html">Language</a> setting says. On Windows, run it from a terminal: the output appears after the prompt, because the shell does not wait for a desktop app to finish.</p>
 
 <h2 id="environment-variables">Environment variables</h2>
 <div class="table"><table>
