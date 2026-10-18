@@ -1,56 +1,32 @@
-//! Reusable, styled components: one file per component, each a `RenderOnce` struct with builder
-//! methods, reading colors only from [`crate::theme::Palette`] and sizes only from
-//! [`crate::theme::metrics`].
+//! Reusable, styled components. The standard ones come from telaio (re-exported here, so views
+//! keep importing them from `super::components`); Postino's own domain widgets live in this
+//! module: one file per component, each a `RenderOnce` struct with builder methods, reading
+//! colors only from [`crate::theme::Palette`] and sizes only from [`crate::theme::metrics`].
 //!
 //! The `POSTINO_OPEN=components` debug hook (`gallery`) renders every one of them in every state, to
 //! check against `docs/design-system.md` by eye.
 
-pub mod buttons;
-pub mod card;
 pub mod document_tabs;
-pub mod edit_menu;
 pub mod env_pill;
 pub mod gallery;
-pub mod hover_input;
-pub mod icon_button;
-pub mod inline_message;
-pub mod key_value_table;
 pub mod method_badge;
-pub mod modal;
-pub mod section_label;
-pub mod segmented_control;
-pub mod select_trigger;
 pub mod status_badge;
-pub mod switch_halo;
-pub mod text_field;
-pub mod theme_card;
-pub mod underline_tabs;
 pub mod url_bar;
 pub mod variable_chip;
 pub mod variable_line;
 
-pub use buttons::{DangerButton, GhostButton, NeutralButtonExt, PrimaryButton, SecondaryButton};
-pub use card::Card;
 pub use document_tabs::{DocumentTab, DocumentTabs};
-pub use edit_menu::edit_menu;
 pub use env_pill::{EnvMenuItem, EnvPill};
-pub use hover_input::HoverInput;
-pub use icon_button::IconButton;
-pub use inline_message::{InlineMessage, InlineMessageKind};
-pub use key_value_table::{KeyValueRow, KeyValueTable};
 pub use method_badge::MethodBadge;
-pub use modal::{
-    ConfirmDialog, MODAL_INNER_RADIUS, ModalPlacement, framed_dialog, modal_body, modal_footer,
-    modal_header, open_confirm_dialog,
+pub use status_badge::{StatusState, status_badge};
+pub use telaio::components::{
+    Card, ConfirmDialog, DangerButton, GhostButton, HoverInput, IconButton, InlineMessage,
+    InlineMessageKind, KeyValueRow, KeyValueTable, MODAL_INNER_RADIUS, ModalPlacement,
+    NeutralButtonExt, PrimaryButton, SecondaryButton, SectionLabel, SegmentedControl,
+    SegmentedItem, ThemeCard, UnderlineTabItem, UnderlineTabs, edit_menu, framed_dialog,
+    modal_body, modal_footer, modal_header, open_confirm_dialog, select_label_row, select_trigger,
+    switch_halo, text_field,
 };
-pub use section_label::SectionLabel;
-pub use segmented_control::{SegmentedControl, SegmentedItem};
-pub use select_trigger::{select_label_row, select_trigger};
-pub use status_badge::{StatusBadge, StatusState};
-pub use switch_halo::switch_halo;
-pub use text_field::text_field;
-pub use theme_card::ThemeCard;
-pub use underline_tabs::{UnderlineTabItem, UnderlineTabs};
 pub use url_bar::UrlBar;
 pub use variable_chip::VariableChip;
 pub use variable_line::VariableField;

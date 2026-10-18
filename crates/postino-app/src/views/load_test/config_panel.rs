@@ -488,7 +488,7 @@ fn render_field(
         .rounded(px(RADIUS_MD - 1.0))
         .border_1()
         .border_color(palette.border)
-        // The hover of every text input (`components/hover_input.rs`), not while a run disables it.
+        // The hover of every text input (telaio's `HoverInput`), not while a run disables it.
         .when(!disabled, |pill| {
             let border_strong = palette.border_strong;
             pill.hover(move |style| style.border_color(border_strong))

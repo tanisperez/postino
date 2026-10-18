@@ -5213,6 +5213,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sys-locale",
+ "telaio",
  "tempfile",
  "toml 0.8.23",
  "windows-sys 0.61.2",
@@ -7006,6 +7007,16 @@ dependencies = [
  "thiserror 2.0.21",
  "windows 0.61.3",
  "windows-version",
+]
+
+[[package]]
+name = "telaio"
+version = "0.1.0"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.1.0#f396b45b16cabbaf4f8c78435a8a9f50650fde2a"
+dependencies = [
+ "gpui-kit",
+ "rust-i18n",
+ "serde_json",
 ]
 
 [[package]]

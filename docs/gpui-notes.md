@@ -23,7 +23,7 @@ silently keeps the built-in theme. This is what `theme::install` does.
 - `load_themes_from_str` silently skips a theme whose name is already in the registry, so
   calling it again with the same names does **not** reload. To change a theme live (font or size
   changes in Settings) parse the `ThemeConfig` JSON directly and assign it to
-  `Theme::global_mut(cx).light_theme` / `.dark_theme`, as `theme::apply_settings` does.
+  `Theme::global_mut(cx).light_theme` / `.dark_theme`, as `telaio::apply` does.
 - `Theme::sync_system_appearance(window, cx)` keeps working: it calls `Theme::change`, which
   re-reads the two fields above.
 
@@ -32,7 +32,7 @@ silently keeps the built-in theme. This is what `theme::install` does.
 Postino's own views never read `cx.theme()`: colors come from `Palette`. The theme JSON only
 matters for the borrowed stock widgets (`TitleBar`, `Button`, `Dialog`, the scrollbar, `Input`
 caret, selection and border, tree chevrons, checkboxes, switches). The mapping is built in
-`theme/palette.rs` (`theme_colors_and_highlight`). The non-obvious points:
+telaio's `src/palette.rs` (`theme_colors_and_highlight`). The non-obvious points:
 
 - `surface` has to be set on **three** keys, `sidebar.background`, `title_bar.background` and
   `tab_bar.background`. The title bar and tab bar fall back to `background`, not to the sidebar.

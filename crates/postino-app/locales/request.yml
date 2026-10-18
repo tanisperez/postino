@@ -10,11 +10,6 @@ _version: 2
   es: "Abre una petición desde la barra lateral"
   gl: "Abre unha petición desde a barra lateral"
   it: "Apri una richiesta dalla barra laterale"
-"request.kv.add":
-  en: "Add"
-  es: "Añadir"
-  gl: "Engadir"
-  it: "Aggiungi"
 "request.kv.key":
   en: "Key"
   es: "Clave"

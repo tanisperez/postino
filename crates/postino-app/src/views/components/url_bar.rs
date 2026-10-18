@@ -21,11 +21,11 @@ use rust_i18n::t;
 use postino_core::{Method, VariableSpan};
 
 use super::NeutralButtonExt;
-use super::edit_menu::edit_menu;
+use super::edit_menu;
 use super::variable_line::{TextHandler, marker_children};
 use crate::state::variable_hint::VariableContext;
-use crate::theme::PaletteExt;
 use crate::theme::metrics::{RADIUS_MD, URL_BAR_HEIGHT};
+use crate::theme::{PaletteExt, PostinoColors};
 
 /// Line height of the focused URL `Input`, which is also the height of its selection highlight.
 const URL_LINE_HEIGHT: f32 = 22.0;
@@ -327,7 +327,7 @@ impl RenderOnce for UrlBar {
             } else {
                 palette.border
             })
-            // The hover of every text input (`components/hover_input.rs`).
+            // The hover of every text input (telaio's `HoverInput`).
             .when(!focused, |bar| {
                 let border_strong = palette.border_strong;
                 bar.hover(move |style| style.border_color(border_strong))

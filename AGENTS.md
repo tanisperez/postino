@@ -32,6 +32,14 @@ Expo/React Native conventions here.
   and `gpui-base` and pins `gpui-pre` 0.3.7 (`cargo tree -d --depth 0 | grep gpui` must stay
   empty). Since 0.7.0 `Root` renders the dialog, sheet and notification layers itself; views
   must not render them again.
+- Design system: [`telaio`](https://github.com/tanisperez/telaio) (#139), a crate shared with
+  Vano and Nastro: palette tokens, the gpui-kit theme builder, metrics, the Geist fonts and the
+  standard components (buttons, modals, tabs, badges, key-value table, ...). It is a git
+  dependency pinned to a tag in `[workspace.dependencies]`, with the same gpui-kit pin. To change
+  telaio and Postino together, add a local `[patch."https://github.com/tanisperez/telaio"]`
+  entry pointing at `../telaio/crates/telaio` and never commit it. Postino's own domain widgets
+  (method badge, URL bar, env pill, variable chips, document tabs) and colors (methods, status
+  codes, environments, `theme::PostinoColors`) stay here.
 - MVP scope: HTTP methods (standard or custom), URL, query params, headers, body (json/text/
   xml/form), environments and variables, pre/post JavaScript scripts with `test()`/`expect()`,
   a response viewer, Postman collection import. The reasons behind these choices
@@ -137,6 +145,8 @@ The user guide is published at `postino.tanis.codes/docs/`. Its sources are in
 
 Colors, metrics, typography and layout of both themes are in `docs/design-system.md`. Read it before
 changing any UI, and keep to its rules (colors from `cx.palette()`, sizes from `theme::metrics`).
+A change to a standard component, a shared token or a shared metric belongs in telaio (see
+"Decisions taken"), not in a local copy.
 
 ## Translations
 

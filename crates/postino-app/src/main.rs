@@ -15,7 +15,7 @@ rust_i18n::i18n!("locales", fallback = "en");
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use gpui_kit::component::theme::{Theme, ThemeMode};
+use gpui_kit::component::theme::Theme;
 use gpui_kit::component::{Root, TitleBar};
 use gpui_kit::*;
 
@@ -160,11 +160,7 @@ fn main() {
             let opened = cx.open_window(window_options, move |window, cx| {
                 // "System" keeps matching the OS light/dark setting, including if the user
                 // changes it while Postino is running; an explicit choice sets the mode once.
-                match theme_choice {
-                    ThemeChoice::System => Theme::sync_system_appearance(Some(window), cx),
-                    ThemeChoice::Light => Theme::change(ThemeMode::Light, Some(window), cx),
-                    ThemeChoice::Dark => Theme::change(ThemeMode::Dark, Some(window), cx),
-                }
+                telaio::ThemeChoice::from(theme_choice).apply(Some(window), cx);
 
                 let view = cx.new(|cx| {
                     AppView::new(

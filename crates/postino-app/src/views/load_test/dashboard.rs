@@ -23,7 +23,7 @@ use crate::state::load_test::{
 };
 use crate::state::number::{format_decimal, format_integer};
 use crate::theme::metrics::RADIUS_LG;
-use crate::theme::{Palette, PaletteExt};
+use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::NeutralButtonExt;
 use crate::views::components::{Card, InlineMessage, InlineMessageKind, MethodBadge};
 

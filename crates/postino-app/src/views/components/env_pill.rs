@@ -16,8 +16,8 @@ use rust_i18n::t;
 
 use super::NeutralButtonExt;
 use crate::state::env_color::env_color;
-use crate::theme::PaletteExt;
 use crate::theme::metrics::{ENV_PILL_HEIGHT, MENU_DOT_COLUMN_WIDTH, MENU_ROW_HEIGHT, RADIUS_MD};
+use crate::theme::{PaletteExt, PostinoColors};
 
 /// One row of an [`EnvPill`]'s dropdown: `None` is "No environment" (a hollow ring), `Some(name)`
 /// is a named environment (a dot colored by [`env_color`]).

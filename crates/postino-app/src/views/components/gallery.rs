@@ -17,9 +17,9 @@ use postino_core::{KeyValue, Method, variable_spans};
 use super::{
     Card, DangerButton, DocumentTab, DocumentTabs, EnvMenuItem, EnvPill, GhostButton, IconButton,
     InlineMessage, InlineMessageKind, KeyValueRow, KeyValueTable, MethodBadge, PrimaryButton,
-    SecondaryButton, SectionLabel, SegmentedControl, SegmentedItem, StatusBadge, StatusState,
-    ThemeCard, UnderlineTabItem, UnderlineTabs, UrlBar, VariableChip, select_label_row,
-    select_trigger, switch_halo,
+    SecondaryButton, SectionLabel, SegmentedControl, SegmentedItem, StatusState, ThemeCard,
+    UnderlineTabItem, UnderlineTabs, UrlBar, VariableChip, select_label_row, select_trigger,
+    status_badge, switch_halo,
 };
 use crate::state::settings::ThemeChoice;
 use crate::state::variable_hint::VariableContext;
@@ -238,12 +238,12 @@ fn render_status() -> impl IntoElement {
     h_flex()
         .flex_wrap()
         .gap_2()
-        .child(StatusBadge::new(StatusState::Code(200)).label("200 OK"))
-        .child(StatusBadge::new(StatusState::Code(301)).label("301 Moved"))
-        .child(StatusBadge::new(StatusState::Code(404)).label("404 Not Found"))
-        .child(StatusBadge::new(StatusState::Code(500)).label("500 Error"))
-        .child(StatusBadge::new(StatusState::NotSent))
-        .child(StatusBadge::new(StatusState::Sending))
+        .child(status_badge(&StatusState::Code(200)))
+        .child(status_badge(&StatusState::Code(301)))
+        .child(status_badge(&StatusState::Code(404)))
+        .child(status_badge(&StatusState::Code(500)))
+        .child(status_badge(&StatusState::NotSent))
+        .child(status_badge(&StatusState::Sending))
 }
 
 /// The "Controls" swatch: checked/unchecked [`Checkbox`], a checked [`Radio`], on/off
@@ -418,7 +418,7 @@ fn render_theme_cards() -> impl IntoElement {
         [ThemeChoice::System, ThemeChoice::Light, ThemeChoice::Dark].map(|choice| {
             ThemeCard::new(
                 SharedString::from(format!("gallery-theme-{choice:?}")),
-                choice,
+                choice.into(),
             )
             .selected(choice == ThemeChoice::Dark)
         }),

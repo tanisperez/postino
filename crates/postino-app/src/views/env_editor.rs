@@ -27,7 +27,7 @@ use crate::state::env_edit::{EnvEditTab, EnvScope, EnvValidationError, EnvVarRow
 use crate::state::number::format_integer;
 use crate::state::workspace_log::log_workspace_error;
 use crate::theme::metrics::{INPUT_PADDING_X, MODAL_WIDTH_DEFAULT, RADIUS_MD, RADIUS_SM};
-use crate::theme::{Palette, PaletteExt};
+use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::NeutralButtonExt;
 use crate::views::components::{
     ConfirmDialog, GhostButton, HoverInput, IconButton, InlineMessage, InlineMessageKind,
