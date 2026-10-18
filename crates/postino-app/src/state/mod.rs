@@ -23,7 +23,7 @@ pub mod load_test;
 pub mod locale;
 pub mod navigation;
 pub mod new_workspace;
-pub mod number;
+pub use telaio_app::number;
 pub mod open_queue;
 pub mod palette;
 pub mod request_edit;

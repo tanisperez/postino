@@ -35,8 +35,10 @@ postino-app ──> postino-load ──> postino-runner ──> postino-script �
 ```
 
 No cycles, and no crate depends on `postino-app`. From [telaio](https://github.com/tanisperez/telaio),
-`postino-app` also uses `telaio-ui` (design system and standard components) and `telaio-update`
-(the in-app updater, shared with the other apps).
+`postino-app` also uses `telaio-ui` (design system and standard components), `telaio-update`
+(the in-app updater) and `telaio-app` (the application shell: logging, language, numbers, paths,
+window bootstrap and the About header), all shared with the other apps. `postino-cli` uses
+`telaio-app` for the command line pieces.
 
 | Crate | Responsibility |
 | --- | --- |
@@ -47,7 +49,7 @@ No cycles, and no crate depends on `postino-app`. From [telaio](https://github.c
 | `postino-http` | Sends a resolved request with `ureq` 3 (blocking, rustls) and measures timing. |
 | `postino-runner` | The pipeline: variables, pre script, interpolate, send, post script. Also `preview`, which resolves a request without scripts or network. |
 | `postino-load` | The load test engine, live metrics aggregation, run comparison and run history. |
-| `postino-cli` | The terminal commands that print and exit without opening the window (`--help`, `--version`; later load tests and reports from the terminal). No `gpui`. Its `common` module is shared app plumbing meant to move to `telaio-app`. |
+| `postino-cli` | The terminal commands that print and exit without opening the window (`--help`, `--version`; later load tests and reports from the terminal). No `gpui` code of its own. The shared plumbing (version line, help header and footer, exit codes, console attach) is `telaio_app::cli`; this crate also holds Postino's `IDENTITY`. |
 | `postino-app` | The `gpui` binary (`postino`). Only UI and glue. |
 
 `postino-load` writes its own run history under `.postino/runs/` of the workspace. That is a

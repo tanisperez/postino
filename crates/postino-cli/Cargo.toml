@@ -7,10 +7,8 @@ publish.workspace = true
 license.workspace = true
 authors.workspace = true
 
-# `AttachConsole`, so the output reaches the terminal from a GUI subsystem binary.
-# Already in the tree at this version (async-io, through gpui-base).
-[target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_System_Console"] }
+[dependencies]
+telaio-app = { workspace = true }
 
 [lints]
 workspace = true

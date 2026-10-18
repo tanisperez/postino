@@ -6,12 +6,13 @@
 
 use std::io::Write;
 
-use crate::common;
+use telaio_app::cli;
+
+use crate::IDENTITY;
 
 /// The command line guide `--help` links to.
 pub const DOCS_URL: &str = "https://postino.tanis.codes/docs/command-line.html";
 
-const APP_NAME: &str = "Postino";
 const TAGLINE: &str = "A lightweight, native HTTP client. Requests are plain local files.";
 
 /// What an informational option asks for.
@@ -45,13 +46,13 @@ impl Info {
     pub fn run(self) -> u8 {
         // A closed stdout (`postino --help | head -1`) is not worth a panic.
         let _ = std::io::stdout().write_all(self.output().as_bytes());
-        common::EXIT_SUCCESS
+        cli::EXIT_SUCCESS
     }
 }
 
 /// `Postino X.Y.Z`.
 fn version_line() -> String {
-    common::version_line(APP_NAME, env!("CARGO_PKG_VERSION"))
+    cli::version_line(&IDENTITY)
 }
 
 /// The `--help` text.
@@ -74,8 +75,8 @@ Environment variables:
   POSTINO_AUTOSEND  Request to open and send right away, such as auth/login.postino
 
 {footer}",
-        header = common::help_header(APP_NAME, env!("CARGO_PKG_VERSION"), TAGLINE),
-        footer = common::help_footer(DOCS_URL),
+        header = cli::help_header(&IDENTITY, TAGLINE),
+        footer = cli::help_footer(DOCS_URL),
     )
 }
 

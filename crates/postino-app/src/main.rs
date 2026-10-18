@@ -5,7 +5,6 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 mod actions;
-mod logging;
 mod state;
 mod theme;
 mod views;
@@ -15,9 +14,10 @@ rust_i18n::i18n!("locales", fallback = "en");
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use gpui_kit::component::theme::Theme;
-use gpui_kit::component::{Root, TitleBar};
+use gpui_kit::component::Root;
 use gpui_kit::*;
+use postino_cli::IDENTITY;
+use telaio_app::{logging, window};
 
 use actions::{
     CloseActiveTab, ConfirmCompletion, DeleteLine, DeleteSelectedEntry, DismissCompletion,
@@ -30,13 +30,6 @@ use actions::{
 use state::settings::ThemeChoice;
 use views::AppView;
 
-/// The application id: Wayland `app_id`, X11 `WM_CLASS`, Windows AppUserModelID. The Linux
-/// `codes.tanis.postino.desktop` file and the Windows installer shortcut use the same value.
-const APP_ID: &str = "codes.tanis.postino";
-
-/// The user-visible application name given to the OS together with [`APP_ID`].
-const APP_NAME: &str = "Postino";
-
 fn main() -> ExitCode {
     // `--help` and `--version` print and exit before anything else: no settings, no log.
     if let Some(code) = postino_cli::run_if_cli(std::env::args_os().nth(1).as_deref()) {
@@ -46,16 +39,21 @@ fn main() -> ExitCode {
     // Settings first, for the log level: the logger is installed before anything else runs, so
     // every later message (gpui's own included) reaches the log file.
     let settings = state::settings::load_settings();
-    let env_level = std::env::var(logging::ENV_VAR).ok();
+    let log_env_var = logging::env_var(&IDENTITY);
+    let env_level = std::env::var(&log_env_var).ok();
     let log_level = logging::startup_level(settings.log_level, env_level.as_deref());
-    let log_path = logging::init(log_level.to_filter());
+    let log_path = logging::init(&IDENTITY, log_level.to_filter());
     let from_env = env_level
         .as_deref()
         .and_then(state::settings::LogLevel::parse)
         .is_some();
-    log_startup(log_level, from_env, log_path.as_deref());
+    log_startup(
+        log_level,
+        from_env.then_some(log_env_var.as_str()),
+        log_path.as_deref(),
+    );
     if let Some(value) = env_level.filter(|_| !from_env) {
-        log::warn!("ignoring {}={value:?}: not a log level", logging::ENV_VAR);
+        log::warn!("ignoring {log_env_var}={value:?}: not a log level");
     }
 
     // Before the window opens, so its first frame is already in the right language.
@@ -91,67 +89,16 @@ fn main() -> ExitCode {
 
     let theme_choice = settings.theme;
 
-    // `with_assets` registers the bundled icon SVGs. Without it every `Icon` (tree chevrons,
-    // window controls, checkboxes) renders as empty space. `gpui_kit::assets::Assets` only
-    // embeds the small curated subset generated from `default-icons.txt`
-    // (`gpui-kit-assets-0.6.6/src/native_assets.rs`); `AllAssets` embeds the complete Lucide
-    // catalog (`gpui_kit::assets::IconName`, 1830 icons) that the design
-    // uses (`gauge`, `wand-sparkles`, `send-horizontal`, ...), a strict superset of the curated
-    // one, so switching to it does not affect any icon that already worked.
-    let app = gpui_kit::application().with_assets(gpui_kit::assets::AllAssets);
+    let app = window::application();
     let url_queue = open_queue.clone();
     app.on_open_urls(move |urls| url_queue.push(state::launch::paths_from_urls(&urls)));
     app.run(move |cx| {
-        // The AppUserModelID on Windows (the installer's shortcut must use the same id) and
-        // the app name for notifications elsewhere.
-        cx.set_app_identity(APP_ID, APP_NAME);
-        gpui_kit::init(cx);
+        window::init(cx, &IDENTITY);
         bind_keys(cx);
         theme::install(cx, &settings);
 
-        // Centered at 1440x900 logical, capped to 90% of the display's visible bounds:
-        // `WindowBounds::centered` only caps at 100% of the display (`Bounds::centered`'s own
-        // `size.min(&visible_bounds.size)`), which is not tight enough to keep the title bar,
-        // status bar and sidebar footer on screen on a display where 1440x900 is close to the full
-        // visible area.
-        //
-        // `cx.primary_display()` (and `cx.displays()`) can legitimately return nothing here:
-        // confirmed with temporary logging on this session's KDE Plasma/Wayland setup, where
-        // both are empty at this point in `.run()`'s callback, and even `window.display(cx)`
-        // right after `open_window` still returns `None` (the compositor hands over
-        // output/display info only after the window's first configure event, which no
-        // synchronous call at window-creation time can observe). Without this fallback,
-        // `window_bounds: None` used to defer to `gpui`'s own default placement, which on
-        // that same session came out as 1536x1095, taller than the visible screen (a 1920x
-        // 1080 physical display at 1.2 scale, with a 54 px physical taskbar, leaves about
-        // 1600x855 logical), hiding the status bar and sidebar footer. 1280x760 comfortably
-        // fits that, and any other Wayland compositor's typical visible area.
-        let window_bounds = match cx.primary_display() {
-            Some(display) => {
-                let visible = display.visible_bounds();
-                let cap = size(visible.size.width * 0.9, visible.size.height * 0.9);
-                let target = size(px(1440.0), px(900.0)).min(&cap);
-                WindowBounds::Windowed(Bounds::centered_at(visible.center(), target))
-            }
-            None => WindowBounds::Windowed(Bounds {
-                origin: point(px(0.0), px(0.0)),
-                size: size(px(1280.0), px(760.0)),
-            }),
-        };
-
-        let window_options = WindowOptions {
-            window_bounds: Some(window_bounds),
-            window_min_size: Some(size(px(760.), px(480.))),
-            // On Linux the default is server side decorations, which makes the compositor draw
-            // its own title bar on top of ours. Client side decorations let `TitleBar` be the
-            // only one; `Root` then draws the window border and resize edges. Other platforms
-            // ignore this option.
-            window_decorations: Some(WindowDecorations::Client),
-            // Wayland app_id and X11 WM_CLASS: must match `codes.tanis.postino.desktop` for
-            // the right icon and name in the dock and alt-tab.
-            app_id: Some(APP_ID.to_string()),
-            ..TitleBar::window_options()
-        };
+        // 1440x900 logical, capped to 90% of the display (see `window::options`).
+        let window_options = window::options(cx, &IDENTITY, window::WindowSizes::default());
 
         cx.spawn(async move |cx| {
             let opened = cx.open_window(window_options, move |window, cx| {
@@ -188,24 +135,14 @@ fn main() -> ExitCode {
                     })
                     .detach();
 
-                // Always listen for OS appearance changes, live, regardless of the theme choice at
-                // startup: the Settings view can switch the choice at any time afterwards, and
-                // "System" must start following the OS the moment it is picked, even if the app
-                // launched in Light or Dark. Checking the *current* setting on every OS change
-                // (instead of only attaching this observer when `theme_choice == System`) is what
-                // lets Light and Dark stop following it without detaching anything: the observer
-                // simply no-ops while they are active.
+                // Always listening, whatever the theme choice at startup: the Settings view can
+                // switch to "System" at any time (see `window::follow_system_appearance`).
                 let weak = view.downgrade();
-                window
-                    .observe_window_appearance(move |window, cx| {
-                        let follows_system = weak.upgrade().is_some_and(|view| {
-                            view.read(cx).state.settings.theme == ThemeChoice::System
-                        });
-                        if follows_system {
-                            Theme::sync_system_appearance(Some(window), cx);
-                        }
+                window::follow_system_appearance(window, move |cx| {
+                    weak.upgrade().is_some_and(|view| {
+                        view.read(cx).state.settings.theme == ThemeChoice::System
                     })
-                    .detach();
+                });
 
                 cx.new(|cx| Root::new(view, window, cx))
             });
@@ -222,7 +159,7 @@ fn main() -> ExitCode {
 
 /// Logs where and how Postino runs: the first lines of every session, and the ones a bug report
 /// needs first.
-fn log_startup(level: state::settings::LogLevel, from_env: bool, log_path: Option<&Path>) {
+fn log_startup(level: state::settings::LogLevel, from_env: Option<&str>, log_path: Option<&Path>) {
     log::info!(
         "Postino {} starting ({} build) on {} {}",
         env!("CARGO_PKG_VERSION"),
@@ -236,11 +173,7 @@ fn log_startup(level: state::settings::LogLevel, from_env: bool, log_path: Optio
     );
     log::info!(
         "log level {level:?}{}, log file {}",
-        if from_env {
-            format!(" (from {})", logging::ENV_VAR)
-        } else {
-            String::new()
-        },
+        from_env.map_or_else(String::new, |variable| format!(" (from {variable})")),
         log_path.map_or_else(|| "none".to_string(), |path| path.display().to_string()),
     );
     log::info!(

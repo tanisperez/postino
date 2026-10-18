@@ -5192,13 +5192,10 @@ name = "postino-app"
 version = "0.1.1"
 dependencies = [
  "anyhow",
- "chrono",
  "dirs 7.0.0",
  "dunce",
  "embed-resource",
  "gpui-kit",
- "icu_decimal",
- "icu_locale_core",
  "log",
  "lsp-types",
  "postino-cli",
@@ -5212,7 +5209,7 @@ dependencies = [
  "rust-i18n",
  "serde",
  "serde_json",
- "sys-locale",
+ "telaio-app",
  "telaio-ui",
  "telaio-update",
  "tempfile",
@@ -5223,7 +5220,7 @@ dependencies = [
 name = "postino-cli"
 version = "0.1.1"
 dependencies = [
- "windows-sys 0.61.2",
+ "telaio-app",
 ]
 
 [[package]]
@@ -6999,6 +6996,23 @@ dependencies = [
  "thiserror 2.0.21",
  "windows 0.61.3",
  "windows-version",
+]
+
+[[package]]
+name = "telaio-app"
+version = "0.1.1"
+dependencies = [
+ "chrono",
+ "dirs 7.0.0",
+ "gpui-kit",
+ "icu_decimal",
+ "icu_locale_core",
+ "log",
+ "rust-i18n",
+ "serde",
+ "sys-locale",
+ "telaio-ui",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

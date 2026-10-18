@@ -11,13 +11,27 @@
 //!    in [`Command::run`], and mention it in the help of [`info`].
 //! 3. Add its tests next to it.
 
-pub mod common;
 pub mod info;
 
 use std::ffi::OsStr;
 use std::process::ExitCode;
 
+use telaio_app::AppIdentity;
+
 pub use info::Info;
+
+/// Who Postino is, for every piece of `telaio-app` the app and the command line use: the name,
+/// the lowercase name of folders and files, the application id (Wayland `app_id`, X11 `WM_CLASS`,
+/// Windows AppUserModelID, the same as `codes.tanis.postino.desktop` and the Windows installer
+/// shortcut), the version, the environment variable prefix and the repository.
+pub const IDENTITY: AppIdentity = AppIdentity {
+    name: "Postino",
+    slug: "postino",
+    app_id: "codes.tanis.postino",
+    version: env!("CARGO_PKG_VERSION"),
+    env_prefix: "POSTINO",
+    repository: "https://github.com/tanisperez/postino",
+};
 
 /// A command line command that runs without opening the window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,7 +61,7 @@ impl Command {
 /// parent console first on Windows, and returns the exit code.
 pub fn run_if_cli(first_arg: Option<&OsStr>) -> Option<ExitCode> {
     let command = Command::parse(first_arg)?;
-    common::attach_parent_console();
+    telaio_app::cli::attach_parent_console();
     Some(command.run())
 }
 

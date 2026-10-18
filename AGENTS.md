@@ -95,10 +95,13 @@ From telaio: `postino-app` uses `telaio-ui` (design system and standard componen
 - `postino-load`: the load test engine, live metrics, run comparison and run history.
 - `postino-cli`: the terminal commands that print and exit without opening the window
   (`-h/--help`, `-V/--version` today; future commands such as running a load test). No `gpui`.
-  `common.rs` holds the pieces shared by every app (version line, help header and footer, exit
-  codes, Windows console attach), meant to move to `telaio-app`. Adding a command is in the
-  crate docs (`lib.rs`).
-- `postino-app`: the `gpui` binary (`postino`). Only UI and glue.
+  It also defines `IDENTITY`, the `telaio_app::AppIdentity` of Postino (name, `postino` slug, app
+  id, version, `POSTINO` prefix, repository) that the app passes to every `telaio-app` piece.
+  The version line, help header and footer, exit codes and Windows console attach come from
+  `telaio_app::cli`. Adding a command is in the crate docs (`lib.rs`).
+- `postino-app`: the `gpui` binary (`postino`). Only UI and glue. The glue every app repeats
+  comes from telaio's `telaio-app` (`AppIdentity`, `logging` with `LogLevel`, `cli`, `language`,
+  `number`, `paths`, `window` and the About header); see "Translations" and "Logging".
 
 Everything except `postino-app` is testable with `cargo test`, with no window, no GPU and no
 network other than a local test server.
@@ -167,8 +170,9 @@ Decisions, glossary and how to add a string or a language in `docs/i18n.md`. Lan
 Galician, Italian.
 
 - Library: `rust-i18n` 4, `i18n!("locales", fallback = "en")` in `main.rs`, strings read with
-  `t!("area.key")`. The OS language comes from `sys-locale`; `state/locale.rs` maps it to a
-  `Language` and applies the `language` setting (`auto` by default).
+  `t!("area.key")`. The OS language comes from `sys-locale`; `telaio_app::language` (re-exported by
+  `state/locale.rs`) maps it to a `Language` and applies the `language` setting (`auto` by
+  default). `state/locale.rs` keeps `plural`, which reads Postino's own tables.
 - Files: `crates/postino-app/locales/*.yml`, `_version: 2`, one entry per key with `en`, `es`,
   `gl` and `it` together. One file per area (`common`, `settings`, `request`, `response`,
   `shell`, `load_test`) so parallel work never edits the same file.
@@ -180,11 +184,13 @@ Galician, Italian.
 - Not translated: log messages, errors produced by the library crates (shown verbatim inside a
   translated frame), HTTP literals (methods, header names, MIME types), keyboard shortcut labels,
   the `POSTINO_OPEN=components` gallery and the `--help`/`--version` output.
-- Numbers shown to the user go through `state::number` (`format_integer`, `format_decimal`,
-  `format_signed_decimal`, `icu_decimal` with CLDR data, formatter cached per language). Never in
+- Numbers shown to the user go through `state::number`, which is `telaio_app::number`
+  (`format_integer`, `format_decimal`, `format_signed_decimal`, `icu_decimal` with CLDR data,
+  formatter cached per language). Never in
   logs, snippets, run history JSON or the number inputs the user types in.
 - Tests never call `rust_i18n::set_locale`, the locale is process wide and tests run in parallel.
-  Use `t!("key", locale = "es")`. `state/locale.rs` tests check that every key exists in the four
+  Use `t!("key", locale = "es")`. `state/locale.rs` tests (Postino's tables; telaio-app checks its own
+  `telaio_app.*` strings, such as the log level labels) check that every key exists in the four
   languages with the same `%{}` placeholders, that no text has an em dash, and that every
   literal `t!` key used under `src/` exists.
 
@@ -223,14 +229,14 @@ Found in the 2026-09-30 investigation (#32, #33, #34). Keep these rules in every
 
 ## Logging
 
-Added in #36. `postino-app/src/logging.rs` installs a small logger behind the `log` facade, so
-gpui, wgpu, ureq and rustls messages reach it too. Library crates only depend on `log`.
+Added in #36, now `telaio_app::logging` (called from `main.rs` with `IDENTITY`). It installs a
+small logger behind the `log` facade, so gpui, wgpu, ureq and rustls messages reach it too. Library crates only depend on `log`.
 
 - File: `~/.local/state/postino/postino.log` on Linux (`$XDG_STATE_HOME`),
   `~/Library/Logs/Postino/` on macOS, `%LOCALAPPDATA%\Postino\logs\` on Windows. Rotated at
   5 MB, 10 files at most.
 - Level: Settings, "Advanced" (`log_level` in `settings.toml`, Info by default). `POSTINO_LOG`
-  overrides it at startup. Crates other than `postino*` and `gpui*` are capped at Warn, or Info
+  overrides it at startup. Crates other than `postino*`, `gpui*` and `telaio*` are capped at Warn, or Info
   at Trace (`naga` alone writes about 20 MB at Debug on every startup).
 - What goes where: Info for startup, workspace opened, one line per request sent from a tab,
   imports, load test start and end, settings changes. Warn for failed operations. Debug for

@@ -14,9 +14,10 @@ use gpui_kit::component::switch::Switch;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+use postino_cli::IDENTITY;
 use rust_i18n::t;
+use telaio_app::logging;
 
-use crate::logging;
 use crate::state;
 use crate::state::locale::{self, LanguageChoice};
 use crate::state::number::format_decimal;
@@ -838,8 +839,8 @@ fn render_logging_section(
 ) -> AnyElement {
     let control = render_select("settings-log-level", select, palette, None);
 
-    let log_dir = logging::log_dir();
-    let path_label = logging::log_path()
+    let log_dir = logging::log_dir(&IDENTITY);
+    let path_label = logging::log_path(&IDENTITY)
         .map(|path| state::format::shorten_path(&path, dirs::home_dir().as_deref()))
         .unwrap_or_else(|| t!("common.unknown").into_owned());
     let open_folder = GhostButton::new(
@@ -895,7 +896,7 @@ fn render_logging_section(
                     "settings.logging.rotation",
                     size = logging::MAX_FILE_SIZE / (1024 * 1024),
                     files = logging::MAX_FILES,
-                    variable = logging::ENV_VAR,
+                    variable = logging::env_var(&IDENTITY),
                 )),
         )
         .into_any_element()

@@ -7,27 +7,33 @@ use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Postino's folder inside the OS config directory, `<config dir>/postino`, where the settings and
+/// the files of this module live. `None` when the OS does not report the config directory.
+pub fn config_dir() -> Option<PathBuf> {
+    telaio_app::paths::config_dir(&postino_cli::IDENTITY)
+}
+
 /// Maximum number of remembered workspaces.
 const MAX_RECENT_WORKSPACES: usize = 10;
 
-/// The path, relative to the OS config directory, of the file listing recently opened
+/// The path, relative to the config directory ([`config_dir`]), of the file listing recently opened
 /// workspaces, one absolute path per line, most recent first.
-const RECENT_WORKSPACES_FILE: &str = "postino/recent-workspaces.txt";
+const RECENT_WORKSPACES_FILE: &str = "recent-workspaces.txt";
 
 /// The path of the single-workspace file this module replaces. Read once to migrate existing
 /// users the first time [`RECENT_WORKSPACES_FILE`] does not exist yet, then ignored.
-const LEGACY_LAST_WORKSPACE_FILE: &str = "postino/last-workspace.txt";
+const LEGACY_LAST_WORKSPACE_FILE: &str = "last-workspace.txt";
 
-/// The path, relative to the OS config directory, of the file holding each recent workspace's
+/// The path, relative to the config directory ([`config_dir`]), of the file holding each recent workspace's
 /// last active environment: a TOML table from absolute workspace path to environment name. It
 /// lives here rather than in the workspace so picking an environment never shows up in the
 /// workspace's git diff.
-const LAST_ENVIRONMENTS_FILE: &str = "postino/last-environments.toml";
+const LAST_ENVIRONMENTS_FILE: &str = "last-environments.toml";
 
 /// Returns the list of recently opened workspaces, most recent first, migrating from the legacy
 /// single-workspace file the first time the new file does not exist yet.
 pub fn recent_workspaces() -> Vec<PathBuf> {
-    match dirs::config_dir() {
+    match config_dir() {
         Some(base) => read_recent_workspaces(&base),
         None => Vec::new(),
     }
@@ -38,7 +44,7 @@ pub fn recent_workspaces() -> Vec<PathBuf> {
 /// to persist this is not worth interrupting the user over, so any error (a missing config
 /// directory, a read-only filesystem, ...) is silently ignored.
 pub fn record_workspace(root: &Path) {
-    if let Some(base) = dirs::config_dir() {
+    if let Some(base) = config_dir() {
         record_workspace_at(&base, root);
     }
 }
@@ -67,14 +73,14 @@ fn first_existing(paths: Vec<PathBuf>) -> Option<PathBuf> {
 /// The environment that was active when the workspace at `root` was last used, if any was. The
 /// caller checks it still exists.
 pub fn last_environment(root: &Path) -> Option<String> {
-    let base = dirs::config_dir()?;
+    let base = config_dir()?;
     last_environment_at(&base, &workspace_key(root))
 }
 
 /// Remembers `name` (`None` for "No environment") as the active environment of the workspace at
 /// `root`. Like [`record_workspace`], failing to persist it is silently ignored.
 pub fn record_environment(root: &Path, name: Option<&str>) {
-    if let Some(base) = dirs::config_dir() {
+    if let Some(base) = config_dir() {
         record_environment_at(&base, &workspace_key(root), name);
     }
 }
@@ -108,7 +114,7 @@ fn record_environment_at(base: &Path, root: &Path, name: Option<&str>) {
     write_last_environments(base, &environments);
 }
 
-/// Reads `<base>/postino/last-environments.toml`. A missing or unreadable file reads as empty.
+/// Reads `<base>/last-environments.toml`. A missing or unreadable file reads as empty.
 fn read_last_environments(base: &Path) -> BTreeMap<String, String> {
     fs::read_to_string(base.join(LAST_ENVIRONMENTS_FILE))
         .ok()
@@ -116,7 +122,7 @@ fn read_last_environments(base: &Path) -> BTreeMap<String, String> {
         .unwrap_or_default()
 }
 
-/// Writes `<base>/postino/last-environments.toml`, creating the folder if needed.
+/// Writes `<base>/last-environments.toml`, creating the folder if needed.
 fn write_last_environments(base: &Path, environments: &BTreeMap<String, String>) {
     let path = base.join(LAST_ENVIRONMENTS_FILE);
     let Some(parent) = path.parent() else {
@@ -138,8 +144,8 @@ fn write_last_environments(base: &Path, environments: &BTreeMap<String, String>)
     }
 }
 
-/// Reads the recent workspace list from `<base>/postino/recent-workspaces.txt`, migrating from
-/// `<base>/postino/last-workspace.txt` if the new file does not exist yet. Split out from
+/// Reads the recent workspace list from `<base>/recent-workspaces.txt`, migrating from
+/// `<base>/last-workspace.txt` if the new file does not exist yet. Split out from
 /// [`recent_workspaces`] so tests can point `base` at a temporary directory instead of the real,
 /// per-user OS config directory.
 fn read_recent_workspaces(base: &Path) -> Vec<PathBuf> {
@@ -177,7 +183,7 @@ fn migrate_legacy_last_workspace(base: &Path) -> Vec<PathBuf> {
     recents
 }
 
-/// Writes the recent workspace list to `<base>/postino/recent-workspaces.txt`, creating the
+/// Writes the recent workspace list to `<base>/recent-workspaces.txt`, creating the
 /// folder if needed, one absolute path per line, most recent first.
 fn write_recent_workspaces(base: &Path, recents: &[PathBuf]) {
     let path = base.join(RECENT_WORKSPACES_FILE);

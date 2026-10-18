@@ -15,6 +15,8 @@ gpui-kit = "0.7.0"
 # The design system and standard components shared with Vano and Nastro. Same gpui-kit pin.
 telaio-ui = { path = "../telaio/crates/telaio-ui" }
 telaio-update = { path = "../telaio/crates/telaio-update" }
+# The application shell: logging, command line pieces, language, numbers, paths, window bootstrap.
+telaio-app = { path = "../telaio/crates/telaio-app" }
 rquickjs = "0.14"
 ureq = "3.4"
 serde = "1"
@@ -32,16 +34,8 @@ dirs = "7"
 dunce = "1"
 toml = "0.8"
 log = "0.4"
-# Already built by gpui-component (translations) and cosmic-text (OS language); same versions.
+# Already built by gpui-component (translations); same version.
 rust-i18n = "4.2"
-sys-locale = "0.3"
-# ICU4X 2.3, same family as icu_locale_core and icu_provider already built through url. Number
-# formatting with CLDR data (compiled data, only the four UI languages are ever asked for).
-icu_decimal = { version = "2.3", features = ["alloc"] }
-# Only to build the `Locale` that `icu_decimal` asks for; already in the tree at 2.3.0.
-icu_locale_core = "2.3"
-# Already built by gpui-base with its default features; only the local clock is used here.
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 [workspace.lints.clippy]
 all = "warn"
@@ -49,9 +43,9 @@ unwrap_used = "warn"
 expect_used = "warn"
 
 [workspace.lints.rust]
-# `deny`, not `forbid`, so a single function may opt out with `#[allow(unsafe_code)]`: the Windows
-# `AttachConsole` call that `postino --help` needs (`postino-app/src/main.rs`, #136).
-unsafe_code = "deny"
+# The one unsafe call Postino needs, the Windows `AttachConsole` of `postino --help` (#136), lives
+# in `telaio_app::cli`.
+unsafe_code = "forbid"
 
 # Measured on 2026-09-30 (#34): fat LTO gives an 8% smaller binary and slightly lower RSS than
 # thin, with no measurable runtime difference, for about 25% more release build time. Panics stay

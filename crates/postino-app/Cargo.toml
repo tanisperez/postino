@@ -27,10 +27,6 @@ toml = { workspace = true }
 log = { workspace = true }
 rust-i18n = { workspace = true }
 telaio-ui = { workspace = true }
-sys-locale = { workspace = true }
-icu_decimal = { workspace = true }
-icu_locale_core = { workspace = true }
-chrono = { workspace = true }
 postino-core = { path = "../postino-core" }
 postino-format = { path = "../postino-format" }
 postino-workspace = { path = "../postino-workspace" }
@@ -38,6 +34,7 @@ postino-runner = { path = "../postino-runner" }
 postino-script = { path = "../postino-script" }
 postino-load = { path = "../postino-load" }
 telaio-update = { workspace = true }
+telaio-app = { workspace = true }
 postino-cli = { path = "../postino-cli" }
 
 [target.'cfg(windows)'.build-dependencies]
