@@ -6,4 +6,6 @@ test("served with a certificate from a private CA", () => {
 });
 
 ::: docs
-The CA is certs/ca.pem. Postino does not trust it, so this is an unknown issuer warning.
+The CA is certs/ca.pem. It is not in the system store, so this is an unknown issuer warning.
+On Linux, start Postino with SSL_CERT_FILE set to the absolute path of certs/ca.pem and the
+response comes without a warning, as long as "Use system certificates" is on.
