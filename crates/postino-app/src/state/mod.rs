@@ -9,6 +9,7 @@ pub mod completion;
 pub mod config;
 pub mod debug_open;
 pub mod define_variable;
+pub mod edit_history;
 pub mod env_color;
 pub mod env_edit;
 pub mod env_panel;

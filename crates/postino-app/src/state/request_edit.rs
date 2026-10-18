@@ -73,6 +73,21 @@ pub struct BodyStash {
     form: Option<Vec<KeyValue>>,
 }
 
+impl BodyStash {
+    /// About how many bytes the stash holds, for the undo history's budget
+    /// (`state::edit_history`).
+    pub fn approx_size(&self) -> usize {
+        let text = self.text.as_ref().map_or(0, String::len);
+        let form: usize = self
+            .form
+            .iter()
+            .flatten()
+            .map(|row| row.key.len() + row.value.len() + 16)
+            .sum();
+        text + form
+    }
+}
+
 /// Switches `request.body` to `kind`, putting what the current body holds in `stash` and
 /// restoring what `stash` holds for `kind`.
 ///
