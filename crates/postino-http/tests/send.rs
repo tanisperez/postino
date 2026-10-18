@@ -551,3 +551,72 @@ fn reject_fails_on_an_untrusted_certificate() {
     let _ = std::net::TcpStream::connect(url.trim_start_matches("https://"));
     handle.join().expect("server thread");
 }
+
+/// The certificate the TLS test server presents, which the child of
+/// `system_certificates_trust_the_system_bundle` trusts as its system bundle.
+#[cfg(all(unix, not(target_vendor = "apple")))]
+const SELF_SIGNED_CERT: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/tests/fixtures/self_signed.cert.pem"
+);
+
+#[cfg(all(unix, not(target_vendor = "apple")))]
+#[test]
+fn system_certificates_trust_the_system_bundle() {
+    // The system bundle is read once per process and the test cannot change the environment of
+    // its own, so it runs the test below again in a child process, with `SSL_CERT_FILE` pointing
+    // at the server's certificate.
+    let output = std::process::Command::new(std::env::current_exe().expect("test binary"))
+        .args([
+            "--exact",
+            "system_certificates_child",
+            "--ignored",
+            "--nocapture",
+        ])
+        .env("SSL_CERT_FILE", SELF_SIGNED_CERT)
+        .env_remove("SSL_CERT_DIR")
+        .output()
+        .expect("child test runs");
+    assert!(
+        output.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed"));
+}
+
+/// Run by `system_certificates_trust_the_system_bundle` only.
+#[cfg(all(unix, not(target_vendor = "apple")))]
+#[test]
+#[ignore = "run by system_certificates_trust_the_system_bundle with SSL_CERT_FILE set"]
+fn system_certificates_child() {
+    assert_eq!(
+        std::env::var("SSL_CERT_FILE").as_deref(),
+        Ok(SELF_SIGNED_CERT)
+    );
+    // One rejected handshake, then one verified request, which stops the server.
+    let (url, _requests, handle) = start_tls_server_for(1);
+    let request = request_to(Method::Get, format!("{url}/secure"));
+    let bundled = SendOptions {
+        invalid_certificates: InvalidCertificates::Reject,
+        system_certificates: false,
+        ..SendOptions::default()
+    };
+
+    match postino_http::send(&request, &bundled) {
+        Err(HttpError::Certificate(reason)) => {
+            assert!(reason.contains("unknown issuer"), "{reason}")
+        }
+        other => panic!("expected a certificate error, got {other:?}"),
+    }
+
+    let system = SendOptions {
+        system_certificates: true,
+        ..bundled
+    };
+    let response = postino_http::send(&request, &system).expect("verified by the system bundle");
+    assert_eq!(response.body, b"secure");
+    assert_eq!(response.tls_warning, None);
+    handle.join().expect("server thread");
+}

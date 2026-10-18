@@ -97,14 +97,18 @@ either environment, plus `plainHost`, the plain HTTP listener without a scheme.
 
 ## Certificates
 
-Postino can only decide what to do with an untrusted certificate (Settings, "Invalid TLS
-certificates": warn, reject or accept). It has no way to add a trusted CA or a client
-certificate, so every HTTPS listener here is "invalid" for it and the profiles differ only in the
-reason it reports. Two consequences:
+Postino trusts the OS certificate store (Settings, "Use system certificates", on by default) or
+the bundled Mozilla roots, and decides what to do with an untrusted certificate (Settings,
+"Invalid certificates": warn, reject or accept). It has no client certificates, and none of the
+CAs here is in a normal system store, so every HTTPS listener is "invalid" for it and the profiles
+differ only in the reason it reports. Two consequences:
 
 - The verifier checks dates and the issuer before the host name, so `wrong-host` is reported as an
-  unknown issuer. The profile stays for the day custom CAs exist, together with `ca.pem`, which
-  is the CA that signed `private-ca.pem`.
+  unknown issuer. `ca.pem` is the CA that signed `private-ca.pem`.
+- On Linux the system bundle can be replaced with that CA: started with
+  `SSL_CERT_FILE=$PWD/samples/server/certs/ca.pem`, Postino verifies `private-ca` without a
+  warning, and reports it as an unknown issuer again with "Use system certificates" off. The
+  variable needs an absolute path.
 - Retrying a request after a rejected certificate is safe for any method, because the handshake
   fails before a byte of the request is written. `tls/post-with-body` checks it.
 

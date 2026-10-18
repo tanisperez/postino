@@ -29,6 +29,7 @@ description: Every Postino setting: language, theme, fonts, the welcome tab, JSO
 
 <h2>Requests</h2>
 <h3 id="tls">TLS</h3>
+<p><strong>Use system certificates</strong> (on by default) verifies server certificates with the operating system's certificate store, like a browser does: the Windows certificate store, the macOS Keychain, or the system bundle on Linux (the <code>SSL_CERT_FILE</code> and <code>SSL_CERT_DIR</code> environment variables, when set). That store also has the certificate authorities your company installs, so internal APIs and networks that inspect TLS work without a warning. Turned off, Postino trusts only the Mozilla roots it bundles. On Linux the system bundle is read once, so restart Postino after installing a new CA.</p>
 <p><strong>Invalid certificates</strong> decides what happens when a server's certificate is self-signed, expired or issued for another host name:</p>
 <div class="table"><table>
     <thead><tr><th>Option</th><th>Behavior</th></tr></thead>
@@ -82,6 +83,7 @@ mono_font = "Geist Mono"
 mono_font_size = 12.5                 # 10 to 18
 json_indent = 2                       # 2 or 4
 invalid_tls_certificates = "warn"     # warn, reject, accept
+system_tls_certificates = true        # false: only the bundled Mozilla roots
 max_response_mb = 20                  # 1 to 1000
 log_level = "info"                    # off, error, warn, info, debug, trace
 check_updates = true                  # only used by builds with an updater

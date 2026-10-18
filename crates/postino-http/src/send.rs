@@ -238,7 +238,13 @@ fn certificate_reason(error: &ureq::Error) -> String {
 /// non-standard HTTP methods a `.postino` file may use, and applies the timeout, redirect and
 /// TLS verification settings.
 fn build_agent(options: &SendOptions, verify_tls: bool) -> ureq::Agent {
+    let root_certs = if options.system_certificates {
+        system_roots()
+    } else {
+        ureq::tls::RootCerts::WebPki
+    };
     let tls_config = ureq::tls::TlsConfig::builder()
+        .root_certs(root_certs)
         .disable_verification(!verify_tls)
         .build();
 
@@ -257,6 +263,43 @@ fn build_agent(options: &SendOptions, verify_tls: bool) -> ureq::Agent {
         .build();
 
     config.new_agent()
+}
+
+/// The roots of [`SendOptions::system_certificates`] on Windows and macOS: the platform verifier,
+/// which asks the OS to verify each certificate and costs nothing to create.
+#[cfg(not(all(unix, not(target_vendor = "apple"))))]
+fn system_roots() -> ureq::tls::RootCerts {
+    ureq::tls::RootCerts::PlatformVerifier
+}
+
+/// The roots of [`SendOptions::system_certificates`] on Linux and the BSDs: the system bundle
+/// (`SSL_CERT_FILE` and `SSL_CERT_DIR` when set), which is all the platform verifier uses there.
+/// The platform verifier reads and parses the bundle again for every agent, about 3.5 ms, and
+/// [`send`] creates one per request, so a load test without keep-alive would pay it on every
+/// request (measured on 2026-10-18, #114). The bundle is read once per process instead. Without
+/// any readable system certificate, the bundled Mozilla roots are used.
+#[cfg(all(unix, not(target_vendor = "apple")))]
+fn system_roots() -> ureq::tls::RootCerts {
+    static ROOTS: OnceLock<ureq::tls::RootCerts> = OnceLock::new();
+    ROOTS
+        .get_or_init(|| {
+            let result = rustls_native_certs::load_native_certs();
+            for error in &result.errors {
+                log::warn!("could not load a system CA certificate: {error}");
+            }
+            if result.certs.is_empty() {
+                log::warn!("no system CA certificates found, using the bundled roots");
+                return ureq::tls::RootCerts::WebPki;
+            }
+            log::debug!("loaded {} system CA certificates", result.certs.len());
+            let certs = result
+                .certs
+                .iter()
+                .map(|cert| ureq::tls::Certificate::from_der(cert).to_owned())
+                .collect();
+            ureq::tls::RootCerts::Specific(std::sync::Arc::new(certs))
+        })
+        .clone()
 }
 
 /// Turns a [`ResolvedRequest`] into an `http` crate request ready to hand to the `ureq` agent.

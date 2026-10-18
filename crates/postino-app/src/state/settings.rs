@@ -167,7 +167,7 @@ impl InvalidTlsCertificates {
 }
 
 /// User-configurable settings: the UI language, the theme mode, the two fonts (UI and editor) with their sizes,
-/// the JSON indentation, how requests treat invalid TLS certificates, the log level, the update
+/// the JSON indentation, which certificates requests trust and what they do with invalid ones, the log level, the update
 /// check and the welcome tab.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Settings {
@@ -188,6 +188,10 @@ pub struct Settings {
     pub json_indent: usize,
     /// What to do with an invalid TLS certificate.
     pub invalid_tls_certificates: InvalidTlsCertificates,
+    /// Whether certificates are verified against the OS certificate store instead of the bundled
+    /// Mozilla roots (`SendOptions::system_certificates`). Stored as `system_tls_certificates`.
+    #[serde(rename = "system_tls_certificates")]
+    pub system_certificates: bool,
     /// The largest response body that is read, in MB (1 MB is 1,000,000 bytes, like the sizes the
     /// app shows), clamped to [`MAX_RESPONSE_MB_RANGE`].
     pub max_response_mb: u32,
@@ -212,6 +216,7 @@ impl Default for Settings {
             mono_font_size: 12.5,
             json_indent: 2,
             invalid_tls_certificates: InvalidTlsCertificates::default(),
+            system_certificates: true,
             max_response_mb: 20,
             log_level: LogLevel::default(),
             check_updates: true,
@@ -340,6 +345,10 @@ fn parse_settings(content: &str) -> Settings {
         .and_then(toml::Value::as_str)
         .and_then(InvalidTlsCertificates::parse)
         .unwrap_or(defaults.invalid_tls_certificates);
+    let system_certificates = table
+        .and_then(|table| table.get("system_tls_certificates"))
+        .and_then(toml::Value::as_bool)
+        .unwrap_or(defaults.system_certificates);
     let max_response_mb = table
         .and_then(|table| table.get("max_response_mb"))
         .and_then(toml::Value::as_integer)
@@ -370,6 +379,7 @@ fn parse_settings(content: &str) -> Settings {
         mono_font_size,
         json_indent,
         invalid_tls_certificates,
+        system_certificates,
         max_response_mb,
         log_level,
         check_updates,
@@ -428,6 +438,7 @@ mod tests {
             settings.invalid_tls_certificates,
             InvalidTlsCertificates::Warn
         );
+        assert!(settings.system_certificates);
         assert_eq!(settings.max_response_mb, 20);
         assert_eq!(settings.log_level, LogLevel::Info);
         assert!(settings.check_updates);
@@ -452,6 +463,7 @@ mod tests {
             mono_font_size: 13.5,
             json_indent: 4,
             invalid_tls_certificates: InvalidTlsCertificates::Reject,
+            system_certificates: false,
             max_response_mb: 100,
             log_level: LogLevel::Trace,
             check_updates: false,
@@ -610,6 +622,20 @@ mod tests {
             InvalidTlsCertificates::Accept.to_http(),
             InvalidCertificates::Accept
         );
+    }
+
+    #[test]
+    fn system_certificates_default_to_on_and_round_trip_by_name() {
+        let parse = |text: &str| parse_settings(text).system_certificates;
+        assert!(parse(""));
+        assert!(parse("system_tls_certificates = \"no\"\n"));
+        assert!(!parse("system_tls_certificates = false\n"));
+        let settings = Settings {
+            system_certificates: false,
+            ..Settings::default()
+        };
+        let text = toml::to_string_pretty(&settings).expect("serialize");
+        assert!(text.contains("system_tls_certificates = false"), "{text}");
     }
 
     #[test]

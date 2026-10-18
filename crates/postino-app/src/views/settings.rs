@@ -95,6 +95,7 @@ impl AppView {
         // The next request, normal or load test, reads these options.
         self.send_options.invalid_certificates =
             self.state.settings.invalid_tls_certificates.to_http();
+        self.send_options.system_certificates = self.state.settings.system_certificates;
         self.send_options.max_response_size = self.state.settings.max_response_bytes();
         log::info!("settings changed: {:?}", self.state.settings);
         state::settings::save_settings(&self.state.settings);
@@ -152,6 +153,17 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         self.state.settings.invalid_tls_certificates = choice;
+        self.apply_settings_live(window, cx);
+    }
+
+    /// Turns on or off verifying certificates against the OS certificate store.
+    fn set_system_certificates(
+        &mut self,
+        enabled: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.state.settings.system_certificates = enabled;
         self.apply_settings_live(window, cx);
     }
 
@@ -513,7 +525,7 @@ fn render_body(
                 render_editor_section(weak.clone(), palette, settings, selects, mono_font_family),
             ],
             SettingsCategory::Requests => vec![
-                render_tls_section(palette, &selects.tls),
+                render_tls_section(weak.clone(), palette, settings, &selects.tls),
                 divider(palette),
                 render_response_section(palette, &selects.max_response),
             ],
@@ -791,8 +803,14 @@ fn render_editor_section(
         .into_any_element()
 }
 
-/// The "TLS" section of the Requests pane: what to do with an invalid certificate.
-fn render_tls_section(palette: &Palette, select: &SettingsSelect) -> AnyElement {
+/// The "TLS" section of the Requests pane: which certificates are trusted and what to do with an
+/// invalid one.
+fn render_tls_section(
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    settings: &Settings,
+    select: &SettingsSelect,
+) -> AnyElement {
     let control = render_select("settings-invalid-certificates", select, palette, None);
 
     v_flex()
@@ -802,6 +820,24 @@ fn render_tls_section(palette: &Palette, select: &SettingsSelect) -> AnyElement 
                 .font_weight(FontWeight::MEDIUM)
                 .child(t!("settings.tls.title")),
         )
+        .child(labeled_row(
+            palette,
+            t!("settings.tls.system_certificates"),
+            Some(t!("settings.tls.system_certificates_description")),
+            switch_halo(
+                "settings-system-certificates-halo",
+                Switch::new("settings-system-certificates")
+                    .checked(settings.system_certificates)
+                    .on_click(move |checked, window, cx| {
+                        let checked = *checked;
+                        let _ = weak.update(cx, |view, cx| {
+                            view.set_system_certificates(checked, window, cx)
+                        });
+                    }),
+                palette,
+            )
+            .into_any_element(),
+        ))
         .child(labeled_row(
             palette,
             t!("settings.tls.invalid_certificates"),

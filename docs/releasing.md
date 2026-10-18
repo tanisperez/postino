@@ -252,7 +252,8 @@ exists only on macOS and Windows.
   `platform-verifier`, Windows certificate store, macOS Keychain), not the bundled Mozilla roots.
   Corporate networks that inspect TLS re-sign `github.com` with a company CA that IT installs only
   there; with the Mozilla roots the check failed with `invalid peer certificate: UnknownIssuer`
-  (#111). Requests sent by the user still use the Mozilla roots (#114).
+  (#111). Requests sent by the user trust the same store by default (#114, "Use system
+  certificates" in Settings).
 - **Download:** when a newer version exists (and this is not a portable copy, see below), the
   asset for this platform is downloaded in the background and its sha256 verified. Then a discreet
   indicator appears in the status bar ("Update ready, restart") with a link to the release notes.

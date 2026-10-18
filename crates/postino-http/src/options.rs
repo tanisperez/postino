@@ -34,6 +34,16 @@ pub struct SendOptions {
     /// Defaults to [`InvalidCertificates::SendWithWarning`].
     pub invalid_certificates: InvalidCertificates,
 
+    /// Whether certificates are verified against the operating system's certificate store (the
+    /// Windows certificate store, the macOS Keychain, the system bundle on Linux), like a
+    /// browser does, instead of the Mozilla roots bundled with Postino. The system store also
+    /// has the company CAs an administrator installs, so internal APIs and networks that
+    /// inspect TLS verify without a warning. A certificate the store rejects is then handled by
+    /// [`Self::invalid_certificates`].
+    ///
+    /// Defaults to `true`.
+    pub system_certificates: bool,
+
     /// The largest response body, in bytes, that is read. A bigger one fails with
     /// [`crate::HttpError::BodyTooLarge`] instead of filling the memory.
     ///
@@ -62,14 +72,16 @@ pub enum InvalidCertificates {
 }
 
 impl Default for SendOptions {
-    /// Thirty second timeout, redirects followed up to 10 times, requests to servers with an
-    /// invalid TLS certificate sent anyway with a warning, and response bodies up to 20 MB.
+    /// Thirty second timeout, redirects followed up to 10 times, certificates verified against
+    /// the system store, requests to servers with an invalid TLS certificate sent anyway with a
+    /// warning, and response bodies up to 20 MB.
     fn default() -> Self {
         Self {
             timeout: Duration::from_secs(30),
             follow_redirects: true,
             max_redirects: 10,
             invalid_certificates: InvalidCertificates::SendWithWarning,
+            system_certificates: true,
             max_response_size: DEFAULT_MAX_RESPONSE_SIZE,
         }
     }
@@ -90,6 +102,7 @@ mod tests {
             options.invalid_certificates,
             InvalidCertificates::SendWithWarning
         );
+        assert!(options.system_certificates);
         assert_eq!(options.max_response_size, 20_000_000);
     }
 }

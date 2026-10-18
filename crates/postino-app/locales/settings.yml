@@ -115,6 +115,16 @@ _version: 2
   es: "TLS"
   gl: "TLS"
   it: "TLS"
+"settings.tls.system_certificates":
+  en: "Use system certificates"
+  es: "Usar los certificados del sistema"
+  gl: "Usar os certificados do sistema"
+  it: "Usa i certificati di sistema"
+"settings.tls.system_certificates_description":
+  en: "Verify with the operating system's certificate store, which has the CAs your company installs. Off: only the Mozilla roots bundled with Postino."
+  es: "Verifica con el almacén de certificados del sistema operativo, que tiene las CA que instala tu empresa. Desactivado: solo las raíces de Mozilla incluidas en Postino."
+  gl: "Verifica co almacén de certificados do sistema operativo, que ten as CA que instala a túa empresa. Desactivado: só as raíces de Mozilla incluídas en Postino."
+  it: "Verifica con l'archivio dei certificati del sistema operativo, che contiene le CA installate dalla tua azienda. Disattivato: solo le radici di Mozilla incluse in Postino."
 "settings.tls.invalid_certificates":
   en: "Invalid certificates"
   es: "Certificados no válidos"

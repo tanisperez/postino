@@ -8,11 +8,17 @@ authors.workspace = true
 
 [dependencies]
 postino-core = { path = "../postino-core" }
-ureq = { workspace = true }
+# platform-verifier: trust the OS certificate store, see `SendOptions::system_certificates`.
+ureq = { workspace = true, features = ["platform-verifier"] }
 rustls = { version = "0.23", default-features = false, features = ["std"] }
 thiserror = { workspace = true }
 log = { workspace = true }
 tiny_http = { workspace = true, optional = true }
+
+# The system bundle, loaded once per process on Linux and the BSDs, see `system_roots` in
+# src/send.rs. Already built by `rustls-platform-verifier`, same version.
+[target.'cfg(all(unix, not(target_vendor = "apple")))'.dependencies]
+rustls-native-certs = "0.8"
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

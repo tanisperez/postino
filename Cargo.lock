@@ -5254,6 +5254,7 @@ dependencies = [
  "postino-http",
  "pretty_assertions",
  "rustls",
+ "rustls-native-certs",
  "thiserror 2.0.21",
  "tiny_http",
  "ureq",
