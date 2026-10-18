@@ -172,3 +172,12 @@ client_secret = {{clientSecret}}
 
 <h2>Saving</h2>
 <p>Any change marks the tab with a dot and shows <strong>Unsaved changes</strong> in the status bar. Press <kbd>Ctrl</kbd> <kbd>S</kbd> to write the file. Postino writes the file in its canonical form, so saving a request you did not change produces no diff, and the order of sections is always the same. See the <a href="file-format.html">file format</a>.</p>
+
+<h2 id="undo-and-redo">Undo and redo</h2>
+<p>Every request tab keeps its own history of edits while it is open. <kbd>Ctrl</kbd> <kbd>Z</kbd> undoes the last edit and <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Z</kbd> or <kbd>Ctrl</kbd> <kbd>Y</kbd> redoes it (<kbd>⌘</kbd> <kbd>Z</kbd> and <kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>Z</kbd> on macOS). The history covers every change to the request: what you type, the method, the checkboxes, adding, removing and sorting rows, and switching the body or auth type.</p>
+<ul>
+    <li>Typing in one field is one step until you pause for a second or move to another field, so undo removes what you typed in one go, not letter by letter.</li>
+    <li>In the URL, the cells of the tables and the Auth fields, and anywhere outside a text field (after clicking a checkbox or a button), the keys use the tab's history.</li>
+    <li>In the body, script and Docs editors, the keys undo the editor's own typing, keeping the cursor where it was. What you typed there is also in the tab's history, so you can undo it from any other field.</li>
+    <li>Undoing back to what was last saved removes the unsaved dot. The history is lost when the tab is closed.</li>
+</ul>

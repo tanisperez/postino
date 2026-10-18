@@ -26,11 +26,14 @@ description: Every keyboard shortcut in Postino for Linux, Windows and macOS: co
         <tr><td>Save</td><td><kbd>Ctrl</kbd> <kbd>S</kbd></td><td><kbd>⌘</kbd> <kbd>S</kbd></td></tr>
         <tr><td>Show suggestions: variables, header names and values, script globals and members</td><td><kbd>Ctrl</kbd> <kbd>Space</kbd></td><td><kbd>Ctrl</kbd> <kbd>Space</kbd></td></tr>
         <tr><td>Delete the line in a script editor</td><td><kbd>Ctrl</kbd> <kbd>D</kbd></td><td><kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>K</kbd></td></tr>
+        <tr><td>Undo the last edit of the request</td><td><kbd>Ctrl</kbd> <kbd>Z</kbd></td><td><kbd>⌘</kbd> <kbd>Z</kbd></td></tr>
+        <tr><td>Redo</td><td><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Z</kbd> or <kbd>Ctrl</kbd> <kbd>Y</kbd></td><td><kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>Z</kbd></td></tr>
     </tbody>
 </table></div>
 <p><kbd>Ctrl</kbd> <kbd>S</kbd> also saves an environment open in the environment editor.</p>
 <p><kbd>Ctrl</kbd> <kbd>Space</kbd> works in the URL, in the values of the Params, Headers and Form tables, in the fields of the Auth tab, in the header names and in the pre-request and post-response script editors, and is <kbd>Ctrl</kbd> on macOS too. While its menu is open, <kbd>↑</kbd> and <kbd>↓</kbd> move through the suggestions, <kbd>Enter</kbd> or <kbd>Tab</kbd> inserts the highlighted one and <kbd>Esc</kbd> closes it. See <a href="environments.html#autocompleting-variables">autocompleting variables</a>, <a href="requests.html#suggested-headers">suggested headers</a> and <a href="scripting.html#autocompletion">script autocompletion</a>.</p>
 <p><kbd>Ctrl</kbd> <kbd>D</kbd> works only in the pre-request and post-response script editors, see <a href="scripting.html#editing-shortcuts">editing shortcuts</a>. On macOS it is <kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>K</kbd>, because <kbd>Ctrl</kbd> <kbd>D</kbd> deletes the next character in every text field there.</p>
+<p>Undo and redo use the request tab's own history in the URL, the table cells, the Auth fields and outside text fields; in the body, script and Docs editors they undo the editor's own typing first. See <a href="requests.html#undo-and-redo">undo and redo</a>.</p>
 
 <h2>Sidebar</h2>
 <div class="table"><table>
@@ -64,7 +67,7 @@ description: Every keyboard shortcut in Postino for Linux, Windows and macOS: co
 </table></div>
 
 <h2>Text editing</h2>
-<p>Inputs and code editors support the usual editing keys of your platform: select all, cut, copy, paste, undo and redo, word navigation with <kbd>Ctrl</kbd> or <kbd>Alt</kbd> and the arrow keys. Right click an input for a menu with <strong>Cut</strong>, <strong>Copy</strong>, <strong>Paste</strong> and <strong>Select all</strong>. In the response body, the search button opens a find bar.</p>
+<p>Inputs and code editors support the usual editing keys of your platform: select all, cut, copy, paste, undo and redo (in the request editor, see <a href="requests.html#undo-and-redo">undo and redo</a>), word navigation with <kbd>Ctrl</kbd> or <kbd>Alt</kbd> and the arrow keys. Right click an input for a menu with <strong>Cut</strong>, <strong>Copy</strong>, <strong>Paste</strong> and <strong>Select all</strong>. In the response body, the search button opens a find bar.</p>
 
 <h2>Cheat sheet</h2>
 <p>Inside Postino, press <kbd>F1</kbd> (<kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>/</kbd> on macOS) or click the keyboard button in the status bar to see these shortcuts at any time.</p>

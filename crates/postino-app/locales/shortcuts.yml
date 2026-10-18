@@ -110,6 +110,16 @@ _version: 2
   es: "Mostrar sugerencias: variables, nombres y valores de cabeceras"
   gl: "Amosar suxestións: variables, nomes e valores de cabeceiras"
   it: "Mostra i suggerimenti: variabili, nomi e valori delle intestazioni"
+"shortcuts.action.undo":
+  en: "Undo the last edit of the request"
+  es: "Deshacer la última edición de la petición"
+  gl: "Desfacer a última edición da petición"
+  it: "Annulla l'ultima modifica della richiesta"
+"shortcuts.action.redo":
+  en: "Redo"
+  es: "Rehacer"
+  gl: "Refacer"
+  it: "Ripeti"
 "shortcuts.action.delete_line":
   en: "Delete the line in a script editor"
   es: "Borrar la línea en un editor de scripts"

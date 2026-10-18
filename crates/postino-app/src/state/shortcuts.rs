@@ -88,6 +88,8 @@ pub fn groups() -> Vec<ShortcutGroup> {
                     label: t!("shortcuts.action.delete_line").to_string(),
                     keys: delete_line_keys(),
                 },
+                shortcut(t!("shortcuts.action.undo"), &[modifier, "Z"]),
+                shortcut(t!("shortcuts.action.redo"), &[modifier, "Shift", "Z"]),
             ],
         },
         ShortcutGroup {
