@@ -225,6 +225,11 @@ _version: 2
   es: "Versión"
   gl: "Versión"
   it: "Versione"
+"settings.about.design_system":
+  en: "Design system"
+  es: "Sistema de diseño"
+  gl: "Sistema de deseño"
+  it: "Sistema di design"
 "settings.about.ready.title":
   en: "Postino %{version} is ready to install"
   es: "Postino %{version} está listo para instalar"

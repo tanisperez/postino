@@ -77,7 +77,8 @@ pub(super) fn render_about_footer(palette: &Palette) -> AnyElement {
         .into_any_element()
 }
 
-/// The logo, the name with its version and platform, and the two link buttons.
+/// The logo, the name with its version and platform, the telaio version with a link to its
+/// repository, and the two link buttons.
 fn render_identity(
     palette: &Palette,
     mono_font_family: &SharedString,
@@ -124,6 +125,27 @@ fn render_identity(
                                 .child(info.version),
                         )
                         .child(format!("\u{b7} {}", info.platform)),
+                )
+                .child(
+                    h_flex()
+                        .gap(px(4.0))
+                        .text_size(px(12.0))
+                        .text_color(palette.fg_muted)
+                        .child(t!("settings.about.design_system"))
+                        .child(
+                            div()
+                                .id("about-telaio")
+                                .cursor_pointer()
+                                .text_color(palette.accent_text)
+                                .hover(|style| style.underline())
+                                .child("telaio")
+                                .on_click(|_, _, cx| cx.open_url(telaio::REPOSITORY)),
+                        )
+                        .child(
+                            div()
+                                .font_family(mono_font_family.clone())
+                                .child(telaio::VERSION),
+                        ),
                 ),
         )
         .child(

@@ -118,6 +118,13 @@ in [`docs/`](docs): the [architecture](docs/architecture.md), the format and scr
 implementation references ([`format.md`](docs/format.md), [`scripting.md`](docs/scripting.md))
 and [releasing](docs/releasing.md).
 
+## Built with
+
+- [Rust](https://www.rust-lang.org) and [gpui-kit](https://crates.io/crates/gpui-kit), the
+  components for the [GPUI](https://www.gpui.rs) UI framework.
+- [telaio](https://github.com/tanisperez/telaio), the design system and standard components
+  Postino shares with its sibling apps: palette, theme, fonts, buttons, modals and the rest.
+
 ## License
 
 Copyright 2026 Estanislao Pérez Nartallo.

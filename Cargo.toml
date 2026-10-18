@@ -13,7 +13,7 @@ authors = ["Estanislao Pérez Nartallo <tanisperez@gmail.com>"]
 [workspace.dependencies]
 gpui-kit = "0.7.0"
 # The design system and standard components shared with Vano and Nastro. Same gpui-kit pin.
-telaio = { git = "https://github.com/tanisperez/telaio", tag = "v0.1.0" }
+telaio = { git = "https://github.com/tanisperez/telaio", tag = "v0.1.1" }
 rquickjs = "0.14"
 ureq = "3.4"
 serde = "1"
