@@ -37,7 +37,7 @@ description: How to report bugs, build Postino from source, run its tests and fi
 <p>The tests never touch the internet: HTTP tests run against a local server. The sample suite in <code>samples/</code> has about 140 requests that exercise every feature, each with its own tests.</p>
 
 <h2>Project structure</h2>
-<p>Postino is a Cargo workspace of small crates, with the user interface kept thin:</p>
+<p>Postino is a Cargo workspace of small crates, with the user interface kept thin. The design system, the standard components and the in-app updater come from <a href="https://github.com/tanisperez/telaio">telaio</a>, shared with Postino's sibling apps.</p>
 <div class="table"><table>
     <thead><tr><th>Crate</th><th>Responsibility</th></tr></thead>
     <tbody>
@@ -48,7 +48,7 @@ description: How to report bugs, build Postino from source, run its tests and fi
         <tr><td><code>postino-http</code></td><td>Sending requests</td></tr>
         <tr><td><code>postino-runner</code></td><td>The pipeline: variables, scripts, interpolation, sending</td></tr>
         <tr><td><code>postino-load</code></td><td>The load test engine and run history</td></tr>
-        <tr><td><code>postino-update</code></td><td>The in-app updater</td></tr>
+        <tr><td><code>postino-cli</code></td><td>The command line commands</td></tr>
         <tr><td><code>postino-app</code></td><td>The gpui desktop application</td></tr>
     </tbody>
 </table></div>

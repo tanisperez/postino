@@ -9,8 +9,8 @@ use gpui_kit::component::notification::Notification;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
-use postino_update::Platform;
 use rust_i18n::t;
+use telaio_update::Platform;
 
 use crate::state::update::{
     self, CheckOutcome, InstallOutcome, ReadyUpdate, STARTUP_DELAY, updater_enabled,

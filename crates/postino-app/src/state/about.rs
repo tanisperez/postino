@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use postino_update::Platform;
+use telaio_update::Platform;
 
 use super::update::{CURRENT_VERSION, download_dir, is_portable};
 

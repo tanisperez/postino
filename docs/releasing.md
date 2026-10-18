@@ -231,8 +231,8 @@ and DNF repos, served by GitHub Pages.
 
 ## In-app updater
 
-The `postino-update` crate (no UI, tested against a local `tiny_http` server) plus the glue in
-`state/update.rs` and `views/update.rs`. Package managers own updates on Linux, so the updater
+telaio's `telaio-update` crate (no UI, tested against a local `tiny_http` server, configured by
+`state::update::UPDATER`) plus the glue in `state/update.rs` and `views/update.rs`. Package managers own updates on Linux, so the updater
 exists only on macOS and Windows.
 
 - **Compiled in only with `POSTINO_UPDATER=github`** at build time (`option_env!`), set only on
@@ -258,14 +258,14 @@ exists only on macOS and Windows.
   indicator appears in the status bar ("Update ready, restart") with a link to the release notes.
   Nothing installs without a click.
 - **Portable Windows copy:** the installer always leaves `unins000.exe` next to `postino.exe`
-  (`postino_update::install::windows_is_installed`). A copy without it came from the zip, and
+  (`telaio_update::install::windows_is_installed`). A copy without it came from the zip, and
   running the installer from it would install a second, separate copy, so it never does. It also
   downloads nothing. When a newer version exists the status bar shows "Update X available,
   download" and a click opens the release page, where the new zip is. There is no restart prompt.
   The manual check and Settings, About say the same (a banner with a "Download" button, no
   "Downloads to" path). The test is made once at startup (`AboutInfo::detect`) and an unknown
   executable path counts as portable, the safe side. The decision logic is `is_portable` and
-  `ready_update` in `state/update.rs`, unit tested on Linux.
+  the ready update decision in `telaio_update::flow`, unit tested on Linux.
 - **Install on Windows:** run the downloaded installer with
   `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /relaunch=1` and quit. The installer replaces the
   files (closing Postino through the Restart Manager if needed) and relaunches it only because of

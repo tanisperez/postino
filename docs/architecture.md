@@ -31,11 +31,12 @@ postino-app ──> postino-load ──> postino-runner ──> postino-script �
      ├──────> postino-script
      ├──────> postino-workspace ─> postino-format ─> postino-core
      ├──────> postino-format
-     ├──────> postino-update (standalone, depends on no other postino crate)
      └──────> postino-cli (standalone, depends on no other postino crate)
 ```
 
-No cycles, and no crate depends on `postino-app`.
+No cycles, and no crate depends on `postino-app`. From [telaio](https://github.com/tanisperez/telaio),
+`postino-app` also uses `telaio-ui` (design system and standard components) and `telaio-update`
+(the in-app updater, shared with the other apps).
 
 | Crate | Responsibility |
 | --- | --- |
@@ -46,16 +47,12 @@ No cycles, and no crate depends on `postino-app`.
 | `postino-http` | Sends a resolved request with `ureq` 3 (blocking, rustls) and measures timing. |
 | `postino-runner` | The pipeline: variables, pre script, interpolate, send, post script. Also `preview`, which resolves a request without scripts or network. |
 | `postino-load` | The load test engine, live metrics aggregation, run comparison and run history. |
-| `postino-update` | The in-app updater: reads the release manifest, downloads and verifies the asset, and has the macOS and Windows install helpers. |
 | `postino-cli` | The terminal commands that print and exit without opening the window (`--help`, `--version`; later load tests and reports from the terminal). No `gpui`. Its `common` module is shared app plumbing meant to move to `telaio-app`. |
 | `postino-app` | The `gpui` binary (`postino`). Only UI and glue. |
 
 `postino-load` writes its own run history under `.postino/runs/` of the workspace. That is a
 deliberate exception to "`postino-workspace` owns the filesystem": routing it through the
 workspace crate would need a `workspace -> load -> runner` dependency edge.
-
-`postino-update` is standalone so it can be tested with a local HTTP server and has no way to
-touch request data.
 
 ## The run pipeline
 

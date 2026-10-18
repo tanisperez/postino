@@ -14,6 +14,7 @@ authors = ["Estanislao Pérez Nartallo <tanisperez@gmail.com>"]
 gpui-kit = "0.7.0"
 # The design system and standard components shared with Vano and Nastro. Same gpui-kit pin.
 telaio-ui = { path = "../telaio/crates/telaio-ui" }
+telaio-update = { path = "../telaio/crates/telaio-update" }
 rquickjs = "0.14"
 ureq = "3.4"
 serde = "1"

@@ -67,7 +67,7 @@ These are to be settled in a dedicated planning session. Do not pick one silentl
 
 ## Architecture
 
-A Cargo workspace of ten small crates, UI kept thin. The reasons and conventions are in
+A Cargo workspace of nine small crates, UI kept thin, on top of telaio's crates. The reasons and conventions are in
 `docs/architecture.md`; notes on `gpui-kit` pitfalls are in `docs/gpui-notes.md`. Dependency
 direction (arrows mean "depends on"), no cycles, no crate depends on `postino-app`:
 
@@ -79,9 +79,11 @@ postino-app ──> postino-load ──> postino-runner ──> postino-script �
      ├──────> postino-script (the script editors' autocompletion reads `postino_script::api`)
      ├──────> postino-workspace ─> postino-format ─> postino-core
      ├──────> postino-format (the Code snippet dialog renders `render_snippet` directly)
-     ├──────> postino-update (standalone, depends on no other postino crate)
      └──────> postino-cli (standalone, depends on no other postino crate)
 ```
+
+From telaio: `postino-app` uses `telaio-ui` (design system and standard components) and
+`telaio-update` (the in-app updater).
 
 - `postino-core`: domain model (`Request`, `Method`, `Body`, ...) and `{{ }}` variable
   interpolation. No IO.
@@ -91,8 +93,6 @@ postino-app ──> postino-load ──> postino-runner ──> postino-script �
 - `postino-http`: sends a resolved request with `ureq`, measures timing.
 - `postino-runner`: the pipeline, vars, pre script, interpolate, send, post script.
 - `postino-load`: the load test engine, live metrics, run comparison and run history.
-- `postino-update`: in-app updater: reads the `latest.json` release manifest, downloads and
-  verifies the asset, and has the macOS and Windows install helpers. Blocking calls.
 - `postino-cli`: the terminal commands that print and exit without opening the window
   (`-h/--help`, `-V/--version` today; future commands such as running a load test). No `gpui`.
   `common.rs` holds the pieces shared by every app (version line, help header and footer, exit
@@ -260,9 +260,10 @@ gpui, wgpu, ureq and rustls messages reach it too. Library crates only depend on
 
 ## Updater
 
-In-app updater for macOS and Windows (#45). The library is `postino-update` (standalone, no other
-postino crate); the app glue is `state/update.rs` (gate, ready state, install decisions, unit
-tested) and `views/update.rs`. The feature exists only when built with `POSTINO_UPDATER=github`
+In-app updater for macOS and Windows (#45). The library is telaio's `telaio-update` (no gpui,
+its `flow` module holds the gate, ready state and install decisions, unit tested); the app glue
+is `state/update.rs` (Postino's `UPDATER` configuration, the build gate, the restart
+confirmation) and `views/update.rs`. The feature exists only when built with `POSTINO_UPDATER=github`
 and `Platform::current()` is `Some` (`state::update::updater_enabled`); nothing is `cfg`-gated by
 OS, so it all compiles on Linux. One delayed check 10 s after startup, no timers or polling.
 Strings live in `locales/update.yml`. A portable Windows copy (the zip, no `unins000.exe` next to
