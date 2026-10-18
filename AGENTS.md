@@ -2,6 +2,12 @@
 
 Guidance for AI agents working on Postino. See `README.md` for the project overview.
 
+The rules shared by every Rust desktop app (design first, stack, telaio, performance,
+translations, logging, CLI, docs, releases, packaging, CI, testing) are imported below. This file
+only adds what is specific to Postino, and wins where the two differ.
+
+@~/.claude/rust/RULES.md
+
 ## Project
 
 Postino is an open source, lightweight, native HTTP client (a Postman alternative) written in
