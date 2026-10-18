@@ -73,7 +73,7 @@ mod tests {
         assert!(!needs_restart_confirmation(&tabs));
         tabs.open("a.postino", postino_core::Request::default());
         assert!(!needs_restart_confirmation(&tabs));
-        tabs.mark_dirty(0);
+        tabs.set_dirty(0, true);
         assert!(needs_restart_confirmation(&tabs));
     }
 

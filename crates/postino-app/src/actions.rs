@@ -70,5 +70,12 @@ actions!(
         /// Deletes the lines of the selection in the focused `::: pre` or `::: post` script
         /// editor (`Ctrl+D`, or `Cmd+Shift+K` on macOS, where `Ctrl+D` deletes forward).
         DeleteLine,
+        /// Undoes the last edit of the active request tab (`Ctrl+Z` / `Cmd+Z`): anywhere outside
+        /// a text input, and in the request editor's single-line fields. The body, script and
+        /// docs editors and every other input keep their own undo.
+        UndoRequestEdit,
+        /// Redoes the last undone edit of the active request tab (`Ctrl+Shift+Z` or `Ctrl+Y`,
+        /// `Cmd+Shift+Z` on macOS), where [`UndoRequestEdit`] applies.
+        RedoRequestEdit,
     ]
 );

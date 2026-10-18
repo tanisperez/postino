@@ -2,9 +2,12 @@
 //! which order, which one is active, and whether each has unsaved changes. No `gpui` types here, so this is
 //! unit-tested directly.
 
+use std::time::Instant;
+
 use postino_core::Request;
 
 use super::auth_edit::{self, AuthKind, AuthStash};
+use super::edit_history::{EditHistory, Snapshot};
 use super::env_edit::{self, EnvEditTab};
 use super::load_test::LoadTestTab;
 use super::request_edit::{self, BodyKind, BodyStash};
@@ -49,6 +52,8 @@ pub struct OpenTab {
     /// Whether the Auth tab shows its secret fields in plain text, switched by their eye button.
     /// Never saved: a reopened tab masks them again.
     pub show_auth_secrets: bool,
+    /// Undo and redo of the request's edits (#109). `None` for every other kind of tab.
+    pub history: Option<EditHistory>,
 }
 
 impl OpenTab {
@@ -82,6 +87,61 @@ impl OpenTab {
         if let TabKind::Request(request) = &mut self.kind {
             auth_edit::set_auth_kind(request, kind, &mut self.auth_stash);
         }
+    }
+
+    /// What an undo would restore of this tab now, if it is a request tab.
+    fn snapshot(&self) -> Option<Snapshot> {
+        Some(Snapshot {
+            request: self.request()?.clone(),
+            body_stash: self.body_stash.clone(),
+            auth_stash: self.auth_stash.clone(),
+        })
+    }
+
+    /// Records the state an edit just left in the undo history, then marks the tab dirty.
+    /// `typing` names the field when the edit is typing in it, so a burst of typing is one step
+    /// (see [`EditHistory::record`]). Does nothing for a tab that is not a request.
+    pub fn record_edit(&mut self, typing: Option<&str>, now: Instant) {
+        let Some(snapshot) = self.snapshot() else {
+            return;
+        };
+        if let Some(history) = &mut self.history {
+            history.record(snapshot, typing, now);
+        }
+        self.dirty = true;
+    }
+
+    /// Restores the previous step of the undo history. Returns whether something changed.
+    pub fn undo(&mut self) -> bool {
+        let restored = self
+            .history
+            .as_mut()
+            .and_then(|history| history.undo().cloned());
+        self.restore(restored)
+    }
+
+    /// Restores the next step of the undo history. Returns whether something changed.
+    pub fn redo(&mut self) -> bool {
+        let restored = self
+            .history
+            .as_mut()
+            .and_then(|history| history.redo().cloned());
+        self.restore(restored)
+    }
+
+    /// Puts `snapshot` back into the tab and sets the dirty flag from the history (clean again
+    /// when back at the saved step).
+    fn restore(&mut self, snapshot: Option<Snapshot>) -> bool {
+        let Some(snapshot) = snapshot else {
+            return false;
+        };
+        if let TabKind::Request(request) = &mut self.kind {
+            **request = snapshot.request;
+            self.body_stash = snapshot.body_stash;
+            self.auth_stash = snapshot.auth_stash;
+        }
+        self.dirty = self.history.as_ref().is_some_and(EditHistory::is_dirty);
+        true
     }
 
     /// This tab's environment editor state, if it is a [`TabKind::Environment`].
@@ -240,6 +300,14 @@ impl TabsState {
     /// Appends a new tab and makes it active. Shared by [`Self::open`] and
     /// [`Self::open_load_test`].
     fn push_and_activate(&mut self, id: String, kind: TabKind) -> usize {
+        let history = match &kind {
+            TabKind::Request(request) => Some(EditHistory::new(Snapshot {
+                request: request.as_ref().clone(),
+                body_stash: BodyStash::default(),
+                auth_stash: AuthStash::default(),
+            })),
+            TabKind::Environment(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) => None,
+        };
         self.open.push(OpenTab {
             id,
             kind,
@@ -247,6 +315,7 @@ impl TabsState {
             body_stash: BodyStash::default(),
             auth_stash: AuthStash::default(),
             show_auth_secrets: false,
+            history,
         });
         let index = self.open.len() - 1;
         self.active = Some(index);
@@ -320,6 +389,9 @@ impl TabsState {
     pub fn mark_saved(&mut self, index: usize) {
         if let Some(tab) = self.open.get_mut(index) {
             tab.dirty = false;
+            if let Some(history) = &mut tab.history {
+                history.mark_saved();
+            }
         }
     }
 
@@ -327,15 +399,6 @@ impl TabsState {
     pub fn set_dirty(&mut self, index: usize, dirty: bool) {
         if let Some(tab) = self.open.get_mut(index) {
             tab.dirty = dirty;
-        }
-    }
-
-    /// Marks the tab at `index` as having unsaved changes. Does nothing if out of range. Called
-    /// by every editing operation in `state::request_edit` once it has applied its change to the
-    /// tab's `Request` (any edit marks the tab dirty).
-    pub fn mark_dirty(&mut self, index: usize) {
-        if let Some(tab) = self.open.get_mut(index) {
-            tab.dirty = true;
         }
     }
 
@@ -547,7 +610,7 @@ mod tests {
     fn mark_saved_clears_the_dirty_flag() {
         let mut tabs = TabsState::default();
         tabs.open("a.postino", request());
-        tabs.mark_dirty(0);
+        tabs.set_dirty(0, true);
 
         tabs.mark_saved(0);
 
@@ -555,23 +618,67 @@ mod tests {
     }
 
     #[test]
-    fn mark_dirty_sets_the_dirty_flag() {
+    fn an_edit_marks_the_tab_dirty_and_undo_to_the_saved_state_cleans_it() {
         let mut tabs = TabsState::default();
         tabs.open("a.postino", request());
+        let tab = tabs.get_mut(0).expect("tab");
 
-        tabs.mark_dirty(0);
+        if let Some(request) = tab.request_mut() {
+            request.url = "https://changed.test".to_string();
+        }
+        tab.record_edit(None, Instant::now());
+        assert!(tab.dirty);
 
-        assert!(tabs.open_tabs()[0].dirty);
+        assert!(tab.undo());
+        assert!(!tab.dirty);
+        assert_eq!(tab.request(), Some(&request()));
+
+        assert!(tab.redo());
+        assert!(tab.dirty);
+        assert_eq!(
+            tab.request().map(|request| request.url.as_str()),
+            Some("https://changed.test")
+        );
     }
 
     #[test]
-    fn mark_dirty_on_an_out_of_range_index_does_nothing() {
+    fn undo_restores_what_the_other_body_kinds_held() {
         let mut tabs = TabsState::default();
         tabs.open("a.postino", request());
+        let tab = tabs.get_mut(0).expect("tab");
+        if let Some(request) = tab.request_mut() {
+            request.body = postino_core::Body::Json("{}".to_string());
+        }
+        tab.record_edit(Some("body"), Instant::now());
+        tab.set_body_kind(BodyKind::Form);
+        tab.record_edit(None, Instant::now());
 
-        tabs.mark_dirty(5);
+        assert!(tab.undo());
+        assert_eq!(
+            tab.request().map(|request| &request.body),
+            Some(&postino_core::Body::Json("{}".to_string()))
+        );
+        tab.set_body_kind(BodyKind::Form);
+        tab.set_body_kind(BodyKind::Json);
+        assert_eq!(
+            tab.request().map(|request| &request.body),
+            Some(&postino_core::Body::Json("{}".to_string())),
+            "the JSON text survives a switch to Form and back after the undo"
+        );
+    }
 
-        assert!(!tabs.open_tabs()[0].dirty);
+    #[test]
+    fn undo_with_nothing_to_undo_or_on_another_kind_of_tab_changes_nothing() {
+        let mut tabs = TabsState::default();
+        tabs.open("a.postino", request());
+        assert!(!tabs.get_mut(0).expect("tab").undo());
+        assert!(!tabs.get_mut(0).expect("tab").redo());
+
+        tabs.open_welcome(WelcomeTab::default());
+        let welcome = tabs.get_mut(1).expect("welcome tab");
+        welcome.record_edit(None, Instant::now());
+        assert!(!welcome.dirty);
+        assert!(!welcome.undo());
     }
 
     #[test]

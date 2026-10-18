@@ -1584,6 +1584,8 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_confirm_completion))
             .on_action(cx.listener(Self::on_dismiss_completion))
             .on_action(cx.listener(Self::on_delete_line))
+            .on_action(cx.listener(Self::on_undo_request_edit))
+            .on_action(cx.listener(Self::on_redo_request_edit))
             .child(title_bar)
             .children(error_banner)
             .child(body)

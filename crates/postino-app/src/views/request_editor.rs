@@ -12,6 +12,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::time::Instant;
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::input::{
@@ -27,7 +28,7 @@ use gpui::Hsla;
 use postino_core::log_safe::is_sensitive_header;
 use postino_core::{ApiKeyLocation, Auth, Body, KeyValue, Method, Request, variable_spans};
 
-use crate::actions::DeleteLine;
+use crate::actions::{DeleteLine, RedoRequestEdit, UndoRequestEdit};
 use crate::state::auth_edit::{self, AuthField, AuthKind, Overridden};
 use crate::state::line_edit;
 use crate::state::request_edit::{self, BodyKind, SortColumn, SortOrder};
@@ -178,7 +179,10 @@ fn build_row(
             move |view, entity, event: &InputEvent, cx| match event {
                 InputEvent::Change => {
                     let value = entity.read(cx).value().to_string();
-                    view.edit_row(&tab_id, kind, index, cx, |row| row.key = value);
+                    let typing = format!("{kind:?}:{index}:key");
+                    view.edit_row(&tab_id, kind, index, Some(&typing), cx, |row| {
+                        row.key = value
+                    });
                     view.on_completion_field_changed(field, cx);
                 }
                 InputEvent::Blur => view.on_completion_field_blurred(field, cx),
@@ -200,7 +204,10 @@ fn build_row(
             move |view, entity, event: &InputEvent, cx| match event {
                 InputEvent::Change => {
                     let new_value = entity.read(cx).value().to_string();
-                    view.edit_row(&tab_id, kind, index, cx, |row| row.value = new_value);
+                    let typing = format!("{kind:?}:{index}:value");
+                    view.edit_row(&tab_id, kind, index, Some(&typing), cx, |row| {
+                        row.value = new_value
+                    });
                     view.on_completion_field_changed(field, cx);
                 }
                 InputEvent::Blur => view.on_completion_field_blurred(field, cx),
@@ -240,7 +247,8 @@ fn build_auth_input(
         move |view, entity, event: &InputEvent, cx| match event {
             InputEvent::Change => {
                 let value = entity.read(cx).value().to_string();
-                view.edit_active_request(&tab_id, cx, |request| {
+                let typing = format!("auth:{field:?}");
+                view.edit_request(&tab_id, Some(&typing), cx, |request| {
                     auth_edit::set_field(&mut request.auth, field, value)
                 });
                 view.on_completion_field_changed(completion, cx);
@@ -297,7 +305,11 @@ fn make_script_editor(
             return;
         }
         let text = entity.read(cx).value().to_string();
-        view.edit_active_request(&tab_id, cx, |request| match field {
+        let typing = match field {
+            ScriptField::Pre => "pre_script",
+            ScriptField::Post => "post_script",
+        };
+        view.edit_request(&tab_id, Some(typing), cx, |request| match field {
             ScriptField::Pre => request.pre_script = text,
             ScriptField::Post => request.post_script = text,
         });
@@ -354,6 +366,10 @@ pub(crate) struct RequestEditorEntities {
     /// Rebuild on the next sync even with the same [`BuildKey`]: sorting moves rows without
     /// changing their count.
     force_rebuild: bool,
+    /// Rewrite every field's text from the request on the next sync, once: an undo or redo
+    /// (#109) put back a whole request without typing into the fields. Cheaper and kinder than a
+    /// rebuild, which would take the focus and the cursor away from the field being edited.
+    pub(crate) resync_values: bool,
 }
 
 /// The handles that style and explain the markers of the body editor.
@@ -382,6 +398,9 @@ impl RequestEditorEntities {
             std::mem::take(&mut self.force_rebuild) || self.built_for.as_ref() != Some(&key);
         if self.built_for.as_ref().map(|built| built.tab_id.as_str()) != Some(tab_id) {
             self.last_sort.clear();
+        }
+        if std::mem::take(&mut self.resync_values) && !rebuilt {
+            self.resync_values(request, window, cx);
         }
         if rebuilt {
             self.rebuild(tab_id, request, show_auth_secrets, window, cx);
@@ -421,6 +440,50 @@ impl RequestEditorEntities {
     }
 
     /// The entities of the table that `kind` names.
+    /// Sets the text of every table cell, auth field, script and the docs from `request` where
+    /// it differs. The URL and the body are kept in sync on every sync already. Only called once
+    /// after an undo or redo, never per render.
+    fn resync_values(&self, request: &Request, window: &mut Window, cx: &mut Context<AppView>) {
+        let form: &[KeyValue] = match &request.body {
+            Body::Form(rows) => rows,
+            _ => &[],
+        };
+        for (kind, rows) in [
+            (RowKind::Headers, request.headers.as_slice()),
+            (RowKind::Query, request.query.as_slice()),
+            (RowKind::Form, form),
+        ] {
+            for (entities, row) in self.table(kind).rows.iter().zip(rows) {
+                set_input_if_changed(&entities.key, &row.key, window, cx);
+                set_input_if_changed(&entities.value, &row.value, window, cx);
+            }
+        }
+        for (field, input) in &self.auth {
+            set_input_if_changed(
+                input,
+                auth_edit::field_value(&request.auth, *field),
+                window,
+                cx,
+            );
+        }
+        let editors = [
+            (
+                self.pre_editor.as_ref().map(|script| &script.editor),
+                &request.pre_script,
+            ),
+            (
+                self.post_editor.as_ref().map(|script| &script.editor),
+                &request.post_script,
+            ),
+            (self.docs.as_ref(), &request.docs),
+        ];
+        for (editor, text) in editors {
+            if let Some(editor) = editor {
+                set_editor_if_changed(editor, text, window, cx);
+            }
+        }
+    }
+
     fn table(&self, kind: RowKind) -> &KeyValueTableEntities {
         match kind {
             RowKind::Headers => &self.headers,
@@ -448,7 +511,7 @@ impl RequestEditorEntities {
                 move |view, entity, event: &InputEvent, cx| match event {
                     InputEvent::Change => {
                         let value = entity.read(cx).value().to_string();
-                        view.edit_active_request(&tab_id, cx, |request| request.url = value);
+                        view.edit_request(&tab_id, Some("url"), cx, |request| request.url = value);
                         view.on_completion_field_changed(CompletionField::Url, cx);
                     }
                     InputEvent::Blur => view.on_completion_field_blurred(CompletionField::Url, cx),
@@ -522,7 +585,7 @@ impl RequestEditorEntities {
                     return;
                 }
                 let text = entity.read(cx).value().to_string();
-                view.edit_active_request(&tab_id, cx, |request| {
+                view.edit_request(&tab_id, Some("body"), cx, |request| {
                     request_edit::set_body_text(request, text)
                 });
                 view.refresh_body_markers(cx);
@@ -559,7 +622,7 @@ impl RequestEditorEntities {
                     return;
                 }
                 let text = entity.read(cx).value().to_string();
-                view.edit_active_request(&tab_id, cx, |request| request.docs = text);
+                view.edit_request(&tab_id, Some("docs"), cx, |request| request.docs = text);
             })
             .detach();
         }
@@ -582,13 +645,26 @@ fn rows_for_mut(request: &mut Request, kind: RowKind) -> Option<&mut Vec<KeyValu
 }
 
 impl AppView {
-    /// Applies `f` to the request of the tab with id `tab_id`, marks it dirty, and re-renders.
-    /// The single place every request edit funnels through, so typing, a checkbox and a row
-    /// button all mark the tab dirty the same way (any edit marks the
-    /// tab dirty).
+    /// Applies a discrete edit (a checkbox, a row button, a menu) to the request of the tab
+    /// `tab_id`: one undo step. See [`Self::edit_request`].
     pub(crate) fn edit_active_request(
         &mut self,
         tab_id: &str,
+        cx: &mut Context<Self>,
+        f: impl FnOnce(&mut Request),
+    ) {
+        self.edit_request(tab_id, None, cx, f);
+    }
+
+    /// Applies `f` to the request of the tab with id `tab_id`, records the result in its undo
+    /// history, marks it dirty, and re-renders. The single place every request edit funnels
+    /// through, so typing, a checkbox and a row button all mark the tab dirty and become undo
+    /// steps the same way. `typing` names the field when the edit is typing in it, so a burst
+    /// of typing in one field is one undo step (`state::edit_history`).
+    pub(crate) fn edit_request(
+        &mut self,
+        tab_id: &str,
+        typing: Option<&str>,
         cx: &mut Context<Self>,
         f: impl FnOnce(&mut Request),
     ) {
@@ -602,7 +678,7 @@ impl AppView {
             return;
         };
         f(request);
-        self.state.tabs.mark_dirty(index);
+        tab.record_edit(typing, Instant::now());
         cx.notify();
     }
 
@@ -616,7 +692,7 @@ impl AppView {
             return;
         };
         tab.set_body_kind(kind);
-        self.state.tabs.mark_dirty(index);
+        tab.record_edit(None, Instant::now());
         cx.notify();
     }
 
@@ -630,7 +706,7 @@ impl AppView {
             return;
         };
         tab.set_auth_kind(kind);
-        self.state.tabs.mark_dirty(index);
+        tab.record_edit(None, Instant::now());
         cx.notify();
     }
 
@@ -702,10 +778,11 @@ impl AppView {
         tab_id: &str,
         kind: RowKind,
         index: usize,
+        typing: Option<&str>,
         cx: &mut Context<Self>,
         f: impl FnOnce(&mut KeyValue),
     ) {
-        self.edit_active_request(tab_id, cx, |request| {
+        self.edit_request(tab_id, typing, cx, |request| {
             if let Some(rows) = rows_for_mut(request, kind)
                 && let Some(row) = rows.get_mut(index)
             {
@@ -1327,7 +1404,9 @@ impl AppView {
                 .enabled(row.enabled)
                 .on_toggle(move |enabled, _, cx| {
                     let _ = toggle_weak.update(cx, |view, cx| {
-                        view.edit_row(&toggle_tab_id, kind, index, cx, |row| row.enabled = enabled);
+                        view.edit_row(&toggle_tab_id, kind, index, None, cx, |row| {
+                            row.enabled = enabled
+                        });
                     });
                 })
                 .on_delete(move |_, cx| {
@@ -1468,6 +1547,75 @@ impl AppView {
             .find(|script| script.editor.focus_handle(cx).is_focused(window))
     }
 
+    /// Whether the focus is in one of the request editor's single-line fields: the URL, the
+    /// custom method, a table cell or an Auth field. Undo and redo there use the tab's history;
+    /// the multi-line editors (body, scripts, docs) keep their own.
+    fn focused_single_line_field(&self, window: &Window, cx: &App) -> bool {
+        let focused = |input: &Entity<InputState>| input.focus_handle(cx).is_focused(window);
+        let editor = &self.request_editor;
+        editor.url.as_ref().is_some_and(focused)
+            || editor.method_input.as_ref().is_some_and(focused)
+            || editor.auth.iter().any(|(_, input)| focused(input))
+            || [RowKind::Headers, RowKind::Query, RowKind::Form]
+                .into_iter()
+                .flat_map(|kind| editor.table(kind).rows.iter())
+                .any(|row| focused(&row.key) || focused(&row.value))
+    }
+
+    /// `Ctrl+Z` (`Cmd+Z`): undoes the last edit of the active request tab (#109), or lets the
+    /// key through to the focused input's own undo, see [`UndoRequestEdit`].
+    pub(crate) fn on_undo_request_edit(
+        &mut self,
+        _: &UndoRequestEdit,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.step_request_history(false, window, cx);
+    }
+
+    /// `Ctrl+Shift+Z` or `Ctrl+Y` (`Cmd+Shift+Z`): redoes the last undone edit of the active
+    /// request tab, or lets the key through, see [`RedoRequestEdit`].
+    pub(crate) fn on_redo_request_edit(
+        &mut self,
+        _: &RedoRequestEdit,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.step_request_history(true, window, cx);
+    }
+
+    /// Steps the active request tab's history back (`redo` false) or forward, then rewrites
+    /// the editor's fields from the restored request on the next render. Lets the key through
+    /// when the focus is in a text input other than the request editor's single-line fields,
+    /// or when the active tab is not a request.
+    fn step_request_history(&mut self, redo: bool, window: &mut Window, cx: &mut Context<Self>) {
+        let in_input = window
+            .context_stack()
+            .iter()
+            .any(|context| context.contains("Input"));
+        if in_input && !self.focused_single_line_field(window, cx) {
+            cx.propagate();
+            return;
+        }
+        let Some(tab) = self
+            .state
+            .tabs
+            .active_index()
+            .and_then(|index| self.state.tabs.get_mut(index))
+            .filter(|tab| tab.request().is_some())
+        else {
+            cx.propagate();
+            return;
+        };
+        let changed = if redo { tab.redo() } else { tab.undo() };
+        if changed {
+            log::debug!("request edit {}", if redo { "redone" } else { "undone" });
+            self.request_editor.resync_values = true;
+            self.completion = None;
+            cx.notify();
+        }
+    }
+
     /// `Ctrl+D` (`Cmd+Shift+K` on macOS): deletes the lines of the selection in the focused
     /// script editor, as one undo step (`state::line_edit`), or lets the key through elsewhere.
     pub(crate) fn on_delete_line(
@@ -1596,6 +1744,32 @@ fn render_editor_or_placeholder(
             .h(relative(1.0))
             .into_any_element(),
         None => div().into_any_element(),
+    }
+}
+
+/// Sets `input`'s text to `text` unless it already shows it.
+fn set_input_if_changed(
+    input: &Entity<InputState>,
+    text: &str,
+    window: &mut Window,
+    cx: &mut Context<AppView>,
+) {
+    if input.read(cx).value().as_ref() != text {
+        let text = text.to_string();
+        input.update(cx, |state, cx| state.set_value(text, window, cx));
+    }
+}
+
+/// Sets `editor`'s text to `text` unless it already shows it.
+fn set_editor_if_changed(
+    editor: &Entity<EditorState>,
+    text: &str,
+    window: &mut Window,
+    cx: &mut Context<AppView>,
+) {
+    if editor.read(cx).value().as_ref() != text {
+        let text = text.to_string();
+        editor.update(cx, |state, cx| state.set_value(text, window, cx));
     }
 }
 

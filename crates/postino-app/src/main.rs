@@ -22,10 +22,10 @@ use telaio_app::{logging, window};
 use actions::{
     CloseActiveTab, ConfirmCompletion, DeleteLine, DeleteSelectedEntry, DismissCompletion,
     NextCompletion, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, OpenWorkspace,
-    PreviousCompletion, PreviousTab, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1,
-    SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
-    SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
-    SelectNoEnvironment, SendActiveTab, ShowCompletion,
+    PreviousCompletion, PreviousTab, RedoRequestEdit, RenameSelectedEntry, SaveActiveTab,
+    SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
+    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
+    SelectEnvironment9, SelectNoEnvironment, SendActiveTab, ShowCompletion, UndoRequestEdit,
 };
 use state::settings::ThemeChoice;
 use views::AppView;
@@ -252,6 +252,26 @@ fn bind_keys(cx: &mut App) {
     cx.bind_keys([KeyBinding::new("cmd-shift-k", DeleteLine, input)]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([KeyBinding::new("ctrl-d", DeleteLine, input)]);
+    // Undo and redo of request edits (#109): anywhere, and in any text input, bound after
+    // gpui-kit's own input bindings so they run first. The handlers
+    // (`views/request_editor.rs`) act on the active request tab when the focus is outside a
+    // text input or in one of the request editor's single-line fields, and otherwise let the
+    // input's own undo run.
+    #[cfg(target_os = "macos")]
+    for context in [None, input] {
+        cx.bind_keys([
+            KeyBinding::new("cmd-z", UndoRequestEdit, context),
+            KeyBinding::new("cmd-shift-z", RedoRequestEdit, context),
+        ]);
+    }
+    #[cfg(not(target_os = "macos"))]
+    for context in [None, input] {
+        cx.bind_keys([
+            KeyBinding::new("ctrl-z", UndoRequestEdit, context),
+            KeyBinding::new("ctrl-shift-z", RedoRequestEdit, context),
+            KeyBinding::new("ctrl-y", RedoRequestEdit, context),
+        ]);
+    }
     // Only while the sidebar tree has the focus (gpui-base's `Tree` key context): in a text input
     // these keys keep editing the text.
     let tree = Some(gpui_kit::base::tree_key_context());
