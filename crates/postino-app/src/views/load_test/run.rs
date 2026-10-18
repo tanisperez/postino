@@ -160,6 +160,7 @@ impl AppView {
             load_test.compare_snapshot = None;
             load_test.target_rows = target_rows;
             load_test.run_reuse_connections = Some(resolved.reuse_connections);
+            load_test.run_duration_secs = Some(resolved.duration_secs);
         });
 
         let run = LoadRun::start(config, environment, session_env, runner);

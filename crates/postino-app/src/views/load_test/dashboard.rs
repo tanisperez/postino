@@ -262,7 +262,7 @@ fn render_header(
         .map(run_title)
         .unwrap_or_else(|| t!("load_test.run.plain").into_owned());
     let (badge_label, badge_fg, badge_bg) = status_badge_colors(palette, &load_test.status);
-    let duration_secs = load_test.config.resolved().duration_secs;
+    let duration_secs = load_test.shown_duration_secs();
     let total = Duration::from_secs(duration_secs);
     let progress = if duration_secs > 0 {
         (snapshot.elapsed.as_secs_f64() / duration_secs as f64).clamp(0.0, 1.0)
@@ -521,7 +521,7 @@ fn render_throughput_card(
     snapshot: &LoadSnapshot,
     load_test: &LoadTestTab,
 ) -> AnyElement {
-    let duration_secs = load_test.config.resolved().duration_secs;
+    let duration_secs = load_test.shown_duration_secs();
     let rps_data: Vec<(usize, f64)> = snapshot
         .series
         .iter()

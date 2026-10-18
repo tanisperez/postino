@@ -358,6 +358,7 @@ impl AppView {
                 .map(|(method, name)| (method.parse().unwrap_or_default(), name.clone()))
                 .collect();
             load_test.run_reuse_connections = Some(record.config.reuse_connections);
+            load_test.run_duration_secs = Some(record.config.duration_secs);
             load_test.snapshot = Some(record.snapshot);
             load_test.compare_with = load_test
                 .history

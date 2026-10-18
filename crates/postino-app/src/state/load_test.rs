@@ -246,6 +246,10 @@ pub struct LoadTestTab {
     /// Whether the run shown reused its connections: set when a run starts and when a past run
     /// is viewed, since the config panel may have changed since. `None` before the first run.
     pub run_reuse_connections: Option<bool>,
+    /// The duration the run shown was configured with, in seconds: set when a run starts and
+    /// when a past run is viewed, since the config panel may have changed since (#135). `None`
+    /// before the first run.
+    pub run_duration_secs: Option<u64>,
 }
 
 impl LoadTestTab {
@@ -266,7 +270,16 @@ impl LoadTestTab {
             history: Vec::new(),
             target_rows: Vec::new(),
             run_reuse_connections: None,
+            run_duration_secs: None,
         }
+    }
+
+    /// The total duration the dashboard header measures the run shown against: the run's own
+    /// duration once a run has started or a past run is viewed, the config panel's before that.
+    #[must_use]
+    pub fn shown_duration_secs(&self) -> u64 {
+        self.run_duration_secs
+            .unwrap_or_else(|| self.config.resolved().duration_secs)
     }
 
     /// A tab preselecting the single request `id` (a sidebar request row's "Load test..." menu
@@ -538,6 +551,23 @@ mod tests {
         assert_eq!(clamp_think_time_ms("0"), 0);
         assert_eq!(clamp_think_time_ms("500"), 500);
         assert_eq!(clamp_think_time_ms("999999999"), THINK_TIME_MS_MAX);
+    }
+
+    #[test]
+    fn shown_duration_is_the_panel_s_until_a_run_is_shown() {
+        let mut tab = LoadTestTab::unset();
+        assert_eq!(tab.shown_duration_secs(), DEFAULT_DURATION_SECS);
+        tab.config.duration_secs = "30".to_string();
+        assert_eq!(tab.shown_duration_secs(), 30);
+    }
+
+    /// A past run viewed from history keeps its own duration whatever the panel says (#135).
+    #[test]
+    fn shown_duration_is_the_run_s_once_a_run_is_shown() {
+        let mut tab = LoadTestTab::unset();
+        tab.run_duration_secs = Some(10);
+        assert_eq!(tab.config.resolved().duration_secs, DEFAULT_DURATION_SECS);
+        assert_eq!(tab.shown_duration_secs(), 10);
     }
 
     #[test]
