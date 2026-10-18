@@ -5201,6 +5201,7 @@ dependencies = [
  "icu_locale_core",
  "log",
  "lsp-types",
+ "postino-cli",
  "postino-core",
  "postino-format",
  "postino-load",
@@ -5216,6 +5217,12 @@ dependencies = [
  "telaio-ui",
  "tempfile",
  "toml 0.8.23",
+]
+
+[[package]]
+name = "postino-cli"
+version = "0.1.1"
+dependencies = [
  "windows-sys 0.61.2",
 ]
 

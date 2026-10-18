@@ -67,7 +67,7 @@ These are to be settled in a dedicated planning session. Do not pick one silentl
 
 ## Architecture
 
-A Cargo workspace of nine small crates, UI kept thin. The reasons and conventions are in
+A Cargo workspace of ten small crates, UI kept thin. The reasons and conventions are in
 `docs/architecture.md`; notes on `gpui-kit` pitfalls are in `docs/gpui-notes.md`. Dependency
 direction (arrows mean "depends on"), no cycles, no crate depends on `postino-app`:
 
@@ -79,7 +79,8 @@ postino-app ──> postino-load ──> postino-runner ──> postino-script �
      ├──────> postino-script (the script editors' autocompletion reads `postino_script::api`)
      ├──────> postino-workspace ─> postino-format ─> postino-core
      ├──────> postino-format (the Code snippet dialog renders `render_snippet` directly)
-     └──────> postino-update (standalone, depends on no other postino crate)
+     ├──────> postino-update (standalone, depends on no other postino crate)
+     └──────> postino-cli (standalone, depends on no other postino crate)
 ```
 
 - `postino-core`: domain model (`Request`, `Method`, `Body`, ...) and `{{ }}` variable
@@ -92,6 +93,11 @@ postino-app ──> postino-load ──> postino-runner ──> postino-script �
 - `postino-load`: the load test engine, live metrics, run comparison and run history.
 - `postino-update`: in-app updater: reads the `latest.json` release manifest, downloads and
   verifies the asset, and has the macOS and Windows install helpers. Blocking calls.
+- `postino-cli`: the terminal commands that print and exit without opening the window
+  (`-h/--help`, `-V/--version` today; future commands such as running a load test). No `gpui`.
+  `common.rs` holds the pieces shared by every app (version line, help header and footer, exit
+  codes, Windows console attach), meant to move to `telaio-app`. Adding a command is in the
+  crate docs (`lib.rs`).
 - `postino-app`: the `gpui` binary (`postino`). Only UI and glue.
 
 Everything except `postino-app` is testable with `cargo test`, with no window, no GPU and no
