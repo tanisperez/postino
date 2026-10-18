@@ -28,6 +28,7 @@ use crate::state::number::format_integer;
 use crate::state::workspace_log::log_workspace_error;
 use crate::theme::metrics::{INPUT_PADDING_X, MODAL_WIDTH_DEFAULT, RADIUS_MD, RADIUS_SM};
 use crate::theme::{Palette, PaletteExt};
+use crate::views::components::NeutralButtonExt;
 use crate::views::components::{
     ConfirmDialog, GhostButton, HoverInput, IconButton, InlineMessage, InlineMessageKind,
     ModalPlacement, PrimaryButton, SecondaryButton, SegmentedControl, SegmentedItem, edit_menu,
@@ -837,14 +838,12 @@ fn render_header(
         });
 
     let more = Button::new("env-more")
-        .ghost()
+        .neutral_bordered(cx, palette.raised, palette.border_strong, palette.fg_muted)
         .icon(Icon::new(IconName::Ellipsis))
         .w(px(CONTROL_HEIGHT))
         .h(px(CONTROL_HEIGHT))
         .rounded(px(RADIUS_MD))
         .border_1()
-        .border_color(palette.border_strong)
-        .bg(palette.raised)
         .text_color(palette.fg_muted)
         .tooltip(t!("environments.more_tooltip"))
         .dropdown_menu({
@@ -1230,8 +1229,9 @@ fn chip_button(
     let custom = ButtonCustomVariant::new(cx)
         .color(bg)
         .foreground(fg)
-        .hover(palette.hover)
-        .active(palette.pressed);
+        // Over the chip's own tint, which a hover fill replaces instead of layering over.
+        .hover(palette.hover_over(bg))
+        .active(palette.pressed_over(bg));
     Button::new(id)
         .custom(custom)
         .h(px(20.0))

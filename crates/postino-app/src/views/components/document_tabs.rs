@@ -207,6 +207,15 @@ impl RenderOnce for DocumentTabs {
                 let close_handler = item.on_close;
                 let middle_click_close = close_handler.clone();
 
+                // The selected tab's `bg` fill is opaque, and a hover style replaces it.
+                let (hover, pressed) = if selected {
+                    (
+                        palette.hover_over(palette.bg),
+                        palette.pressed_over(palette.bg),
+                    )
+                } else {
+                    (palette.hover, palette.pressed)
+                };
                 let mut tab = h_flex()
                     .id(("doc-tab", index))
                     .group(group.clone())
@@ -217,8 +226,8 @@ impl RenderOnce for DocumentTabs {
                     .border_r_1()
                     .border_color(palette.border)
                     .cursor_pointer()
-                    .hover(|style| style.bg(palette.hover))
-                    .active(|style| style.bg(palette.pressed))
+                    .hover(move |style| style.bg(hover))
+                    .active(move |style| style.bg(pressed))
                     .text_size(px(13.0))
                     .text_color(if selected {
                         palette.fg

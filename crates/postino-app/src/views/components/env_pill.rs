@@ -7,13 +7,14 @@
 
 use std::rc::Rc;
 
-use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
+use super::NeutralButtonExt;
 use crate::state::env_color::env_color;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{ENV_PILL_HEIGHT, MENU_DOT_COLUMN_WIDTH, MENU_ROW_HEIGHT, RADIUS_MD};
@@ -117,13 +118,11 @@ impl RenderOnce for EnvPill {
         };
 
         Button::new(self.id)
-            .ghost()
+            .neutral_bordered(cx, palette.raised, palette.border, palette.fg)
             .h(px(ENV_PILL_HEIGHT))
             .px_2p5()
             .rounded(px(RADIUS_MD - 1.0))
             .border_1()
-            .border_color(palette.border)
-            .bg(palette.raised)
             .child(trigger_dot_or_ring)
             .child(trigger_label)
             .dropdown_caret(true)

@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::button::Button;
 use gpui_kit::component::chart::LineChart;
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::scroll::ScrollableElement as _;
@@ -24,6 +24,7 @@ use crate::state::load_test::{
 use crate::state::number::{format_decimal, format_integer};
 use crate::theme::metrics::RADIUS_LG;
 use crate::theme::{Palette, PaletteExt};
+use crate::views::components::NeutralButtonExt;
 use crate::views::components::{Card, InlineMessage, InlineMessageKind, MethodBadge};
 
 use super::run::unix_now;
@@ -109,7 +110,7 @@ impl AppView {
                     ),
             )
             .child(render_bottom_row(
-                weak, tab_id, &palette, &mono_font, &load_test, &snapshot,
+                weak, tab_id, &palette, &mono_font, &load_test, &snapshot, cx,
             ))
             .into_any_element()
     }
@@ -753,6 +754,7 @@ fn render_bottom_row(
     mono_font: &SharedString,
     load_test: &LoadTestTab,
     snapshot: &LoadSnapshot,
+    cx: &App,
 ) -> AnyElement {
     let compare_available: Vec<&RunRecordHeader> = load_test
         .history
@@ -798,6 +800,7 @@ fn render_bottom_row(
                     load_test,
                     snapshot,
                     &compare_available,
+                    cx,
                 )),
         )
         .into_any_element()
@@ -986,6 +989,7 @@ fn render_compare_with(
     load_test: &LoadTestTab,
     snapshot: &LoadSnapshot,
     available: &[&RunRecordHeader],
+    cx: &App,
 ) -> AnyElement {
     let now = unix_now() as i64;
     let selected = load_test
@@ -1012,7 +1016,7 @@ fn render_compare_with(
             let available: Vec<RunRecordHeader> =
                 available.iter().map(|header| (*header).clone()).collect();
             Button::new("load-test-compare-with")
-                .ghost()
+                .neutral_ghost(cx, palette.fg_muted)
                 .text_color(palette.fg_muted)
                 .text_size(px(12.0))
                 .child(

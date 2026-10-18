@@ -1,4 +1,4 @@
-//! [`select_trigger`]: a ghost `Button` restyled as a bordered select box, the trigger of a
+//! [`select_trigger`]: a `Button` restyled as a bordered select box, the trigger of a
 //! dropdown menu (the selects of Settings, the load test target picker). [`select_label_row`] is
 //! its usual content: the current pick on the left, a chevron on the right.
 //!
@@ -7,25 +7,24 @@
 //! (`gpui-component-0.6.6/src/menu/dropdown_menu.rs`, `impl DropdownMenu for Button {}`), not for
 //! a plain styled `div`.
 
-use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::button::Button;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use super::NeutralButtonExt;
 use crate::theme::Palette;
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
 
 /// The bordered, raised select box, full height and without a width: the caller sets the width,
 /// the content and the dropdown.
-pub fn select_trigger(id: impl Into<ElementId>, palette: &Palette) -> Button {
+pub fn select_trigger(id: impl Into<ElementId>, palette: &Palette, cx: &App) -> Button {
     Button::new(id)
-        .ghost()
+        .neutral_bordered(cx, palette.raised, palette.border_strong, palette.fg)
         .h(px(CONTROL_HEIGHT))
         .px(px(10.0))
         .rounded(px(RADIUS_MD - 1.0))
         .border_1()
-        .border_color(palette.border_strong)
-        .bg(palette.raised)
 }
 
 /// `label` on the left and a chevron on the right, to give a [`select_trigger`] as its child.

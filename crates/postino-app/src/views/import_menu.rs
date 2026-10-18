@@ -6,7 +6,7 @@
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -19,6 +19,7 @@ use crate::state::import;
 use crate::state::locale;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::ICON_BUTTON_HEADER;
+use crate::views::components::NeutralButtonExt;
 
 use super::components::{ConfirmDialog, open_confirm_dialog};
 use super::new_workspace::{self, NewWorkspacePurpose};
@@ -42,7 +43,7 @@ impl AppView {
         let collection_weak = weak.clone();
         let environment_weak = weak;
         Button::new("import-menu")
-            .ghost()
+            .neutral_ghost(cx, cx.palette().fg_muted)
             .small()
             .size(px(ICON_BUTTON_HEADER))
             .icon(Icon::new(gpui_kit::assets::IconName::Download))

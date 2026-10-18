@@ -485,32 +485,85 @@ fn log_level_index(level: LogLevel) -> usize {
 }
 
 /// A select box styled as the design system's select (`select_trigger`): the same height, border,
-/// background and chevrons icon. `mono` renders the label in that family at the editor size.
+/// background, hover and chevrons icon, plus an `accent` border while it has the focus or its list
+/// is open. `mono` renders the label in that family at the editor size.
 pub(super) fn render_select(
     id: &'static str,
     select: &SettingsSelect,
     palette: &Palette,
     mono: Option<SharedString>,
 ) -> AnyElement {
-    let mut field = Select::new(select)
-        .id(id)
-        .appearance(false)
-        .icon(Icon::new(gpui_kit::assets::IconName::ChevronsUpDown).text_color(palette.fg_subtle))
-        .search_placeholder(t!("settings.select.search"))
-        .menu_max_h(px(MENU_MAX_HEIGHT))
-        .h(px(CONTROL_HEIGHT))
-        .px(px(10.0))
-        .rounded(px(RADIUS_MD - 1.0))
-        .border_1()
-        .border_color(palette.border_strong)
-        .bg(palette.raised)
-        .text_color(palette.fg);
-    if let Some(family) = mono {
-        field = field.font_family(family).text_size(px(MONO_LABEL_SIZE));
+    SelectBox {
+        id,
+        select: select.clone(),
+        palette: palette.clone(),
+        mono,
     }
-    div()
-        .w(px(SELECT_WIDTH))
-        .h(px(CONTROL_HEIGHT))
-        .child(field)
-        .into_any_element()
+    .into_any_element()
+}
+
+/// The element behind [`render_select`]. gpui-component's `Select` has no hover style of its own
+/// and, with `appearance(false)`, no focus look either, so this tracks the pointer like
+/// `HoverInput` (only entering and leaving renders again) and reads the focus on every render.
+#[derive(IntoElement)]
+struct SelectBox {
+    id: &'static str,
+    select: SettingsSelect,
+    palette: Palette,
+    mono: Option<SharedString>,
+}
+
+impl RenderOnce for SelectBox {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let palette = self.palette;
+        let box_id = SharedString::from(format!("{}-box", self.id));
+        let hovered = window.use_keyed_state(box_id.clone(), cx, |_, _| false);
+        // The open list and its search box live inside the select's focus tree, so this also
+        // holds while the list is open.
+        let active = self
+            .select
+            .read(cx)
+            .focus_handle(cx)
+            .contains_focused(window, cx);
+        let fill = if *hovered.read(cx) {
+            palette.hover_over(palette.raised)
+        } else {
+            palette.raised
+        };
+        let mut field = Select::new(&self.select)
+            .id(self.id)
+            .appearance(false)
+            .icon(
+                Icon::new(gpui_kit::assets::IconName::ChevronsUpDown).text_color(palette.fg_subtle),
+            )
+            .search_placeholder(t!("settings.select.search"))
+            .menu_max_h(px(MENU_MAX_HEIGHT))
+            .h(px(CONTROL_HEIGHT))
+            .px(px(10.0))
+            .rounded(px(RADIUS_MD - 1.0))
+            .border_1()
+            .border_color(if active {
+                palette.accent
+            } else {
+                palette.border_strong
+            })
+            .bg(fill)
+            .text_color(palette.fg);
+        if let Some(family) = self.mono {
+            field = field.font_family(family).text_size(px(MONO_LABEL_SIZE));
+        }
+        div()
+            .id(box_id)
+            .w(px(SELECT_WIDTH))
+            .h(px(CONTROL_HEIGHT))
+            .on_hover(move |is_hovered, _, cx| {
+                hovered.update(cx, |hovered, cx| {
+                    if *hovered != *is_hovered {
+                        *hovered = *is_hovered;
+                        cx.notify();
+                    }
+                });
+            })
+            .child(field)
+    }
 }

@@ -13,7 +13,7 @@ use crate::state::about::{self, AboutInfo};
 use crate::state::update::{CheckStatus, ReadyUpdate, updater_enabled};
 use crate::theme::Palette;
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_LG};
-use crate::views::components::{PrimaryButton, SecondaryButton};
+use crate::views::components::{PrimaryButton, SecondaryButton, switch_halo};
 use crate::views::root::AppView;
 
 use super::{divider, labeled_row};
@@ -181,13 +181,18 @@ fn render_managed_updates(
     }
 
     let auto_weak = weak.clone();
-    let switch = Switch::new("settings-check-updates")
-        .checked(pane.check_updates)
-        .on_click(move |checked, window, cx| {
-            let checked = *checked;
-            let _ = auto_weak.update(cx, |view, cx| view.set_check_updates(checked, window, cx));
-        })
-        .into_any_element();
+    let switch = switch_halo(
+        "settings-check-updates-halo",
+        Switch::new("settings-check-updates")
+            .checked(pane.check_updates)
+            .on_click(move |checked, window, cx| {
+                let checked = *checked;
+                let _ =
+                    auto_weak.update(cx, |view, cx| view.set_check_updates(checked, window, cx));
+            }),
+        palette,
+    )
+    .into_any_element();
     rows.push(labeled_row(
         palette,
         t!("update.setting.check"),

@@ -16,6 +16,7 @@ use crate::theme::metrics::{CONTROL_HEIGHT, INPUT_PADDING_X, RADIUS_MD};
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{
     DangerButton, PrimaryButton, SegmentedControl, SegmentedItem, edit_menu, select_trigger,
+    switch_halo,
 };
 
 use crate::views::root::AppView;
@@ -164,6 +165,7 @@ impl AppView {
                         &load_test,
                         tree.as_deref(),
                         is_running,
+                        cx,
                     ))
                     .child(render_field(
                         &palette,
@@ -273,6 +275,7 @@ fn render_target_section(
     load_test: &LoadTestTab,
     tree: Option<&[postino_workspace::Node]>,
     is_running: bool,
+    cx: &App,
 ) -> AnyElement {
     let request_weak = weak.clone();
     let request_tab_id = tab_id.to_string();
@@ -318,7 +321,7 @@ fn render_target_section(
                 ),
         )
         .child(render_target_picker(
-            weak, tab_id, palette, load_test, tree, is_running,
+            weak, tab_id, palette, load_test, tree, is_running, cx,
         ))
         .into_any_element()
 }
@@ -332,6 +335,7 @@ fn render_target_picker(
     load_test: &LoadTestTab,
     tree: Option<&[postino_workspace::Node]>,
     is_running: bool,
+    cx: &App,
 ) -> AnyElement {
     use crate::state::load_test::{folders_flat, requests_flat};
 
@@ -373,7 +377,7 @@ fn render_target_picker(
         );
     }
 
-    let trigger = select_trigger("load-test-target-picker", palette)
+    let trigger = select_trigger("load-test-target-picker", palette, cx)
         .w_full()
         .disabled(is_running)
         .when(is_running, |button| button.opacity(0.5))
@@ -555,11 +559,13 @@ fn render_switch_row(
                         .child(hint),
                 ),
         )
-        .child(
+        .child(switch_halo(
+            SharedString::from(format!("{id}-halo")),
             Switch::new(id)
                 .checked(checked)
                 .on_click(move |checked, _, cx| on_change(*checked, cx)),
-        )
+            palette,
+        ))
         .into_any_element()
 }
 
