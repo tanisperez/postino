@@ -22,7 +22,7 @@ use rust_i18n::t;
 
 use crate::state::palette::{self, ActionId, PaletteItem, PaletteItemKind};
 use crate::theme::Palette;
-use crate::theme::PaletteExt;
+use crate::theme::{PaletteExt, PostinoColors};
 use crate::views::components::{
     MODAL_INNER_RADIUS, MethodBadge, ModalPlacement, edit_menu, framed_dialog,
 };

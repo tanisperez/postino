@@ -19,7 +19,7 @@ use crate::state::env_panel::load_env_rows;
 use crate::state::number::format_integer;
 use crate::state::workspace_log::log_workspace_error;
 use crate::theme::metrics::{ENV_ROW_HEIGHT, ICON_BUTTON_HEADER, INPUT_PADDING_X, RADIUS_SM};
-use crate::theme::{Palette, PaletteExt};
+use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::{IconButton, SectionLabel, edit_menu};
 
 use super::root::AppView;

@@ -11,8 +11,8 @@ use gpui_kit::*;
 
 use postino_core::Method;
 
-use crate::theme::PaletteExt;
 use crate::theme::metrics::{METHOD_LABEL_WIDTH, RADIUS_SM};
+use crate::theme::{PaletteExt, PostinoColors};
 
 /// Which of the two design variants a [`MethodBadge`] renders as.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

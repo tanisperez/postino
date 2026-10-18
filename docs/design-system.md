@@ -5,14 +5,21 @@ that used to live in `postino_design_system/`: the design is implemented, so the
 source of truth and this file is its readable summary. If this file and the code disagree, the
 code wins; fix this file.
 
-Where things live (all under `crates/postino-app/src/`):
+The shared part (tokens, `Palette`, theme JSON, metrics, fonts and the standard components) lives
+in the [telaio](https://github.com/tanisperez/telaio) crate, also used by Vano and Nastro; its
+`telaio-gallery` binary shows every standard component under every sample palette. Postino's
+default tokens are telaio's defaults. The rest is under `crates/postino-app/src/`:
 
 | What | File |
 | --- | --- |
-| Color tokens (light and dark), `Palette`, gpui-kit theme JSON | `theme/palette.rs` |
-| Sizes, heights, widths, radii | `theme/metrics.rs` |
-| Fonts, theme registration, live settings apply | `theme/mod.rs` |
-| Reusable widgets | `views/components/` (see the gallery: `POSTINO_OPEN=components`) |
+| Color tokens (light and dark), `Palette`, gpui-kit theme JSON | telaio, `src/palette.rs` |
+| Method colors, status code and environment color mapping | `theme/palette.rs` |
+| Shared sizes and radii | telaio, `src/metrics.rs` |
+| Postino's own sizes, heights, widths | `theme/metrics.rs` |
+| Fonts | telaio, `src/fonts.rs` |
+| Theme registration, live settings apply | `theme/mod.rs` (through `telaio::install`, `telaio::apply`) |
+| Standard widgets | telaio, `src/components/` |
+| Domain widgets (method badge, URL bar, env pill, ...) | `views/components/` (see the gallery: `POSTINO_OPEN=components`) |
 | Environment dot color rule | `state/env_color.rs` |
 
 ## Rules
@@ -20,8 +27,9 @@ Where things live (all under `crates/postino-app/src/`):
 - Colors only through `cx.palette()` (a `Palette`), never from `cx.theme()` and never as a literal.
 - Sizes only from `theme::metrics`, never as a literal.
 - The two themes ("Postino Light", "Postino Dark") are built from the same token list. The hex
-  literals are written once, in `LIGHT` and `DARK` in `theme/palette.rs`. Add a token there, not
-  in a second place.
+  literals are written once: the shared tokens in telaio's `Tokens::DEFAULT_LIGHT` and
+  `DEFAULT_DARK`, the method colors in `LIGHT` and `DARK` in `theme/palette.rs`. Add a token
+  there, not in a second place.
 - Panels are flat (border only). Inputs and cards use `raised` plus a border. Menus, popovers and
   modals use `overlay` plus the shadow token. No shadows on fixed panels.
 - A single-line input's text sits 9 px from its border (`INPUT_PADDING_X`, 1 px less than
@@ -29,7 +37,7 @@ Where things live (all under `crates/postino-app/src/`):
   focusing a field does not move its text. The URL bar keeps its own 8 px.
 - Every text input hovers like the search trigger: a `border` border at rest and `border_strong`
   while the pointer is over it, then its own focus look (`accent`) once focused. An `Input` that
-  draws its own border goes through `HoverInput` (`components/hover_input.rs`), since
+  draws its own border goes through telaio's `HoverInput`, since
   gpui-component's `Input` has no hover style; one whose border is drawn by a container (URL bar,
   sidebar filter, load test fields) sets `hover` on that container, which needs an `id` to
   render again when the pointer enters or leaves. Multi-line editors (body, scripts, docs) are
@@ -45,7 +53,7 @@ Where things live (all under `crates/postino-app/src/`):
   `Palette::hover_over(fill)` and presses with `Palette::pressed_over(fill)`; one with a
   transparent resting fill uses `hover` and `pressed` as they are.
 - A gpui-kit `Button` built by hand never uses `.ghost()`: its hover is an accent tint that also
-  changes the text color. `NeutralButtonExt` (`components/buttons.rs`) gives the neutral look:
+  changes the text color. telaio's `NeutralButtonExt` gives the neutral look:
   `neutral_ghost` for a borderless button (icon buttons, the workspace switcher, the method
   picker), `neutral_bordered` for a picker box (environment pill, `select_trigger`), which keeps
   its border and takes `border_strong` on hover, like a text input.
@@ -65,7 +73,7 @@ Where things live (all under `crates/postino-app/src/`):
 
 ## Palette
 
-Hex values copied from `theme/palette.rs`.
+Hex values copied from telaio's `src/palette.rs` and, for the methods, `theme/palette.rs`.
 
 ### Surfaces, text and borders
 
@@ -151,7 +159,7 @@ The values are CSS. gpui's `blur_radius` is the gaussian's standard deviation, h
 ## Typography
 
 - UI font **Geist**, base 13 px (user setting 11 to 16). Mono font **Geist Mono**, 12.5 px in
-  editors (user setting 10 to 18, 0.5 steps). Both are bundled in `assets/fonts/` (OFL).
+  editors (user setting 10 to 18, 0.5 steps). Both are bundled by telaio (OFL).
 - Scale: 20/600 run title, 15/600 dialog title, 13/500 buttons and active tabs, 13/400 body,
   12/400 secondary (timings, sizes, hints), 11/600 uppercase with 0.06em tracking for section
   labels ("COLLECTIONS"), mono 12.5/400 for code, URL and key-value cells, mono 10/600 for method

@@ -18,9 +18,9 @@ use rust_i18n::t;
 
 use postino_core::{VariableKind, VariableSpan, variable_spans};
 
-use super::edit_menu::edit_menu;
-use super::hover_input::HoverInput;
-use super::icon_button::IconButton;
+use super::HoverInput;
+use super::IconButton;
+use super::edit_menu;
 use super::variable_chip::VariableChip;
 use crate::state::variable_hint::{Hint, Origin, VariableContext, hint};
 use crate::theme::PaletteExt;

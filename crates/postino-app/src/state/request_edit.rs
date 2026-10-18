@@ -138,23 +138,8 @@ pub fn remove_row(rows: &mut Vec<KeyValue>, index: usize) {
     }
 }
 
-/// A column of a key-value table that its rows can be sorted by.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SortColumn {
-    /// The key column.
-    Key,
-    /// The value column.
-    Value,
-}
-
-/// The direction of a sorted column.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SortOrder {
-    /// A to Z.
-    Ascending,
-    /// Z to A.
-    Descending,
-}
+// The key-value table's sort column and direction, owned by telaio's `KeyValueTable`.
+pub use telaio::components::{SortColumn, SortOrder};
 
 /// Compares two rows by `column`, in the sidebar's natural order (`item2` before `item10`, case
 /// ignored), with a case-sensitive tie break so the order is total.

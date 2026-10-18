@@ -137,7 +137,7 @@ workspace scanner skips hidden folders, so the history never shows up as a colle
 | `ureq` 3, blocking | Lightweight, no `tokio`. Requests run on `gpui`'s background executor, load tests use one thread per user. |
 | Two levels of dynamic values | Template functions cover the common case with no script (`{{ uuid() }}`). Scripts cover anything more involved. Both use the same Rust built-ins. |
 | Environments as `.env` files | Trivial to read and diff, and `.local.env` gives secrets a place that git can ignore. |
-| One Rust palette for both themes | Colors are written once (`theme/palette.rs`) and the `gpui-kit` theme JSON is derived from it at startup, so there is no second copy to keep in sync. |
+| One Rust palette for both themes | Colors are written once (telaio's `Tokens`, plus the method colors in `theme/palette.rs`) and the `gpui-kit` theme JSON is derived from them at startup, so there is no second copy to keep in sync. |
 | Fonts bundled in the binary | Geist and Geist Mono (SIL OFL 1.1) so the look does not depend on what the OS has installed. |
 | `rust-i18n` for translations | `gpui-component` already ships it, so it adds no second i18n system. See `docs/i18n.md`. |
 

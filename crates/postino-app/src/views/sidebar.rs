@@ -316,7 +316,7 @@ impl AppView {
                     .bg(palette.raised)
                     .border_1()
                     .border_color(palette.border)
-                    // The hover of every text input (`components/hover_input.rs`).
+                    // The hover of every text input (telaio's `HoverInput`).
                     .hover({
                         let border_strong = palette.border_strong;
                         move |style| style.border_color(border_strong)

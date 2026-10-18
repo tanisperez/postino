@@ -25,8 +25,8 @@ use crate::state::ui_tabs::ResponseTab;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::RADIUS_MD;
 use crate::views::components::{
-    IconButton, InlineMessage, InlineMessageKind, SegmentedControl, SegmentedItem, StatusBadge,
-    StatusState, UnderlineTabItem, UnderlineTabs, edit_menu,
+    IconButton, InlineMessage, InlineMessageKind, SegmentedControl, SegmentedItem, StatusState,
+    UnderlineTabItem, UnderlineTabs, edit_menu, status_badge,
 };
 
 use super::root::AppView;
@@ -177,16 +177,10 @@ impl AppView {
             Some(response) => StatusState::Code(response.status),
             None => StatusState::NotSent,
         };
-        let mut badge = StatusBadge::new(state.clone());
-        if let StatusState::Code(code) = state {
-            let label = match response_render::reason_phrase(code) {
-                Some(reason) => format!("{code} {reason}"),
-                None => code.to_string(),
-            };
-            badge = badge.label(label);
-        }
-
-        let mut row = h_flex().items_center().gap(px(14.0)).child(badge);
+        let mut row = h_flex()
+            .items_center()
+            .gap(px(14.0))
+            .child(status_badge(&state));
         if let Some(response) = &result.response {
             row = row
                 .child(

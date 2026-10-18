@@ -11,7 +11,6 @@
 
 use gpui_kit::component::scroll::{Scrollbar, ScrollbarMode};
 use gpui_kit::component::switch::Switch;
-use gpui_kit::component::theme::{Theme, ThemeMode};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -91,11 +90,7 @@ impl AppView {
     /// view changes a value; there is no separate "Save" action.
     fn apply_settings_live(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         theme::apply_settings(cx, &self.state.settings);
-        match self.state.settings.theme {
-            ThemeChoice::System => Theme::sync_system_appearance(Some(window), cx),
-            ThemeChoice::Light => Theme::change(ThemeMode::Light, Some(window), cx),
-            ThemeChoice::Dark => Theme::change(ThemeMode::Dark, Some(window), cx),
-        }
+        telaio::ThemeChoice::from(self.state.settings.theme).apply(Some(window), cx);
         // The next request, normal or load test, reads these options.
         self.send_options.invalid_certificates =
             self.state.settings.invalid_tls_certificates.to_http();
@@ -643,11 +638,14 @@ pub(crate) fn theme_card(
         ThemeChoice::Light => "light",
         ThemeChoice::Dark => "dark",
     };
-    ThemeCard::new(SharedString::from(format!("{id_prefix}-{id}")), choice)
-        .selected(choice == current)
-        .on_click(move |_, window, cx| {
-            let _ = weak.update(cx, |view, cx| view.set_theme_choice(choice, window, cx));
-        })
+    ThemeCard::new(
+        SharedString::from(format!("{id_prefix}-{id}")),
+        choice.into(),
+    )
+    .selected(choice == current)
+    .on_click(move |_, window, cx| {
+        let _ = weak.update(cx, |view, cx| view.set_theme_choice(choice, window, cx));
+    })
 }
 
 fn render_theme_section(
