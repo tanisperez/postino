@@ -32,7 +32,7 @@ description: Run load tests against a request or a whole folder in Postino with 
         <tr><td>Duration</td><td>60 s</td><td>1 s to 24 h</td><td>How long the run lasts, counted from the start, ramp-up included.</td></tr>
         <tr><td>Ramp-up</td><td>10 s</td><td>0 s to 24 h</td><td>How long it takes to start every virtual user. Users start at even intervals: with 50 users and 10 s, one every 200 ms.</td></tr>
         <tr><td>Think time</td><td>0 ms</td><td>0 to 600,000 ms</td><td>The pause each virtual user takes after one pass over the target, before starting the next.</td></tr>
-        <tr><td>Stop on errors</td><td>Off</td><td></td><td>Ends the run early when the error rate goes above 5%, once at least 50 requests have completed.</td></tr>
+        <tr><td>Stop on errors</td><td>On</td><td></td><td>Ends the run early when the error rate goes above 5%, once at least 50 requests have completed.</td></tr>
         <tr><td>Reuse connections</td><td>On</td><td></td><td>Each virtual user keeps its connection open and reuses it (keep-alive), like a real client. Off, every request opens a new connection and closes it, see <a href="#connections">connections</a>.</td></tr>
     </tbody>
 </table></div>
