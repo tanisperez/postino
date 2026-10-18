@@ -7012,6 +7012,7 @@ dependencies = [
 [[package]]
 name = "telaio"
 version = "0.1.0"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.1.0#f396b45b16cabbaf4f8c78435a8a9f50650fde2a"
 dependencies = [
  "gpui-kit",
  "rust-i18n",
