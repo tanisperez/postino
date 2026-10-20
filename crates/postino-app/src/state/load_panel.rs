@@ -42,27 +42,27 @@ pub struct TargetRow {
 }
 
 /// The target tree: every folder and non-broken request of the workspace, with the folders the
-/// user collapsed. The visible rows are computed when the tree is rebuilt or a folder toggled,
+/// user expanded. Like the collections sidebar, a folder starts collapsed. The visible rows are computed when the tree is rebuilt or a folder toggled,
 /// so render only walks a ready list.
 #[derive(Debug, Default)]
 pub struct TargetTree {
     all: Vec<TargetRow>,
-    collapsed: HashSet<String>,
+    expanded: HashSet<String>,
     visible: Vec<TargetRow>,
 }
 
 impl TargetTree {
-    /// Rebuilds the rows from the workspace tree, keeping the collapsed folders.
+    /// Rebuilds the rows from the workspace tree, keeping the expanded folders.
     pub fn rebuild(&mut self, nodes: &[Node]) {
         self.all.clear();
         flatten(nodes, 0, &mut self.all);
         self.recompute();
     }
 
-    /// Collapses the folder `id`, or expands it if it was collapsed.
+    /// Expands the folder `id`, or collapses it if it was expanded.
     pub fn toggle(&mut self, id: &str) {
-        if !self.collapsed.remove(id) {
-            self.collapsed.insert(id.to_string());
+        if !self.expanded.remove(id) {
+            self.expanded.insert(id.to_string());
         }
         self.recompute();
     }
@@ -85,7 +85,7 @@ impl TargetTree {
             }
             let mut row = row.clone();
             if let TargetRowKind::Folder { expanded } = &mut row.kind {
-                *expanded = !self.collapsed.contains(&row.id);
+                *expanded = self.expanded.contains(&row.id);
                 if !*expanded {
                     skipping = Some(row.depth);
                 }
@@ -103,7 +103,7 @@ fn flatten(nodes: &[Node], depth: usize, into: &mut Vec<TargetRow>) {
                     id: folder.id.clone(),
                     label: folder.name.clone(),
                     depth,
-                    kind: TargetRowKind::Folder { expanded: true },
+                    kind: TargetRowKind::Folder { expanded: false },
                 });
                 flatten(&folder.children, depth + 1, into);
             }
@@ -311,9 +311,22 @@ mod tests {
     }
 
     #[test]
+    fn folders_start_collapsed() {
+        let mut tree = TargetTree::default();
+        tree.rebuild(&sample());
+        assert_eq!(ids(&tree), vec!["a", "z.postino"]);
+        assert_eq!(
+            tree.visible()[0].kind,
+            TargetRowKind::Folder { expanded: false }
+        );
+    }
+
+    #[test]
     fn tree_lists_folders_and_requests_without_broken_ones() {
         let mut tree = TargetTree::default();
         tree.rebuild(&sample());
+        tree.toggle("a");
+        tree.toggle("a/b");
         assert_eq!(
             ids(&tree),
             vec!["a", "a/b", "a/b/x.postino", "a/y.postino", "z.postino"]
@@ -325,6 +338,8 @@ mod tests {
     fn collapsing_a_folder_hides_every_descendant_and_survives_a_rebuild() {
         let mut tree = TargetTree::default();
         tree.rebuild(&sample());
+        tree.toggle("a");
+        tree.toggle("a/b");
         tree.toggle("a");
         assert_eq!(ids(&tree), vec!["a", "z.postino"]);
         assert_eq!(
