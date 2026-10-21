@@ -1,0 +1,12 @@
+GET {{baseUrl}}/response-headers
+
+::: query
+X-Long-Policy = default-src 'self'; script-src 'self' https://cdn.example.com https://static.example.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://images.example.com; connect-src 'self' https://api.example.com wss://events.example.com; frame-ancestors 'none'
+X-Long-Token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsImlhdCI6MTUxNjIzOTAyMn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+::: post
+// The Headers tab wraps long values instead of cutting them; this request gives it two.
+test("long header values arrive whole", () => {
+  expect(res.headers.get("X-Long-Policy")).toContain("frame-ancestors 'none'");
+  expect(res.headers.get("X-Long-Token")).toContain("SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c");
+});

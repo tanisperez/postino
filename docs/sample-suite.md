@@ -74,7 +74,7 @@ bearer token from `/auth/login`, `--verbose` logs every request. After startup i
 |---|---|
 | `methods/` | The seven standard methods, custom ones (`PURGE`, `PROPFIND`, `M3THOD-X`), a `405`. |
 | `params/` | `::: query`: disabled entries, a literal query in the URL plus a section, reserved characters, Unicode, repeated keys, empty values, variables in keys, values and paths. |
-| `headers/` | Custom, disabled, variable and template function headers, a `User-Agent` override, response headers, repeated headers, `ETag` and `304`, cookies. |
+| `headers/` | Custom, disabled, variable and template function headers, a `User-Agent` override, response headers, long wrapped header values, repeated headers, `ETag` and `304`, cookies. |
 | `bodies/` | `json`, `text`, `xml` and `form` bodies, disabled form fields, special characters, empty and invalid bodies, a `Content-Type` override, a body rewritten by a pre script. |
 | `responses/` | JSON, XML, HTML, text, CSV, UTF-8, empty, binary, image, gzip, chunked, and 1, 5 and 15 MB bodies. |
 | `auth/` | Basic, bearer, API key in a header and in the query, written as headers and as `::: auth` sections (`auth-tab-*`, including a header that wins over the section), wrong credentials, login that stores a token, and a request that uses it. |
