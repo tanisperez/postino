@@ -20,12 +20,12 @@ pub use env_pill::{EnvMenuItem, EnvPill};
 pub use method_badge::MethodBadge;
 pub use status_badge::{StatusState, status_badge};
 pub use telaio_ui::components::{
-    Card, ConfirmDialog, DangerButton, GhostButton, HoverInput, IconButton, InlineMessage,
-    InlineMessageKind, KeyValueRow, KeyValueTable, MODAL_INNER_RADIUS, ModalPlacement,
-    NeutralButtonExt, PrimaryButton, SecondaryButton, SectionLabel, SegmentedControl,
-    SegmentedItem, ThemeCard, UnderlineTabItem, UnderlineTabs, edit_menu, framed_dialog,
-    modal_body, modal_footer, modal_header, open_confirm_dialog, select_label_row, select_trigger,
-    switch_halo, text_field,
+    Card, CodeEditor, ConfirmDialog, DangerButton, GhostButton, HoverInput, IconButton,
+    InlineMessage, InlineMessageKind, KeyValueRow, KeyValueTable, MODAL_INNER_RADIUS,
+    ModalPlacement, NeutralButtonExt, PrimaryButton, SecondaryButton, SectionLabel,
+    SegmentedControl, SegmentedItem, ThemeCard, UnderlineTabItem, UnderlineTabs, edit_menu,
+    framed_dialog, modal_body, modal_footer, modal_header, open_confirm_dialog, select_label_row,
+    select_trigger, switch_halo, text_field,
 };
 pub use url_bar::UrlBar;
 pub use variable_chip::VariableChip;

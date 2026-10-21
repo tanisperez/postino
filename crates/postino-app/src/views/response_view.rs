@@ -8,7 +8,7 @@
 
 use std::sync::Arc;
 
-use gpui_kit::component::input::{Editor, EditorState};
+use gpui_kit::component::input::EditorState;
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -23,10 +23,9 @@ use crate::state::response_render;
 use crate::state::settings::max_response_label;
 use crate::state::ui_tabs::ResponseTab;
 use crate::theme::PaletteExt;
-use crate::theme::metrics::RADIUS_MD;
 use crate::views::components::{
-    IconButton, InlineMessage, InlineMessageKind, SegmentedControl, SegmentedItem, StatusState,
-    UnderlineTabItem, UnderlineTabs, edit_menu, status_badge,
+    CodeEditor, IconButton, InlineMessage, InlineMessageKind, SegmentedControl, SegmentedItem,
+    StatusState, UnderlineTabItem, UnderlineTabs, status_badge,
 };
 
 use super::root::AppView;
@@ -79,7 +78,6 @@ impl ResponseEditorEntities {
                 let state = EditorState::new(window, cx);
                 if json { state.language("json") } else { state }
             });
-            editor.update(cx, |state, cx| state.set_readonly(true, cx));
             self.editor = Some(editor);
             self.built_for = Some(key);
             self.json = json;
@@ -363,22 +361,12 @@ impl AppView {
                     .child(search_button),
             );
 
-        // `Editor` needs a concrete height from its own inherent `h()` (pixels or a relative
-        // fraction of its parent) to lay out its line-based content; the generic `flex_1()` /
-        // `min_h_0()` leaves that unset and the editor sizes to its content instead of the space
-        // the wrapping `flex_1`/`min_h_0` div below makes available (see `views/request_editor.rs`'s
-        // `render_editor_or_placeholder` doc comment for the `gpui-component` precedent).
         // Padded and boxed like the request editor's body (`views/request_editor.rs`'s
-        // `render_body_tab` and `render_editor_or_placeholder`), so both panels line up.
+        // `render_body_tab` and `render_editor_or_placeholder`), so both panels line up. Read
+        // only is set on the element: `Input` applies the element's value to the state on every
+        // render, so `EditorState::set_readonly` alone was undone and the body could be typed in.
         let body: AnyElement = match &self.response_editor.editor {
-            Some(editor) => Editor::new(editor)
-                .context_menu(edit_menu(editor, cx))
-                .border_1()
-                .border_color(palette.border)
-                .rounded(px(RADIUS_MD))
-                .bg(palette.raised)
-                .h(relative(1.0))
-                .into_any_element(),
+            Some(editor) => CodeEditor::new(editor).readonly(true).into_any_element(),
             None => div().into_any_element(),
         };
 

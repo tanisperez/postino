@@ -16,8 +16,7 @@ use std::time::Instant;
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::input::{
-    Editor, EditorState, IndentInline, InputEvent, InputState, TextDecoration,
-    TextDecorationCollection,
+    EditorState, IndentInline, InputEvent, InputState, TextDecoration, TextDecorationCollection,
 };
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -38,15 +37,15 @@ use crate::state::ui_tabs::RequestTab;
 use crate::state::variable_hint::{self, VariableContext};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
-    AUTH_FORM_MAX_WIDTH, AUTH_LABEL_WIDTH, COMPLETION_MENU_WIDTH, RADIUS_MD, SEND_BUTTON_HEIGHT,
+    AUTH_FORM_MAX_WIDTH, AUTH_LABEL_WIDTH, COMPLETION_MENU_WIDTH, SEND_BUTTON_HEIGHT,
     SEND_BUTTON_MIN_WIDTH,
 };
 use crate::views::components::NeutralButtonExt;
 use crate::views::components::variable_chip::highlight_style;
 use crate::views::components::{
-    GhostButton, InlineMessage, InlineMessageKind, KeyValueRow, KeyValueTable, PrimaryButton,
-    SegmentedControl, SegmentedItem, UnderlineTabItem, UnderlineTabs, UrlBar, VariableField,
-    edit_menu,
+    CodeEditor, GhostButton, InlineMessage, InlineMessageKind, KeyValueRow, KeyValueTable,
+    PrimaryButton, SegmentedControl, SegmentedItem, UnderlineTabItem, UnderlineTabs, UrlBar,
+    VariableField,
 };
 use crate::views::script_completion::{ScriptCompletionData, ScriptCompletionProvider};
 use crate::views::variable_hover::{BodyMarkers, VariableHover};
@@ -1718,31 +1717,15 @@ fn body_type_display_label(kind: BodyKind) -> String {
 }
 
 /// Renders a code editor entity if present, or an empty placeholder (only possible transiently,
-/// before the first [`RequestEditorEntities::sync`] call), boxed in a bordered, `raised` container
-/// with line numbers, grown to the rest of the pane's height.
-///
-/// It uses `Editor::h(relative(1.0))`, not the generic `Styled::flex_1()`/`min_h_0()`:
-/// `Editor` has its own inherent `h(impl Into<DefiniteLength>)` (a `gpui-component` widget that
-/// needs a concrete height, in pixels or a percentage of its parent, to lay out its line-based
-/// content and gutter), applied before `refine_style` inside its own `RenderOnce` impl.
-/// `flex_1()` alone leaves that field `None`, and the editor then sizes to its content instead
-/// of the space its `flex_1`/`min_h_0` *wrapper* (see the two call sites) makes available,
-/// matching the pattern `gpui-component`'s own `Editor::new(...).h(relative(1.))` call sites use
-/// (`gpui-component-0.6.6/src/inspector.rs`).
+/// before the first [`RequestEditorEntities::sync`] call), as telaio's [`CodeEditor`]: boxed in a
+/// bordered, `raised` container with line numbers, as tall as its `flex_1`/`min_h_0` wrapper (see
+/// the call sites).
 fn render_editor_or_placeholder(
     editor: &Option<Entity<EditorState>>,
-    cx: &Context<AppView>,
+    _cx: &Context<AppView>,
 ) -> AnyElement {
-    let palette = cx.palette();
     match editor {
-        Some(editor) => Editor::new(editor)
-            .context_menu(edit_menu(editor, cx))
-            .border_1()
-            .border_color(palette.border)
-            .rounded(px(RADIUS_MD))
-            .bg(palette.raised)
-            .h(relative(1.0))
-            .into_any_element(),
+        Some(editor) => CodeEditor::new(editor).into_any_element(),
         None => div().into_any_element(),
     }
 }
