@@ -15,6 +15,19 @@ pub const TITLE_BAR_HEIGHT: f32 = 40.0;
 pub const OPEN_TABS_BAR_HEIGHT: f32 = 36.0;
 /// Height of the response viewer's tab bar.
 pub const RESPONSE_TAB_BAR_HEIGHT: f32 = 36.0;
+/// Width of the name column of the response Headers tab, enough for most standard header names
+/// (`access-control-allow-credentials` wraps).
+pub const HEADERS_NAME_WIDTH: f32 = 220.0;
+/// Height of the response Headers tab's column label row, which also holds its copy button.
+pub const HEADERS_HEADER_HEIGHT: f32 = 32.0;
+/// Vertical padding of a response header row; its height follows its wrapped value.
+pub const HEADERS_ROW_PADDING_Y: f32 = 7.0;
+/// Horizontal padding of the response Headers tab rows, the same as telaio's data table.
+pub const HEADERS_PADDING_X: f32 = DATA_TABLE_PADDING_X;
+/// Gap between the name and value columns of the response Headers tab.
+pub const HEADERS_COL_GAP: f32 = 16.0;
+/// Line height of a response header's name and value, so a wrapped value reads as one block.
+pub const HEADERS_LINE_HEIGHT: f32 = 20.0;
 /// Height of the URL bar and the primary Send button.
 pub const URL_BAR_HEIGHT: f32 = 32.0;
 /// Height of the primary Send button. Equal to [`URL_BAR_HEIGHT`], named separately because the

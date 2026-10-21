@@ -55,6 +55,16 @@ _version: 2
   es: "Sin cabeceras."
   gl: "Sen cabeceiras."
   it: "Nessuna intestazione."
+"response.headers.name":
+  en: "Name"
+  es: "Nombre"
+  gl: "Nome"
+  it: "Nome"
+"response.headers.copy_all":
+  en: "Copy all headers"
+  es: "Copiar todas las cabeceras"
+  gl: "Copiar todas as cabeceiras"
+  it: "Copia tutte le intestazioni"
 "response.tests.empty":
   en: "No tests ran."
   es: "No se ejecutó ninguna prueba."

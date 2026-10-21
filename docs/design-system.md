@@ -191,6 +191,11 @@ menu, as wide as its rows up to 340).
 Icon buttons (px): 24 small, 28 large, 22 in sidebar section headers. Status bar shortcuts button
 20.
 
+Response Headers tab (px): a card like telaio's data table, title row 32 (column labels in the UI
+font at 11.5/500 `fg_subtle`, the copy all button at its right), then one row per header with 7
+vertical and 16 horizontal padding, name column 220, column gap 16, mono 12.5 on a 20 line
+height, name in `fg_muted` and value in `fg`. Values wrap.
+
 The welcome tab has its own `WELCOME_*` constants, listed in its section below.
 
 Radii (px): 4 chips and checkboxes (`RADIUS_XS`), 6 segmented items, tree rows and badges

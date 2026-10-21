@@ -23,6 +23,10 @@ use crate::state::response_render;
 use crate::state::settings::max_response_label;
 use crate::state::ui_tabs::ResponseTab;
 use crate::theme::PaletteExt;
+use crate::theme::metrics::{
+    HEADERS_COL_GAP, HEADERS_HEADER_HEIGHT, HEADERS_LINE_HEIGHT, HEADERS_NAME_WIDTH,
+    HEADERS_PADDING_X, HEADERS_ROW_PADDING_Y, RADIUS_LG,
+};
 use crate::views::components::{
     CodeEditor, IconButton, InlineMessage, InlineMessageKind, SegmentedControl, SegmentedItem,
     StatusState, UnderlineTabItem, UnderlineTabs, status_badge,
@@ -256,7 +260,7 @@ impl AppView {
             return div().into_any_element();
         };
         match self.active_response_tab {
-            ResponseTab::Headers => render_headers_tab(result, cx),
+            ResponseTab::Headers => render_headers_tab(tab_id, result, cx),
             ResponseTab::Tests => render_tests_tab(result, cx),
             ResponseTab::Console => render_console_tab(result, cx),
             // Handled above, before `result` was even looked up.
@@ -484,8 +488,10 @@ fn stage_message(stage: &FailedStage) -> String {
     }
 }
 
-/// Renders the response headers as `name: value` rows.
-fn render_headers_tab(result: &RunResult, cx: &Context<AppView>) -> AnyElement {
+/// Renders the response headers as a two-column card: a header row with the column labels and
+/// the "Copy all headers" button, then one row per header, name in `fg_muted` and value in `fg`,
+/// both monospace. Values wrap instead of being cut, since cookies and policies run long.
+fn render_headers_tab(tab_id: &str, result: &RunResult, cx: &Context<AppView>) -> AnyElement {
     let palette = cx.palette();
     let Some(response) = &result.response else {
         return div()
@@ -501,20 +507,88 @@ fn render_headers_tab(result: &RunResult, cx: &Context<AppView>) -> AnyElement {
             .child(t!("response.headers.empty"))
             .into_any_element();
     }
-    v_flex()
+
+    // The text is built on click, from the response shown then, not on every render.
+    let weak = cx.weak_entity();
+    let copy_tab = tab_id.to_string();
+    let copy_button = IconButton::new("response-headers-copy", IconName::Copy)
+        .tooltip(t!("response.headers.copy_all"))
+        .on_click(move |_, _, cx| {
+            let text = weak.upgrade().and_then(|view| {
+                let view = view.read(cx);
+                let response = view.responses.get(&copy_tab)?.response.as_ref()?;
+                Some(response_render::headers_as_text(&response.headers))
+            });
+            if let Some(text) = text {
+                cx.write_to_clipboard(ClipboardItem::new_string(text));
+            }
+        });
+
+    let row = || {
+        h_flex()
+            .items_start()
+            .gap(px(HEADERS_COL_GAP))
+            .px(px(HEADERS_PADDING_X))
+    };
+    let name_cell = |content: AnyElement| {
+        div()
+            .flex_none()
+            .w(px(HEADERS_NAME_WIDTH))
+            .min_w_0()
+            .child(content)
+    };
+    let header_row = row()
+        .items_center()
+        .h(px(HEADERS_HEADER_HEIGHT))
+        .border_b_1()
+        .border_color(palette.border)
+        .text_size(px(11.5))
+        .font_weight(FontWeight::MEDIUM)
+        .text_color(palette.fg_subtle)
+        .child(name_cell(
+            div().child(t!("response.headers.name")).into_any_element(),
+        ))
+        .child(div().flex_1().child(t!("common.value")))
+        // The button keeps the row's height: it overhangs the padding instead of growing it.
+        .child(div().flex_none().mr(px(-8.0)).child(copy_button));
+
+    let mono_family = cx.theme().mono_font_family.clone();
+    let last = response.headers.len() - 1;
+    let rows = response.headers.iter().enumerate().map(|(index, header)| {
+        row()
+            .py(px(HEADERS_ROW_PADDING_Y))
+            .when(index < last, |row| row.border_b_1())
+            .border_color(palette.border)
+            .font_family(mono_family.clone())
+            .child(name_cell(
+                div()
+                    .text_color(palette.fg_muted)
+                    .child(header.name.clone())
+                    .into_any_element(),
+            ))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .text_color(palette.fg)
+                    .child(header.value.clone()),
+            )
+    });
+
+    div()
         .p_2()
-        .gap_1()
-        .children(response.headers.iter().map(|header| {
-            h_flex()
-                .gap_2()
-                .child(
-                    div()
-                        .text_sm()
-                        .font_weight(FontWeight::MEDIUM)
-                        .child(header.name.clone()),
-                )
-                .child(div().text_sm().child(header.value.clone()))
-        }))
+        .child(
+            v_flex()
+                .border_1()
+                .border_color(palette.border)
+                .rounded(px(RADIUS_LG))
+                .bg(palette.raised)
+                .overflow_hidden()
+                .text_size(px(12.5))
+                .line_height(px(HEADERS_LINE_HEIGHT))
+                .child(header_row)
+                .children(rows),
+        )
         .into_any_element()
 }
 

@@ -8,7 +8,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use postino_core::TemplateWarning;
+use postino_core::{ResolvedField, TemplateWarning};
 
 use super::locale;
 use super::number::{format_decimal, format_integer};
@@ -231,11 +231,39 @@ pub fn format_duration(duration: Duration) -> String {
     }
 }
 
+/// The response headers as the "Copy all headers" button puts them on the clipboard: one
+/// `Name: value` line per header, in the order received, repeated headers on lines of their own.
+pub fn headers_as_text(headers: &[ResolvedField]) -> String {
+    headers
+        .iter()
+        .map(|header| format!("{}: {}", header.name, header.value))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 #[cfg(test)]
 #[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn headers_as_text_puts_one_header_per_line_in_order() {
+        let header = |name: &str, value: &str| ResolvedField {
+            name: name.to_string(),
+            value: value.to_string(),
+        };
+        let headers = [
+            header("Content-Type", "application/json"),
+            header("Set-Cookie", "a=1; Path=/"),
+            header("Set-Cookie", "b=2"),
+        ];
+        assert_eq!(
+            headers_as_text(&headers),
+            "Content-Type: application/json\nSet-Cookie: a=1; Path=/\nSet-Cookie: b=2"
+        );
+        assert_eq!(headers_as_text(&[]), "");
+    }
 
     #[test]
     fn body_cache_computes_once_per_response_and_mode() {

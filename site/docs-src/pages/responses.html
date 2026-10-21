@@ -26,7 +26,9 @@ description: The Postino response pane: status, time and size, pretty and raw bo
 <p>The body is read only. Responses are kept in memory for the open tab and are not saved to disk.</p>
 
 <h2>Headers</h2>
-<p>Every response header, in the order received, with their count in the tab label. Header names are shown as the server sent them; when you read them from a script, <code>res.headers.get()</code> ignores case.</p>
+<p>Every response header, in the order received, with their count in the tab label. Each one is a row of a table, the name on the left and the value on the right; long values, such as cookies, tokens or a content security policy, wrap onto several lines instead of being cut. A header the server sent more than once, such as <code>Set-Cookie</code>, gets one row per value.</p>
+<p>Header names are shown in lowercase, as the HTTP library receives them, whatever case the server used. When you read them from a script, <code>res.headers.get()</code> ignores case.</p>
+<p>The <strong>Copy all headers</strong> button, at the right of the table's title row, copies every header to the clipboard, one <code>name: value</code> line per header, ready to paste into a message or a bug report.</p>
 
 <h2>Tests</h2>
 <p>The <strong>Tests</strong> tab lists every <code>test()</code> of the post-response script, in order, each with a pass or fail mark and, for a failure, the error message. The tab label shows <code>passed/total</code>, green when all passed and red otherwise. The header summarizes the result, for example <strong>3 of 4 tests passed</strong>.</p>
