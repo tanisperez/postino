@@ -554,6 +554,7 @@ fn render_tree_row(
     let pick_id = id.clone();
     let was_expanded = entry.is_expanded();
     let click_view = drop.view.clone();
+    let click_id = id.clone();
     let preview_view = drop.view.clone();
 
     ListItem::new(item.id.clone())
@@ -578,9 +579,18 @@ fn render_tree_row(
             }
         })
         // A click, never the end of a drag: a picked row can be grabbed to move them all.
+        // Following the tree's selection (in `AppView::render`) only opens a request when the
+        // selection changes, so a click on the row that is still selected, after switching to
+        // another tab such as its load test, opens or focuses its tab here.
         .on_click(move |event, _window, cx| {
             if !event.modifiers().secondary() {
-                let _ = click_view.update(cx, |view, cx| view.clear_sidebar_picks(cx));
+                let _ = click_view.update(cx, |view, cx| {
+                    view.clear_sidebar_picks(cx);
+                    if is_request {
+                        view.last_selected_request = Some(click_id.clone());
+                        view.open_request(click_id.clone(), cx);
+                    }
+                });
             }
         })
         .on_drag(

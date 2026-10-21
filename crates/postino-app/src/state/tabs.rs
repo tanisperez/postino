@@ -767,6 +767,24 @@ mod tests {
         assert_eq!(tabs.open_tabs().len(), 2);
     }
 
+    /// #150: with a request's load test active, opening the request again goes back to its own
+    /// tab, edits included, next to the load test.
+    #[test]
+    fn opening_a_request_from_its_load_test_focuses_the_request_tab() {
+        let mut tabs = TabsState::default();
+        tabs.open("a.postino", request());
+        tabs.set_dirty(0, true);
+        tabs.open_load_test(LoadTestTab::unset());
+
+        tabs.open("a.postino", request());
+
+        assert_eq!(tabs.open_tabs().len(), 2);
+        let active = tabs.active().expect("a tab is active");
+        assert_eq!(active.id, "a.postino");
+        assert!(active.request().is_some());
+        assert!(active.dirty);
+    }
+
     #[test]
     fn a_request_tabs_kind_exposes_its_request_but_not_a_load_test() {
         let mut tabs = TabsState::default();
