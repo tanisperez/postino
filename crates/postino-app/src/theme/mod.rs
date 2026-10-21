@@ -8,6 +8,7 @@
 
 pub mod metrics;
 pub mod palette;
+pub mod syntax;
 
 // Re-exported for views (`cx.palette()`); every component in `views/components/` uses it.
 pub use palette::{Palette, PaletteExt, PostinoColors};
@@ -32,14 +33,17 @@ pub fn apply_settings(cx: &mut App, settings: &Settings) {
     telaio_ui::apply(cx, &theme_family(settings));
 }
 
-/// The theme family: telaio's default tokens, which are Postino's, and the settings' fonts.
+/// The theme family: telaio's default tokens, which are Postino's, Postino's [`syntax`] colors
+/// and the settings' fonts.
 fn theme_family(settings: &Settings) -> telaio_ui::ThemeFamily {
-    telaio_ui::ThemeFamily::new("Postino").fonts(telaio_ui::Fonts {
-        ui_family: settings.ui_font.clone().into(),
-        ui_size: settings.ui_font_size,
-        mono_family: settings.mono_font.clone().into(),
-        mono_size: settings.mono_font_size,
-    })
+    telaio_ui::ThemeFamily::new("Postino")
+        .syntax(syntax::LIGHT, syntax::DARK)
+        .fonts(telaio_ui::Fonts {
+            ui_family: settings.ui_font.clone().into(),
+            ui_size: settings.ui_font_size,
+            mono_family: settings.mono_font.clone().into(),
+            mono_size: settings.mono_font_size,
+        })
 }
 
 #[cfg(test)]

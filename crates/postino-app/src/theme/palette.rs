@@ -67,6 +67,11 @@ pub trait PostinoColors {
     /// its hollow ring straight from `fg_subtle` instead of calling this. Used by the `EnvPill`
     /// and `EnvMenu` components.
     fn env_color(&self, color: EnvColor) -> Hsla;
+
+    /// The color of the tree-sitter `capture` (`"property"`, `"string"`, ...) in the active
+    /// mode's [`super::syntax`] theme, or `fg` when the theme leaves it out. For views that draw
+    /// code by hand, such as the Settings font preview; code editors get the theme itself.
+    fn syntax_color(&self, capture: &str) -> Hsla;
 }
 
 impl PostinoColors for Palette {
@@ -96,6 +101,15 @@ impl PostinoColors for Palette {
             EnvColor::Warning => self.warning,
             EnvColor::Success => self.success,
         }
+    }
+
+    fn syntax_color(&self, capture: &str) -> Hsla {
+        let theme = if self.dark {
+            super::syntax::DARK
+        } else {
+            super::syntax::LIGHT
+        };
+        theme.get(capture).map_or(self.fg, |style| style.hsla())
     }
 }
 
@@ -127,6 +141,15 @@ mod tests {
         assert_eq!(to_hex(dark.bg), "#15161a");
         assert_eq!(to_hex(dark.accent), "#5b63e6");
         assert_eq!(to_hex(dark.method_color(&Method::Post)), "#e8b75a");
+    }
+
+    #[test]
+    fn syntax_color_follows_the_mode_and_falls_back_to_fg() {
+        let light = Palette::default_light();
+        assert_eq!(to_hex(light.syntax_color("property")), "#3f47c4");
+        assert_eq!(light.syntax_color("operator"), light.fg);
+        let dark = Palette::default_dark();
+        assert_eq!(to_hex(dark.syntax_color("property")), "#a3a9ff");
     }
 
     #[test]

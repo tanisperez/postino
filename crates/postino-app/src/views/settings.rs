@@ -25,7 +25,7 @@ use crate::state::settings::{
     InvalidTlsCertificates, LogLevel, Settings, SettingsCategory, ThemeChoice,
 };
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
-use crate::theme::{self, Palette, PaletteExt};
+use crate::theme::{self, Palette, PaletteExt, PostinoColors as _};
 
 use super::components::{
     GhostButton, IconButton, MODAL_INNER_RADIUS, ModalPlacement, ThemeCard, framed_dialog,
@@ -1069,17 +1069,20 @@ fn render_json_preview(
                 .child(
                     line()
                         .child(pad())
-                        .child(json_span("\"token\"", palette.syn_key))
+                        .child(json_span("\"token\"", palette.syntax_color("property")))
                         .child(json_span(": ", palette.fg_muted))
-                        .child(json_span("\"eyJhbGciOi\u{2026}\"", palette.syn_str))
+                        .child(json_span(
+                            "\"eyJhbGciOi\u{2026}\"",
+                            palette.syntax_color("string"),
+                        ))
                         .child(json_span(",", palette.fg_muted)),
                 )
                 .child(
                     line()
                         .child(pad())
-                        .child(json_span("\"expiresIn\"", palette.syn_key))
+                        .child(json_span("\"expiresIn\"", palette.syntax_color("property")))
                         .child(json_span(": ", palette.fg_muted))
-                        .child(json_span("3600", palette.syn_num)),
+                        .child(json_span("3600", palette.syntax_color("number"))),
                 )
                 .child(line().child(json_span("}", palette.fg_muted))),
         )

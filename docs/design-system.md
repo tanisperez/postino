@@ -127,12 +127,24 @@ at 14% alpha (`Palette::method_badge_bg`).
 
 ### Syntax highlight
 
-| Token | Light | Dark | Use |
-| --- | --- | --- | --- |
-| `syn_key` | `#3f47c4` | `#a3a9ff` | JSON keys and properties |
-| `syn_str` | `#1d7a4f` | `#86d7a5` | Strings |
-| `syn_num` | `#9a6500` | `#e8b75a` | Numbers |
-| `syn_bool` | `#b03a78` | `#f3a2c6` | Booleans |
+The code editors' colors, Postino's `SyntaxTheme` per mode in `theme/syntax.rs`, passed to
+telaio with `ThemeFamily::syntax`. Each key is a tree-sitter capture; a dotted capture with no
+entry of its own (`function.method`, `constant.builtin`) takes its first part's color, and
+anything left out (variables, operators, punctuation) is `fg`. Every color is a palette color.
+Views that draw code by hand read them with `PostinoColors::syntax_color`.
+
+| Capture | Light | Dark | Palette color | Examples |
+| --- | --- | --- | --- | --- |
+| `comment` | `#5c606e` | `#a0a3ae` | `fg_muted`, italic | `// ...`, `<!-- -->` |
+| `keyword` | `#7a4fd6` | `#b597f7` | PATCH purple | `const`, `return`, `=>` |
+| `function` | `#1c6fb0` | `#62b3f0` | `info` | `json()`, `toBe()` |
+| `property`, `attribute` | `#3f47c4` | `#a3a9ff` | `accent_text` | JSON keys, `.status`, `id=` |
+| `string` | `#1d7a4f` | `#86d7a5` | green | `"text"` |
+| `number`, `type` | `#9a6500` | `#e8b75a` | `warning` | `200`, class names |
+| `boolean`, `constant` | `#b03a78` | `#f3a2c6` | pink | `true`, `null`, `undefined` |
+| `tag` | `#cf3535` | `#f27171` | `danger` | XML tags |
+
+The bundled Geist Mono has no italic face, so comments show upright.
 
 ### Shadow (menus, popovers, modals)
 
