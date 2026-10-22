@@ -41,7 +41,9 @@ use crate::theme::PaletteExt;
 use crate::theme::metrics::{
     ICON_BUTTON_LG, RADIUS_SM, SIDEBAR_WIDTH, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_MIN,
 };
-use crate::views::components::{DocumentTab, DocumentTabs, InlineMessage, InlineMessageKind};
+use crate::views::components::{
+    DocumentTab, DocumentTabs, InlineMessage, InlineMessageKind, MethodBadge,
+};
 use crate::views::request_editor::RequestEditorEntities;
 use crate::views::response_view::ResponseEditorEntities;
 use crate::views::send::SendingTask;
@@ -1446,8 +1448,9 @@ impl AppView {
             };
             let mut doc_tab = match &tab.kind {
                 state::TabKind::Request(request) => {
+                    let method = request.method.clone();
                     DocumentTab::new(state::format::tab_label(&tab.id).to_string())
-                        .method(request.method.clone())
+                        .prefix(move || MethodBadge::inline(method.clone()))
                 }
                 state::TabKind::Environment(edit) => {
                     DocumentTab::new(state::env_edit::tab_label(&edit.name))
@@ -1482,29 +1485,27 @@ impl AppView {
         if self.state.workspace.is_none() {
             return tabs.into_any_element();
         }
-        // Padded off the last tab's border, with a large hover area around a small icon (an
-        // `IconButton`'s large size also scales its icon up).
+        // A large hover area around a small icon (an `IconButton`'s large size also scales its
+        // icon up); the bar pads it off the last tab.
         let palette = cx.palette();
         let tooltip = SharedString::from(t!("common.new_request"));
         tabs = tabs.suffix(
-            div().flex_none().px(px(6.0)).child(
-                div()
-                    .id("open-tabs-new-request")
-                    .size(px(ICON_BUTTON_LG))
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .cursor_pointer()
-                    .rounded(px(RADIUS_SM))
-                    .text_color(palette.fg_muted)
-                    .hover(|style| style.bg(palette.hover))
-                    .active(|style| style.bg(palette.pressed))
-                    .child(Icon::new(IconName::Plus).small())
-                    .tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx))
-                    .on_click(move |_, window, cx| {
-                        sidebar::open_new_request_dialog(weak.clone(), None, window, cx);
-                    }),
-            ),
+            div()
+                .id("open-tabs-new-request")
+                .size(px(ICON_BUTTON_LG))
+                .flex()
+                .items_center()
+                .justify_center()
+                .cursor_pointer()
+                .rounded(px(RADIUS_SM))
+                .text_color(palette.fg_muted)
+                .hover(|style| style.bg(palette.hover))
+                .active(|style| style.bg(palette.pressed))
+                .child(Icon::new(IconName::Plus).small())
+                .tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx))
+                .on_click(move |_, window, cx| {
+                    sidebar::open_new_request_dialog(weak.clone(), None, window, cx);
+                }),
         );
         tabs.into_any_element()
     }

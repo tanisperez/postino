@@ -225,7 +225,9 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
    (requests only), name, then a filled 8 px dot when dirty or an `x` when clean (hovering a dirty
    tab shows the `x`). Active tab: `bg` background, 2 px `accent` line on top, `fg` text.
    Inactive: transparent, `fg_muted`. A "+" after the last tab, only with a workspace open (a new
-   request needs one). A welcome tab, an environment
+   request needs one). It is telaio's `DocumentTabs`: when the tabs do not fit, they scroll
+   horizontally (the wheel too), the "+" stays at the edge of the visible tabs, and on the right
+   a left arrow, a right arrow and a list of every open tab appear. A welcome tab, an environment
    editor or a load test fills the area below the bar in place of items 4 and 5.
 4. **Request pane**: URL bar (method selector and URL joined in one bordered `raised` box, method
    in its color, variables shown as chips) plus the primary Send button with its `Ctrl ↵` hint

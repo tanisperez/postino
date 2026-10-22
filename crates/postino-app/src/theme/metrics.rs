@@ -11,8 +11,6 @@ pub use telaio_ui::metrics::*;
 
 /// Height of the title bar.
 pub const TITLE_BAR_HEIGHT: f32 = 40.0;
-/// Height of the open-tabs bar.
-pub const OPEN_TABS_BAR_HEIGHT: f32 = 36.0;
 /// Height of the response viewer's tab bar.
 pub const RESPONSE_TAB_BAR_HEIGHT: f32 = 36.0;
 /// Width of the name column of the response Headers tab, enough for most standard header names

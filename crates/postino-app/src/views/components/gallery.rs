@@ -211,11 +211,11 @@ fn render_document_tabs() -> impl IntoElement {
     DocumentTabs::new("gallery-document-tabs")
         .item(
             DocumentTab::new("login")
-                .method(Method::Post)
+                .prefix(|| MethodBadge::inline(Method::Post))
                 .dirty(true)
                 .selected(true),
         )
-        .item(DocumentTab::new("list").method(Method::Get))
+        .item(DocumentTab::new("list").prefix(|| MethodBadge::inline(Method::Get)))
         .item(DocumentTab::new("Load test \u{b7} users").icon(gpui_kit::assets::IconName::Gauge))
 }
 
