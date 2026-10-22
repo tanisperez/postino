@@ -4838,7 +4838,7 @@ dependencies = [
 
 [[package]]
 name = "postino-app"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "dirs 7.0.0",
@@ -4867,14 +4867,14 @@ dependencies = [
 
 [[package]]
 name = "postino-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "telaio-app",
 ]
 
 [[package]]
 name = "postino-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "base64 0.23.1",
  "fastrand",
@@ -4885,7 +4885,7 @@ dependencies = [
 
 [[package]]
 name = "postino-format"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "postino-core",
  "pretty_assertions",
@@ -4896,7 +4896,7 @@ dependencies = [
 
 [[package]]
 name = "postino-http"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "log",
  "postino-core",
@@ -4911,7 +4911,7 @@ dependencies = [
 
 [[package]]
 name = "postino-load"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "postino-core",
  "postino-http",
@@ -4926,7 +4926,7 @@ dependencies = [
 
 [[package]]
 name = "postino-runner"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "log",
  "postino-core",
@@ -4940,7 +4940,7 @@ dependencies = [
 
 [[package]]
 name = "postino-script"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "postino-core",
  "pretty_assertions",
@@ -4952,7 +4952,7 @@ dependencies = [
 
 [[package]]
 name = "postino-workspace"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "log",
  "postino-core",
