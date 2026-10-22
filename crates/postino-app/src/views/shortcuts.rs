@@ -14,9 +14,10 @@ use crate::state::shortcuts::{self, ShortcutGroup};
 use crate::theme::metrics::RADIUS_SM;
 use crate::theme::{Palette, PaletteExt};
 
-use super::components::{ModalPlacement, SectionLabel, framed_dialog, modal_header};
+use super::components::{
+    ModalPlacement, ScrollbarOverlay, SectionLabel, framed_dialog, modal_header,
+};
 use super::root::AppView;
-use super::settings::settings_scrollbar;
 
 /// Width of the modal.
 const MODAL_WIDTH: f32 = 520.0;
@@ -84,12 +85,7 @@ fn render_sheet(
                                 .map(|group| render_group(group, palette, &mono_font)),
                         ),
                 )
-                .child(
-                    div()
-                        .absolute()
-                        .inset_0()
-                        .child(settings_scrollbar(scroll_handle, palette)),
-                ),
+                .child(ScrollbarOverlay::new(scroll_handle)),
         )
         .into_any_element()
 }

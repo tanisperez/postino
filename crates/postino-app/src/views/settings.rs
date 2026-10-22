@@ -9,7 +9,6 @@
 //! `AppState::settings` and calls [`AppView::apply_settings_live`], so it updates the global
 //! `Theme` and persists to `settings.toml` immediately: there is no "Save" button.
 
-use gpui_kit::component::scroll::{Scrollbar, ScrollbarMode};
 use gpui_kit::component::switch::Switch;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -28,8 +27,8 @@ use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_MD};
 use crate::theme::{self, Palette, PaletteExt, PostinoColors as _};
 
 use super::components::{
-    GhostButton, IconButton, MODAL_INNER_RADIUS, ModalPlacement, ThemeCard, framed_dialog,
-    switch_halo,
+    GhostButton, IconButton, MODAL_INNER_RADIUS, ModalPlacement, ScrollbarOverlay, ThemeCard,
+    framed_dialog, switch_halo,
 };
 use super::root::AppView;
 
@@ -457,12 +456,7 @@ fn render_right_column(
                     mono_font_family,
                     about,
                 ))
-                .child(
-                    div()
-                        .absolute()
-                        .inset_0()
-                        .child(settings_scrollbar(&scroll_handle, palette)),
-                ),
+                .child(ScrollbarOverlay::new(&scroll_handle)),
         )
         .child(if about.is_some() {
             about::render_about_footer(palette)
@@ -470,23 +464,6 @@ fn render_right_column(
             render_footer(weak, palette)
         })
         .into_any_element()
-}
-
-/// The body's always-shown scrollbar. Its track is transparent with no border, so only the thumb
-/// stands out: the theme's track color is the window's `bg`, which shows as a darker strip on the
-/// modal, and an opaque one would square off the modal's rounded corner where the body reaches
-/// the bottom (Keyboard shortcuts).
-pub(super) fn settings_scrollbar(scroll_handle: &ScrollHandle, palette: &Palette) -> Scrollbar {
-    let track = palette.overlay.opacity(0.0);
-    let border = track;
-    Scrollbar::vertical(scroll_handle)
-        .mode(ScrollbarMode::Always)
-        .styles(|styles| {
-            styles
-                .track(|style| style.bg(track).border_color(border))
-                .track_hover(|style| style.bg(track).border_color(border))
-                .track_active(|style| style.bg(track).border_color(border))
-        })
 }
 
 /// The scrolled part of the right column: the selected category's sections.
