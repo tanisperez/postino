@@ -30,7 +30,7 @@ use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::NeutralButtonExt;
 use crate::views::components::{
     Card, DataCell, DataColumn, DataTable, EmptyState, InlineMessage, InlineMessageKind,
-    MethodBadge,
+    MethodBadge, ProgressBar,
 };
 
 use super::run::unix_now;
@@ -309,21 +309,7 @@ fn render_header(
         .child(
             // With a minimum width, a narrow dashboard wraps the bar and the elapsed time onto
             // a second line instead of squeezing the bar to a stub.
-            div()
-                .flex_1()
-                .min_w(px(PROGRESS_MIN_WIDTH))
-                .h(px(6.0))
-                .rounded(px(3.0))
-                .bg(palette.surface)
-                .border_1()
-                .border_color(palette.border)
-                .overflow_hidden()
-                .child(
-                    div()
-                        .h_full()
-                        .w(relative(progress as f32))
-                        .bg(palette.accent),
-                ),
+            ProgressBar::new(progress as f32).min_width(PROGRESS_MIN_WIDTH),
         )
         .child(
             div()
