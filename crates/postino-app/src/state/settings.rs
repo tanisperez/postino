@@ -262,13 +262,6 @@ pub fn settings_path() -> Option<PathBuf> {
     config_dir().map(|base| base.join(SETTINGS_FILE))
 }
 
-/// Steps `current` by `step` (positive or negative), clamped to `range`. Used by the Settings
-/// view's font size steppers: the `-`/`+` buttons pass `-step`/`step` of [`UI_FONT_SIZE_STEP`] or
-/// [`MONO_FONT_SIZE_STEP`], with [`UI_FONT_SIZE_RANGE`] or [`MONO_FONT_SIZE_RANGE`].
-pub fn step_size(current: f32, step: f32, range: RangeInclusive<f32>) -> f32 {
-    (current + step).clamp(*range.start(), *range.end())
-}
-
 /// Builds the options for a font picker: `bundled` first, always, then every other entry of
 /// `installed` (as returned by `cx.text_system().all_font_names()`, already sorted), skipping the
 /// bundled family's own name if it repeats there and de-duplicating.
@@ -723,36 +716,6 @@ mod tests {
     fn labels_are_translated_with_the_requested_locale() {
         assert_eq!(t!("common.requests", locale = "es"), "Peticiones");
         assert_eq!(t!("settings.tls.reject", locale = "gl"), "Rexeitar");
-    }
-
-    #[test]
-    fn step_size_steps_within_range() {
-        assert_eq!(step_size(13.0, UI_FONT_SIZE_STEP, UI_FONT_SIZE_RANGE), 14.0);
-        assert_eq!(
-            step_size(13.0, -UI_FONT_SIZE_STEP, UI_FONT_SIZE_RANGE),
-            12.0
-        );
-        assert_eq!(
-            step_size(12.5, MONO_FONT_SIZE_STEP, MONO_FONT_SIZE_RANGE),
-            13.0
-        );
-    }
-
-    #[test]
-    fn step_size_clamps_at_the_range_bounds() {
-        assert_eq!(step_size(16.0, UI_FONT_SIZE_STEP, UI_FONT_SIZE_RANGE), 16.0);
-        assert_eq!(
-            step_size(11.0, -UI_FONT_SIZE_STEP, UI_FONT_SIZE_RANGE),
-            11.0
-        );
-        assert_eq!(
-            step_size(18.0, MONO_FONT_SIZE_STEP, MONO_FONT_SIZE_RANGE),
-            18.0
-        );
-        assert_eq!(
-            step_size(10.0, -MONO_FONT_SIZE_STEP, MONO_FONT_SIZE_RANGE),
-            10.0
-        );
     }
 
     #[test]
