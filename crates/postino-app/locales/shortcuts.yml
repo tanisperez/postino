@@ -95,6 +95,21 @@ _version: 2
   es: "Eliminar la petición o carpeta seleccionada"
   gl: "Eliminar a petición ou cartafol seleccionado"
   it: "Elimina la richiesta o cartella selezionata"
+"shortcuts.action.toggle_collections":
+  en: "Show or hide Collections"
+  es: "Mostrar u ocultar Colecciones"
+  gl: "Amosar ou agochar Coleccións"
+  it: "Mostra o nascondi Raccolte"
+"shortcuts.action.toggle_environments":
+  en: "Show or hide Environments"
+  es: "Mostrar u ocultar Entornos"
+  gl: "Amosar ou agochar Contornos"
+  it: "Mostra o nascondi Ambienti"
+"shortcuts.action.toggle_load_tests":
+  en: "Show or hide Load tests"
+  es: "Mostrar u ocultar Pruebas de carga"
+  gl: "Amosar ou agochar Probas de carga"
+  it: "Mostra o nascondi Test di carico"
 "shortcuts.action.pick":
   en: "Select several requests or folders to move them together"
   es: "Seleccionar varias peticiones o carpetas para moverlas juntas"

@@ -25,7 +25,8 @@ use actions::{
     PreviousCompletion, PreviousTab, RedoRequestEdit, RenameSelectedEntry, SaveActiveTab,
     SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
     SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
-    SelectEnvironment9, SelectNoEnvironment, SendActiveTab, ShowCompletion, UndoRequestEdit,
+    SelectEnvironment9, SelectNoEnvironment, SendActiveTab, ShowCompletion, ToggleCollections,
+    ToggleEnvironments, ToggleLoadTests, UndoRequestEdit,
 };
 use state::settings::ThemeChoice;
 use views::AppView;
@@ -205,6 +206,10 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-o", OpenWorkspace, None),
         KeyBinding::new("cmd-w", CloseActiveTab, None),
         KeyBinding::new("cmd-shift-/", OpenShortcuts, None),
+        // Ctrl, not Option: Option + a digit types `|`, `@` or `#` on many layouts.
+        KeyBinding::new("ctrl-1", ToggleCollections, None),
+        KeyBinding::new("ctrl-2", ToggleEnvironments, None),
+        KeyBinding::new("ctrl-3", ToggleLoadTests, None),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
@@ -225,6 +230,9 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-o", OpenWorkspace, None),
         KeyBinding::new("ctrl-w", CloseActiveTab, None),
         KeyBinding::new("f1", OpenShortcuts, None),
+        KeyBinding::new("alt-1", ToggleCollections, None),
+        KeyBinding::new("alt-2", ToggleEnvironments, None),
+        KeyBinding::new("alt-3", ToggleLoadTests, None),
     ]);
     // Ctrl+Tab is the tab switcher on every platform, macOS included. The text inputs only bind
     // plain `tab` / `shift-tab` (indent and outdent), so this still fires while one has focus.

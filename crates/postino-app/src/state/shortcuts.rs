@@ -55,6 +55,13 @@ fn delete_line_keys() -> Vec<String> {
     }
 }
 
+/// The modifier of the shortcuts that open and close the sidebar panels, matching `main.rs`:
+/// `Ctrl` on macOS, where Option + a digit types characters, `Alt` elsewhere.
+#[cfg(target_os = "macos")]
+const PANEL_MODIFIER_KEY: &str = "Ctrl";
+#[cfg(not(target_os = "macos"))]
+const PANEL_MODIFIER_KEY: &str = "Alt";
+
 /// Every shortcut, grouped. Built once when the cheat sheet opens.
 pub fn groups() -> Vec<ShortcutGroup> {
     let modifier = MODIFIER_KEY;
@@ -95,6 +102,18 @@ pub fn groups() -> Vec<ShortcutGroup> {
         ShortcutGroup {
             title: t!("shortcuts.group.sidebar").to_string(),
             shortcuts: vec![
+                shortcut(
+                    t!("shortcuts.action.toggle_collections"),
+                    &[PANEL_MODIFIER_KEY, "1"],
+                ),
+                shortcut(
+                    t!("shortcuts.action.toggle_environments"),
+                    &[PANEL_MODIFIER_KEY, "2"],
+                ),
+                shortcut(
+                    t!("shortcuts.action.toggle_load_tests"),
+                    &[PANEL_MODIFIER_KEY, "3"],
+                ),
                 shortcut(t!("shortcuts.action.rename"), &["F2"]),
                 shortcut(t!("shortcuts.action.delete"), &["Delete"]),
                 shortcut(

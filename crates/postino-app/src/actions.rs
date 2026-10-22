@@ -34,6 +34,15 @@ actions!(
         SelectEnvironment9,
         /// Selects "No environment" (`Ctrl 0` / `Cmd 0`).
         SelectNoEnvironment,
+        /// Opens or closes the Collections panel, like its rail button (`Alt 1`, `Ctrl 1` on
+        /// macOS).
+        ToggleCollections,
+        /// Opens or closes the Environments panel, like its rail button (`Alt 2`, `Ctrl 2` on
+        /// macOS).
+        ToggleEnvironments,
+        /// Opens or closes the Load tests panel, like its rail button (`Alt 3`, `Ctrl 3` on
+        /// macOS).
+        ToggleLoadTests,
         /// Opens the Settings modal (`Ctrl ,` / `Cmd ,`).
         OpenSettings,
         /// Opens the command palette (`Ctrl K` / `Cmd K`).

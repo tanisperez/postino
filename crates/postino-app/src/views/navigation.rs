@@ -9,6 +9,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
+use crate::actions::{ToggleCollections, ToggleEnvironments, ToggleLoadTests};
 use crate::state::navigation::NavSection;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{RADIUS_MD, RAIL_BUTTON_SIZE, RAIL_WIDTH};
@@ -22,6 +23,15 @@ fn section_icon(section: NavSection) -> gpui_kit::assets::IconName {
         NavSection::Collections => IconName::FolderTree,
         NavSection::Environments => IconName::Variable,
         NavSection::LoadTests => IconName::Gauge,
+    }
+}
+
+/// The action of a rail button's shortcut, whose keys its tooltip shows.
+fn section_action(section: NavSection) -> Box<dyn Action> {
+    match section {
+        NavSection::Collections => Box::new(ToggleCollections),
+        NavSection::Environments => Box::new(ToggleEnvironments),
+        NavSection::LoadTests => Box::new(ToggleLoadTests),
     }
 }
 
@@ -81,7 +91,9 @@ impl AppView {
                             })
                             .child(Icon::new(section_icon(section)).with_size(px(17.0)))
                             .tooltip(move |window, cx| {
-                                Tooltip::new(tooltip.clone()).build(window, cx)
+                                Tooltip::new(tooltip.clone())
+                                    .action(section_action(section).as_ref(), None)
+                                    .build(window, cx)
                             })
                             .on_click(move |_, _, cx| {
                                 let _ = weak.update(cx, |view, cx| view.click_rail(section, cx));

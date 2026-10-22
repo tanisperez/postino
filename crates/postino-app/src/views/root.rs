@@ -28,7 +28,7 @@ use crate::actions::{
     OpenWorkspace, PreviousTab, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1,
     SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
     SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
-    SelectNoEnvironment, SendActiveTab,
+    SelectNoEnvironment, SendActiveTab, ToggleCollections, ToggleEnvironments, ToggleLoadTests,
 };
 use crate::state::about::AboutInfo;
 use crate::state::debug_open::{self, DebugOpenTarget};
@@ -1298,6 +1298,48 @@ impl AppView {
         self.select_environment(None, cx);
     }
 
+    /// Handles a rail shortcut like a click on that rail button. A no-op without a workspace,
+    /// when the rail is hidden.
+    fn toggle_rail_section(
+        &mut self,
+        section: state::navigation::NavSection,
+        cx: &mut Context<Self>,
+    ) {
+        if self.state.workspace.is_some() {
+            self.click_rail(section, cx);
+        }
+    }
+
+    /// Handles the `Alt 1` / `Ctrl 1` (macOS) key binding.
+    fn on_toggle_collections(
+        &mut self,
+        _: &ToggleCollections,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.toggle_rail_section(state::navigation::NavSection::Collections, cx);
+    }
+
+    /// Handles the `Alt 2` / `Ctrl 2` (macOS) key binding.
+    fn on_toggle_environments(
+        &mut self,
+        _: &ToggleEnvironments,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.toggle_rail_section(state::navigation::NavSection::Environments, cx);
+    }
+
+    /// Handles the `Alt 3` / `Ctrl 3` (macOS) key binding.
+    fn on_toggle_load_tests(
+        &mut self,
+        _: &ToggleLoadTests,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.toggle_rail_section(state::navigation::NavSection::LoadTests, cx);
+    }
+
     /// Renders the resizable sidebar and main area below the title bar.
     fn render_body(
         &mut self,
@@ -1580,6 +1622,9 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_select_environment_8))
             .on_action(cx.listener(Self::on_select_environment_9))
             .on_action(cx.listener(Self::on_select_no_environment))
+            .on_action(cx.listener(Self::on_toggle_collections))
+            .on_action(cx.listener(Self::on_toggle_environments))
+            .on_action(cx.listener(Self::on_toggle_load_tests))
             .on_action(cx.listener(Self::on_show_completion))
             .on_action(cx.listener(Self::on_next_completion))
             .on_action(cx.listener(Self::on_previous_completion))
