@@ -9,6 +9,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use postino_workspace::git_branch;
 use rust_i18n::t;
+use telaio_ui::components::open_tooltip;
 
 use crate::state;
 use crate::state::update::ReadyUpdate;
@@ -95,10 +96,7 @@ impl AppView {
             .child(
                 IconButton::new("status-bar-shortcuts", gpui_kit::assets::IconName::Keyboard)
                     .box_size(STATUS_BAR_BUTTON)
-                    .tooltip(t!(
-                        "shortcuts.tooltip",
-                        keys = state::shortcuts::open_hint()
-                    ))
+                    .tooltip(open_tooltip())
                     .on_click(move |_, window, cx| {
                         let _ = weak.update(cx, |view, cx| view.open_shortcuts(window, cx));
                     }),

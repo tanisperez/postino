@@ -1,57 +1,18 @@
-//! The data behind the keyboard shortcuts cheat sheet (`F1`, or `Cmd+Shift+/` on macOS): the
-//! shortcuts grouped by area, with their translated labels and the keys to show as chips. It
-//! mirrors `main.rs`'s `bind_keys`, so a new key binding gets a row here, plus the sidebar's
-//! Ctrl+click. `views/shortcuts.rs` renders it; this module is plain data, unit tested without a
-//! window.
+//! The shortcuts listed in the keyboard shortcuts cheat sheet, grouped by area, with their
+//! translated labels and the keys to show as chips. It mirrors `main.rs`'s `bind_keys`, so a new
+//! key binding gets a row here, plus the sidebar's Ctrl+click. telaio's
+//! `open_shortcuts_dialog` renders it; this module is plain data, unit tested without a window.
 
 use rust_i18n::t;
-
-/// The modifier key label, matching `main.rs`'s key bindings: `Cmd` on macOS, `Ctrl` elsewhere.
-#[cfg(target_os = "macos")]
-pub const MODIFIER_KEY: &str = "Cmd";
-#[cfg(not(target_os = "macos"))]
-pub const MODIFIER_KEY: &str = "Ctrl";
-
-/// One shortcut: what it does and the keys to press, one chip per key.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Shortcut {
-    /// The translated action label.
-    pub label: String,
-    /// The keys, in the order they are pressed together (`["Ctrl", "K"]`).
-    pub keys: Vec<String>,
-}
-
-/// A titled list of shortcuts.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ShortcutGroup {
-    /// The translated group title.
-    pub title: String,
-    /// The group's shortcuts.
-    pub shortcuts: Vec<Shortcut>,
-}
-
-/// The keys that open the cheat sheet itself: `F1`, or `Cmd+Shift+/` on macOS, where `F1` is
-/// the brightness key unless `Fn` is held.
-pub fn open_keys() -> Vec<String> {
-    if cfg!(target_os = "macos") {
-        keys(&["Cmd", "Shift", "/"])
-    } else {
-        keys(&["F1"])
-    }
-}
-
-/// [`open_keys`] as one string for a hint (`"F1"`, `"Cmd+Shift+/"`).
-pub fn open_hint() -> String {
-    open_keys().join("+")
-}
+use telaio_ui::components::{MODIFIER_KEY, Shortcut, ShortcutGroup};
 
 /// The keys that delete the line in a script editor: `Ctrl+D`, or `Cmd+Shift+K` on macOS, where
 /// `Ctrl+D` deletes forward in every text field.
-fn delete_line_keys() -> Vec<String> {
+fn delete_line_keys() -> &'static [&'static str] {
     if cfg!(target_os = "macos") {
-        keys(&["Cmd", "Shift", "K"])
+        &["Cmd", "Shift", "K"]
     } else {
-        keys(&["Ctrl", "D"])
+        &["Ctrl", "D"]
     }
 }
 
@@ -69,16 +30,13 @@ pub fn groups() -> Vec<ShortcutGroup> {
         ShortcutGroup {
             title: t!("shortcuts.group.general").to_string(),
             shortcuts: vec![
-                shortcut(t!("shortcuts.action.palette"), &[modifier, "K"]),
-                shortcut(t!("shortcuts.action.open_folder"), &[modifier, "O"]),
-                shortcut(t!("shortcuts.action.settings"), &[modifier, ","]),
-                Shortcut {
-                    label: t!("shortcuts.action.help").to_string(),
-                    keys: open_keys(),
-                },
-                shortcut(t!("shortcuts.action.close_tab"), &[modifier, "W"]),
-                shortcut(t!("shortcuts.action.next_tab"), &["Ctrl", "Tab"]),
-                shortcut(
+                Shortcut::new(t!("shortcuts.action.palette"), &[modifier, "K"]),
+                Shortcut::new(t!("shortcuts.action.open_folder"), &[modifier, "O"]),
+                Shortcut::new(t!("shortcuts.action.settings"), &[modifier, ","]),
+                Shortcut::open_sheet(),
+                Shortcut::new(t!("shortcuts.action.close_tab"), &[modifier, "W"]),
+                Shortcut::new(t!("shortcuts.action.next_tab"), &["Ctrl", "Tab"]),
+                Shortcut::new(
                     t!("shortcuts.action.previous_tab"),
                     &["Ctrl", "Shift", "Tab"],
                 ),
@@ -87,36 +45,33 @@ pub fn groups() -> Vec<ShortcutGroup> {
         ShortcutGroup {
             title: t!("shortcuts.group.requests").to_string(),
             shortcuts: vec![
-                shortcut(t!("shortcuts.action.send"), &[modifier, "\u{21b5}"]),
-                shortcut(t!("shortcuts.action.save"), &[modifier, "S"]),
+                Shortcut::new(t!("shortcuts.action.send"), &[modifier, "\u{21b5}"]),
+                Shortcut::new(t!("shortcuts.action.save"), &[modifier, "S"]),
                 // Ctrl on macOS too: Cmd+Space is Spotlight.
-                shortcut(t!("shortcuts.action.complete_variable"), &["Ctrl", "Space"]),
-                Shortcut {
-                    label: t!("shortcuts.action.delete_line").to_string(),
-                    keys: delete_line_keys(),
-                },
-                shortcut(t!("shortcuts.action.undo"), &[modifier, "Z"]),
-                shortcut(t!("shortcuts.action.redo"), &[modifier, "Shift", "Z"]),
+                Shortcut::new(t!("shortcuts.action.complete_variable"), &["Ctrl", "Space"]),
+                Shortcut::new(t!("shortcuts.action.delete_line"), delete_line_keys()),
+                Shortcut::new(t!("shortcuts.action.undo"), &[modifier, "Z"]),
+                Shortcut::new(t!("shortcuts.action.redo"), &[modifier, "Shift", "Z"]),
             ],
         },
         ShortcutGroup {
             title: t!("shortcuts.group.sidebar").to_string(),
             shortcuts: vec![
-                shortcut(
+                Shortcut::new(
                     t!("shortcuts.action.toggle_collections"),
                     &[PANEL_MODIFIER_KEY, "1"],
                 ),
-                shortcut(
+                Shortcut::new(
                     t!("shortcuts.action.toggle_environments"),
                     &[PANEL_MODIFIER_KEY, "2"],
                 ),
-                shortcut(
+                Shortcut::new(
                     t!("shortcuts.action.toggle_load_tests"),
                     &[PANEL_MODIFIER_KEY, "3"],
                 ),
-                shortcut(t!("shortcuts.action.rename"), &["F2"]),
-                shortcut(t!("shortcuts.action.delete"), &["Delete"]),
-                shortcut(
+                Shortcut::new(t!("shortcuts.action.rename"), &["F2"]),
+                Shortcut::new(t!("shortcuts.action.delete"), &["Delete"]),
+                Shortcut::new(
                     t!("shortcuts.action.pick"),
                     &[modifier, &t!("shortcuts.key.click")],
                 ),
@@ -125,25 +80,14 @@ pub fn groups() -> Vec<ShortcutGroup> {
         ShortcutGroup {
             title: t!("shortcuts.group.environments").to_string(),
             shortcuts: vec![
-                shortcut(
+                Shortcut::new(
                     t!("shortcuts.action.select_environment"),
                     &[modifier, "1-9"],
                 ),
-                shortcut(t!("shortcuts.action.no_environment"), &[modifier, "0"]),
+                Shortcut::new(t!("shortcuts.action.no_environment"), &[modifier, "0"]),
             ],
         },
     ]
-}
-
-fn shortcut(label: impl ToString, keys_pressed: &[&str]) -> Shortcut {
-    Shortcut {
-        label: label.to_string(),
-        keys: keys(keys_pressed),
-    }
-}
-
-fn keys(keys_pressed: &[&str]) -> Vec<String> {
-    keys_pressed.iter().map(|key| key.to_string()).collect()
 }
 
 #[cfg(test)]
@@ -185,14 +129,7 @@ mod tests {
             general
                 .shortcuts
                 .iter()
-                .any(|shortcut| shortcut.keys == open_keys())
+                .any(|shortcut| *shortcut == Shortcut::open_sheet())
         );
-    }
-
-    #[test]
-    fn the_open_hint_joins_the_keys() {
-        assert_eq!(open_hint(), open_keys().join("+"));
-        #[cfg(not(target_os = "macos"))]
-        assert_eq!(open_hint(), "F1");
     }
 }

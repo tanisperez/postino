@@ -22,7 +22,6 @@ pub mod root;
 pub mod script_completion;
 pub mod send;
 pub mod settings;
-pub mod shortcuts;
 pub mod sidebar;
 pub mod snippet_dialog;
 pub mod status_bar;

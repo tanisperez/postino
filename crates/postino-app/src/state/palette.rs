@@ -5,6 +5,7 @@
 use postino_core::Method;
 use postino_workspace::Node;
 use rust_i18n::t;
+use telaio_ui::components::open_hint;
 
 /// The modifier key label shortcut hints show, matching `main.rs`'s key bindings: `Cmd` on
 /// macOS, `Ctrl` elsewhere (same local-constant convention as `views/env_picker.rs`'s
@@ -165,7 +166,7 @@ pub fn action_items() -> Vec<PaletteItem> {
         action_item(
             ActionId::OpenShortcuts,
             t!("shortcuts.title"),
-            Some(super::shortcuts::open_hint()),
+            Some(open_hint()),
         ),
         action_item(ActionId::NewWorkspace, t!("common.new_workspace"), None),
         action_item(
@@ -387,10 +388,7 @@ mod tests {
             .iter()
             .find(|item| item.kind == PaletteItemKind::Action(ActionId::OpenShortcuts))
             .expect("the shortcuts action");
-        assert_eq!(
-            shortcuts.shortcut,
-            Some(super::super::shortcuts::open_hint())
-        );
+        assert_eq!(shortcuts.shortcut, Some(open_hint()));
     }
 
     #[test]

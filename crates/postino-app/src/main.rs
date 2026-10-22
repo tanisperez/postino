@@ -205,7 +205,6 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-k", OpenCommandPalette, None),
         KeyBinding::new("cmd-o", OpenWorkspace, None),
         KeyBinding::new("cmd-w", CloseActiveTab, None),
-        KeyBinding::new("cmd-shift-/", OpenShortcuts, None),
         // Ctrl, not Option: Option + a digit types `|`, `@` or `#` on many layouts.
         KeyBinding::new("ctrl-1", ToggleCollections, None),
         KeyBinding::new("ctrl-2", ToggleEnvironments, None),
@@ -229,11 +228,16 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-k", OpenCommandPalette, None),
         KeyBinding::new("ctrl-o", OpenWorkspace, None),
         KeyBinding::new("ctrl-w", CloseActiveTab, None),
-        KeyBinding::new("f1", OpenShortcuts, None),
         KeyBinding::new("alt-1", ToggleCollections, None),
         KeyBinding::new("alt-2", ToggleEnvironments, None),
         KeyBinding::new("alt-3", ToggleLoadTests, None),
     ]);
+    // `F1`, or `Cmd+Shift+/` on macOS, where `F1` is the brightness key unless `Fn` is held.
+    cx.bind_keys([KeyBinding::new(
+        telaio_ui::components::OPEN_SHORTCUTS_KEYSTROKE,
+        OpenShortcuts,
+        None,
+    )]);
     // Ctrl+Tab is the tab switcher on every platform, macOS included. The text inputs only bind
     // plain `tab` / `shift-tab` (indent and outdent), so this still fires while one has focus.
     cx.bind_keys([

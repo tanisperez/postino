@@ -48,6 +48,7 @@ use crate::views::request_editor::RequestEditorEntities;
 use crate::views::response_view::ResponseEditorEntities;
 use crate::views::send::SendingTask;
 use crate::views::settings::SettingsSelects;
+use telaio_ui::components::open_shortcuts_dialog;
 
 use super::sidebar;
 
@@ -1091,6 +1092,12 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         self.open_shortcuts(window, cx);
+    }
+
+    /// Opens the keyboard shortcuts cheat sheet (telaio's), listing `state::shortcuts`. A no-op
+    /// when a dialog is already open.
+    pub(crate) fn open_shortcuts(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        open_shortcuts_dialog(state::shortcuts::groups(), window, cx);
     }
 
     /// Handles the `Ctrl+W` / `Cmd+W` key binding (see `main.rs`'s `bind_keys`). Like the tab's

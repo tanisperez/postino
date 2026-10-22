@@ -10,10 +10,9 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
+use telaio_ui::components::{MODIFIER_KEY, open_hint};
 
-use crate::state;
 use crate::state::settings::ThemeChoice;
-use crate::state::shortcuts::MODIFIER_KEY;
 use crate::state::welcome::{QUICK_START_URL, RecentWorkspace, WelcomeTab};
 use crate::theme::metrics::{
     RADIUS_LG, RADIUS_MD, RADIUS_XS, WELCOME_CHECKBOX_SIZE, WELCOME_COLUMN_WIDTH,
@@ -489,7 +488,7 @@ fn render_footer(
                 .child(link(
                     "welcome-shortcuts",
                     t!("welcome.shortcuts").into(),
-                    Some(state::shortcuts::open_hint()),
+                    Some(open_hint()),
                     Box::new(move |window, cx| {
                         let _ =
                             shortcuts_weak.update(cx, |view, cx| view.open_shortcuts(window, cx));
