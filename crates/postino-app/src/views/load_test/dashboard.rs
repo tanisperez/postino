@@ -25,7 +25,7 @@ use crate::state::number::{format_decimal, format_integer};
 use crate::theme::metrics::RADIUS_LG;
 use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::NeutralButtonExt;
-use crate::views::components::{Card, InlineMessage, InlineMessageKind, MethodBadge};
+use crate::views::components::{Card, EmptyState, InlineMessage, InlineMessageKind, MethodBadge};
 
 use super::run::unix_now;
 use crate::views::root::AppView;
@@ -143,13 +143,7 @@ fn render_empty_state(
         ));
     }
 
-    column = column.child(
-        div()
-            .py(px(40.0))
-            .text_center()
-            .text_color(palette.fg_subtle)
-            .child(t!("load_test.dashboard.empty")),
-    );
+    column = column.child(EmptyState::new(t!("load_test.dashboard.empty")).compact(true));
 
     if !load_test.history.is_empty() {
         column = column.child(render_history_list(weak, tab_id, palette, load_test));

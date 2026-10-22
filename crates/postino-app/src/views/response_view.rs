@@ -28,8 +28,8 @@ use crate::theme::metrics::{
     HEADERS_PADDING_X, HEADERS_ROW_PADDING_Y, RADIUS_LG,
 };
 use crate::views::components::{
-    CodeEditor, IconButton, InlineMessage, InlineMessageKind, SegmentedControl, SegmentedItem,
-    StatusState, UnderlineTabItem, UnderlineTabs, status_badge,
+    CodeEditor, EmptyState, IconButton, InlineMessage, InlineMessageKind, SegmentedControl,
+    SegmentedItem, StatusState, UnderlineTabItem, UnderlineTabs, status_badge,
 };
 
 use super::root::AppView;
@@ -113,7 +113,7 @@ impl AppView {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let Some(tab) = self.state.tabs.active() else {
-            return placeholder(cx, &t!("response.placeholder.not_sent"), None);
+            return EmptyState::new(t!("response.placeholder.not_sent")).into_any_element();
         };
         let tab_id = tab.id.clone();
 
@@ -134,11 +134,9 @@ impl AppView {
         }
 
         if !self.responses.contains_key(&tab_id) {
-            return placeholder(
-                cx,
-                &t!("response.placeholder.not_sent"),
-                Some(SEND_KEY_HINT),
-            );
+            return EmptyState::new(t!("response.placeholder.not_sent"))
+                .hint(SEND_KEY_HINT)
+                .into_any_element();
         }
         // Each of these reads `self.responses` for as long as it needs to, but no longer: by the
         // time `render_response_tab_content` runs, neither still borrows `self`, so it is free
@@ -680,31 +678,6 @@ fn render_console_tab(result: &RunResult, cx: &Context<AppView>) -> AnyElement {
                 .text_size(mono_size)
                 .text_color(color)
                 .child(line.text.clone())
-        }))
-        .into_any_element()
-}
-
-/// Renders a centered, muted placeholder message filling the panel, with an optional trailing mono
-/// key hint.
-fn placeholder(cx: &Context<AppView>, message: &str, key_hint: Option<&str>) -> AnyElement {
-    let palette = cx.palette();
-    let mono_font = cx.theme().mono_font_family.clone();
-    v_flex()
-        .size_full()
-        .items_center()
-        .justify_center()
-        .gap_2()
-        .child(
-            div()
-                .text_color(palette.fg_muted)
-                .child(message.to_string()),
-        )
-        .children(key_hint.map(|hint| {
-            div()
-                .font_family(mono_font)
-                .text_size(px(10.5))
-                .text_color(palette.fg_subtle)
-                .child(hint.to_string())
         }))
         .into_any_element()
 }
