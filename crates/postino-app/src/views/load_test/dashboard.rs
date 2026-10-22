@@ -22,10 +22,16 @@ use crate::state::load_test::{
     DeltaTone, LoadTestFailure, LoadTestStatus, LoadTestTab, delta_tone, format_delta,
 };
 use crate::state::number::{format_decimal, format_integer};
-use crate::theme::metrics::RADIUS_LG;
+use crate::theme::metrics::{
+    DATA_TABLE_COL_GAP, DATA_TABLE_FLEX_MIN_WIDTH, DATA_TABLE_NUMERIC_COL_WIDTH,
+    DATA_TABLE_PADDING_X, RADIUS_LG,
+};
 use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::NeutralButtonExt;
-use crate::views::components::{Card, EmptyState, InlineMessage, InlineMessageKind, MethodBadge};
+use crate::views::components::{
+    Card, DataCell, DataColumn, DataTable, EmptyState, InlineMessage, InlineMessageKind,
+    MethodBadge,
+};
 
 use super::run::unix_now;
 use crate::views::root::AppView;
@@ -800,16 +806,11 @@ fn render_bottom_row(
         .into_any_element()
 }
 
-/// Fixed width of one of the per-request table's numeric columns (Count, p50, p95, p99, Errors):
-/// wide enough for their widest realistic value ("999 ms") without letting them shrink into each
-/// other at a narrow window, which `flex_grow` alone (with no floor) allowed.
-const PER_REQUEST_NUMERIC_COL_WIDTH: f32 = 64.0;
-/// Horizontal gap between the per-request table's columns.
-const PER_REQUEST_COL_GAP: f32 = 10.0;
-/// Minimum width of the per-request table: its 16 px side padding, the 60 px name column and five
-/// numeric columns with their gaps.
-const PER_REQUEST_TABLE_MIN_WIDTH: f32 =
-    2.0 * 16.0 + 60.0 + 5.0 * (PER_REQUEST_NUMERIC_COL_WIDTH + PER_REQUEST_COL_GAP);
+/// Minimum width of the per-request table, below which it scrolls sideways: the data table's side
+/// padding, its least flexible column (the name) and five numeric columns with their gaps.
+const PER_REQUEST_TABLE_MIN_WIDTH: f32 = 2.0 * DATA_TABLE_PADDING_X
+    + DATA_TABLE_FLEX_MIN_WIDTH
+    + 5.0 * (DATA_TABLE_NUMERIC_COL_WIDTH + DATA_TABLE_COL_GAP);
 
 /// The per-request table: method, name, Count, p50, p95, p99, Errors.
 fn render_per_request_table(
@@ -818,142 +819,42 @@ fn render_per_request_table(
     load_test: &LoadTestTab,
     snapshot: &LoadSnapshot,
 ) -> AnyElement {
-    let header = h_flex()
-        .h(px(34.0))
-        .items_center()
-        .gap(px(PER_REQUEST_COL_GAP))
-        .px(px(16.0))
-        .border_b_1()
-        .border_color(palette.border)
-        .text_size(px(11.5))
-        .text_color(palette.fg_subtle)
-        .font_weight(FontWeight::MEDIUM)
-        .child(div().flex_1().min_w(px(60.0)).child(t!("common.request")))
-        .child(
-            div()
-                .flex_none()
-                .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
-                .text_right()
-                .child(t!("load_test.table.count")),
-        )
-        .child(
-            div()
-                .flex_none()
-                .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
-                .text_right()
-                .child("p50"),
-        )
-        .child(
-            div()
-                .flex_none()
-                .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
-                .text_right()
-                .child("p95"),
-        )
-        .child(
-            div()
-                .flex_none()
-                .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
-                .text_right()
-                .child("p99"),
-        )
-        .child(
-            div()
-                .flex_none()
-                .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
-                .text_right()
-                .child(t!("load_test.kpi.errors")),
-        );
-
-    let rows = snapshot
-        .per_target
-        .iter()
-        .enumerate()
-        .map(|(index, stats)| {
-            let (method, name) = target_row_label(load_test, index);
-            let error_color = if stats.error_rate > PER_REQUEST_WARNING_ERROR_RATE {
-                palette.warning
-            } else {
-                palette.fg
-            };
-            h_flex()
-                .h(px(34.0))
-                .items_center()
-                .gap(px(PER_REQUEST_COL_GAP))
-                .px(px(16.0))
-                .border_b_1()
-                .border_color(palette.border)
-                .text_size(px(12.5))
-                .child(
-                    h_flex()
-                        .flex_1()
-                        .min_w(px(60.0))
-                        .items_center()
-                        .gap(px(8.0))
-                        .children(method.map(MethodBadge::label))
-                        .child(div().min_w_0().truncate().child(name)),
-                )
-                .child(
-                    div()
-                        .flex_none()
-                        .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
-                        .text_right()
-                        .child(format_integer(stats.count)),
-                )
-                .child(
-                    div()
-                        .flex_none()
-                        .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
-                        .text_right()
-                        .child(format!("{} ms", format_integer(stats.p50 / 1000))),
-                )
-                .child(
-                    div()
-                        .flex_none()
-                        .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
-                        .text_right()
-                        .child(format!("{} ms", format_integer(stats.p95 / 1000))),
-                )
-                .child(
-                    div()
-                        .flex_none()
-                        .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
-                        .text_right()
-                        .child(format!("{} ms", format_integer(stats.p99 / 1000))),
-                )
-                .child(
-                    div()
-                        .flex_none()
-                        .w(px(PER_REQUEST_NUMERIC_COL_WIDTH))
-                        .text_right()
-                        .text_color(error_color)
-                        .child(format!("{}%", format_decimal(stats.error_rate * 100.0, 1))),
-                )
-        });
-
-    // Below its minimum width the table scrolls sideways inside its card rather than pushing
-    // the whole dashboard wider than its pane. Restricted to the x axis, so the wheel keeps
-    // scrolling the dashboard vertically.
-    v_flex()
-        .border_1()
-        .border_color(palette.border)
-        .rounded(px(RADIUS_LG))
-        .bg(palette.raised)
-        .overflow_hidden()
+    let mut table = DataTable::new("load-test-per-request-table")
+        .column(DataColumn::new(t!("common.request")))
+        .column(DataColumn::numeric(t!("load_test.table.count")))
+        .column(DataColumn::numeric("p50"))
+        .column(DataColumn::numeric("p95"))
+        .column(DataColumn::numeric("p99"))
+        .column(DataColumn::numeric(t!("load_test.kpi.errors")));
+    for (index, stats) in snapshot.per_target.iter().enumerate() {
+        let (method, name) = target_row_label(load_test, index);
+        let errors = DataCell::text(format!("{}%", format_decimal(stats.error_rate * 100.0, 1)));
+        let errors = if stats.error_rate > PER_REQUEST_WARNING_ERROR_RATE {
+            errors.color(palette.warning)
+        } else {
+            errors
+        };
+        table = table.row([
+            DataCell::element(
+                h_flex()
+                    .min_w_0()
+                    .items_center()
+                    .gap(px(8.0))
+                    .children(method.map(MethodBadge::label))
+                    .child(div().min_w_0().truncate().child(name)),
+            ),
+            DataCell::text(format_integer(stats.count)),
+            DataCell::text(format!("{} ms", format_integer(stats.p50 / 1000))),
+            DataCell::text(format!("{} ms", format_integer(stats.p95 / 1000))),
+            DataCell::text(format!("{} ms", format_integer(stats.p99 / 1000))),
+            errors,
+        ]);
+    }
+    // The table's own `mono` would use telaio's monospace font; the user's choice is inherited
+    // from here instead, like the rest of the dashboard.
+    div()
         .font_family(mono_font.clone())
-        .child(
-            div()
-                .id("load-test-per-request-table")
-                .w_full()
-                .restrict_scroll_to_axis()
-                .overflow_x_scrollbar()
-                .child(
-                    v_flex()
-                        .min_w(px(PER_REQUEST_TABLE_MIN_WIDTH))
-                        .child(header)
-                        .children(rows),
-                ),
-        )
+        .child(table)
         .into_any_element()
 }
 
