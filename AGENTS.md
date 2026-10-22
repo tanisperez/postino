@@ -214,7 +214,10 @@ Found in the 2026-09-30 investigation (#32, #33, #34). Keep these rules in every
 - Test with big data, not only the small requests of the sample suite: a 5 MB JSON response, or the 15 MB
   `responses/large-15mb` of the sample suite (the response body limit is a setting,
   20 MB by default, `postino_http::DEFAULT_MAX_RESPONSE_SIZE`), measuring main thread CPU while idle and while
-  typing, and RSS. A 15 MB JSON body costs about 475 MB of extra RSS, roughly 30 times its size.
+  typing, and RSS. Since gpui-kit 0.8.0 a 15 MB JSON body costs about 460 MB of extra RSS with
+  `MALLOC_ARENA_MAX=1`, and usually about 700 MB with the default glibc malloc, whose arenas keep
+  the freed memory fragmented. gpui-kit 0.7.0 cost about 66 MB less in the editor; measure with
+  `MALLOC_ARENA_MAX=1` to compare builds, since the default allocator varies between runs.
 - Expected memory on Linux: about 115 MB RSS at startup in release, of which only about 22 MB is
   the app's own heap; the rest is shared libraries (Mesa, LLVM) and the binary itself. gpui also
   allocates GPU memory that is not in RSS but lives in system RAM on integrated GPUs: the
