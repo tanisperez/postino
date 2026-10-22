@@ -37,6 +37,9 @@ pub(super) struct SelectHandles {
 /// The selects plus the subscriptions that route their choices to [`AppView`].
 pub(crate) struct SettingsSelects {
     pub(super) handles: SelectHandles,
+    /// The installed font families, read when the dialog opens, to rebuild the font lists when
+    /// the language changes the bundled fonts' labels.
+    installed: Vec<String>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -242,13 +245,14 @@ impl SettingsSelects {
                 max_response,
                 log_level,
             },
+            installed: installed.to_vec(),
             _subscriptions: subscriptions,
         }
     }
 
     /// Shows `settings` in every select, for a change made outside them (Reset to defaults).
-    /// With `relabel`, the translated labels are rebuilt too (the language changed). The font lists
-    /// are not rebuilt: they are long and only their selection can change.
+    /// With `relabel`, the translated labels are rebuilt too (the language changed), the font lists
+    /// included, whose bundled family is labelled as such.
     pub(super) fn sync(
         &self,
         settings: &Settings,
@@ -268,6 +272,20 @@ impl SettingsSelects {
             );
             set_options(&handles.tls, tls_options(), false, window, cx);
             set_options(&handles.log_level, log_level_options(), false, window, cx);
+            set_options(
+                &handles.ui_font,
+                font_options("Geist", &self.installed, &settings.ui_font),
+                true,
+                window,
+                cx,
+            );
+            set_options(
+                &handles.mono_font,
+                font_options("Geist Mono", &self.installed, &settings.mono_font),
+                true,
+                window,
+                cx,
+            );
         }
         set_options(
             &handles.max_response,
