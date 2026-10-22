@@ -12,14 +12,11 @@ use rust_i18n::t;
 use crate::state::load_panel::{
     RunDot, RunEntry, TargetRow, TargetRowKind, meta_text, run_entries,
 };
-use crate::theme::metrics::{ICON_BUTTON_HEADER, RADIUS_SM, TREE_ROW_HEIGHT};
+use crate::theme::metrics::{ICON_BUTTON_HEADER, RADIUS_SM};
 use crate::theme::{Palette, PaletteExt};
-use crate::views::components::{IconButton, MethodBadge, PrimaryButton, SectionLabel};
+use crate::views::components::{IconButton, MethodBadge, PrimaryButton, SectionLabel, TreeRow};
 
 use super::root::AppView;
-
-/// Width of a row's leading chevron slot, matching `views/sidebar.rs`.
-const ROW_ICON_WIDTH: f32 = 13.0;
 
 impl AppView {
     /// Renders the Load tests panel.
@@ -134,24 +131,8 @@ fn target_row(
     weak: WeakEntity<AppView>,
     palette: &Palette,
 ) -> AnyElement {
-    let group = SharedString::from(format!("load-target-{index}"));
     let id = row.id.clone();
     let is_folder = matches!(row.kind, TargetRowKind::Folder { .. });
-
-    let mut leading = div()
-        .flex_none()
-        .w(px(ROW_ICON_WIDTH))
-        .flex()
-        .items_center()
-        .justify_center();
-    if let TargetRowKind::Folder { expanded } = &row.kind {
-        let chevron = if *expanded {
-            IconName::ChevronDown
-        } else {
-            IconName::ChevronRight
-        };
-        leading = leading.child(Icon::new(chevron).small().text_color(palette.fg_subtle));
-    }
 
     let open = {
         let weak = weak.clone();
@@ -169,7 +150,6 @@ fn target_row(
     };
     let play = div()
         .id(("load-target-play", index))
-        .flex_none()
         .size(px(20.0))
         .flex()
         .items_center()
@@ -177,8 +157,6 @@ fn target_row(
         .rounded(px(RADIUS_SM))
         .cursor_pointer()
         .text_color(palette.fg_muted)
-        .opacity(0.0)
-        .group_hover(group.clone(), |style| style.opacity(1.0))
         .hover(|style| style.bg(palette.hover))
         .active(|style| style.bg(palette.pressed))
         .child(Icon::new(IconName::Play).small())
@@ -190,45 +168,18 @@ fn target_row(
             }
         });
 
+    let mut tree_row = TreeRow::new(("load-target", index), row.label.clone())
+        .depth(row.depth)
+        .trailing(play);
+    match &row.kind {
+        TargetRowKind::Folder { expanded } => tree_row = tree_row.folder(*expanded),
+        TargetRowKind::Request {
+            method: Some(method),
+        } => tree_row = tree_row.leading(MethodBadge::inline(method.clone())),
+        TargetRowKind::Request { method: None } => {}
+    }
     let toggle_id = id.clone();
-    h_flex()
-        .id(("load-target", index))
-        .group(group)
-        .h(px(TREE_ROW_HEIGHT))
-        .items_center()
-        .gap_1()
-        .pl(px(8.0 + row.depth as f32 * 16.0))
-        .pr(px(4.0))
-        .rounded(px(RADIUS_SM))
-        .cursor_pointer()
-        .text_color(palette.fg)
-        .hover(|style| style.bg(palette.hover))
-        .active(|style| style.bg(palette.pressed))
-        .child(leading)
-        .when_some(
-            match &row.kind {
-                TargetRowKind::Request { method } => method.clone(),
-                TargetRowKind::Folder { .. } => None,
-            },
-            |this, method| {
-                this.child(
-                    div()
-                        .flex_none()
-                        .mr(px(2.0))
-                        .child(MethodBadge::inline(method)),
-                )
-            },
-        )
-        // `text_sm` on the label alone, like the Collections tree (`views/sidebar.rs`).
-        .child(
-            div()
-                .flex_1()
-                .min_w_0()
-                .truncate()
-                .text_sm()
-                .child(row.label.clone()),
-        )
-        .child(play)
+    tree_row
         .on_click(move |_, _, cx| {
             if is_folder {
                 let id = toggle_id.clone();
