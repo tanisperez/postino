@@ -26,13 +26,16 @@ use crate::state::env_color::env_color;
 use crate::state::env_edit::{EnvEditTab, EnvScope, EnvValidationError, EnvVarRow, RowNote};
 use crate::state::number::format_integer;
 use crate::state::workspace_log::log_workspace_error;
-use crate::theme::metrics::{INPUT_PADDING_X, MODAL_WIDTH_DEFAULT, RADIUS_MD, RADIUS_SM};
+use crate::theme::metrics::{
+    EDITABLE_TABLE_ROW_HEIGHT, INPUT_PADDING_X, MODAL_WIDTH_DEFAULT, RADIUS_MD, RADIUS_SM,
+};
 use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::NeutralButtonExt;
 use crate::views::components::{
-    ConfirmDialog, GhostButton, HoverInput, IconButton, InlineMessage, InlineMessageKind,
-    ModalPlacement, PrimaryButton, SecondaryButton, SegmentedControl, SegmentedItem, edit_menu,
-    framed_dialog, modal_body, modal_footer, modal_header, open_confirm_dialog,
+    ConfirmDialog, EditableCell, EditableColumn, EditableRow, EditableTable, GhostButton,
+    HoverInput, IconButton, InlineMessage, InlineMessageKind, ModalPlacement, PrimaryButton,
+    SecondaryButton, SegmentedControl, SegmentedItem, edit_menu, framed_dialog, modal_body,
+    modal_footer, modal_header, open_confirm_dialog,
 };
 
 use super::root::AppView;
@@ -45,24 +48,6 @@ const STORED_COLUMN_WIDTH: f32 = 190.0;
 const TRASH_COLUMN_WIDTH: f32 = 30.0;
 /// Height of the toolbar and header controls.
 const CONTROL_HEIGHT: f32 = 28.0;
-
-/// Line height of the row inputs, which is also the height of their selection highlight (same as
-/// the URL bar's). Use `row_line_height`, not this, to size an input.
-const ROW_LINE_HEIGHT: f32 = 22.0;
-
-/// The whole-pixel line height closest to `ROW_LINE_HEIGHT` that a row input can hold without
-/// scrolling. gpui rounds a line height to whole logical pixels and snaps an input's box to
-/// device pixels, so at a fractional scale (1.2: 22 px is 26.4 device pixels, snapped to 26) the
-/// box ends up shorter than the line and the input scrolls the missing fraction when focused,
-/// then snaps back. That is the text bobbing on click.
-fn row_line_height(scale_factor: f32) -> Pixels {
-    let fits = |line: f32| (line * scale_factor).round() >= line * scale_factor;
-    let line = (0..=4)
-        .flat_map(|step| [ROW_LINE_HEIGHT + step as f32, ROW_LINE_HEIGHT - step as f32])
-        .find(|&line| fits(line))
-        .unwrap_or(ROW_LINE_HEIGHT);
-    px(line)
-}
 
 /// A shared dialog submit handler.
 type SubmitHandler = Rc<dyn Fn(&mut Window, &mut App)>;
@@ -736,15 +721,7 @@ impl AppView {
                     .px(px(20.0))
                     .py(px(12.0))
                     .child(render_table(
-                        edit,
-                        entities,
-                        &session,
-                        &tab_id,
-                        &weak,
-                        &palette,
-                        &mono_font,
-                        row_line_height(window.scale_factor()),
-                        cx,
+                        edit, entities, &session, &tab_id, &weak, &palette, &mono_font, cx,
                     )),
             )
             .child(render_footer(&palette))
@@ -1071,7 +1048,8 @@ fn render_toolbar(
         .into_any_element()
 }
 
-/// The variables table: header, one row per visible variable, then the session rows.
+/// The variables table, telaio's [`EditableTable`]: one row per visible variable, then the
+/// session rows.
 #[allow(clippy::too_many_arguments)]
 fn render_table(
     edit: &EnvEditTab,
@@ -1081,136 +1059,99 @@ fn render_table(
     weak: &WeakEntity<AppView>,
     palette: &Palette,
     mono_font: &SharedString,
-    line_height: Pixels,
     cx: &mut Context<AppView>,
 ) -> AnyElement {
-    let header_cell = |text: String| {
-        div()
-            .px(px(12.0))
-            .text_size(px(11.0))
-            .text_color(palette.fg_subtle)
-            .child(text.to_uppercase())
-    };
-    let header = h_flex()
-        .h(px(30.0))
-        .items_center()
-        .bg(palette.surface)
-        .border_b_1()
-        .border_color(palette.border)
-        .child(
-            header_cell(t!("environments.col.name").into_owned())
-                .flex_none()
-                .w(px(NAME_COLUMN_WIDTH)),
-        )
-        .child(
-            header_cell(t!("common.value").into_owned())
-                .flex_1()
-                .min_w_0(),
-        )
-        .child(
-            header_cell(t!("environments.col.stored_in").into_owned())
-                .flex_none()
-                .w(px(STORED_COLUMN_WIDTH)),
-        )
-        .child(div().flex_none().w(px(TRASH_COLUMN_WIDTH)));
-
-    let session_rows = edit.visible_session(session);
-    let total = edit.visible().len() + session_rows.len();
-    let mut table = v_flex()
-        .border_1()
-        .border_color(palette.border)
-        .rounded(px(RADIUS_MD))
-        .overflow_hidden()
-        .child(header);
-
-    for (position, &index) in edit.visible().iter().enumerate() {
+    let reveal = entities.reveal.get();
+    if reveal.is_some_and(|target| {
+        !edit
+            .visible()
+            .iter()
+            .any(|&index| edit.rows[index].id == target)
+    }) {
+        // Filtered out: nothing to scroll to.
+        entities.reveal.set(None);
+    }
+    let mut rows = Vec::new();
+    for &index in edit.visible() {
         let row = &edit.rows[index];
         let Some(inputs) = entities.rows.get(&row.id) else {
             continue;
         };
-        let last = position + 1 == total;
-        table = table.child(file_row(
-            edit,
-            row,
-            inputs,
-            last,
-            tab_id,
-            weak,
-            palette,
-            mono_font,
-            line_height,
-            cx,
+        let reveal = (reveal == Some(row.id)).then(|| RevealRequest {
+            target: row.id,
+            scroll: entities.scroll.clone(),
+            pending: entities.reveal.clone(),
+        });
+        rows.push(file_row(
+            edit, row, inputs, reveal, tab_id, weak, palette, mono_font, cx,
         ));
     }
-    for (offset, variable) in session_rows.iter().enumerate() {
-        let last = edit.visible().len() + offset + 1 == total;
-        table = table.child(session_row(variable, last, palette, mono_font));
+    for variable in edit.visible_session(session) {
+        rows.push(session_row(variable, palette, mono_font));
     }
-    if let Some(target) = entities.reveal.get() {
-        table = reveal_row(table, edit, target, &entities.scroll, &entities.reveal);
-    }
-    if total == 0 {
-        let text = if edit.filter.trim().is_empty() {
-            t!("environments.empty")
-        } else {
-            t!("environments.empty_filter")
-        };
-        table = table.child(
-            div()
-                .px(px(12.0))
-                .py(px(14.0))
-                .text_size(px(12.5))
-                .text_color(palette.fg_subtle)
-                .child(text),
-        );
-    }
-    table.into_any_element()
+    let empty = if edit.filter.trim().is_empty() {
+        t!("environments.empty")
+    } else {
+        t!("environments.empty_filter")
+    };
+    EditableTable::new([
+        EditableColumn::fixed(t!("environments.col.name"), NAME_COLUMN_WIDTH),
+        EditableColumn::flex(t!("common.value")),
+        EditableColumn::fixed(t!("environments.col.stored_in"), STORED_COLUMN_WIDTH),
+        EditableColumn::fixed("", TRASH_COLUMN_WIDTH),
+    ])
+    .rows(rows)
+    .empty_message(empty)
+    .into_any_element()
 }
 
-/// Scrolls the table so the row `target` is fully visible, once: the table's children report
-/// their bounds at prepaint, the offset is adjusted and the request cleared, and one more frame
-/// is drawn. The rows are children of the bordered table, not of the scrolled element, so
-/// `ScrollHandle::scroll_to_item` cannot reach them.
-fn reveal_row(
-    table: Div,
-    edit: &EnvEditTab,
+/// A pending request to scroll the table so a newly added row is fully visible.
+struct RevealRequest {
     target: u64,
-    scroll: &ScrollHandle,
-    reveal: &Rc<Cell<Option<u64>>>,
-) -> Div {
-    // Child 0 is the header.
-    let Some(child) = edit
-        .visible()
-        .iter()
-        .position(|&index| edit.rows[index].id == target)
-        .map(|position| position + 1)
-    else {
-        reveal.set(None);
-        return table;
+    scroll: ScrollHandle,
+    pending: Rc<Cell<Option<u64>>>,
+}
+
+/// Wraps `content`, the trash column of the row `reveal` asks for, in a box as tall as a row with
+/// an empty canvas that reads the row's bounds at prepaint: the scroll offset is adjusted once,
+/// the request cleared, and one more frame drawn. The rows are inside telaio's table, not
+/// children of the scrolled element, so `ScrollHandle::scroll_to_item` cannot reach them.
+fn reveal_on_prepaint(content: impl IntoElement, reveal: Option<RevealRequest>) -> AnyElement {
+    let Some(reveal) = reveal else {
+        return content.into_any_element();
     };
-    let scroll = scroll.clone();
-    let reveal = reveal.clone();
-    table.on_children_prepainted(move |bounds, window, _cx| {
-        if reveal.get() != Some(target) {
-            return;
-        }
-        reveal.set(None);
-        let Some(row) = bounds.get(child) else {
-            return;
-        };
-        let view = scroll.bounds();
-        let margin = px(12.0);
-        let mut offset = scroll.offset();
-        if row.top() < view.top() {
-            offset.y += view.top() - row.top() + margin;
-        } else if row.bottom() > view.bottom() {
-            offset.y -= row.bottom() - view.bottom() + margin;
-        } else {
-            return;
-        }
-        scroll.set_offset(offset);
-        window.refresh();
-    })
+    div()
+        .relative()
+        .h(px(EDITABLE_TABLE_ROW_HEIGHT))
+        .flex()
+        .items_center()
+        .child(content)
+        .child(
+            canvas(
+                move |row, window, _cx| {
+                    if reveal.pending.get() != Some(reveal.target) {
+                        return;
+                    }
+                    reveal.pending.set(None);
+                    let view = reveal.scroll.bounds();
+                    let margin = px(12.0);
+                    let mut offset = reveal.scroll.offset();
+                    if row.top() < view.top() {
+                        offset.y += view.top() - row.top() + margin;
+                    } else if row.bottom() > view.bottom() {
+                        offset.y -= row.bottom() - view.bottom() + margin;
+                    } else {
+                        return;
+                    }
+                    reveal.scroll.set_offset(offset);
+                    window.refresh();
+                },
+                |_, _, _, _| {},
+            )
+            .absolute()
+            .inset_0(),
+        )
+        .into_any_element()
 }
 
 /// A small button drawn as a "stored in" chip: icon and mono file name on a tinted background.
@@ -1266,14 +1207,13 @@ fn file_row(
     edit: &EnvEditTab,
     row: &EnvVarRow,
     inputs: &EnvRowInputs,
-    last: bool,
+    reveal: Option<RevealRequest>,
     tab_id: &str,
     weak: &WeakEntity<AppView>,
     palette: &Palette,
     mono_font: &SharedString,
-    line_height: Pixels,
     cx: &mut Context<AppView>,
-) -> AnyElement {
+) -> EditableRow {
     let row_id = row.id;
     let note = edit.note(row).map(|note| match note {
         RowNote::OverridesBase => t!(
@@ -1323,154 +1263,49 @@ fn file_row(
         }
     });
 
-    h_flex()
-        .min_h(px(34.0))
-        .items_center()
-        .when(!last, |row| row.border_b_1().border_color(palette.border))
-        .child(
-            div()
-                .flex_none()
-                .w(px(NAME_COLUMN_WIDTH))
-                .px(px(4.0))
-                .font_family(mono_font.clone())
-                .text_size(px(12.5))
-                .text_color(palette.accent_text)
-                .child(
-                    Input::new(&inputs.name)
-                        .context_menu(edit_menu(&inputs.name, cx))
-                        .py_0()
-                        .line_height(line_height)
-                        .appearance(false)
-                        .bordered(false),
-                ),
-        )
-        .child(
-            v_flex()
-                .flex_1()
-                .min_w_0()
-                .px(px(4.0))
-                .py(px(3.0))
-                .child(
-                    div()
-                        .font_family(mono_font.clone())
-                        .text_size(px(12.5))
-                        .child(
-                            Input::new(&inputs.value)
-                                .context_menu(edit_menu(&inputs.value, cx))
-                                .py_0()
-                                .line_height(line_height)
-                                .appearance(false)
-                                .bordered(false),
-                        ),
-                )
-                .children(note.map(|note| {
-                    div()
-                        .px(px(8.0))
-                        .text_size(px(11.0))
-                        .text_color(palette.fg_subtle)
-                        .child(note)
-                })),
-        )
-        .child(
-            div()
-                .flex_none()
-                .w(px(STORED_COLUMN_WIDTH))
-                .px(px(12.0))
-                .child(picker),
-        )
-        .child(
-            div()
-                .flex_none()
-                .w(px(TRASH_COLUMN_WIDTH))
-                .flex()
-                .justify_center()
-                .child(
-                    IconButton::new(("env-remove", row_id as usize), IconName::Trash)
-                        .tooltip(t!("environments.remove_tooltip"))
-                        .on_click({
-                            let weak = weak.clone();
-                            let tab_id = tab_id.to_string();
-                            move |_, _, cx| {
-                                let tab_id = tab_id.clone();
-                                let _ = weak.update(cx, |view, cx| {
-                                    view.remove_env_row(&tab_id, row_id, cx)
-                                });
-                            }
-                        }),
-                ),
-        )
-        .into_any_element()
+    let remove = IconButton::new(("env-remove", row_id as usize), IconName::Trash)
+        .tooltip(t!("environments.remove_tooltip"))
+        .on_click({
+            let weak = weak.clone();
+            let tab_id = tab_id.to_string();
+            move |_, _, cx| {
+                let tab_id = tab_id.clone();
+                let _ = weak.update(cx, |view, cx| view.remove_env_row(&tab_id, row_id, cx));
+            }
+        });
+    let value = EditableCell::input(&inputs.value);
+    EditableRow::new([
+        EditableCell::input(&inputs.name).color(palette.accent_text),
+        match note {
+            Some(note) => value.note(note),
+            None => value,
+        },
+        EditableCell::element(picker),
+        EditableCell::element(reveal_on_prepaint(remove, reveal)).centered(),
+    ])
 }
 
 /// One read only session row: a variable a script set with `env.set` during this session.
-fn session_row(
-    variable: &KeyValue,
-    last: bool,
-    palette: &Palette,
-    mono_font: &SharedString,
-) -> AnyElement {
+fn session_row(variable: &KeyValue, palette: &Palette, mono_font: &SharedString) -> EditableRow {
     let (chip_bg, chip_fg) = chip_colors(None, palette);
-    h_flex()
-        .min_h(px(34.0))
+    let chip = h_flex()
         .items_center()
-        .bg(palette.accent_subtle.opacity(0.5))
-        .when(!last, |row| row.border_b_1().border_color(palette.border))
-        .child(
-            div()
-                .flex_none()
-                .w(px(NAME_COLUMN_WIDTH))
-                .px(px(12.0))
-                .truncate()
-                .font_family(mono_font.clone())
-                .text_size(px(12.5))
-                .text_color(palette.accent_text)
-                .child(variable.key.clone()),
-        )
-        .child(
-            v_flex()
-                .flex_1()
-                .min_w_0()
-                .px(px(12.0))
-                .py(px(6.0))
-                .gap(px(2.0))
-                .child(
-                    div()
-                        .truncate()
-                        .font_family(mono_font.clone())
-                        .text_size(px(12.5))
-                        .text_color(palette.fg)
-                        .child(variable.value.clone()),
-                )
-                .child(
-                    div()
-                        .text_size(px(11.0))
-                        .text_color(palette.fg_subtle)
-                        .child(t!("environments.note.session")),
-                ),
-        )
-        .child(
-            div()
-                .flex_none()
-                .w(px(STORED_COLUMN_WIDTH))
-                .px(px(12.0))
-                .child(
-                    h_flex()
-                        .items_center()
-                        .gap(px(5.0))
-                        .h(px(20.0))
-                        .px(px(7.0))
-                        .rounded(px(5.0))
-                        .w_auto()
-                        .bg(chip_bg)
-                        .text_color(chip_fg)
-                        .text_size(px(11.0))
-                        .font_family(mono_font.clone())
-                        .child(Icon::new(IconName::Zap).with_size(px(10.0)))
-                        .child(t!("environments.source.session")),
-                ),
-        )
-        .child(div().flex_none().w(px(TRASH_COLUMN_WIDTH)))
-        .into_any_element()
+        .gap(px(5.0))
+        .h(px(20.0))
+        .px(px(7.0))
+        .rounded(px(5.0))
+        .bg(chip_bg)
+        .text_color(chip_fg)
+        .text_size(px(11.0))
+        .font_family(mono_font.clone())
+        .child(Icon::new(IconName::Zap).with_size(px(10.0)))
+        .child(t!("environments.source.session"));
+    EditableRow::new([
+        EditableCell::text(variable.key.clone()).color(palette.accent_text),
+        EditableCell::text(variable.value.clone()).note(t!("environments.note.session")),
+        EditableCell::element(chip),
+    ])
+    .background(palette.accent_subtle.opacity(0.5))
 }
 
 /// The footer: the resolution order of a variable.
@@ -1493,25 +1328,4 @@ fn render_footer(palette: &Palette) -> AnyElement {
                 .child(t!("environments.resolution.order")),
         )
         .into_any_element()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{ROW_LINE_HEIGHT, row_line_height};
-
-    #[test]
-    fn row_line_height_fills_whole_device_pixels() {
-        for scale in [1.0, 1.1, 1.2, 1.25, 1.5, 1.75, 2.0, 3.0] {
-            let line: f32 = row_line_height(scale).into();
-            assert!(
-                (line * scale).round() >= line * scale,
-                "scale {scale}: {line}"
-            );
-            assert!(
-                (line - ROW_LINE_HEIGHT).abs() <= 4.0,
-                "scale {scale}: {line}"
-            );
-        }
-        assert_eq!(f32::from(row_line_height(1.0)), ROW_LINE_HEIGHT);
-    }
 }
