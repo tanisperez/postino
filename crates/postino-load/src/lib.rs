@@ -43,13 +43,18 @@
 
 mod compare;
 mod config;
+pub mod export;
 pub mod history;
 mod metrics;
 mod run;
 mod status;
+mod threshold;
 
 pub use compare::{Delta, DeltaUnit, compare};
 pub use config::{LoadConfig, LoadTarget};
 pub use metrics::{LoadSnapshot, SecondPoint, TargetStats};
 pub use run::{LoadRun, LoadSummary};
 pub use status::StatusKey;
+pub use threshold::{
+    Threshold, ThresholdInputs, ThresholdMetric, ThresholdOutcome, evaluate as evaluate_thresholds,
+};
