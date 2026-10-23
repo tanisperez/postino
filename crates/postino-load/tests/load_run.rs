@@ -418,14 +418,24 @@ fn read_samples_called_repeatedly_ends_with_the_same_log_as_the_summary() {
     };
     let run = LoadRun::start(config, Environment::default(), SessionEnv::new(), runner());
 
+    // Poll until the log has grown twice, with a generous deadline for a loaded machine.
     let mut polled = SampleLog::new();
-    std::thread::sleep(Duration::from_millis(150));
-    run.read_samples(&mut polled);
-    let early = polled.len();
-    assert!(early > 0);
-    std::thread::sleep(Duration::from_millis(150));
-    run.read_samples(&mut polled);
-    assert!(polled.len() > early);
+    let deadline = Instant::now() + Duration::from_secs(4);
+    let mut early = 0;
+    while Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(50));
+        run.read_samples(&mut polled);
+        if early == 0 {
+            early = polled.len();
+        } else if polled.len() > early {
+            break;
+        }
+    }
+    assert!(early > 0, "no sample was recorded");
+    assert!(
+        polled.len() > early,
+        "the log did not grow while the run went on"
+    );
 
     run.stop();
     // Wait for the supervisor to join every virtual user, then read the final state.
