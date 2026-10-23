@@ -17,6 +17,8 @@ use gpui_kit::*;
 use rust_i18n::t;
 
 use crate::state::TabKind;
+use postino_load::ThresholdMetric;
+
 use crate::state::load_test::{self, LoadTestTab, LoadTestTarget};
 
 use super::root::AppView;
@@ -271,6 +273,73 @@ impl AppView {
         }
         self.edit_load_test(tab_id, cx, |load_test| {
             load_test.config.reuse_connections = checked
+        });
+    }
+
+    /// Adds a "Thresholds" row for `metric`, seeded with its default limit. A no-op when the
+    /// metric already has one.
+    pub(crate) fn add_load_test_threshold(
+        &mut self,
+        tab_id: &str,
+        metric: ThresholdMetric,
+        cx: &mut Context<Self>,
+    ) {
+        if self.load_test_is_running(tab_id) {
+            return;
+        }
+        self.edit_load_test(tab_id, cx, |load_test| {
+            if load_test
+                .config
+                .thresholds
+                .iter()
+                .all(|input| input.metric != metric)
+            {
+                load_test
+                    .config
+                    .thresholds
+                    .push(load_test::ThresholdInput::new(metric));
+            }
+        });
+    }
+
+    /// Removes the "Thresholds" row for `metric`.
+    pub(crate) fn remove_load_test_threshold(
+        &mut self,
+        tab_id: &str,
+        metric: ThresholdMetric,
+        cx: &mut Context<Self>,
+    ) {
+        if self.load_test_is_running(tab_id) {
+            return;
+        }
+        self.edit_load_test(tab_id, cx, |load_test| {
+            load_test
+                .config
+                .thresholds
+                .retain(|input| input.metric != metric);
+        });
+    }
+
+    /// Sets the limit text of the "Thresholds" row for `metric`.
+    pub(crate) fn set_load_test_threshold_limit(
+        &mut self,
+        tab_id: &str,
+        metric: ThresholdMetric,
+        value: String,
+        cx: &mut Context<Self>,
+    ) {
+        if self.load_test_is_running(tab_id) {
+            return;
+        }
+        self.edit_load_test(tab_id, cx, |load_test| {
+            if let Some(input) = load_test
+                .config
+                .thresholds
+                .iter_mut()
+                .find(|input| input.metric == metric)
+            {
+                input.limit = value;
+            }
         });
     }
 

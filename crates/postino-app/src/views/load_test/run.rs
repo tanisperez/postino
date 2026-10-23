@@ -161,6 +161,7 @@ impl AppView {
             load_test.target_rows = target_rows;
             load_test.run_reuse_connections = Some(resolved.reuse_connections);
             load_test.run_duration_secs = Some(resolved.duration_secs);
+            load_test.run_thresholds = resolved.thresholds.clone();
         });
 
         let run = LoadRun::start(config, environment, session_env, runner);

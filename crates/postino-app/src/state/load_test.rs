@@ -5,9 +5,11 @@
 //! stays free of `gpui` types and of workspace file IO, so it is unit-tested directly).
 
 use postino_core::Method;
-use postino_load::LoadSnapshot;
 use postino_load::history::RunRecordHeader;
+use postino_load::{LoadSnapshot, Threshold, ThresholdMetric};
 use postino_workspace::Node;
+
+use rust_i18n::t;
 
 use super::number::{format_decimal, format_signed_decimal};
 
@@ -150,6 +152,123 @@ pub struct LoadTestConfigInputs {
     pub stop_on_error: bool,
     /// Whether "Reuse connections" is on.
     pub reuse_connections: bool,
+    /// The "Thresholds" rows, in the order they were added, at most one per metric.
+    pub thresholds: Vec<ThresholdInput>,
+}
+
+/// One "Thresholds" row of the config panel: its metric and its limit as typed, in the unit the
+/// row shows (milliseconds, percent for the error rate, requests per second).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ThresholdInput {
+    /// The metric checked.
+    pub metric: ThresholdMetric,
+    /// The limit's text.
+    pub limit: String,
+}
+
+impl ThresholdInput {
+    /// A new row for `metric`, seeded with [`default_threshold_limit`].
+    #[must_use]
+    pub fn new(metric: ThresholdMetric) -> Self {
+        Self {
+            metric,
+            limit: default_threshold_limit(metric).to_string(),
+        }
+    }
+
+    /// The [`Threshold`] this row stands for, or `None` while its text is not a valid limit
+    /// ([`parse_threshold_limit`]).
+    #[must_use]
+    pub fn resolved(&self) -> Option<Threshold> {
+        parse_threshold_limit(self.metric, &self.limit).map(|limit| Threshold {
+            metric: self.metric,
+            limit,
+        })
+    }
+}
+
+/// The limit a newly added threshold row starts with, in the unit the row shows.
+#[must_use]
+pub fn default_threshold_limit(metric: ThresholdMetric) -> &'static str {
+    match metric {
+        ThresholdMetric::P50 => "100",
+        ThresholdMetric::P95 => "250",
+        ThresholdMetric::P99 => "500",
+        ThresholdMetric::ErrorRate => "1",
+        ThresholdMetric::Rps => "100",
+    }
+}
+
+/// The unit a threshold row shows after its limit: `"ms"` for latencies, `"%"` for the error
+/// rate, nothing for requests per second.
+#[must_use]
+pub fn threshold_unit(metric: ThresholdMetric) -> &'static str {
+    match metric {
+        ThresholdMetric::P50 | ThresholdMetric::P95 | ThresholdMetric::P99 => "ms",
+        ThresholdMetric::ErrorRate => "%",
+        ThresholdMetric::Rps => "",
+    }
+}
+
+/// Parses a threshold row's text into a limit in the [`Threshold`] unit: milliseconds and
+/// requests per second as typed, the error rate from percent to a fraction. Accepts a comma or a
+/// period as the decimal separator. `None` for anything that is not a finite number of at least
+/// zero, or an error rate above 100 %.
+#[must_use]
+pub fn parse_threshold_limit(metric: ThresholdMetric, raw: &str) -> Option<f64> {
+    let value: f64 = raw.trim().replace(',', ".").parse().ok()?;
+    if !value.is_finite() || value < 0.0 {
+        return None;
+    }
+    match metric {
+        ThresholdMetric::ErrorRate if value > 100.0 => None,
+        ThresholdMetric::ErrorRate => Some(value / 100.0),
+        _ => Some(value),
+    }
+}
+
+/// A threshold as one line of text, for example `"p99 < 50 ms"`, `"Errors < 0.5 %"` or
+/// `"Requests/s >= 1,800"` (with the real greater-or-equal sign), numbers in the current
+/// language.
+#[must_use]
+pub fn threshold_label(threshold: &Threshold) -> String {
+    let (limit, unit) = match threshold.metric {
+        ThresholdMetric::ErrorRate => (format_trimmed(threshold.limit * 100.0), " %"),
+        ThresholdMetric::Rps => (format_trimmed(threshold.limit), ""),
+        _ => (format_trimmed(threshold.limit), " ms"),
+    };
+    format!(
+        "{} {} {limit}{unit}",
+        threshold_metric_label(threshold.metric),
+        threshold.metric.operator()
+    )
+}
+
+/// The display name of a threshold metric: `"p50"`, `"p95"`, `"p99"`, or the translated
+/// "Errors" and "Requests/s".
+#[must_use]
+pub fn threshold_metric_label(metric: ThresholdMetric) -> String {
+    match metric {
+        ThresholdMetric::P50 => "p50".to_string(),
+        ThresholdMetric::P95 => "p95".to_string(),
+        ThresholdMetric::P99 => "p99".to_string(),
+        ThresholdMetric::ErrorRate => t!("load_test.kpi.errors").into_owned(),
+        ThresholdMetric::Rps => t!("load_test.kpi.rps").into_owned(),
+    }
+}
+
+/// `value` with up to two decimals and no trailing zeros, in the current language: `50`, `0.5`,
+/// `1,800`.
+#[must_use]
+pub fn format_trimmed(value: f64) -> String {
+    let decimals = if (value - value.round()).abs() < 1e-9 {
+        0
+    } else if (value * 10.0 - (value * 10.0).round()).abs() < 1e-9 {
+        1
+    } else {
+        2
+    };
+    format_decimal(value, decimals)
 }
 
 impl Default for LoadTestConfigInputs {
@@ -161,6 +280,7 @@ impl Default for LoadTestConfigInputs {
             think_time_ms: DEFAULT_THINK_TIME_MS.to_string(),
             stop_on_error: true,
             reuse_connections: true,
+            thresholds: Vec::new(),
         }
     }
 }
@@ -177,13 +297,18 @@ impl LoadTestConfigInputs {
             think_time_ms: clamp_think_time_ms(&self.think_time_ms),
             stop_on_error_rate: self.stop_on_error.then_some(STOP_ON_ERROR_RATE),
             reuse_connections: self.reuse_connections,
+            thresholds: self
+                .thresholds
+                .iter()
+                .filter_map(ThresholdInput::resolved)
+                .collect(),
         }
     }
 }
 
 /// [`LoadTestConfigInputs`], parsed and clamped, in the plain numbers/durations
 /// `postino_load::LoadConfig` needs (`views/load_test/run.rs` converts the durations).
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ResolvedLoadTestConfig {
     /// The number of virtual users, `1..=500`.
     pub vus: u32,
@@ -197,6 +322,8 @@ pub struct ResolvedLoadTestConfig {
     pub stop_on_error_rate: Option<f64>,
     /// Whether each virtual user reuses its connections (`postino_load::LoadConfig`).
     pub reuse_connections: bool,
+    /// The thresholds whose limit parses; a row still being typed is left out.
+    pub thresholds: Vec<Threshold>,
 }
 
 /// A load test tab's state: held as `crate::state::tabs::TabKind::LoadTest` inside an open tab.
@@ -250,6 +377,9 @@ pub struct LoadTestTab {
     /// when a past run is viewed, since the config panel may have changed since (#135). `None`
     /// before the first run.
     pub run_duration_secs: Option<u64>,
+    /// The thresholds the run shown is checked against: set when a run starts and when a past
+    /// run is viewed, since the config panel may have changed since.
+    pub run_thresholds: Vec<Threshold>,
 }
 
 impl LoadTestTab {
@@ -271,6 +401,7 @@ impl LoadTestTab {
             target_rows: Vec::new(),
             run_reuse_connections: None,
             run_duration_secs: None,
+            run_thresholds: Vec::new(),
         }
     }
 
@@ -314,6 +445,21 @@ impl LoadTestTab {
     #[must_use]
     pub fn is_running(&self) -> bool {
         self.status == LoadTestStatus::Running
+    }
+
+    /// The metrics that have no threshold row yet, for the "Add threshold" menu.
+    #[must_use]
+    pub fn missing_threshold_metrics(&self) -> Vec<ThresholdMetric> {
+        ThresholdMetric::ALL
+            .into_iter()
+            .filter(|metric| {
+                !self
+                    .config
+                    .thresholds
+                    .iter()
+                    .any(|input| input.metric == *metric)
+            })
+            .collect()
     }
 }
 
@@ -694,6 +840,84 @@ mod tests {
             ]
         );
         assert!(request_ids_under(&tree, "empty").is_empty());
+    }
+
+    #[test]
+    fn threshold_limits_accept_a_comma_or_a_period_and_errors_are_percent() {
+        assert_eq!(
+            parse_threshold_limit(ThresholdMetric::P99, " 50 "),
+            Some(50.0)
+        );
+        assert_eq!(
+            parse_threshold_limit(ThresholdMetric::P99, "12,5"),
+            Some(12.5)
+        );
+        assert_eq!(
+            parse_threshold_limit(ThresholdMetric::ErrorRate, "0.5"),
+            Some(0.005)
+        );
+        assert_eq!(
+            parse_threshold_limit(ThresholdMetric::ErrorRate, "101"),
+            None
+        );
+        assert_eq!(parse_threshold_limit(ThresholdMetric::Rps, "-1"), None);
+        assert_eq!(parse_threshold_limit(ThresholdMetric::Rps, ""), None);
+        assert_eq!(parse_threshold_limit(ThresholdMetric::Rps, "inf"), None);
+    }
+
+    #[test]
+    fn resolved_config_skips_threshold_rows_that_do_not_parse() {
+        let inputs = LoadTestConfigInputs {
+            thresholds: vec![
+                ThresholdInput::new(ThresholdMetric::P99),
+                ThresholdInput {
+                    metric: ThresholdMetric::Rps,
+                    limit: "abc".to_string(),
+                },
+            ],
+            ..LoadTestConfigInputs::default()
+        };
+        assert_eq!(
+            inputs.resolved().thresholds,
+            vec![Threshold {
+                metric: ThresholdMetric::P99,
+                limit: 500.0
+            }]
+        );
+    }
+
+    #[test]
+    fn missing_threshold_metrics_leaves_out_the_ones_already_added() {
+        let mut tab = LoadTestTab::unset();
+        tab.config.thresholds = vec![ThresholdInput::new(ThresholdMetric::ErrorRate)];
+        assert_eq!(
+            tab.missing_threshold_metrics(),
+            vec![
+                ThresholdMetric::P50,
+                ThresholdMetric::P95,
+                ThresholdMetric::P99,
+                ThresholdMetric::Rps
+            ]
+        );
+    }
+
+    #[test]
+    fn threshold_label_reads_like_the_design() {
+        let p99 = Threshold {
+            metric: ThresholdMetric::P99,
+            limit: 50.0,
+        };
+        assert_eq!(threshold_label(&p99), "p99 < 50 ms");
+        let errors = Threshold {
+            metric: ThresholdMetric::ErrorRate,
+            limit: 0.005,
+        };
+        assert_eq!(threshold_label(&errors), "Errors < 0.5 %");
+        let rps = Threshold {
+            metric: ThresholdMetric::Rps,
+            limit: 1_800.0,
+        };
+        assert_eq!(threshold_label(&rps), "Requests/s \u{2265} 1,800");
     }
 
     #[test]
