@@ -253,7 +253,7 @@ mod tests {
 
     use super::*;
     use crate::config::LoadTarget;
-    use crate::metrics::{LoadSnapshot, SecondPoint, TargetStats};
+    use crate::metrics::{ErrorExample, LoadSnapshot, SecondPoint, TargetStats};
     use crate::status::StatusKey;
 
     /// A minimal but structurally complete snapshot, for tests that only care about history
@@ -271,6 +271,10 @@ mod tests {
             series: vec![SecondPoint {
                 rps: 10.0,
                 p95: 2_000,
+                p50: 1_000,
+                p90: 1_800,
+                p99: 3_000,
+                vus: 4,
             }],
             histogram: [0; 26],
             status_counts: vec![(StatusKey::Code(200), 9), (StatusKey::Code(500), 1)],
@@ -280,6 +284,10 @@ mod tests {
                 p95: 2_000,
                 p99: 3_000,
                 error_rate: 0.1,
+            }],
+            error_examples: vec![ErrorExample {
+                status: StatusKey::Code(500),
+                text: "HTTP 500".to_string(),
             }],
         }
     }

@@ -12,6 +12,7 @@ use postino_runner::{FailedStage, RunResult, Runner, SessionEnv};
 
 use crate::config::LoadConfig;
 use crate::metrics::{Aggregator, LoadSnapshot, Sample};
+use crate::samples::SampleLog;
 use crate::status::StatusKey;
 
 /// How often a waiting thread (the supervisor between virtual users, or a virtual user during
@@ -24,6 +25,8 @@ const POLL_INTERVAL: Duration = Duration::from_millis(20);
 pub struct LoadSummary {
     /// The metrics at the moment the run ended.
     pub snapshot: LoadSnapshot,
+    /// Every request the run completed, see [`SampleLog`].
+    pub log: SampleLog,
     /// Whether the run ended before [`LoadConfig::duration`] fully elapsed: because
     /// [`LoadRun::stop`] was called, or because [`LoadConfig::stop_on_error_rate`] was exceeded.
     /// `false` means the run completed its full configured duration.
@@ -122,6 +125,14 @@ impl LoadRun {
         lock_metrics(&self.shared.metrics).snapshot(elapsed, active_vus)
     }
 
+    /// Appends to `log` the samples and URLs recorded since the last call, so a caller that keeps
+    /// one log and polls (for example every 250 ms) pays only for what is new: `log` must be
+    /// empty the first time and only ever filled by this method for this run, since what it
+    /// already holds is compared by length. Holds the metrics lock while copying.
+    pub fn read_samples(&self, log: &mut SampleLog) {
+        log.append_missing_from(lock_metrics(&self.shared.metrics).log());
+    }
+
     /// Blocks until the run has finished and returns its final [`LoadSummary`].
     ///
     /// # Panics
@@ -172,6 +183,7 @@ fn run_supervisor(
 
         handles.push(thread::spawn(move || {
             run_virtual_user(
+                vu_index,
                 &vu_shared,
                 &vu_config,
                 &vu_environment,
@@ -194,9 +206,14 @@ fn run_supervisor(
         let _ = handle.join();
     }
 
-    let snapshot = lock_metrics(&shared.metrics).final_snapshot(shared.start.elapsed());
+    let (snapshot, log) = {
+        let mut metrics = lock_metrics(&shared.metrics);
+        let snapshot = metrics.final_snapshot(shared.start.elapsed());
+        (snapshot, metrics.log().clone())
+    };
     LoadSummary {
         snapshot,
+        log,
         stopped_early,
     }
 }
@@ -210,6 +227,7 @@ fn run_supervisor(
 /// poisoned lock instead of unwrapping (see [`lock_metrics`]), so a virtual user thread can
 /// always be joined by the supervisor.
 fn run_virtual_user(
+    vu_index: u32,
     shared: &Shared,
     config: &LoadConfig,
     environment: &Environment,
@@ -231,8 +249,22 @@ fn run_virtual_user(
             let latency = response_latency(&result, started.elapsed());
             let elapsed = shared.start.elapsed();
 
-            let sample = sample_from(target_index, elapsed, latency, &result);
-            let (errors, total) = lock_metrics(&shared.metrics).record(sample);
+            let active_vus = shared.active_vus.load(Ordering::SeqCst);
+            let sample = sample_from(
+                target_index,
+                (vu_index, active_vus),
+                elapsed,
+                latency,
+                &result,
+            );
+            let url = result
+                .resolved_request
+                .as_ref()
+                .map_or(target.request.url.as_str(), |resolved| {
+                    resolved.url.as_str()
+                });
+            let (errors, total) = lock_metrics(&shared.metrics)
+                .record(sample, url, || error_example(sample.status, &result));
 
             let exceeded_threshold = config
                 .stop_on_error_rate
@@ -274,8 +306,12 @@ fn response_latency(result: &RunResult, wall_time: Duration) -> Duration {
 /// already received, so it still speaks for itself. This matches
 /// [`postino_runner::RunResult::failed_stage`]'s own contract: `Post` failures still carry a
 /// `response`.
+///
+/// `(vu, active_vus)` is the 0-based index of the virtual user that sent the request and how many
+/// virtual users were running when it completed.
 fn sample_from(
     target_index: usize,
+    (vu, active_vus): (u32, u32),
     elapsed: Duration,
     latency: Duration,
     result: &RunResult,
@@ -288,11 +324,50 @@ fn sample_from(
 
     Sample {
         target_index,
+        vu,
+        active_vus,
         elapsed,
         latency_us: micros_clamped(latency),
+        size: result.response.as_ref().map_or(0, |response| {
+            u32::try_from(response.body.len()).unwrap_or(u32::MAX)
+        }),
         status,
         is_error: status.is_error(),
     }
+}
+
+/// How many characters of a response body an [`crate::ErrorExample`] keeps.
+const EXAMPLE_BODY_CHARS: usize = 160;
+
+/// The [`crate::ErrorExample`] text for a sample of `status`, from the `result` that produced it:
+/// the HTTP status and the start of the body, or the error that stopped the request.
+fn error_example(status: StatusKey, result: &RunResult) -> String {
+    match status {
+        StatusKey::Code(code) => {
+            let body = result
+                .response
+                .as_ref()
+                .map_or(&[][..], |response| response.body.as_slice());
+            http_error_example(code, body)
+        }
+        StatusKey::Timeout | StatusKey::Failed => result
+            .failed_stage
+            .as_ref()
+            .map_or_else(|| "Request failed".to_string(), ToString::to_string),
+    }
+}
+
+/// `"HTTP <code>"`, then `" \u{b7} "` and the first [`EXAMPLE_BODY_CHARS`] characters of `body`
+/// (lossy UTF-8, every run of whitespace collapsed to one space) when there is any text in it.
+fn http_error_example(code: u16, body: &[u8]) -> String {
+    let text = String::from_utf8_lossy(body);
+    let collapsed = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    let mut example = format!("HTTP {code}");
+    if !collapsed.is_empty() {
+        example.push_str(" \u{b7} ");
+        example.extend(collapsed.chars().take(EXAMPLE_BODY_CHARS));
+    }
+    example
 }
 
 /// `duration` as whole microseconds, saturating at `u32::MAX` (about 71.5 minutes) instead of
@@ -329,4 +404,39 @@ fn wait_or_stop(shared: &Shared, deadline: Instant) {
 /// better than making every virtual user thread panic too.
 fn lock_metrics(metrics: &Mutex<Aggregator>) -> MutexGuard<'_, Aggregator> {
     metrics.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn an_http_example_without_a_body_is_just_the_status() {
+        assert_eq!(http_error_example(502, b""), "HTTP 502");
+        assert_eq!(http_error_example(502, b" \n\t "), "HTTP 502");
+    }
+
+    #[test]
+    fn an_http_example_collapses_whitespace_and_keeps_the_start_of_the_body() {
+        let body = b"{\n  \"error\":   \"rate_limited\"\n}";
+        assert_eq!(
+            http_error_example(429, body),
+            "HTTP 429 \u{b7} { \"error\": \"rate_limited\" }"
+        );
+    }
+
+    #[test]
+    fn an_http_example_keeps_at_most_160_characters_of_the_body() {
+        let body = "\u{e9}".repeat(500);
+        let example = http_error_example(500, body.as_bytes());
+        let kept = example.strip_prefix("HTTP 500 \u{b7} ").unwrap_or_default();
+        assert_eq!(kept.chars().count(), EXAMPLE_BODY_CHARS);
+    }
+
+    #[test]
+    fn invalid_utf8_in_a_body_is_replaced_not_dropped() {
+        let example = http_error_example(500, &[0x6f, 0x6b, 0xff]);
+        assert_eq!(example, "HTTP 500 \u{b7} ok\u{fffd}");
+    }
 }

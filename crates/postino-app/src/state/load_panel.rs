@@ -369,6 +369,7 @@ mod tests {
             histogram: [0; 26],
             status_counts: Vec::new(),
             per_target: Vec::new(),
+            error_examples: Vec::new(),
         }
     }
 
