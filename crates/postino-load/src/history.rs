@@ -3,14 +3,27 @@
 //! This is a documented exception to "`postino-workspace` owns the filesystem": `postino-load` does
 //! its own IO here to avoid a `postino-workspace -> postino-load -> postino-runner` dependency
 //! edge, which would break the acyclic dependency graph of `AGENTS.md`.
+//!
+//! A run is stored as `NNNN.json` (the [`RunRecord`]) and, for runs saved by newer versions,
+//! `NNNN.samples.csv.gz` next to it (the [`SampleLog`], see [`save_samples`]). The log is a
+//! separate file because it grows with the number of requests while the record stays small, and
+//! [`list`] must keep reading only the small files.
 
-use std::fs;
+use std::fs::{self, File};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
+use flate2::Compression;
+use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
 use serde::{Deserialize, Serialize};
 
 use crate::config::LoadConfig;
+use crate::csv_text;
 use crate::metrics::LoadSnapshot;
+use crate::samples::{SampleLog, SampleRecord};
+use crate::status::StatusKey;
+use crate::threshold::Threshold;
 
 /// The subfolder run history is stored in, relative to a workspace root. The workspace scanner
 /// already skips hidden folders, so this never shows up as a collection.
@@ -48,6 +61,16 @@ pub enum HistoryError {
         /// The underlying parse error.
         #[source]
         source: serde_json::Error,
+    },
+    /// A sample log file is not a gzip of the CSV [`save_samples`] writes.
+    #[error("could not parse {path:?} at line {line}: {reason}")]
+    Samples {
+        /// The file that was being read.
+        path: PathBuf,
+        /// The 1-based line of the CSV where the problem is.
+        line: usize,
+        /// What is wrong with it.
+        reason: String,
     },
 }
 
@@ -124,6 +147,11 @@ pub struct RunRecord {
     /// "Target N" label those older records already showed.
     #[serde(default)]
     pub target_labels: Vec<(String, String)>,
+    /// The goals the run was started with, to check the results against them when it is viewed
+    /// from history. `#[serde(default)]` (empty) for a run file saved before this field existed,
+    /// which shows no goals, the only thing those older records could show anyway.
+    #[serde(default)]
+    pub thresholds: Vec<Threshold>,
 }
 
 /// A lightweight preview of a [`RunRecord`], for a run list or a "Compare with" dropdown, without
@@ -172,6 +200,15 @@ fn run_path(root: &Path, number: u32) -> PathBuf {
     root.join(RUNS_DIR).join(format!("{number:04}.json"))
 }
 
+/// The path the sample log for `number` would have under `root`.
+fn samples_path(root: &Path, number: u32) -> PathBuf {
+    root.join(RUNS_DIR)
+        .join(format!("{number:04}.samples.csv.gz"))
+}
+
+/// The header line of a sample log file.
+const SAMPLES_HEADER: &str = "elapsed_ms,vu,target,status,latency_us,size,error,url";
+
 /// Saves `record` to `<root>/.postino/runs/<NNNN>.json`, creating the folder if it does not
 /// exist yet. Overwrites any existing file for the same run number.
 pub fn save(root: &Path, record: &RunRecord) -> Result<(), HistoryError> {
@@ -196,10 +233,162 @@ pub fn load(root: &Path, number: u32) -> Result<RunRecord, HistoryError> {
     serde_json::from_str(&text).map_err(|source| HistoryError::Decode { path, source })
 }
 
+/// Saves the sample log of run `number` to `<root>/.postino/runs/<NNNN>.samples.csv.gz`, creating
+/// the folder if it does not exist yet and overwriting any previous file for that number.
+///
+/// The file is a gzip of a CSV with the header
+/// `elapsed_ms,vu,target,status,latency_us,size,error,url`: `status` is the HTTP code, `timeout`
+/// or `failed`, `error` is `0` or `1`, and `url` (the last field, so the rest can be split
+/// blindly) is quoted when it contains a comma, a quote or a line break.
+pub fn save_samples(root: &Path, number: u32, log: &SampleLog) -> Result<(), HistoryError> {
+    let dir = root.join(RUNS_DIR);
+    fs::create_dir_all(&dir).map_err(|source| HistoryError::Io { path: dir, source })?;
+
+    let path = samples_path(root, number);
+    let io_error = |source| HistoryError::Io {
+        path: path.clone(),
+        source,
+    };
+    let file = File::create(&path).map_err(io_error)?;
+    let mut encoder = GzEncoder::new(BufWriter::new(file), Compression::default());
+
+    let mut line = String::with_capacity(128);
+    encoder
+        .write_all(format!("{SAMPLES_HEADER}\n").as_bytes())
+        .map_err(io_error)?;
+    for sample in log.samples() {
+        line.clear();
+        push_sample_line(&mut line, sample, log.url(sample.url));
+        encoder.write_all(line.as_bytes()).map_err(io_error)?;
+    }
+    let mut writer = encoder.finish().map_err(io_error)?;
+    writer.flush().map_err(io_error)
+}
+
+/// Appends the CSV line of `sample` (ending in a line break) to `out`.
+fn push_sample_line(out: &mut String, sample: &SampleRecord, url: &str) {
+    use std::fmt::Write as _;
+
+    // Writing to a `String` cannot fail.
+    let _ = write!(
+        out,
+        "{},{},{},{},{},{},{},",
+        sample.elapsed_ms,
+        sample.vu,
+        sample.target,
+        status_text(sample.status),
+        sample.latency_us,
+        sample.size,
+        u8::from(sample.is_error),
+    );
+    csv_text::push_field(out, url);
+    out.push('\n');
+}
+
+/// The `status` column of a sample: the code, `timeout` or `failed`.
+pub(crate) fn status_text(status: StatusKey) -> String {
+    match status {
+        StatusKey::Code(code) => code.to_string(),
+        StatusKey::Timeout => "timeout".to_string(),
+        StatusKey::Failed => "failed".to_string(),
+    }
+}
+
+/// Loads the sample log of run `number` saved by [`save_samples`]. `Ok(None)` when there is no
+/// such file, which is the case for runs saved by versions that did not keep the samples.
+pub fn load_samples(root: &Path, number: u32) -> Result<Option<SampleLog>, HistoryError> {
+    let path = samples_path(root, number);
+    let file = match File::open(&path) {
+        Ok(file) => file,
+        Err(source) if source.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(source) => return Err(HistoryError::Io { path, source }),
+    };
+
+    let mut lines = BufReader::new(GzDecoder::new(BufReader::new(file)));
+    let mut log = SampleLog::new();
+    let mut text = String::new();
+    let mut line_number = 0;
+    loop {
+        text.clear();
+        // A quoted URL can contain a line break: keep reading until the quotes balance.
+        loop {
+            let read = lines
+                .read_line(&mut text)
+                .map_err(|source| HistoryError::Io {
+                    path: path.clone(),
+                    source,
+                })?;
+            line_number += 1;
+            if read == 0 || !csv_text::is_unterminated(&text) {
+                break;
+            }
+        }
+        if text.is_empty() {
+            break;
+        }
+        let record = text.trim_end_matches(['\n', '\r']);
+        if line_number == 1 {
+            if record != SAMPLES_HEADER {
+                return Err(samples_error(&path, 1, "unexpected header"));
+            }
+            continue;
+        }
+        let (sample, url) = parse_sample_line(record)
+            .ok_or_else(|| samples_error(&path, line_number, "malformed sample"))?;
+        let url = log.intern(&url);
+        log.push(SampleRecord { url, ..sample });
+    }
+    Ok(Some(log))
+}
+
+/// A [`HistoryError::Samples`] for `path`.
+fn samples_error(path: &Path, line: usize, reason: &str) -> HistoryError {
+    HistoryError::Samples {
+        path: path.to_path_buf(),
+        line,
+        reason: reason.to_string(),
+    }
+}
+
+/// Parses one CSV line (without its line break) into a sample whose `url` is still `0`, and the
+/// URL text.
+fn parse_sample_line(line: &str) -> Option<(SampleRecord, String)> {
+    let mut fields = line.splitn(8, ',');
+    let elapsed_ms = fields.next()?.parse().ok()?;
+    let vu = fields.next()?.parse().ok()?;
+    let target = fields.next()?.parse().ok()?;
+    let status = match fields.next()? {
+        "timeout" => StatusKey::Timeout,
+        "failed" => StatusKey::Failed,
+        code => StatusKey::Code(code.parse().ok()?),
+    };
+    let latency_us = fields.next()?.parse().ok()?;
+    let size = fields.next()?.parse().ok()?;
+    let is_error = match fields.next()? {
+        "0" => false,
+        "1" => true,
+        _ => return None,
+    };
+    let url = csv_text::unquote(fields.next()?);
+    Some((
+        SampleRecord {
+            elapsed_ms,
+            vu,
+            target,
+            url: 0,
+            status,
+            latency_us,
+            size,
+            is_error,
+        },
+        url,
+    ))
+}
+
 /// Lists every run saved under `<root>/.postino/runs/`, newest first (highest run number
 /// first). A file that fails to read or parse is skipped rather than failing the whole listing:
 /// one corrupt run should not hide every other one. Returns an empty list if the folder does not
-/// exist yet.
+/// exist yet. Only the `.json` files are read: the sample logs next to them are not runs.
 #[must_use]
 pub fn list(root: &Path) -> Vec<RunRecordHeader> {
     let dir = root.join(RUNS_DIR);
@@ -209,6 +398,7 @@ pub fn list(root: &Path) -> Vec<RunRecordHeader> {
 
     let mut headers: Vec<RunRecordHeader> = entries
         .filter_map(Result::ok)
+        .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "json"))
         .filter_map(|entry| {
             let text = fs::read_to_string(entry.path()).ok()?;
             let record: RunRecord = serde_json::from_str(&text).ok()?;
@@ -224,7 +414,8 @@ pub fn list(root: &Path) -> Vec<RunRecordHeader> {
 /// run file's number, or `1` if the folder does not exist or has none.
 ///
 /// Based only on file names, not their content, so a corrupt file still reserves its number and
-/// is never silently overwritten by [`save`].
+/// is never silently overwritten by [`save`]. A sample log (`NNNN.samples.csv.gz`) reserves its
+/// number too.
 #[must_use]
 pub fn next_number(root: &Path) -> u32 {
     let dir = root.join(RUNS_DIR);
@@ -236,7 +427,12 @@ pub fn next_number(root: &Path) -> u32 {
         .filter_map(Result::ok)
         .filter_map(|entry| {
             let path = entry.path();
-            path.file_stem()?.to_str()?.parse::<u32>().ok()
+            path.file_name()?
+                .to_str()?
+                .split('.')
+                .next()?
+                .parse::<u32>()
+                .ok()
         })
         .max();
 
@@ -255,6 +451,7 @@ mod tests {
     use crate::config::LoadTarget;
     use crate::metrics::{ErrorExample, LoadSnapshot, SecondPoint, TargetStats};
     use crate::status::StatusKey;
+    use crate::threshold::ThresholdMetric;
 
     /// A minimal but structurally complete snapshot, for tests that only care about history
     /// plumbing, not the metrics themselves.
@@ -310,6 +507,10 @@ mod tests {
             snapshot: sample_snapshot(),
             stopped_early: false,
             target_labels: vec![("POST".to_string(), "login".to_string())],
+            thresholds: vec![Threshold {
+                metric: ThresholdMetric::P99,
+                limit: 50.0,
+            }],
         }
     }
 
@@ -460,5 +661,180 @@ mod tests {
             loaded.target_labels.is_empty(),
             "should default to empty (falls back to the generic \"Target N\" label)"
         );
+    }
+
+    /// A log with one sample of every status kind and URLs that need CSV quoting.
+    fn sample_log() -> SampleLog {
+        let mut log = SampleLog::new();
+        let plain = log.intern("http://t/users?page=1");
+        let tricky = log.intern("http://t/search?q=a,b&name=\"x\"");
+        let multiline = log.intern("http://t/a\nb");
+        let rows = [
+            (0, 0, 0, plain, StatusKey::Code(200), 1_500, 312),
+            (15, 1, 1, tricky, StatusKey::Code(500), 40_000, 64),
+            (1_020, 2, 0, tricky, StatusKey::Timeout, 5_000_000, 0),
+            (1_900, 2, 1, multiline, StatusKey::Failed, 12, 0),
+            (2_000, 0, 0, plain, StatusKey::Code(201), 900, 0),
+        ];
+        for (elapsed_ms, vu, target, url, status, latency_us, size) in rows {
+            log.push(SampleRecord {
+                elapsed_ms,
+                vu,
+                target,
+                url,
+                status,
+                latency_us,
+                size,
+                is_error: status.is_error(),
+            });
+        }
+        log
+    }
+
+    #[test]
+    fn samples_round_trip_with_quoted_urls() {
+        let dir = tempdir().expect("temp dir");
+        let log = sample_log();
+
+        save_samples(dir.path(), 3, &log).expect("save should succeed");
+        assert!(
+            dir.path()
+                .join(".postino/runs/0003.samples.csv.gz")
+                .is_file()
+        );
+        let loaded = load_samples(dir.path(), 3)
+            .expect("load should succeed")
+            .expect("the file exists");
+        assert_eq!(loaded, log);
+        assert_eq!(
+            loaded.url(loaded.samples()[1].url),
+            "http://t/search?q=a,b&name=\"x\""
+        );
+        assert_eq!(loaded.url(loaded.samples()[3].url), "http://t/a\nb");
+    }
+
+    #[test]
+    fn the_saved_csv_has_the_documented_header_and_columns() {
+        use std::io::Read;
+
+        let dir = tempdir().expect("temp dir");
+        save_samples(dir.path(), 1, &sample_log()).expect("save should succeed");
+        let file = File::open(dir.path().join(".postino/runs/0001.samples.csv.gz")).expect("file");
+        let mut text = String::new();
+        GzDecoder::new(file)
+            .read_to_string(&mut text)
+            .expect("valid gzip");
+
+        let mut lines = text.lines();
+        assert_eq!(
+            lines.next(),
+            Some("elapsed_ms,vu,target,status,latency_us,size,error,url")
+        );
+        assert_eq!(
+            lines.next(),
+            Some("0,0,0,200,1500,312,0,http://t/users?page=1")
+        );
+        assert_eq!(
+            lines.next(),
+            Some("15,1,1,500,40000,64,1,\"http://t/search?q=a,b&name=\"\"x\"\"\"")
+        );
+        assert_eq!(
+            lines.next(),
+            Some("1020,2,0,timeout,5000000,0,1,\"http://t/search?q=a,b&name=\"\"x\"\"\"")
+        );
+    }
+
+    #[test]
+    fn an_empty_log_round_trips() {
+        let dir = tempdir().expect("temp dir");
+        save_samples(dir.path(), 1, &SampleLog::new()).expect("save should succeed");
+        let loaded = load_samples(dir.path(), 1).expect("load").expect("exists");
+        assert!(loaded.is_empty());
+    }
+
+    #[test]
+    fn a_run_without_a_sample_file_loads_as_none() {
+        let dir = tempdir().expect("temp dir");
+        assert!(load_samples(dir.path(), 1).expect("no error").is_none());
+        save(dir.path(), &sample_record(1)).expect("save should succeed");
+        assert!(load_samples(dir.path(), 1).expect("no error").is_none());
+    }
+
+    #[test]
+    fn a_corrupt_sample_file_is_a_decode_error_with_its_line() {
+        let dir = tempdir().expect("temp dir");
+        fs::create_dir_all(dir.path().join(".postino/runs")).expect("create runs dir");
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+        encoder
+            .write_all(
+                format!("{SAMPLES_HEADER}\n0,0,0,200,1,1,0,http://t/\nnot,a,sample\n").as_bytes(),
+            )
+            .expect("write");
+        let bytes = encoder.finish().expect("finish");
+        fs::write(dir.path().join(".postino/runs/0001.samples.csv.gz"), bytes).expect("write file");
+
+        assert!(matches!(
+            load_samples(dir.path(), 1),
+            Err(HistoryError::Samples { line: 3, .. })
+        ));
+
+        fs::write(
+            dir.path().join(".postino/runs/0002.samples.csv.gz"),
+            b"junk",
+        )
+        .expect("write");
+        assert!(matches!(
+            load_samples(dir.path(), 2),
+            Err(HistoryError::Io { .. })
+        ));
+    }
+
+    #[test]
+    fn list_and_next_number_work_with_sample_files_next_to_the_json() {
+        let dir = tempdir().expect("temp dir");
+        save(dir.path(), &sample_record(1)).expect("save should succeed");
+        save_samples(dir.path(), 1, &sample_log()).expect("save samples");
+        save(dir.path(), &sample_record(2)).expect("save should succeed");
+        save_samples(dir.path(), 2, &sample_log()).expect("save samples");
+        // A log whose JSON was lost still reserves its number.
+        save_samples(dir.path(), 5, &sample_log()).expect("save samples");
+
+        let numbers: Vec<u32> = list(dir.path())
+            .iter()
+            .map(|header| header.number)
+            .collect();
+        assert_eq!(numbers, vec![2, 1]);
+        assert_eq!(next_number(dir.path()), 6);
+    }
+
+    #[test]
+    fn a_run_file_saved_before_thresholds_existed_still_loads() {
+        let dir = tempdir().expect("temp dir");
+        let mut value = serde_json::to_value(sample_record(1)).expect("serialize");
+        value
+            .as_object_mut()
+            .expect("record serializes as an object")
+            .remove("thresholds");
+        let snapshot = value["snapshot"].as_object_mut().expect("snapshot object");
+        snapshot.remove("error_examples");
+        for point in snapshot["series"].as_array_mut().expect("series") {
+            let point = point.as_object_mut().expect("point");
+            for key in ["p50", "p90", "p99", "vus"] {
+                point.remove(key);
+            }
+        }
+        fs::create_dir_all(dir.path().join(".postino/runs")).expect("create runs dir");
+        fs::write(
+            dir.path().join(".postino/runs/0001.json"),
+            serde_json::to_string_pretty(&value).expect("serialize back to text"),
+        )
+        .expect("write old record");
+
+        let loaded = load(dir.path(), 1).expect("an old record still loads");
+        assert!(loaded.thresholds.is_empty());
+        assert!(loaded.snapshot.error_examples.is_empty());
+        assert_eq!(loaded.snapshot.series[0].p95, 2_000);
+        assert_eq!(loaded.snapshot.series[0].vus, 0);
+        assert_eq!(list(dir.path()).len(), 1);
     }
 }

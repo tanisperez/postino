@@ -289,6 +289,7 @@ impl AppView {
                 snapshot: summary.snapshot,
                 stopped_early: summary.stopped_early,
                 target_labels,
+                thresholds: Vec::new(),
             };
             if let Err(error) = postino_load::history::save(root, &record) {
                 log::warn!("could not save load test run {number}: {error}");

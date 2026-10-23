@@ -12,7 +12,8 @@
 //! Besides the aggregates of a [`LoadSnapshot`], a run keeps a [`SampleLog`], one compact record
 //! per completed request. [`LoadRun::read_samples`] copies the new part of it while the run goes
 //! on, [`LoadSummary::log`] holds all of it at the end, [`window::window_stats`] computes the
-//! statistics of any time window of it, with the histogram, the statuses and the error groups.
+//! statistics of any time window of it, with the histogram, the statuses and the error groups,
+//! [`history::save_samples`] stores it next to the run and [`export`] writes it as CSV or JSON.
 //!
 //! # Concurrency model
 //!
@@ -51,6 +52,7 @@
 
 mod compare;
 mod config;
+mod csv_text;
 pub mod export;
 pub mod history;
 mod metrics;
