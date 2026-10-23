@@ -16,8 +16,8 @@ use postino_load::export::report::{
     ReportThreshold, ReportTone, ReportVerdict, Rgb,
 };
 use postino_load::{
-    ErrorExample, ErrorGroup, LoadSnapshot, StatusKey, Threshold, ThresholdInputs, ThresholdMetric,
-    evaluate_thresholds,
+    ErrorExample, ErrorGroup, LatencyHistogram, LoadSnapshot, StatusKey, Threshold,
+    ThresholdInputs, ThresholdMetric, WindowStats, evaluate_thresholds,
 };
 use rust_i18n::t;
 
@@ -246,6 +246,28 @@ pub fn build_report(input: &ReportInput) -> Report {
             }
             .into_owned(),
         },
+    }
+}
+
+/// The statistics of a whole run from its final snapshot, for a run without a saved request log:
+/// the histogram has the engine's fixed 10 ms buckets and there are no error groups.
+#[must_use]
+pub fn stats_from_snapshot(snapshot: &LoadSnapshot) -> WindowStats {
+    WindowStats {
+        total: snapshot.total,
+        errors: (snapshot.error_rate * snapshot.total as f64).round() as u64,
+        rps: snapshot.rps,
+        p50: snapshot.p50,
+        p95: snapshot.p95,
+        p99: snapshot.p99,
+        error_rate: snapshot.error_rate,
+        histogram: LatencyHistogram {
+            bucket_us: 10_000,
+            counts: snapshot.histogram.to_vec(),
+        },
+        statuses: snapshot.status_counts.clone(),
+        per_target: snapshot.per_target.clone(),
+        error_groups: Vec::new(),
     }
 }
 
@@ -1185,6 +1207,18 @@ mod tests {
         assert_eq!(timeout.sample, "");
         assert_eq!(error_title(StatusKey::Failed, 30), "Request failed");
         assert_eq!(error_title(StatusKey::Code(599), 30), "599");
+    }
+
+    #[test]
+    fn a_snapshot_stands_in_for_the_statistics_of_a_run_without_requests() {
+        let mut run = snapshot(2_000.0, 62_000, 0.01, 1_000);
+        run.status_counts = vec![(StatusKey::Code(200), 990), (StatusKey::Failed, 10)];
+        let stats = stats_from_snapshot(&run);
+        assert_eq!((stats.total, stats.errors), (1_000, 10));
+        assert_eq!(stats.histogram.bucket_us, 10_000);
+        assert_eq!(stats.histogram.counts.len(), 26);
+        assert_eq!(stats.statuses, run.status_counts);
+        assert!(stats.error_groups.is_empty());
     }
 
     #[test]
