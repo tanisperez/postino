@@ -25,6 +25,7 @@ use postino_load::{LoadSnapshot, SampleLog, Threshold, WindowStats, window_stats
 use rust_i18n::t;
 use telaio_ui::fonts::{GEIST_MEDIUM, GEIST_MONO_REGULAR, GEIST_REGULAR, GEIST_SEMIBOLD};
 
+use crate::actions::CopyLoadTestSummary;
 use crate::state::format::shorten_path;
 use crate::state::load_report::{
     ReportColors, ReportInput, build_report, connection_label, stats_from_snapshot, status_label,
@@ -400,6 +401,26 @@ impl AppView {
             });
         })
         .detach();
+    }
+
+    /// Handles the `Ctrl+Shift+C` / `Cmd+Shift+C` key binding (see `main.rs`'s `bind_keys`):
+    /// copies the summary of the active tab when it is a load test, otherwise does nothing.
+    pub(crate) fn on_copy_load_test_summary_action(
+        &mut self,
+        _: &CopyLoadTestSummary,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(tab) = self
+            .state
+            .tabs
+            .active()
+            .filter(|tab| tab.load_test().is_some())
+        else {
+            return;
+        };
+        let tab_id = tab.id.clone();
+        self.copy_load_test_summary(&tab_id, window, cx);
     }
 
     /// Copies the summary of `tab_id`'s run to the clipboard as Markdown.

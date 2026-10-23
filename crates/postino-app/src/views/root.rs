@@ -1613,6 +1613,7 @@ impl Render for AppView {
             .bg(background)
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(Self::on_save_action))
+            .on_action(cx.listener(Self::on_copy_load_test_summary_action))
             .on_action(cx.listener(Self::on_send_action))
             .on_action(cx.listener(Self::on_open_settings_action))
             .on_action(cx.listener(Self::on_open_command_palette_action))
