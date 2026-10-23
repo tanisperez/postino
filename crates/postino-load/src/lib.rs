@@ -9,6 +9,12 @@
 //! [`LoadSummary`]. The [`history`] module then saves and lists runs, and [`compare`] turns two
 //! [`LoadSnapshot`]s into the signed deltas the "Compare with" panel shows.
 //!
+//! Besides the aggregates of a [`LoadSnapshot`], a run keeps a [`SampleLog`], one compact record
+//! per completed request. [`LoadRun::read_samples`] copies the new part of it while the run goes
+//! on, [`LoadSummary::log`] holds all of it at the end, [`window::window_stats`] computes the
+//! statistics of any time window of it, with the histogram, the statuses and the error groups,
+//! [`history::save_samples`] stores it next to the run and [`export`] writes it as CSV or JSON.
+//!
 //! # Concurrency model
 //!
 //! A run is: one supervisor thread (started by [`LoadRun::start`]), one plain OS thread per
@@ -28,8 +34,11 @@
 //!   when it ends, read by [`LoadRun::snapshot`] with no locking needed.
 //! - `metrics: Mutex<Aggregator>` is the one piece of real shared, mutable state: every virtual
 //!   user thread locks it briefly to record one sample: push a few numbers, update a few
-//!   counters, then unlock. [`LoadRun::snapshot`] locks it too, to compute a [`LoadSnapshot`]
-//!   from whatever has been recorded so far. Nothing panics while holding this lock (see
+//!   counters, append the request to the [`SampleLog`] that lives inside the aggregator (so the
+//!   log needs no lock of its own and always agrees with the counters), then unlock.
+//!   [`LoadRun::snapshot`] locks it too, to compute a [`LoadSnapshot`] from whatever has been
+//!   recorded so far, and so does [`LoadRun::read_samples`], to copy only the samples the
+//!   caller's own log does not have yet. Nothing panics while holding this lock (see
 //!   `src/run.rs`'s `lock_metrics`), so a poisoned lock is not expected; if it ever happened
 //!   anyway, the lock is still recovered rather than propagating the panic to every virtual user
 //!   thread, since a live metrics view being slightly stale is far less disruptive than the
@@ -43,18 +52,23 @@
 
 mod compare;
 mod config;
+mod csv_text;
 pub mod export;
 pub mod history;
 mod metrics;
 mod run;
+pub mod samples;
 mod status;
 mod threshold;
+pub mod window;
 
 pub use compare::{Delta, DeltaUnit, compare};
 pub use config::{LoadConfig, LoadTarget};
-pub use metrics::{LoadSnapshot, SecondPoint, TargetStats};
+pub use metrics::{ErrorExample, LoadSnapshot, SecondPoint, TargetStats};
 pub use run::{LoadRun, LoadSummary};
+pub use samples::{SampleLog, SampleRecord};
 pub use status::StatusKey;
 pub use threshold::{
     Threshold, ThresholdInputs, ThresholdMetric, ThresholdOutcome, evaluate as evaluate_thresholds,
 };
+pub use window::{ErrorGroup, LatencyHistogram, WindowStats, window_stats};

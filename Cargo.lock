@@ -4913,6 +4913,7 @@ dependencies = [
 name = "postino-load"
 version = "0.3.0"
 dependencies = [
+ "flate2",
  "postino-core",
  "postino-http",
  "postino-runner",

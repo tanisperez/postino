@@ -29,6 +29,8 @@ base64 = "0.23"
 fastrand = "2"
 pretty_assertions = "1.4"
 tempfile = "3"
+# gzip for the saved sample logs of load test runs, with the default pure Rust backend.
+flate2 = "1.1"
 tiny_http = "0.12"
 dirs = "7"
 dunce = "1"
