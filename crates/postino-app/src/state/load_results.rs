@@ -1,5 +1,11 @@
-//! Plain helpers behind the load test results (`views/load_test/results*.rs`): the chart's axis
-//! scales and labels, time labels, and the keys of the chart series. No `gpui`, no IO.
+//! Plain state and helpers behind the load test results (`views/load_test/dashboard.rs` and its
+//! siblings): which tab is shown, the Requests tab's filters and sort, the derived data shared
+//! with background tasks, the chart's axis scales and labels, and time labels. No `gpui`, no IO.
+
+use std::ops::Range;
+use std::sync::Arc;
+
+use postino_load::{SampleLog, SampleRecord, StatusKey};
 
 use super::number::{format_decimal, format_integer};
 
@@ -198,6 +204,323 @@ impl ChartSeriesKey {
     ];
 }
 
+/// Which results tab is shown.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ResultsTab {
+    /// KPIs, the chart, the distribution, statuses and the per request table.
+    #[default]
+    Summary,
+    /// Every request, filtered and sorted.
+    Requests,
+    /// One group per error kind.
+    Errors,
+}
+
+/// An `Arc` compared by pointer, so a tab holding large derived data stays cheap to clone and
+/// to compare: two values are equal only when they share the same allocation.
+#[derive(Debug)]
+pub struct Shared<T>(pub Arc<T>);
+
+impl<T> Shared<T> {
+    /// Wraps `value`.
+    pub fn new(value: T) -> Self {
+        Self(Arc::new(value))
+    }
+}
+
+impl<T> Clone for Shared<T> {
+    fn clone(&self) -> Self {
+        Self(Arc::clone(&self.0))
+    }
+}
+
+impl<T> PartialEq for Shared<T> {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl<T> std::ops::Deref for Shared<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.0
+    }
+}
+
+/// The Requests tab's status filter: every request, one class of HTTP codes, or the requests
+/// without a response.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum StatusFilter {
+    /// Every request.
+    #[default]
+    All,
+    /// One class of HTTP codes by its first digit: `2` for 2xx, ...
+    Class(u16),
+    /// Timed out requests.
+    Timeout,
+    /// Requests that failed without a response.
+    Failed,
+}
+
+impl StatusFilter {
+    /// Whether a request classified as `status` passes the filter.
+    #[must_use]
+    pub fn matches(self, status: StatusKey) -> bool {
+        match (self, status) {
+            (StatusFilter::All, _) => true,
+            (StatusFilter::Class(class), StatusKey::Code(code)) => code / 100 == class,
+            (StatusFilter::Timeout, StatusKey::Timeout) => true,
+            (StatusFilter::Failed, StatusKey::Failed) => true,
+            _ => false,
+        }
+    }
+
+    /// The filter that selects `status`'s kind: its class for an HTTP code.
+    #[must_use]
+    pub fn for_status(status: StatusKey) -> Self {
+        match status {
+            StatusKey::Code(code) => StatusFilter::Class(code / 100),
+            StatusKey::Timeout => StatusFilter::Timeout,
+            StatusKey::Failed => StatusFilter::Failed,
+        }
+    }
+
+    /// The segment label: `"2xx"`, ...; `None` for [`StatusFilter::All`], [`StatusFilter::Timeout`]
+    /// and [`StatusFilter::Failed`], whose labels are translated.
+    #[must_use]
+    pub fn class_label(self) -> Option<String> {
+        match self {
+            StatusFilter::Class(class) => Some(format!("{class}xx")),
+            _ => None,
+        }
+    }
+}
+
+/// The status filters worth offering for a run: [`StatusFilter::All`], then one per kind that
+/// occurs in `statuses` (HTTP classes ascending, then timeouts, then failures).
+#[must_use]
+pub fn status_filters(statuses: &[(StatusKey, u64)]) -> Vec<StatusFilter> {
+    let mut filters: Vec<StatusFilter> = statuses
+        .iter()
+        .filter(|(_, count)| *count > 0)
+        .map(|(status, _)| StatusFilter::for_status(*status))
+        .collect();
+    filters.sort_by_key(|filter| match filter {
+        StatusFilter::All => 0,
+        StatusFilter::Class(class) => *class,
+        StatusFilter::Timeout => 1_000,
+        StatusFilter::Failed => 1_001,
+    });
+    filters.dedup();
+    filters.insert(0, StatusFilter::All);
+    filters
+}
+
+/// A column of the Requests table, also what it is sorted by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RequestColumn {
+    /// The 1-based position in the log.
+    Id,
+    /// When the request completed.
+    Time,
+    /// The virtual user.
+    Vu,
+    /// The URL.
+    Request,
+    /// The status.
+    Status,
+    /// The latency.
+    Latency,
+    /// The response size.
+    Size,
+}
+
+impl RequestColumn {
+    /// Every column, left to right.
+    pub const ALL: [RequestColumn; 7] = [
+        RequestColumn::Id,
+        RequestColumn::Time,
+        RequestColumn::Vu,
+        RequestColumn::Request,
+        RequestColumn::Status,
+        RequestColumn::Latency,
+        RequestColumn::Size,
+    ];
+
+    /// Whether a column starts sorted from the largest value when picked: latency and size.
+    #[must_use]
+    pub fn starts_descending(self) -> bool {
+        matches!(self, RequestColumn::Latency | RequestColumn::Size)
+    }
+}
+
+/// How the Requests table is sorted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RequestSort {
+    /// The column.
+    pub column: RequestColumn,
+    /// Largest first.
+    pub descending: bool,
+}
+
+impl Default for RequestSort {
+    /// Slowest first, like the design.
+    fn default() -> Self {
+        Self {
+            column: RequestColumn::Latency,
+            descending: true,
+        }
+    }
+}
+
+impl RequestSort {
+    /// The sort after clicking `column`'s header: the same column flips its direction, another
+    /// one starts in its natural direction ([`RequestColumn::starts_descending`]).
+    #[must_use]
+    pub fn toggled(self, column: RequestColumn) -> Self {
+        if self.column == column {
+            Self {
+                column,
+                descending: !self.descending,
+            }
+        } else {
+            Self {
+                column,
+                descending: column.starts_descending(),
+            }
+        }
+    }
+}
+
+/// The Requests tab's filters.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RequestFilter {
+    /// Text searched in the URL and the request name, case insensitive.
+    pub query: String,
+    /// The status filter.
+    pub status: StatusFilter,
+    /// Only requests at least this slow, in milliseconds.
+    pub min_latency_ms: Option<u32>,
+    /// Only this virtual user, 1-based.
+    pub vu: Option<u32>,
+    /// Only errors.
+    pub only_errors: bool,
+}
+
+/// The positions in `log` of the requests inside `window` (whole seconds `[start, end)`) that
+/// pass `filter`, sorted by `sort` (ties keep the log order). `target_names` are the request
+/// names, by target index, searched along with the URL.
+///
+/// One pass over the log plus a sort of the matches; the query is checked once per URL and per
+/// name, not once per request, since URLs repeat.
+#[must_use]
+pub fn filter_requests(
+    log: &SampleLog,
+    window: Option<Range<u32>>,
+    filter: &RequestFilter,
+    sort: RequestSort,
+    target_names: &[String],
+) -> Vec<u32> {
+    let query = filter.query.trim().to_lowercase();
+    let url_matches: Vec<bool> = log
+        .urls()
+        .iter()
+        .map(|url| query.is_empty() || url.to_lowercase().contains(&query))
+        .collect();
+    let name_matches: Vec<bool> = target_names
+        .iter()
+        .map(|name| !query.is_empty() && name.to_lowercase().contains(&query))
+        .collect();
+    let min_latency_us = filter.min_latency_ms.map(|ms| ms.saturating_mul(1_000));
+
+    let samples = log.samples();
+    let mut matches: Vec<u32> = samples
+        .iter()
+        .enumerate()
+        .filter(|(_, sample)| {
+            let second = sample.elapsed_ms / 1_000;
+            window.as_ref().is_none_or(|window| window.contains(&second))
+                && filter.status.matches(sample.status)
+                && (!filter.only_errors || sample.is_error)
+                && filter.vu.is_none_or(|vu| sample.vu + 1 == vu)
+                && min_latency_us.is_none_or(|min| sample.latency_us >= min)
+                && (url_matches.get(sample.url as usize).copied().unwrap_or(false)
+                    || name_matches
+                        .get(sample.target as usize)
+                        .copied()
+                        .unwrap_or(false))
+        })
+        .map(|(index, _)| index as u32)
+        .collect();
+
+    let url_rank = url_ranks(log);
+    let key = |index: &u32| -> u64 {
+        let sample: &SampleRecord = &samples[*index as usize];
+        match sort.column {
+            RequestColumn::Id => u64::from(*index),
+            RequestColumn::Time => u64::from(sample.elapsed_ms),
+            RequestColumn::Vu => u64::from(sample.vu),
+            RequestColumn::Request => u64::from(url_rank[sample.url as usize]),
+            RequestColumn::Status => status_rank(sample.status),
+            RequestColumn::Latency => u64::from(sample.latency_us),
+            RequestColumn::Size => u64::from(sample.size),
+        }
+    };
+    if sort.descending {
+        matches.sort_by_key(|index| std::cmp::Reverse(key(index)));
+    } else {
+        matches.sort_by_key(key);
+    }
+    matches
+}
+
+/// Each URL's position in the alphabetical order of the log's URL table.
+fn url_ranks(log: &SampleLog) -> Vec<u32> {
+    let mut order: Vec<usize> = (0..log.urls().len()).collect();
+    order.sort_by(|a, b| log.urls()[*a].cmp(&log.urls()[*b]));
+    let mut ranks = vec![0; order.len()];
+    for (rank, index) in order.into_iter().enumerate() {
+        ranks[index] = rank as u32;
+    }
+    ranks
+}
+
+/// The sort order of statuses: HTTP codes ascending, then timeouts, then failures.
+fn status_rank(status: StatusKey) -> u64 {
+    match status {
+        StatusKey::Code(code) => u64::from(code),
+        StatusKey::Timeout => 1_000,
+        StatusKey::Failed => 1_001,
+    }
+}
+
+/// The latency filter's options in milliseconds: the run's p50, p95 and p99 rounded down to a
+/// "nice" value (1, 2, 2.5 or 5 times a power of ten, at least 1 ms), without duplicates.
+#[must_use]
+pub fn latency_filter_options(p50_us: u32, p95_us: u32, p99_us: u32) -> Vec<u32> {
+    let mut options: Vec<u32> = [p50_us, p95_us, p99_us]
+        .into_iter()
+        .filter_map(|us| nice_floor(f64::from(us) / 1_000.0))
+        .collect();
+    options.dedup();
+    options
+}
+
+/// The largest "nice" whole number of milliseconds (1, 2, 2.5 or 5 times a power of ten) at or
+/// below `ms`, or `None` below 1 ms.
+fn nice_floor(ms: f64) -> Option<u32> {
+    if !ms.is_finite() || ms < 1.0 {
+        return None;
+    }
+    let magnitude = 10f64.powf(ms.log10().floor());
+    [5.0, 2.5, 2.0, 1.0]
+        .into_iter()
+        .map(|factor| factor * magnitude)
+        .find(|value| *value <= ms && (value.fract() == 0.0))
+        .map(|value| value as u32)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -239,6 +562,136 @@ mod tests {
         assert_eq!(mmss_millis(34_512), "00:34.512");
         assert_eq!(second_range_label(34), "00:34 \u{2013} 00:35");
         assert_eq!(window_label(34, 45), "34\u{2013}46 s");
+    }
+
+    fn log_of(samples: &[(u32, u32, &str, StatusKey, u32)]) -> SampleLog {
+        let mut log = SampleLog::new();
+        for (elapsed_ms, vu, url, status, latency_us) in samples {
+            let url = log.intern(url);
+            log.push(SampleRecord {
+                elapsed_ms: *elapsed_ms,
+                vu: *vu,
+                target: 0,
+                url,
+                status: *status,
+                latency_us: *latency_us,
+                size: 10,
+                is_error: status.is_error(),
+            });
+        }
+        log
+    }
+
+    #[test]
+    fn filter_requests_applies_every_filter_and_sorts() {
+        let log = log_of(&[
+            (100, 0, "http://a/users/1", StatusKey::Code(200), 5_000),
+            (1_200, 1, "http://a/users/2", StatusKey::Code(429), 1_000),
+            (2_500, 0, "http://a/orders", StatusKey::Timeout, 900_000),
+            (2_900, 1, "http://a/users/1", StatusKey::Code(201), 60_000),
+        ]);
+        let names = vec!["create".to_string()];
+        let all = filter_requests(
+            &log,
+            None,
+            &RequestFilter::default(),
+            RequestSort::default(),
+            &names,
+        );
+        assert_eq!(all, vec![2, 3, 0, 1]);
+
+        let users = RequestFilter {
+            query: "USERS".to_string(),
+            ..RequestFilter::default()
+        };
+        let sort_by_time = RequestSort {
+            column: RequestColumn::Time,
+            descending: false,
+        };
+        assert_eq!(
+            filter_requests(&log, None, &users, sort_by_time, &names),
+            vec![0, 1, 3]
+        );
+        let by_name = RequestFilter {
+            query: "creat".to_string(),
+            ..RequestFilter::default()
+        };
+        assert_eq!(
+            filter_requests(&log, None, &by_name, sort_by_time, &names).len(),
+            4
+        );
+
+        let errors_of_vu_2 = RequestFilter {
+            only_errors: true,
+            vu: Some(2),
+            ..RequestFilter::default()
+        };
+        assert_eq!(
+            filter_requests(&log, None, &errors_of_vu_2, sort_by_time, &names),
+            vec![1]
+        );
+        let slow_2xx = RequestFilter {
+            status: StatusFilter::Class(2),
+            min_latency_ms: Some(50),
+            ..RequestFilter::default()
+        };
+        assert_eq!(
+            filter_requests(&log, None, &slow_2xx, sort_by_time, &names),
+            vec![3]
+        );
+        assert_eq!(
+            filter_requests(
+                &log,
+                Some(1..2),
+                &RequestFilter::default(),
+                sort_by_time,
+                &names
+            ),
+            vec![1]
+        );
+        let by_url = RequestSort {
+            column: RequestColumn::Request,
+            descending: false,
+        };
+        assert_eq!(
+            filter_requests(&log, None, &RequestFilter::default(), by_url, &names),
+            vec![2, 0, 3, 1]
+        );
+    }
+
+    #[test]
+    fn sort_toggles_the_same_column_and_starts_others_in_their_direction() {
+        let sort = RequestSort::default().toggled(RequestColumn::Latency);
+        assert!(!sort.descending);
+        let sort = sort.toggled(RequestColumn::Time);
+        assert_eq!(sort.column, RequestColumn::Time);
+        assert!(!sort.descending);
+        assert!(sort.toggled(RequestColumn::Size).descending);
+    }
+
+    #[test]
+    fn status_filters_list_the_kinds_present() {
+        let statuses = [
+            (StatusKey::Timeout, 2),
+            (StatusKey::Code(201), 5),
+            (StatusKey::Code(200), 9),
+            (StatusKey::Code(502), 1),
+        ];
+        assert_eq!(
+            status_filters(&statuses),
+            vec![
+                StatusFilter::All,
+                StatusFilter::Class(2),
+                StatusFilter::Class(5),
+                StatusFilter::Timeout
+            ]
+        );
+    }
+
+    #[test]
+    fn latency_options_are_nice_values_below_the_percentiles() {
+        assert_eq!(latency_filter_options(9_000, 31_000, 62_000), vec![5, 25, 50]);
+        assert_eq!(latency_filter_options(400, 1_200, 1_900), vec![1]);
     }
 
     #[test]
