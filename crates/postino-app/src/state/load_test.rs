@@ -6,11 +6,12 @@
 
 use postino_core::Method;
 use postino_load::history::RunRecordHeader;
-use postino_load::{LoadSnapshot, Threshold, ThresholdMetric};
+use postino_load::{LoadSnapshot, SampleLog, Threshold, ThresholdMetric, WindowStats};
 use postino_workspace::Node;
 
 use rust_i18n::t;
 
+use super::load_results::{ChartSeriesKey, RequestFilter, RequestSort, ResultsTab, Shared};
 use super::number::{format_decimal, format_signed_decimal};
 
 /// What a load test tab targets: a single request, or every request of a folder ("collection"), in
@@ -380,6 +381,63 @@ pub struct LoadTestTab {
     /// The thresholds the run shown is checked against: set when a run starts and when a past
     /// run is viewed, since the config panel may have changed since.
     pub run_thresholds: Vec<Threshold>,
+    /// How many virtual users the run shown was configured with, for the Requests tab's VU
+    /// filter. `None` before the first run.
+    pub run_vus: Option<u32>,
+    /// When the run shown started, as Unix seconds. `None` before the first run.
+    pub run_started_at: Option<u64>,
+    /// The results tab shown.
+    pub results_tab: ResultsTab,
+    /// The selected window of the chart, as inclusive second indices. `None` is the whole run.
+    pub window: Option<(usize, usize)>,
+    /// The chart series hidden from the legend.
+    pub hidden_series: Vec<ChartSeriesKey>,
+    /// The Requests tab's filters.
+    pub request_filter: RequestFilter,
+    /// The Requests tab's sort.
+    pub request_sort: RequestSort,
+    /// Whether the Export menu's "Only the window" is on.
+    pub export_window_only: bool,
+    /// Every request of the run shown: grown on every live refresh, the final log once the run
+    /// ends, or a past run's saved log. `None` before the first run, and while a past run's log
+    /// is still loading.
+    pub log: Option<Shared<SampleLog>>,
+    /// Whether the past run shown has no saved log (saved by an older version), so the Requests
+    /// and Errors tabs have nothing to show.
+    pub log_unavailable: bool,
+    /// Bumped whenever [`Self::log`] is replaced by another run's, part of the keys of the
+    /// derived data below.
+    pub log_generation: u64,
+    /// The statistics of [`Self::window`] (or the whole run), computed in the background from
+    /// [`Self::log`], and the key they were computed for.
+    pub analysis: Option<(AnalysisKey, Shared<WindowStats>)>,
+    /// The Requests tab's rows (positions in [`Self::log`]), computed in the background, and the
+    /// key they were computed for.
+    pub requests: Option<(RequestsKey, Shared<Vec<u32>>)>,
+}
+
+/// What [`LoadTestTab::analysis`] was computed from: the log (by generation and length) and the
+/// window.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnalysisKey {
+    /// [`LoadTestTab::log_generation`].
+    pub generation: u64,
+    /// The log's length.
+    pub len: usize,
+    /// [`LoadTestTab::window`].
+    pub window: Option<(usize, usize)>,
+}
+
+/// What [`LoadTestTab::requests`] was computed from: the log and window, the filters and the
+/// sort.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RequestsKey {
+    /// The log and the window.
+    pub analysis: AnalysisKey,
+    /// [`LoadTestTab::request_filter`].
+    pub filter: RequestFilter,
+    /// [`LoadTestTab::request_sort`].
+    pub sort: RequestSort,
 }
 
 impl LoadTestTab {
@@ -402,6 +460,19 @@ impl LoadTestTab {
             run_reuse_connections: None,
             run_duration_secs: None,
             run_thresholds: Vec::new(),
+            run_vus: None,
+            run_started_at: None,
+            results_tab: ResultsTab::Summary,
+            window: None,
+            hidden_series: Vec::new(),
+            request_filter: RequestFilter::default(),
+            request_sort: RequestSort::default(),
+            export_window_only: true,
+            log: None,
+            log_unavailable: false,
+            log_generation: 0,
+            analysis: None,
+            requests: None,
         }
     }
 
@@ -445,6 +516,52 @@ impl LoadTestTab {
     #[must_use]
     pub fn is_running(&self) -> bool {
         self.status == LoadTestStatus::Running
+    }
+
+    /// The key [`Self::analysis`] should have for the current log and window, `None` without a
+    /// log.
+    #[must_use]
+    pub fn analysis_key(&self) -> Option<AnalysisKey> {
+        self.log.as_ref().map(|log| AnalysisKey {
+            generation: self.log_generation,
+            len: log.len(),
+            window: self.window,
+        })
+    }
+
+    /// The key [`Self::requests`] should have, `None` without a log.
+    #[must_use]
+    pub fn requests_key(&self) -> Option<RequestsKey> {
+        self.analysis_key().map(|analysis| RequestsKey {
+            analysis,
+            filter: self.request_filter.clone(),
+            sort: self.request_sort,
+        })
+    }
+
+    /// The statistics shown, when they are up to date or at least of the same run. A stale
+    /// value of the same run (a live refresh in flight) is still shown instead of nothing.
+    #[must_use]
+    pub fn current_analysis(&self) -> Option<&WindowStats> {
+        let (key, stats) = self.analysis.as_ref()?;
+        (key.generation == self.log_generation && key.window == self.window).then_some(&**stats)
+    }
+
+    /// The window as the `[start, end)` seconds range the engine takes.
+    #[must_use]
+    pub fn window_range(&self) -> Option<std::ops::Range<u32>> {
+        self.window
+            .map(|(first, last)| first as u32..last as u32 + 1)
+    }
+
+    /// Replaces the run's log with `log` (another run's, or a fresh empty one): bumps the
+    /// generation and drops every derived value and the window.
+    pub fn replace_log(&mut self, log: Option<SampleLog>) {
+        self.log = log.map(Shared::new);
+        self.log_generation += 1;
+        self.analysis = None;
+        self.requests = None;
+        self.window = None;
     }
 
     /// The metrics that have no threshold row yet, for the "Add threshold" menu.

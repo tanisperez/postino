@@ -175,6 +175,9 @@ pub struct AppView {
     /// in the background while another tab is active, so this is a map, not a single slot. See
     /// `views/load_test/run.rs`.
     pub(crate) load_runs: HashMap<String, crate::views::load_test::run::LoadRunHandle>,
+    /// The background computations of every load test tab's results
+    /// (`views/load_test/results_data.rs`).
+    pub(crate) load_result_tasks: crate::views::load_test::results_data::LoadResultTaskMap,
     /// The activity rail's section and collapsed state (`views/navigation.rs`).
     pub(crate) nav: state::navigation::NavState,
     /// The Environments panel's rows, loaded when the workspace or an environment changes
@@ -320,6 +323,7 @@ impl AppView {
             snippet_language: SnippetLanguage::Curl,
             load_test_entities: crate::views::load_test::LoadTestEntities::default(),
             load_runs: HashMap::new(),
+            load_result_tasks: HashMap::new(),
             nav: state::navigation::NavState::default(),
             env_rows: Vec::new(),
             git_branch: None,

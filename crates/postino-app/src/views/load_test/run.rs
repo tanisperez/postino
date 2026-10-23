@@ -16,11 +16,17 @@ use postino_load::history::{LoadConfigSummary, RunRecord};
 use postino_load::{LoadConfig, LoadRun, LoadSummary, LoadTarget};
 use postino_runner::Runner;
 
+use crate::state::load_results::Shared;
 use crate::state::load_test::{self, LoadTestFailure, LoadTestStatus, LoadTestTarget};
 use crate::views::root::AppView;
 
 /// How often the dashboard refreshes while a run is in progress.
 const TICK_INTERVAL: Duration = Duration::from_millis(250);
+
+/// How many ticks pass between two background recomputations of the results while a run is in
+/// progress (once a second): the distribution, the statuses and the Requests and Errors tabs
+/// lag at most that much behind the KPIs.
+const REFRESH_EVERY_TICKS: u32 = 4;
 
 /// A load test run in progress: the engine handle, the data needed to save its
 /// [`RunRecord`] once it ends, and the periodic refresh task keeping both alive. Removed from
@@ -33,6 +39,9 @@ pub(crate) struct LoadRunHandle {
     started_at_unix: u64,
     /// The configuration the run started with, for the saved [`RunRecord`].
     config_summary: LoadConfigSummary,
+    /// Ticks since the results were last recomputed in the background, see
+    /// [`AppView::tick_load_test`].
+    ticks_since_refresh: u32,
     /// Kept alive only so it is not dropped (and cancelled) while the run is in progress; see
     /// `views/send.rs`'s `SendingTask::_task` doc comment for the same pattern, including why
     /// dropping this from inside its own body (as the tick loop below does once a run ends) is
@@ -162,6 +171,9 @@ impl AppView {
             load_test.run_reuse_connections = Some(resolved.reuse_connections);
             load_test.run_duration_secs = Some(resolved.duration_secs);
             load_test.run_thresholds = resolved.thresholds.clone();
+            load_test.run_vus = Some(resolved.vus);
+            load_test.run_started_at = Some(started_at_unix);
+            load_test.replace_log(Some(postino_load::SampleLog::new()));
         });
 
         let run = LoadRun::start(config, environment, session_env, runner);
@@ -210,6 +222,7 @@ impl AppView {
                 run,
                 started_at_unix,
                 config_summary,
+                ticks_since_refresh: 0,
                 _tick: tick,
             },
         );
@@ -218,15 +231,38 @@ impl AppView {
 
     /// Reads the run's current metrics and stores them on the tab. Returns whether the run is
     /// still going, so the tick loop above knows when to stop polling and finalize it.
+    ///
+    /// Also appends the requests completed since the last tick to the tab's log, and every
+    /// [`REFRESH_EVERY_TICKS`] ticks recomputes the results from it in the background.
     fn tick_load_test(&mut self, tab_id: &str, cx: &mut Context<Self>) -> bool {
-        let Some(handle) = self.load_runs.get(tab_id) else {
+        let Some(handle) = self.load_runs.get_mut(tab_id) else {
             return false;
         };
         let snapshot = handle.run.snapshot();
         let still_running = !handle.run.is_finished();
-        self.edit_load_test(tab_id, cx, |load_test| {
-            load_test.snapshot = Some(snapshot);
-        });
+        handle.ticks_since_refresh += 1;
+        let refresh = handle.ticks_since_refresh >= REFRESH_EVERY_TICKS;
+        if refresh {
+            handle.ticks_since_refresh = 0;
+        }
+        let Some(load_test) = self
+            .state
+            .tabs
+            .index_of(tab_id)
+            .and_then(|index| self.state.tabs.get_mut(index))
+            .and_then(|tab| tab.load_test_mut())
+        else {
+            return still_running;
+        };
+        load_test.snapshot = Some(snapshot);
+        if let Some(log) = load_test.log.as_mut() {
+            // Copies the log only when a background task still holds the previous one.
+            handle.run.read_samples(Arc::make_mut(&mut log.0));
+        }
+        if refresh {
+            self.refresh_load_results(tab_id, cx);
+        }
+        cx.notify();
         still_running
     }
 
@@ -265,6 +301,7 @@ impl AppView {
         let mut target_label = String::new();
         let mut run_number = None;
         let mut target_labels = Vec::new();
+        let mut thresholds = Vec::new();
         self.edit_load_test(tab_id, cx, |load_test| {
             load_test.status = if summary.stopped_early {
                 LoadTestStatus::Stopped
@@ -272,7 +309,11 @@ impl AppView {
                 LoadTestStatus::Finished
             };
             load_test.snapshot = Some(summary.snapshot.clone());
+            // The same run: keep the generation, so the results computed so far stay shown
+            // until the final ones replace them.
+            load_test.log = Some(Shared::new(summary.log.clone()));
             target_label = load_test.target_label.clone();
+            thresholds = load_test.run_thresholds.clone();
             run_number = load_test.run_number;
             target_labels = load_test
                 .target_rows
@@ -282,6 +323,16 @@ impl AppView {
         });
 
         if let (Some(root), Some(number)) = (root.as_ref(), run_number) {
+            let samples_root = root.clone();
+            let log = summary.log;
+            cx.background_spawn(async move {
+                if let Err(error) =
+                    postino_load::history::save_samples(&samples_root, number, &log)
+                {
+                    log::warn!("could not save the requests of load test run {number}: {error}");
+                }
+            })
+            .detach();
             let record = RunRecord {
                 number,
                 started_at_unix,
@@ -290,7 +341,7 @@ impl AppView {
                 snapshot: summary.snapshot,
                 stopped_early: summary.stopped_early,
                 target_labels,
-                thresholds: Vec::new(),
+                thresholds,
             };
             if let Err(error) = postino_load::history::save(root, &record) {
                 log::warn!("could not save load test run {number}: {error}");
@@ -317,6 +368,7 @@ impl AppView {
             });
         self.edit_load_test(tab_id, cx, |load_test| load_test.compare_with = previous);
         self.refresh_load_test_compare_snapshot(tab_id, cx);
+        self.refresh_load_results(tab_id, cx);
     }
 
     /// Refreshes `tab_id`'s cached history list (the

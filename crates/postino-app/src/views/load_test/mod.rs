@@ -7,6 +7,7 @@
 
 pub(crate) mod config_panel;
 pub(crate) mod dashboard;
+pub(crate) mod results_data;
 pub(crate) mod run;
 
 pub(crate) use config_panel::LoadTestEntities;
@@ -19,6 +20,9 @@ use rust_i18n::t;
 use crate::state::TabKind;
 use postino_load::ThresholdMetric;
 
+use crate::state::load_results::{
+    ChartSeriesKey, RequestColumn, RequestFilter, ResultsTab, StatusFilter,
+};
 use crate::state::load_test::{self, LoadTestTab, LoadTestTarget};
 
 use super::root::AppView;
@@ -428,7 +432,12 @@ impl AppView {
                 .collect();
             load_test.run_reuse_connections = Some(record.config.reuse_connections);
             load_test.run_duration_secs = Some(record.config.duration_secs);
+            load_test.run_thresholds = record.thresholds.clone();
+            load_test.run_vus = Some(record.config.vus);
+            load_test.run_started_at = Some(record.started_at_unix);
             load_test.snapshot = Some(record.snapshot);
+            load_test.log_unavailable = false;
+            load_test.replace_log(None);
             load_test.compare_with = load_test
                 .history
                 .iter()
@@ -436,6 +445,85 @@ impl AppView {
                 .map(|header| header.number);
         });
         self.refresh_load_test_compare_snapshot(tab_id, cx);
+        self.load_load_test_samples(tab_id, number, cx);
+    }
+
+    /// Shows the results tab `results_tab`.
+    pub(crate) fn set_load_test_results_tab(
+        &mut self,
+        tab_id: &str,
+        results_tab: ResultsTab,
+        cx: &mut Context<Self>,
+    ) {
+        self.edit_load_test(tab_id, cx, |load_test| load_test.results_tab = results_tab);
+        self.refresh_load_results(tab_id, cx);
+    }
+
+    /// Selects the chart window `window` (inclusive second indices), or the whole run.
+    pub(crate) fn set_load_test_window(
+        &mut self,
+        tab_id: &str,
+        window: Option<(usize, usize)>,
+        cx: &mut Context<Self>,
+    ) {
+        self.edit_load_test(tab_id, cx, |load_test| load_test.window = window);
+        self.refresh_load_results(tab_id, cx);
+    }
+
+    /// Shows or hides one chart series from the legend.
+    pub(crate) fn toggle_load_test_series(
+        &mut self,
+        tab_id: &str,
+        key: ChartSeriesKey,
+        cx: &mut Context<Self>,
+    ) {
+        self.edit_load_test(tab_id, cx, |load_test| {
+            if let Some(index) = load_test.hidden_series.iter().position(|hidden| *hidden == key) {
+                load_test.hidden_series.remove(index);
+            } else {
+                load_test.hidden_series.push(key);
+            }
+        });
+    }
+
+    /// Applies `f` to the Requests tab's filters, then recomputes its rows.
+    pub(crate) fn edit_load_test_request_filter(
+        &mut self,
+        tab_id: &str,
+        cx: &mut Context<Self>,
+        f: impl FnOnce(&mut RequestFilter),
+    ) {
+        self.edit_load_test(tab_id, cx, |load_test| f(&mut load_test.request_filter));
+        self.refresh_load_results(tab_id, cx);
+    }
+
+    /// Sorts the Requests tab by `column`, flipping the direction when it already is.
+    pub(crate) fn sort_load_test_requests(
+        &mut self,
+        tab_id: &str,
+        column: RequestColumn,
+        cx: &mut Context<Self>,
+    ) {
+        self.edit_load_test(tab_id, cx, |load_test| {
+            load_test.request_sort = load_test.request_sort.toggled(column);
+        });
+        self.refresh_load_results(tab_id, cx);
+    }
+
+    /// The Errors tab's "View requests": the Requests tab filtered to `status`'s kind and to
+    /// errors only.
+    pub(crate) fn view_load_test_error_requests(
+        &mut self,
+        tab_id: &str,
+        status: postino_load::StatusKey,
+        cx: &mut Context<Self>,
+    ) {
+        self.edit_load_test(tab_id, cx, |load_test| {
+            load_test.results_tab = ResultsTab::Requests;
+            load_test.request_filter.status = StatusFilter::for_status(status);
+            load_test.request_filter.only_errors = true;
+        });
+        self.refresh_load_results(tab_id, cx);
     }
 
     /// Renders the active tab's load test view: the config panel on the left, the dashboard on the
