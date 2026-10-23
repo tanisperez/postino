@@ -19,6 +19,7 @@ lsp-types = { workspace = true }
 # readable approximation for `::: body xml`. Both features pull in the base "tree-sitter" feature,
 # which bundles the JSON grammar, so it is not listed again here.
 gpui-kit = { workspace = true, features = ["tree-sitter-javascript", "tree-sitter-html"] }
+chrono = { workspace = true }
 dirs = { workspace = true }
 dunce = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

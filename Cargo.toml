@@ -42,6 +42,8 @@ rust-i18n = "4.2"
 krilla = { version = "0.8.2", default-features = false, features = ["simple-text"] }
 # Glyph advances, to measure text for the PDF layout. Already built by krilla, same version.
 skrifa = "0.42"
+# Local time for the load test reports and the dashboard header. Already built by gpui.
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 [workspace.lints.clippy]
 all = "warn"

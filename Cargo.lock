@@ -4879,6 +4879,7 @@ name = "postino-app"
 version = "0.3.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "dirs 7.0.0",
  "dunce",
  "embed-resource",
