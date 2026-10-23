@@ -13,6 +13,8 @@ postino-http = { path = "../postino-http" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+krilla = { workspace = true }
+skrifa = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
