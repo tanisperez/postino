@@ -11,7 +11,8 @@
 //!
 //! Besides the aggregates of a [`LoadSnapshot`], a run keeps a [`SampleLog`], one compact record
 //! per completed request. [`LoadRun::read_samples`] copies the new part of it while the run goes
-//! on and [`LoadSummary::log`] holds all of it at the end.
+//! on, [`LoadSummary::log`] holds all of it at the end, [`window::window_stats`] computes the
+//! statistics of any time window of it, with the histogram, the statuses and the error groups.
 //!
 //! # Concurrency model
 //!
@@ -57,6 +58,7 @@ mod run;
 pub mod samples;
 mod status;
 mod threshold;
+pub mod window;
 
 pub use compare::{Delta, DeltaUnit, compare};
 pub use config::{LoadConfig, LoadTarget};
@@ -67,3 +69,4 @@ pub use status::StatusKey;
 pub use threshold::{
     Threshold, ThresholdInputs, ThresholdMetric, ThresholdOutcome, evaluate as evaluate_thresholds,
 };
+pub use window::{ErrorGroup, LatencyHistogram, WindowStats, window_stats};
