@@ -312,7 +312,11 @@ fn render_header(
         subtitle.push(connection_mode_label(reused));
     }
     if let Some(started) = load_test.run_started_at {
-        subtitle.push(relative_day(started as i64, unix_now() as i64));
+        subtitle.push(format!(
+            "{} {}",
+            relative_day(started as i64, unix_now() as i64),
+            crate::state::load_report::local_time(started as i64)
+        ));
     }
 
     let mut row = h_flex()
