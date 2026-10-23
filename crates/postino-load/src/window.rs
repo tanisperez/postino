@@ -65,7 +65,7 @@ const NICE_WIDTHS_US: [u32; 31] = [
     500_000_000,
 ];
 
-/// The latency distribution of a window: [`HISTOGRAM_BUCKETS`] buckets of `bucket_us` each, the
+/// The latency distribution of a window: 26 buckets of `bucket_us` each, the
 /// last one open ended.
 ///
 /// The width adapts to the window: it is the smallest round width such that 25 buckets reach
