@@ -328,8 +328,7 @@ impl AppView {
             let samples_root = root.clone();
             let log = summary.log;
             cx.background_spawn(async move {
-                if let Err(error) =
-                    postino_load::history::save_samples(&samples_root, number, &log)
+                if let Err(error) = postino_load::history::save_samples(&samples_root, number, &log)
                 {
                     log::warn!("could not save the requests of load test run {number}: {error}");
                 }

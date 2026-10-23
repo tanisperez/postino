@@ -45,6 +45,11 @@ pub(crate) struct LoadTestEntities {
     think_time_ms: Option<Entity<InputState>>,
     /// One input per "Thresholds" row, kept in step with the rows by [`Self::sync`].
     thresholds: Vec<(ThresholdMetric, Entity<InputState>)>,
+    /// The results' Requests tab search box.
+    pub(crate) request_search: Option<Entity<InputState>>,
+    /// The scroll position of the results' Requests table, reset to the top when its filters or
+    /// sort change.
+    pub(crate) requests_scroll: UniformListScrollHandle,
 }
 
 impl LoadTestEntities {
@@ -53,12 +58,13 @@ impl LoadTestEntities {
     fn sync(
         &mut self,
         tab_id: &str,
-        config: &LoadTestConfigInputs,
+        load_test: &LoadTestTab,
         window: &mut Window,
         cx: &mut Context<AppView>,
     ) {
+        let config = &load_test.config;
         if self.built_for.as_deref() != Some(tab_id) {
-            self.build(tab_id, config, window, cx);
+            self.build(tab_id, config, &load_test.request_filter.query, window, cx);
         }
         self.sync_thresholds(tab_id, &config.thresholds, window, cx);
     }
@@ -101,10 +107,28 @@ impl LoadTestEntities {
         &mut self,
         tab_id: &str,
         config: &LoadTestConfigInputs,
+        query: &str,
         window: &mut Window,
         cx: &mut Context<AppView>,
     ) {
         self.thresholds.clear();
+        self.requests_scroll = UniformListScrollHandle::new();
+        let search = cx.new(|cx| {
+            InputState::new(window, cx).placeholder(t!("load_test.requests.search").into_owned())
+        });
+        search.update(cx, |state, cx| {
+            state.set_value(query.to_string(), window, cx);
+        });
+        let search_tab_id = tab_id.to_string();
+        cx.subscribe(&search, move |view, entity, event: &InputEvent, cx| {
+            if !matches!(event, InputEvent::Change) {
+                return;
+            }
+            let query = entity.read(cx).value().to_string();
+            view.edit_load_test_request_filter(&search_tab_id, cx, |filter| filter.query = query);
+        })
+        .detach();
+        self.request_search = Some(search);
         self.vus = Some(build_field(
             tab_id,
             &config.vus,
@@ -179,8 +203,7 @@ impl AppView {
         else {
             return div().into_any_element();
         };
-        self.load_test_entities
-            .sync(tab_id, &load_test.config, window, cx);
+        self.load_test_entities.sync(tab_id, &load_test, window, cx);
 
         let palette = cx.palette();
         let mono_font = cx.theme().mono_font_family.clone();

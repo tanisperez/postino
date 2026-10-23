@@ -7,9 +7,12 @@
 
 pub(crate) mod config_panel;
 pub(crate) mod dashboard;
+pub(crate) mod errors_tab;
 pub(crate) mod export;
+pub(crate) mod requests_tab;
 pub(crate) mod results_data;
 pub(crate) mod run;
+pub(crate) mod summary;
 
 pub(crate) use config_panel::LoadTestEntities;
 
@@ -481,7 +484,11 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         self.edit_load_test(tab_id, cx, |load_test| {
-            if let Some(index) = load_test.hidden_series.iter().position(|hidden| *hidden == key) {
+            if let Some(index) = load_test
+                .hidden_series
+                .iter()
+                .position(|hidden| *hidden == key)
+            {
                 load_test.hidden_series.remove(index);
             } else {
                 load_test.hidden_series.push(key);
@@ -549,7 +556,7 @@ impl AppView {
             .size_full()
             .min_h_0()
             .child(self.render_load_test_config_panel(&tab_id, window, cx))
-            .child(self.render_load_test_dashboard(&tab_id, cx))
+            .child(self.render_load_test_dashboard(&tab_id, window, cx))
             .into_any_element()
     }
 }

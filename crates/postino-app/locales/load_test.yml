@@ -485,3 +485,13 @@ _version: 2
   es: "Umbrales"
   gl: "Limiares"
   it: "Soglie"
+"load_test.requests.unavailable":
+  en: "Runs saved by older versions of Postino have no per request detail."
+  es: "Las ejecuciones guardadas por versiones anteriores de Postino no tienen el detalle de cada petición."
+  gl: "As execucións gardadas por versións anteriores de Postino non teñen o detalle de cada petición."
+  it: "Le esecuzioni salvate da versioni precedenti di Postino non hanno il dettaglio di ogni richiesta."
+"load_test.requests.loading":
+  en: "Loading the requests..."
+  es: "Cargando las peticiones..."
+  gl: "Cargando as peticións..."
+  it: "Caricamento delle richieste..."

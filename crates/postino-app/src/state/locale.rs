@@ -8,10 +8,11 @@
 pub use telaio_app::language::*;
 
 /// The translation of the plural keys `<key>.one` and `<key>.other` for `count`, with `count`
-/// available in the text as `%{count}`.
+/// available in the text as `%{count}`, formatted for the current language (`1,234`).
 pub fn plural(key: &str, count: usize) -> String {
     let key = plural_key(key, count);
-    rust_i18n::t!(key.as_str(), count = count).to_string()
+    let count_text = super::number::format_integer(count as u64);
+    rust_i18n::t!(key.as_str(), count = count_text).to_string()
 }
 
 #[cfg(test)]

@@ -572,9 +572,10 @@ impl LoadTestTab {
 
     /// Rebuilds [`Self::chart`] from the current snapshot and compared run.
     pub fn refresh_chart(&mut self) {
-        self.chart = self.snapshot.as_ref().map(|snapshot| {
-            Shared::new(ChartData::new(snapshot, self.compare_snapshot.as_ref()))
-        });
+        self.chart = self
+            .snapshot
+            .as_ref()
+            .map(|snapshot| Shared::new(ChartData::new(snapshot, self.compare_snapshot.as_ref())));
     }
 
     /// The metrics that have no threshold row yet, for the "Add threshold" menu.

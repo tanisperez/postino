@@ -14,7 +14,8 @@ use super::number::{format_decimal, format_integer};
 /// How many intervals a chart y axis is divided into: five labels from 0 to the top.
 pub const AXIS_DIVISIONS: usize = 4;
 
-/// How many intervals the chart's x axis is divided into: seven labels from 0 to the duration.
+/// How many intervals the chart's x axis is divided into, at most: up to seven labels from 0 to
+/// the duration.
 pub const X_DIVISIONS: usize = 6;
 
 /// One y axis of the results chart: its top value and its labels from the bottom (0) up.
@@ -98,13 +99,25 @@ fn format_axis_number(value: f64) -> String {
     format_decimal(value, decimals)
 }
 
-/// The x axis labels of a run of `duration_secs` seconds: [`X_DIVISIONS`] + 1 labels from `0s`
-/// to the duration, whole seconds.
+/// The x axis labels of a run of `duration_secs` seconds, evenly spaced from `0s` to the
+/// duration: the most intervals, up to [`X_DIVISIONS`], whose step is a round number of seconds
+/// (a 20 s run gets `0s, 5s, ... 20s`), else the most that land on whole seconds, else
+/// [`X_DIVISIONS`] rounded labels.
 #[must_use]
 pub fn x_labels(duration_secs: u64) -> Vec<String> {
-    (0..=X_DIVISIONS as u64)
+    let dividing = |divisions: &u64| duration_secs.is_multiple_of(*divisions);
+    let nice_step = |divisions: &u64| {
+        let step = duration_secs / divisions;
+        [1, 2, 5, 10, 15, 20, 30].contains(&step) || step.is_multiple_of(60)
+    };
+    let divisions = (2..=X_DIVISIONS as u64)
+        .rev()
+        .find(|divisions| dividing(divisions) && nice_step(divisions))
+        .or_else(|| (2..=X_DIVISIONS as u64).rev().find(dividing))
+        .unwrap_or(X_DIVISIONS as u64);
+    (0..=divisions)
         .map(|index| {
-            let secs = duration_secs * index / X_DIVISIONS as u64;
+            let secs = (duration_secs * index + divisions / 2) / divisions;
             format!("{}s", format_integer(secs))
         })
         .collect()
@@ -164,6 +177,21 @@ pub fn format_size(bytes: u64) -> String {
         format!("{} KB", format_decimal(bytes as f64 / 1024.0, 1))
     } else {
         format!("{} MB", format_decimal(bytes as f64 / (1024.0 * 1024.0), 1))
+    }
+}
+
+/// The part of `url` the Requests table shows: its path and query, without the scheme and host
+/// every request of a run usually shares (`/users?page=2`). A URL without a scheme is shown
+/// whole.
+#[must_use]
+pub fn url_path(url: &str) -> &str {
+    let Some(scheme_end) = url.find("://") else {
+        return url;
+    };
+    let after = &url[scheme_end + 3..];
+    match after.find(['/', '?']) {
+        Some(index) => &after[index..],
+        None => "/",
     }
 }
 
@@ -442,12 +470,17 @@ pub fn filter_requests(
         .enumerate()
         .filter(|(_, sample)| {
             let second = sample.elapsed_ms / 1_000;
-            window.as_ref().is_none_or(|window| window.contains(&second))
+            window
+                .as_ref()
+                .is_none_or(|window| window.contains(&second))
                 && filter.status.matches(sample.status)
                 && (!filter.only_errors || sample.is_error)
                 && filter.vu.is_none_or(|vu| sample.vu + 1 == vu)
                 && min_latency_us.is_none_or(|min| sample.latency_us >= min)
-                && (url_matches.get(sample.url as usize).copied().unwrap_or(false)
+                && (url_matches
+                    .get(sample.url as usize)
+                    .copied()
+                    .unwrap_or(false)
                     || name_matches
                         .get(sample.target as usize)
                         .copied()
@@ -571,23 +604,19 @@ impl ChartData {
         let p90 = latency(|point| point.p90);
         let p99 = latency(|point| point.p99);
         let baseline = compare.and_then(|compare| {
-            compare
-                .series
-                .iter()
-                .any(|point| point.p99 > 0)
-                .then(|| {
-                    compare
-                        .series
-                        .iter()
-                        .map(|point| {
-                            if point.rps <= 0.0 {
-                                f64::NAN
-                            } else {
-                                f64::from(point.p99) / 1_000.0
-                            }
-                        })
-                        .collect::<Arc<[f64]>>()
-                })
+            compare.series.iter().any(|point| point.p99 > 0).then(|| {
+                compare
+                    .series
+                    .iter()
+                    .map(|point| {
+                        if point.rps <= 0.0 {
+                            f64::NAN
+                        } else {
+                            f64::from(point.p99) / 1_000.0
+                        }
+                    })
+                    .collect::<Arc<[f64]>>()
+            })
         });
         let finite_max = |values: &[f64]| {
             values
@@ -727,11 +756,13 @@ mod tests {
     }
 
     #[test]
-    fn x_labels_split_the_run_in_six() {
+    fn x_labels_land_on_whole_seconds() {
         assert_eq!(
             x_labels(60),
             vec!["0s", "10s", "20s", "30s", "40s", "50s", "60s"]
         );
+        assert_eq!(x_labels(20), vec!["0s", "5s", "10s", "15s", "20s"]);
+        assert_eq!(x_labels(7).len(), 7);
     }
 
     #[test]
@@ -868,7 +899,10 @@ mod tests {
 
     #[test]
     fn latency_options_are_nice_values_below_the_percentiles() {
-        assert_eq!(latency_filter_options(9_000, 31_000, 62_000), vec![5, 25, 50]);
+        assert_eq!(
+            latency_filter_options(9_000, 31_000, 62_000),
+            vec![5, 25, 50]
+        );
         assert_eq!(latency_filter_options(400, 1_200, 1_900), vec![1]);
     }
 
@@ -912,7 +946,23 @@ mod tests {
         }
         let with_old_baseline = ChartData::new(&snapshot, Some(&old));
         assert!(with_old_baseline.baseline.is_none());
-        assert!(ChartData::new(&old, None).p99.iter().all(|value| value.is_nan()));
+        assert!(
+            ChartData::new(&old, None)
+                .p99
+                .iter()
+                .all(|value| value.is_nan())
+        );
+    }
+
+    #[test]
+    fn url_paths_drop_the_scheme_and_host() {
+        assert_eq!(
+            url_path("http://127.0.0.1:8080/users?page=2"),
+            "/users?page=2"
+        );
+        assert_eq!(url_path("https://api.example.com"), "/");
+        assert_eq!(url_path("https://api.example.com?q=1"), "?q=1");
+        assert_eq!(url_path("not a url"), "not a url");
     }
 
     #[test]

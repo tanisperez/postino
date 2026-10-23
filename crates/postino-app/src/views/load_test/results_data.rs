@@ -110,9 +110,9 @@ impl AppView {
             let done_key = key.clone();
             let task = cx.spawn(async move |weak, cx| {
                 let rows = cx
-                    .background_spawn(async move {
-                        filter_requests(&log, range, &filter, sort, &names)
-                    })
+                    .background_spawn(
+                        async move { filter_requests(&log, range, &filter, sort, &names) },
+                    )
                     .await;
                 let _ = weak.update(cx, |view, cx| {
                     if let Some(tasks) = view.load_result_tasks.get_mut(&tab_id) {
@@ -148,9 +148,7 @@ impl AppView {
         let tab_id_owned = tab_id.to_string();
         let task = cx.spawn(async move |weak, cx| {
             let loaded = cx
-                .background_spawn(async move {
-                    postino_load::history::load_samples(&root, number)
-                })
+                .background_spawn(async move { postino_load::history::load_samples(&root, number) })
                 .await;
             let _ = weak.update(cx, |view, cx| {
                 if let Some(tasks) = view.load_result_tasks.get_mut(&tab_id_owned) {
@@ -159,7 +157,9 @@ impl AppView {
                 let log = match loaded {
                     Ok(log) => log,
                     Err(error) => {
-                        log::warn!("could not load the requests of load test run {number}: {error}");
+                        log::warn!(
+                            "could not load the requests of load test run {number}: {error}"
+                        );
                         None
                     }
                 };
