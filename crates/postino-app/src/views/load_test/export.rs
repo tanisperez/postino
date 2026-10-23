@@ -431,3 +431,136 @@ impl AppView {
         .detach();
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::expect_used)]
+mod tests {
+    use super::*;
+    use postino_core::Method;
+    use postino_load::{SampleRecord, SecondPoint, StatusKey};
+    // `gpui_kit::*` brings gpui's own `#[test]`, which needs a gpui test context.
+    use std::prelude::v1::test;
+
+    /// A finished run of 6 seconds with two requests per second, the last second all errors.
+    fn finished_tab() -> LoadTestTab {
+        let mut log = SampleLog::new();
+        let url = log.intern("http://localhost/users");
+        for second in 0..6u32 {
+            for half in 0..2 {
+                let failed = second == 5;
+                log.push(SampleRecord {
+                    elapsed_ms: second * 1_000 + half * 500,
+                    vu: half,
+                    target: 0,
+                    url,
+                    status: if failed {
+                        StatusKey::Code(503)
+                    } else {
+                        StatusKey::Code(200)
+                    },
+                    latency_us: 20_000,
+                    size: 100,
+                    is_error: failed,
+                });
+            }
+        }
+        let stats = window_stats(&log, 1, 6, None, 6.0);
+        let mut snapshot = LoadSnapshot {
+            elapsed: std::time::Duration::from_secs(6),
+            active_vus: 0,
+            total: stats.total,
+            rps: stats.rps,
+            p50: stats.p50,
+            p95: stats.p95,
+            p99: stats.p99,
+            error_rate: stats.error_rate,
+            series: (0..6)
+                .map(|_| SecondPoint {
+                    rps: 2.0,
+                    vus: 2,
+                    p50: 20_000,
+                    p90: 20_000,
+                    p95: 20_000,
+                    p99: 20_000,
+                })
+                .collect(),
+            histogram: [0; 26],
+            status_counts: stats.statuses.clone(),
+            per_target: stats.per_target.clone(),
+            error_examples: Vec::new(),
+        };
+        snapshot.histogram[2] = stats.total;
+        let mut tab = LoadTestTab::for_request("users.postino".to_string(), "users".to_string());
+        tab.status = LoadTestStatus::Finished;
+        tab.run_number = Some(3);
+        tab.run_duration_secs = Some(6);
+        tab.target_rows = vec![(Method::Get, "users".to_string())];
+        tab.snapshot = Some(snapshot);
+        tab.replace_log(Some(log));
+        tab
+    }
+
+    #[test]
+    fn nothing_is_exported_while_running_or_without_results() {
+        let mut tab = finished_tab();
+        assert!(ExportSource::from_tab(&tab, 30, None).is_some());
+        tab.status = LoadTestStatus::Running;
+        assert!(ExportSource::from_tab(&tab, 30, None).is_none());
+        assert!(ExportSource::from_tab(&LoadTestTab::unset(), 30, None).is_none());
+    }
+
+    #[test]
+    fn the_file_name_and_range_follow_the_window() {
+        let mut tab = finished_tab();
+        tab.window = Some((2, 4));
+        tab.export_window_only = false;
+        let whole = ExportSource::from_tab(&tab, 30, None).expect("a finished run");
+        assert_eq!(whole.file_name(ExportFormat::Markdown), "run-0003.md");
+        assert_eq!(whole.range(), None);
+
+        tab.export_window_only = true;
+        let part = ExportSource::from_tab(&tab, 30, None).expect("a finished run");
+        assert_eq!(part.file_name(ExportFormat::Pdf), "run-0003-2-5s.pdf");
+        assert_eq!(part.range(), Some(2..5));
+        assert_eq!(part.covered_stats().total, 6);
+
+        // Without the requests there is no window to cut.
+        tab.replace_log(None);
+        tab.window = Some((2, 4));
+        let no_log = ExportSource::from_tab(&tab, 30, None).expect("a finished run");
+        assert_eq!(no_log.range(), None);
+        assert_eq!(no_log.file_name(ExportFormat::Csv), "run-0003.csv");
+        assert_eq!(no_log.covered_stats().total, 12);
+    }
+
+    #[test]
+    fn every_format_renders() {
+        let tab = finished_tab();
+        let source = ExportSource::from_tab(&tab, 30, None).expect("a finished run");
+        let stats = source.covered_stats();
+        assert_eq!(stats.total, 12);
+        let report = source.report(&stats);
+        assert_eq!(report.title, "Run #3 \u{b7} users");
+        assert_eq!(report.errors.len(), 1);
+
+        let markdown = source
+            .render(ExportFormat::Markdown, Some(&report), &stats)
+            .expect("markdown");
+        assert!(String::from_utf8_lossy(&markdown).contains("Run #3"));
+
+        let pdf = source
+            .render(ExportFormat::Pdf, Some(&report), &stats)
+            .expect("pdf");
+        assert!(pdf.starts_with(b"%PDF"));
+
+        let csv = source.render(ExportFormat::Csv, None, &stats).expect("csv");
+        assert_eq!(String::from_utf8_lossy(&csv).lines().count(), 13);
+
+        let json = source
+            .render(ExportFormat::Json, None, &stats)
+            .expect("json");
+        let json: serde_json::Value = serde_json::from_slice(&json).expect("valid json");
+        assert_eq!(json["run"]["number"], 3);
+        assert_eq!(json["requests"].as_array().map(Vec::len), Some(12));
+    }
+}
