@@ -11,6 +11,7 @@ use postino_core::Method;
 pub use telaio_ui::{Palette, PaletteExt, Tone};
 
 use crate::state::env_color::EnvColor;
+use crate::state::load_results::ChartSeriesKey;
 
 /// The method colors of one theme mode.
 struct MethodTokens {
@@ -27,6 +28,22 @@ const LIGHT: MethodTokens = MethodTokens {
     put: "#1c6fb0",
     patch: "#7a4fd6",
     delete: "#cf3535",
+};
+
+/// The load test chart's latency series colors that are not palette tokens (p90 uses `warning`).
+struct ChartTokens {
+    p50: &'static str,
+    p99: &'static str,
+}
+
+const CHART_LIGHT: ChartTokens = ChartTokens {
+    p50: "#1f8f80",
+    p99: "#cf5b3a",
+};
+
+const CHART_DARK: ChartTokens = ChartTokens {
+    p50: "#5fc9b8",
+    p99: "#f08060",
 };
 
 const DARK: MethodTokens = MethodTokens {
@@ -72,6 +89,11 @@ pub trait PostinoColors {
     /// mode's [`super::syntax`] theme, or `fg` when the theme leaves it out. For views that draw
     /// code by hand, such as the Settings font preview; code editors get the theme itself.
     fn syntax_color(&self, capture: &str) -> Hsla;
+
+    /// The color of one load test chart series: `accent_text` for requests per second, two
+    /// chart colors of Postino's own for p50 and p99 (the compared run's p99 too, drawn dashed),
+    /// `warning` for p90 and `fg_subtle` for the virtual users area.
+    fn series_color(&self, key: ChartSeriesKey) -> Hsla;
 }
 
 impl PostinoColors for Palette {
@@ -110,6 +132,17 @@ impl PostinoColors for Palette {
             super::syntax::LIGHT
         };
         theme.get(capture).map_or(self.fg, |style| style.hsla())
+    }
+
+    fn series_color(&self, key: ChartSeriesKey) -> Hsla {
+        let tokens = if self.dark { &CHART_DARK } else { &CHART_LIGHT };
+        match key {
+            ChartSeriesKey::Vus => self.fg_subtle,
+            ChartSeriesKey::Rps => self.accent_text,
+            ChartSeriesKey::P50 => telaio_ui::palette::hex(tokens.p50),
+            ChartSeriesKey::P90 => self.warning,
+            ChartSeriesKey::P99 | ChartSeriesKey::Baseline => telaio_ui::palette::hex(tokens.p99),
+        }
     }
 }
 
@@ -150,6 +183,16 @@ mod tests {
         assert_eq!(light.syntax_color("operator"), light.fg);
         let dark = Palette::default_dark();
         assert_eq!(to_hex(dark.syntax_color("property")), "#a3a9ff");
+    }
+
+    #[test]
+    fn series_colors_follow_the_mode() {
+        let dark = Palette::default_dark();
+        assert_eq!(to_hex(dark.series_color(ChartSeriesKey::P50)), "#5fc9b8");
+        assert_eq!(to_hex(dark.series_color(ChartSeriesKey::P99)), "#f08060");
+        assert_eq!(dark.series_color(ChartSeriesKey::Rps), dark.accent_text);
+        let light = Palette::default_light();
+        assert_eq!(to_hex(light.series_color(ChartSeriesKey::P50)), "#1f8f80");
     }
 
     #[test]

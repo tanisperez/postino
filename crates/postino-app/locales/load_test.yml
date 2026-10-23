@@ -181,10 +181,10 @@ _version: 2
   gl: "Total"
   it: "Totale"
 "load_test.chart.title":
-  en: "Throughput and latency"
-  es: "Rendimiento y latencia"
-  gl: "Rendemento e latencia"
-  it: "Throughput e latenza"
+  en: "Performance over time"
+  es: "Rendimiento en el tiempo"
+  gl: "Rendemento no tempo"
+  it: "Prestazioni nel tempo"
 "load_test.distribution.title":
   en: "Latency distribution"
   es: "Distribución de latencia"
@@ -250,3 +250,238 @@ _version: 2
   es: "Una ejecución reutilizó conexiones y la otra no."
   gl: "Unha execución reutilizou conexións e a outra non."
   it: "Un'esecuzione ha riutilizzato le connessioni e l'altra no."
+"load_test.results.summary":
+  en: "Summary"
+  es: "Resumen"
+  gl: "Resumo"
+  it: "Riepilogo"
+"load_test.results.requests":
+  en: "Requests"
+  es: "Peticiones"
+  gl: "Peticións"
+  it: "Richieste"
+"load_test.results.errors":
+  en: "Errors"
+  es: "Errores"
+  gl: "Erros"
+  it: "Errori"
+"load_test.verdict.passed":
+  en: "Thresholds passed"
+  es: "Umbrales superados"
+  gl: "Limiares superados"
+  it: "Soglie rispettate"
+"load_test.verdict.failed":
+  en: "Not passed · %{failed} of %{total}"
+  es: "No superada · %{failed} de %{total}"
+  gl: "Non superada · %{failed} de %{total}"
+  it: "Non superato · %{failed} su %{total}"
+"load_test.kpi.goal":
+  en: "goal %{limit}"
+  es: "objetivo %{limit}"
+  gl: "obxectivo %{limit}"
+  it: "obiettivo %{limit}"
+"load_test.chart.hint_drag":
+  en: "Drag to select a window"
+  es: "Arrastra para seleccionar un tramo"
+  gl: "Arrastra para seleccionar un tramo"
+  it: "Trascina per selezionare un intervallo"
+"load_test.chart.hint_clear":
+  en: "Click to clear the window"
+  es: "Clic para quitar el tramo"
+  gl: "Preme para quitar o tramo"
+  it: "Clic per rimuovere l'intervallo"
+"load_test.chart.goal":
+  en: "%{metric} goal %{limit}"
+  es: "%{metric} objetivo %{limit}"
+  gl: "%{metric} obxectivo %{limit}"
+  it: "%{metric} obiettivo %{limit}"
+"load_test.window.chip":
+  en: "Window %{range}"
+  es: "Tramo %{range}"
+  gl: "Tramo %{range}"
+  it: "Intervallo %{range}"
+"load_test.distribution.caption":
+  en: "requests per %{width} interval"
+  es: "peticiones por intervalo de %{width}"
+  gl: "peticións por intervalo de %{width}"
+  it: "richieste per intervallo di %{width}"
+"load_test.table.per_request":
+  en: "Per request"
+  es: "Por petición"
+  gl: "Por petición"
+  it: "Per richiesta"
+"load_test.requests.search":
+  en: "Search URL or request"
+  es: "Buscar URL o petición"
+  gl: "Buscar URL ou petición"
+  it: "Cerca URL o richiesta"
+"load_test.requests.all":
+  en: "All"
+  es: "Todos"
+  gl: "Todos"
+  it: "Tutti"
+"load_test.requests.latency":
+  en: "Latency"
+  es: "Latencia"
+  gl: "Latencia"
+  it: "Latenza"
+"load_test.requests.any":
+  en: "Any"
+  es: "Cualquiera"
+  gl: "Calquera"
+  it: "Qualsiasi"
+"load_test.requests.only_errors":
+  en: "Only errors"
+  es: "Solo errores"
+  gl: "Só erros"
+  it: "Solo errori"
+"load_test.requests.count.one":
+  en: "%{count} request"
+  es: "%{count} petición"
+  gl: "%{count} petición"
+  it: "%{count} richiesta"
+"load_test.requests.count.other":
+  en: "%{count} requests"
+  es: "%{count} peticiones"
+  gl: "%{count} peticións"
+  it: "%{count} richieste"
+"load_test.requests.sorted_by":
+  en: "sorted by %{column}"
+  es: "ordenadas por %{column}"
+  gl: "ordenadas por %{column}"
+  it: "ordinate per %{column}"
+"load_test.requests.time":
+  en: "Time"
+  es: "Tiempo"
+  gl: "Tempo"
+  it: "Tempo"
+"load_test.requests.status":
+  en: "Status"
+  es: "Estado"
+  gl: "Estado"
+  it: "Stato"
+"load_test.requests.size":
+  en: "Size"
+  es: "Tamaño"
+  gl: "Tamaño"
+  it: "Dimensione"
+"load_test.requests.empty":
+  en: "No request matches the filters"
+  es: "Ninguna petición coincide con los filtros"
+  gl: "Ningunha petición coincide cos filtros"
+  it: "Nessuna richiesta corrisponde ai filtri"
+"load_test.errors.view_requests":
+  en: "View requests"
+  es: "Ver peticiones"
+  gl: "Ver peticións"
+  it: "Vedi richieste"
+"load_test.errors.first_last":
+  en: "First · last"
+  es: "Primera · última"
+  gl: "Primeira · última"
+  it: "Prima · ultima"
+"load_test.errors.affected":
+  en: "Affected requests"
+  es: "Peticiones afectadas"
+  gl: "Peticións afectadas"
+  it: "Richieste interessate"
+"load_test.errors.none_in_window":
+  en: "No errors in this window"
+  es: "Sin errores en este tramo"
+  gl: "Sen erros neste tramo"
+  it: "Nessun errore in questo intervallo"
+"load_test.errors.none":
+  en: "No errors"
+  es: "Sin errores"
+  gl: "Sen erros"
+  it: "Nessun errore"
+"load_test.errors.timeout_title":
+  en: "No response in %{secs} s"
+  es: "Sin respuesta en %{secs} s"
+  gl: "Sen resposta en %{secs} s"
+  it: "Nessuna risposta in %{secs} s"
+"load_test.errors.failed_title":
+  en: "Request failed"
+  es: "La petición falló"
+  gl: "A petición fallou"
+  it: "Richiesta non riuscita"
+"load_test.compare.none":
+  en: "No comparison"
+  es: "Sin comparación"
+  gl: "Sen comparación"
+  it: "Nessun confronto"
+"load_test.compare.nothing":
+  en: "none"
+  es: "nada"
+  gl: "nada"
+  it: "nessuna"
+"load_test.compare.compared_with":
+  en: "Compared with %{run}"
+  es: "Comparada con %{run}"
+  gl: "Comparada con %{run}"
+  it: "Confrontata con %{run}"
+"load_test.export.button":
+  en: "Export"
+  es: "Exportar"
+  gl: "Exportar"
+  it: "Esporta"
+"load_test.export.markdown":
+  en: "Summary, thresholds, comparison and per request table"
+  es: "Resumen, umbrales, comparación y tabla por petición"
+  gl: "Resumo, limiares, comparación e táboa por petición"
+  it: "Riepilogo, soglie, confronto e tabella per richiesta"
+"load_test.export.pdf":
+  en: "Report with charts, ready to attach"
+  es: "Informe con gráficas, listo para adjuntar"
+  gl: "Informe con gráficas, listo para anexar"
+  it: "Report con grafici, pronto da allegare"
+"load_test.export.csv.one":
+  en: "One row per request · %{count} row"
+  es: "Una fila por petición · %{count} fila"
+  gl: "Unha fila por petición · %{count} fila"
+  it: "Una riga per richiesta · %{count} riga"
+"load_test.export.csv.other":
+  en: "One row per request · %{count} rows"
+  es: "Una fila por petición · %{count} filas"
+  gl: "Unha fila por petición · %{count} filas"
+  it: "Una riga per richiesta · %{count} righe"
+"load_test.export.json":
+  en: "Time series, histogram, errors and requests"
+  es: "Serie temporal, histograma, errores y peticiones"
+  gl: "Serie temporal, histograma, erros e peticións"
+  it: "Serie temporale, istogramma, errori e richieste"
+"load_test.export.only_window":
+  en: "Only the window %{range}"
+  es: "Solo el tramo %{range}"
+  gl: "Só o tramo %{range}"
+  it: "Solo l'intervallo %{range}"
+"load_test.export.copy_markdown":
+  en: "Copy summary as Markdown"
+  es: "Copiar resumen como Markdown"
+  gl: "Copiar resumo como Markdown"
+  it: "Copia riepilogo come Markdown"
+"load_test.export.saved":
+  en: "Exported to %{path}"
+  es: "Exportado a %{path}"
+  gl: "Exportado a %{path}"
+  it: "Esportato in %{path}"
+"load_test.export.copied":
+  en: "Summary copied as Markdown"
+  es: "Resumen copiado como Markdown"
+  gl: "Resumo copiado como Markdown"
+  it: "Riepilogo copiato come Markdown"
+"load_test.export.failed":
+  en: "Could not export: %{error}"
+  es: "No se pudo exportar: %{error}"
+  gl: "Non se puido exportar: %{error}"
+  it: "Impossibile esportare: %{error}"
+"load_test.report.generated_by":
+  en: "Generated by Postino %{version} on %{date}"
+  es: "Generado por Postino %{version} el %{date}"
+  gl: "Xerado por Postino %{version} o %{date}"
+  it: "Generato da Postino %{version} il %{date}"
+"load_test.report.thresholds":
+  en: "Thresholds"
+  es: "Umbrales"
+  gl: "Limiares"
+  it: "Soglie"
