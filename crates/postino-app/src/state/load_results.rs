@@ -5,7 +5,9 @@
 use std::ops::Range;
 use std::sync::Arc;
 
-use postino_load::{SampleLog, SampleRecord, StatusKey};
+use postino_load::{
+    LoadSnapshot, SampleLog, SampleRecord, StatusKey, TargetStats, ThresholdInputs, WindowStats,
+};
 
 use super::number::{format_decimal, format_integer};
 
@@ -521,6 +523,182 @@ fn nice_floor(ms: f64) -> Option<u32> {
         .map(|value| value as u32)
 }
 
+/// The chart's series, built once whenever the run's per second data or the compared run
+/// changes, not on every render: one value per second, shared with the chart as `Arc`s.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChartData {
+    /// Active virtual users.
+    pub vus: Arc<[f64]>,
+    /// Requests per second.
+    pub rps: Arc<[f64]>,
+    /// Median latency, in milliseconds.
+    pub p50: Arc<[f64]>,
+    /// 90th percentile latency, in milliseconds.
+    pub p90: Arc<[f64]>,
+    /// 99th percentile latency, in milliseconds.
+    pub p99: Arc<[f64]>,
+    /// The compared run's 99th percentile, in milliseconds, when it has one per second.
+    pub baseline: Option<Arc<[f64]>>,
+    /// The largest requests per second.
+    pub max_rps: f64,
+    /// The largest latency of any series, in milliseconds.
+    pub max_ms: f64,
+    /// The largest virtual user count.
+    pub max_vus: f64,
+}
+
+impl ChartData {
+    /// The chart data of `snapshot`'s per second series, with `compare`'s p99 as the baseline.
+    /// A second with no request is a gap (`NAN`) in the latency series. Runs saved before p50,
+    /// p90 and p99 were kept per second have them at zero everywhere: those series are gaps too.
+    #[must_use]
+    pub fn new(snapshot: &LoadSnapshot, compare: Option<&LoadSnapshot>) -> Self {
+        let series = &snapshot.series;
+        let latency = |pick: fn(&postino_load::SecondPoint) -> u32| -> Arc<[f64]> {
+            let any = series.iter().any(|point| pick(point) > 0);
+            series
+                .iter()
+                .map(|point| {
+                    if !any || point.rps <= 0.0 {
+                        f64::NAN
+                    } else {
+                        f64::from(pick(point)) / 1_000.0
+                    }
+                })
+                .collect()
+        };
+        let p50 = latency(|point| point.p50);
+        let p90 = latency(|point| point.p90);
+        let p99 = latency(|point| point.p99);
+        let baseline = compare.and_then(|compare| {
+            compare
+                .series
+                .iter()
+                .any(|point| point.p99 > 0)
+                .then(|| {
+                    compare
+                        .series
+                        .iter()
+                        .map(|point| {
+                            if point.rps <= 0.0 {
+                                f64::NAN
+                            } else {
+                                f64::from(point.p99) / 1_000.0
+                            }
+                        })
+                        .collect::<Arc<[f64]>>()
+                })
+        });
+        let finite_max = |values: &[f64]| {
+            values
+                .iter()
+                .copied()
+                .filter(|value| value.is_finite())
+                .fold(0.0, f64::max)
+        };
+        let max_ms = [&p50, &p90, &p99]
+            .into_iter()
+            .map(|values| finite_max(values))
+            .chain(baseline.as_deref().map(finite_max))
+            .fold(0.0, f64::max);
+        let rps: Arc<[f64]> = series.iter().map(|point| point.rps).collect();
+        let vus: Arc<[f64]> = series.iter().map(|point| f64::from(point.vus)).collect();
+        Self {
+            max_rps: finite_max(&rps),
+            max_vus: finite_max(&vus),
+            vus,
+            rps,
+            p50,
+            p90,
+            p99,
+            baseline,
+            max_ms,
+        }
+    }
+}
+
+/// What the Summary tab shows, from a window's statistics or, without them, a snapshot.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SummaryData {
+    /// Requests per second.
+    pub rps: f64,
+    /// Median latency, in microseconds.
+    pub p50: u32,
+    /// 95th percentile latency, in microseconds.
+    pub p95: u32,
+    /// 99th percentile latency, in microseconds.
+    pub p99: u32,
+    /// Error rate, `0.0` to `1.0`.
+    pub error_rate: f64,
+    /// Requests.
+    pub total: u64,
+    /// The latency distribution's bucket width, in microseconds, and its counts (the last bucket
+    /// is open ended).
+    pub histogram: (u32, Vec<u64>),
+    /// Requests per status.
+    pub statuses: Vec<(StatusKey, u64)>,
+    /// Per target statistics, by target index.
+    pub per_target: Vec<TargetStats>,
+}
+
+impl SummaryData {
+    /// The Summary of a window's statistics.
+    #[must_use]
+    pub fn from_stats(stats: &WindowStats) -> Self {
+        Self {
+            rps: stats.rps,
+            p50: stats.p50,
+            p95: stats.p95,
+            p99: stats.p99,
+            error_rate: stats.error_rate,
+            total: stats.total,
+            histogram: (stats.histogram.bucket_us, stats.histogram.counts.clone()),
+            statuses: stats.statuses.clone(),
+            per_target: stats.per_target.clone(),
+        }
+    }
+
+    /// The Summary of a snapshot: a live run, or a past run without its saved requests. Its
+    /// histogram has the engine's fixed 10 ms buckets.
+    #[must_use]
+    pub fn from_snapshot(snapshot: &LoadSnapshot) -> Self {
+        Self {
+            rps: snapshot.rps,
+            p50: snapshot.p50,
+            p95: snapshot.p95,
+            p99: snapshot.p99,
+            error_rate: snapshot.error_rate,
+            total: snapshot.total,
+            histogram: (10_000, snapshot.histogram.to_vec()),
+            statuses: snapshot.status_counts.clone(),
+            per_target: snapshot.per_target.clone(),
+        }
+    }
+
+    /// The numbers thresholds are checked against.
+    #[must_use]
+    pub fn threshold_inputs(&self) -> ThresholdInputs {
+        ThresholdInputs {
+            rps: self.rps,
+            p50_ms: f64::from(self.p50) / 1_000.0,
+            p95_ms: f64::from(self.p95) / 1_000.0,
+            p99_ms: f64::from(self.p99) / 1_000.0,
+            error_rate: self.error_rate,
+        }
+    }
+}
+
+/// A bucket width as text, for the distribution's caption: `"4 ms"`, `"0.5 ms"`, `"1 s"`.
+#[must_use]
+pub fn format_bucket_width(bucket_us: u32) -> String {
+    let ms = f64::from(bucket_us) / 1_000.0;
+    if ms >= 1_000.0 {
+        format!("{} s", format_axis_number(ms / 1_000.0))
+    } else {
+        format!("{} ms", format_axis_number(ms))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -692,6 +870,56 @@ mod tests {
     fn latency_options_are_nice_values_below_the_percentiles() {
         assert_eq!(latency_filter_options(9_000, 31_000, 62_000), vec![5, 25, 50]);
         assert_eq!(latency_filter_options(400, 1_200, 1_900), vec![1]);
+    }
+
+    #[test]
+    fn chart_data_has_gaps_for_idle_seconds_and_runs_without_percentiles() {
+        let point = |rps: f64, p99: u32| postino_load::SecondPoint {
+            rps,
+            p95: p99,
+            p50: p99 / 2,
+            p90: p99,
+            p99,
+            vus: 2,
+        };
+        let snapshot = LoadSnapshot {
+            elapsed: std::time::Duration::from_secs(3),
+            active_vus: 0,
+            total: 3,
+            rps: 1.0,
+            p50: 0,
+            p95: 0,
+            p99: 0,
+            error_rate: 0.0,
+            series: vec![point(10.0, 40_000), point(0.0, 0), point(12.0, 60_000)],
+            histogram: [0; 26],
+            status_counts: Vec::new(),
+            per_target: Vec::new(),
+            error_examples: Vec::new(),
+        };
+        let data = ChartData::new(&snapshot, None);
+        assert!((data.p99[0] - 40.0).abs() < 1e-9);
+        assert!(data.p99[1].is_nan());
+        assert!((data.max_ms - 60.0).abs() < 1e-9);
+        assert!((data.max_rps - 12.0).abs() < 1e-9);
+        assert!(data.baseline.is_none());
+
+        let mut old = snapshot.clone();
+        for point in &mut old.series {
+            point.p50 = 0;
+            point.p90 = 0;
+            point.p99 = 0;
+        }
+        let with_old_baseline = ChartData::new(&snapshot, Some(&old));
+        assert!(with_old_baseline.baseline.is_none());
+        assert!(ChartData::new(&old, None).p99.iter().all(|value| value.is_nan()));
+    }
+
+    #[test]
+    fn bucket_widths() {
+        assert_eq!(format_bucket_width(4_000), "4 ms");
+        assert_eq!(format_bucket_width(500), "0.5 ms");
+        assert_eq!(format_bucket_width(2_000_000), "2 s");
     }
 
     #[test]

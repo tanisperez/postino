@@ -255,6 +255,7 @@ impl AppView {
             return still_running;
         };
         load_test.snapshot = Some(snapshot);
+        load_test.refresh_chart();
         if let Some(log) = load_test.log.as_mut() {
             // Copies the log only when a background task still holds the previous one.
             handle.run.read_samples(Arc::make_mut(&mut log.0));
@@ -309,6 +310,7 @@ impl AppView {
                 LoadTestStatus::Finished
             };
             load_test.snapshot = Some(summary.snapshot.clone());
+            load_test.refresh_chart();
             // The same run: keep the generation, so the results computed so far stay shown
             // until the final ones replace them.
             load_test.log = Some(Shared::new(summary.log.clone()));

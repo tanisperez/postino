@@ -7,6 +7,7 @@
 
 pub(crate) mod config_panel;
 pub(crate) mod dashboard;
+pub(crate) mod export;
 pub(crate) mod results_data;
 pub(crate) mod run;
 
@@ -386,7 +387,8 @@ impl AppView {
             _ => None,
         };
         self.edit_load_test(tab_id, cx, |load_test| {
-            load_test.compare_snapshot = snapshot
+            load_test.compare_snapshot = snapshot;
+            load_test.refresh_chart();
         });
     }
 
@@ -436,6 +438,7 @@ impl AppView {
             load_test.run_vus = Some(record.config.vus);
             load_test.run_started_at = Some(record.started_at_unix);
             load_test.snapshot = Some(record.snapshot);
+            load_test.refresh_chart();
             load_test.log_unavailable = false;
             load_test.replace_log(None);
             load_test.compare_with = load_test

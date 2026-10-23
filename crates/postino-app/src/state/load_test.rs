@@ -11,7 +11,9 @@ use postino_workspace::Node;
 
 use rust_i18n::t;
 
-use super::load_results::{ChartSeriesKey, RequestFilter, RequestSort, ResultsTab, Shared};
+use super::load_results::{
+    ChartData, ChartSeriesKey, RequestFilter, RequestSort, ResultsTab, Shared,
+};
 use super::number::{format_decimal, format_signed_decimal};
 
 /// What a load test tab targets: a single request, or every request of a folder ("collection"), in
@@ -414,6 +416,9 @@ pub struct LoadTestTab {
     /// The Requests tab's rows (positions in [`Self::log`]), computed in the background, and the
     /// key they were computed for.
     pub requests: Option<(RequestsKey, Shared<Vec<u32>>)>,
+    /// The chart's series, rebuilt by [`Self::refresh_chart`] whenever [`Self::snapshot`] or
+    /// [`Self::compare_snapshot`] changes.
+    pub chart: Option<Shared<ChartData>>,
 }
 
 /// What [`LoadTestTab::analysis`] was computed from: the log (by generation and length) and the
@@ -473,6 +478,7 @@ impl LoadTestTab {
             log_generation: 0,
             analysis: None,
             requests: None,
+            chart: None,
         }
     }
 
@@ -562,6 +568,13 @@ impl LoadTestTab {
         self.analysis = None;
         self.requests = None;
         self.window = None;
+    }
+
+    /// Rebuilds [`Self::chart`] from the current snapshot and compared run.
+    pub fn refresh_chart(&mut self) {
+        self.chart = self.snapshot.as_ref().map(|snapshot| {
+            Shared::new(ChartData::new(snapshot, self.compare_snapshot.as_ref()))
+        });
     }
 
     /// The metrics that have no threshold row yet, for the "Add threshold" menu.
