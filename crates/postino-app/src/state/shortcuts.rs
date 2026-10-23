@@ -87,6 +87,13 @@ pub fn groups() -> Vec<ShortcutGroup> {
                 Shortcut::new(t!("shortcuts.action.no_environment"), &[modifier, "0"]),
             ],
         },
+        ShortcutGroup {
+            title: t!("shortcuts.group.load_tests").to_string(),
+            shortcuts: vec![Shortcut::new(
+                t!("shortcuts.action.copy_load_summary"),
+                &[modifier, "Shift", "C"],
+            )],
+        },
     ]
 }
 
@@ -97,7 +104,7 @@ mod tests {
     #[test]
     fn every_group_and_shortcut_has_text_and_keys() {
         let groups = groups();
-        assert_eq!(groups.len(), 4);
+        assert_eq!(groups.len(), 5);
         for group in &groups {
             assert!(!group.title.is_empty());
             assert!(!group.shortcuts.is_empty());
