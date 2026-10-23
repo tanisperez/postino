@@ -38,6 +38,10 @@ toml = "0.8"
 log = "0.4"
 # Already built by gpui-component (translations); same version.
 rust-i18n = "4.2"
+# The PDF load test report (postino-load). Only the text shaping feature, no raster images.
+krilla = { version = "0.8.2", default-features = false, features = ["simple-text"] }
+# Glyph advances, to measure text for the PDF layout. Already built by krilla, same version.
+skrifa = "0.42"
 
 [workspace.lints.clippy]
 all = "warn"
