@@ -79,6 +79,7 @@ quit_app() {
     local i
     for i in $(seq 1 20); do pgrep -x postino >/dev/null || break; sleep 0.25; done
     WID=""
+    PFACTOR=""
 }
 
 # Keystrokes and clicks must never reach another application.
@@ -88,14 +89,25 @@ ensure_active() {
     [ "$(xdotool getactivewindow 2>/dev/null)" = "$WID" ] || die "Postino lost the focus, aborting"
 }
 
-# X11 pointer requests are scaled by 1.1 by the compositor here, and the spectacle image is
-# the window geometry divided by 1.1, so a screenshot pixel (PX, PY) is requested at
-# (window origin + P * 1.1) / 1.1.
+# The compositor scales X11 pointer requests by the display scale of the monitor the window is on
+# (1.25 here, 1.1 on another setup), and the spectacle image has the size of the window geometry.
+# So a screenshot pixel (PX, PY) is requested at (window origin + P) / factor, where the factor is
+# measured once per window by moving the pointer and reading back where it landed.
+PFACTOR=""
+pointer_factor() {
+    ensure_active
+    xdotool mousemove 1000 1000; sleep 0.2
+    local got
+    got=$(xdotool getmouselocation | sed 's/x:\([0-9]*\) .*/\1/')
+    PFACTOR=$(python3 -c "print($got/1000)")
+}
+
 pointer() {
     eval "$(xdotool getwindowgeometry --shell "$WID")"
+    [ -n "$PFACTOR" ] || pointer_factor
     local rx ry
-    rx=$(python3 -c "print(round(($X+$1*1.1)/1.1))")
-    ry=$(python3 -c "print(round(($Y+$2*1.1)/1.1))")
+    rx=$(python3 -c "print(round(($X+$1)/$PFACTOR))")
+    ry=$(python3 -c "print(round(($Y+$2)/$PFACTOR))")
     ensure_active
     xdotool mousemove $((rx-2)) $((ry-2)); sleep 0.2
     xdotool mousemove "$rx" "$ry"; sleep 0.3
@@ -148,14 +160,16 @@ for theme in light dark; do
     shot environments "$theme"
     quit_app
 
-    # load test: pick books/list, 25 VUs for 10 s, then wait for the run to finish
+    # load test: pick books/list, 25 VUs for 10 s, a p95 < 250 ms threshold (the default value of
+    # the new row), then wait for the run to finish. It opens on the Summary tab of the results.
     launch "$theme" POSTINO_OPEN=loadtest
-    click 632 256; click 515 487
-    type_into 606 351 25; type_into 606 448 10; type_into 606 546 3; type_into 606 643 20
-    click 632 1106
-    sleep 15
-    click 1400 1150    # blur the focused input so no text cursor is captured
-    click 61 220       # Load tests panel of the activity rail, with the finished run
+    click 695 280; click 566 535                             # target field, books/list
+    type_into 577 386 25; type_into 777 386 10               # virtual users, duration
+    type_into 577 484 3; type_into 777 484 20                # ramp up, think time
+    click 585 589; click 543 680                             # Add threshold, p95
+    click 695 1161                                           # Start run
+    sleep 16
+    click 1887 1166    # blank area of the results pane, blurs the input so no text cursor is captured
     shot loadtest "$theme"
     quit_app
 done
