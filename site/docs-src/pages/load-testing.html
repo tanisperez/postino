@@ -86,7 +86,7 @@ description: Run load tests against a request or a whole folder in Postino with 
     <dt>Performance over time</dt>
     <dd>A chart with one point per second and two vertical axes. The left axis is for the virtual users (an area) and Requests/s; the right axis is for the latencies p50, p90 and p99. When you compare with another run, a dashed line shows the p99 of that run. A red horizontal line marks each latency threshold (&ldquo;p99 goal 50 ms&rdquo;). The legend above the chart turns each series on and off. Hover the chart to see a crosshair and the values of every visible series for that second.</dd>
     <dt>Latency distribution</dt>
-    <dd>A histogram of the latencies of the requests, in 25 intervals. The width of an interval adapts to the run or window: the smallest round width with which the bars reach past the p99, shown in the caption (&ldquo;requests per 10 ms interval&rdquo;). The last bar adds up everything above it.</dd>
+    <dd>A histogram of the latencies of the requests, in 25 intervals. The width of an interval adapts to the run or window: the smallest round width with which the bars reach past the p99, shown in the caption (&ldquo;requests per 10 ms interval&rdquo;). The last bar adds up everything above it. Hover a bar to see a crosshair and its interval (&ldquo;10&ndash;12 ms&rdquo;, or &ldquo;100+ ms&rdquo; for the last one), its number of requests and their share of the total.</dd>
     <dt>Responses by status</dt>
     <dd>How many responses came back with each status code, plus <strong>Timeout</strong> and <strong>Failed</strong>, with their share.</dd>
     <dt>Per request</dt>

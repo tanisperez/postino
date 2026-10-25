@@ -18,7 +18,9 @@ use crate::state::load_test::{
     DeltaTone, LoadTestTab, delta_tone, format_delta, format_trimmed, threshold_metric_label,
 };
 use crate::state::number::{format_decimal, format_integer};
-use crate::theme::metrics::RADIUS_LG;
+use crate::theme::metrics::{
+    CHART_TOOLTIP_OFFSET, CHART_TOOLTIP_TOP, CHART_TOOLTIP_WIDTH, RADIUS_LG, RADIUS_MD,
+};
 use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::{
     AxisSide, Card, ChartAxis, ChartSeries, DataCell, DataColumn, DataTable, MethodBadge,
@@ -30,6 +32,8 @@ use crate::views::root::AppView;
 const CHART_HEIGHT: f32 = 220.0;
 /// Height of the latency distribution's bars.
 const HISTOGRAM_HEIGHT: f32 = 110.0;
+/// Opacity of the distribution's hover crosshair, drawn in the text color like the chart's.
+const CROSSHAIR_OPACITY: f32 = 0.35;
 /// Base width of one half of the distribution and statuses row: two that do not fit side by side
 /// wrap, by flex layout, instead of squashing.
 const TWO_COLUMN_MIN_WIDTH: f32 = 320.0;
@@ -58,7 +62,13 @@ impl AppView {
         v_flex()
             .gap(px(14.0))
             .child(render_kpis(&palette, load_test, summary))
-            .child(render_chart(weak, tab_id, &palette, load_test, snapshot))
+            .child(render_chart(
+                weak.clone(),
+                tab_id,
+                &palette,
+                load_test,
+                snapshot,
+            ))
             .child(
                 h_flex()
                     .min_w_0()
@@ -71,7 +81,12 @@ impl AppView {
                             .flex_basis(px(TWO_COLUMN_MIN_WIDTH))
                             .min_w_0()
                             .child(render_distribution(
-                                &palette, &mono_font, load_test, summary,
+                                weak.clone(),
+                                self.histogram_hover,
+                                &palette,
+                                &mono_font,
+                                load_test,
+                                summary,
                             )),
                     )
                     .child(
@@ -533,6 +548,8 @@ fn lowest_latency_limit(load_test: &LoadTestTab) -> Option<f64> {
 /// The latency distribution: one bar per bucket, the y labels, and the x labels from 0 to the
 /// open ended last bucket.
 fn render_distribution(
+    weak: WeakEntity<AppView>,
+    hover: Option<usize>,
     palette: &Palette,
     mono_font: &SharedString,
     load_test: &LoadTestTab,
@@ -540,23 +557,117 @@ fn render_distribution(
 ) -> AnyElement {
     let (bucket_us, counts) = &summary.histogram;
     let max = counts.iter().copied().max().unwrap_or(0).max(1);
+    let total: u64 = counts.iter().sum();
     let warn_from = lowest_latency_limit(load_test);
     let buckets = counts.len().saturating_sub(1).max(1) as u32;
     let span_ms = f64::from(*bucket_us) * f64::from(buckets) / 1_000.0;
     let in_seconds = span_ms >= 1_000.0;
-    let x_label = |fraction: f64, last: bool| {
-        let ms = span_ms * fraction;
-        let (value, unit) = if in_seconds {
-            (format_trimmed(ms / 1_000.0), "s")
+    let unit = if in_seconds { "s" } else { "ms" };
+    let value_at = |ms: f64| {
+        if in_seconds {
+            format_trimmed(ms / 1_000.0)
         } else {
-            (format_trimmed(ms), "ms")
-        };
+            format_trimmed(ms)
+        }
+    };
+    let x_label = |fraction: f64, last: bool| {
+        let value = value_at(span_ms * fraction);
         if last {
             format!("{value}+ {unit}")
         } else {
             value
         }
     };
+
+    // The crosshair and tooltip of the bar under the pointer, like the chart's.
+    let bar_count = counts.len();
+    let hover_layer = hover.filter(|index| *index < bar_count).map(|index| {
+        let fraction = (index as f32 + 0.5) / bar_count as f32;
+        let start_ms = f64::from(*bucket_us) * index as f64 / 1_000.0;
+        let range = if index + 1 == bar_count {
+            format!("{}+ {unit}", value_at(start_ms))
+        } else {
+            let end_ms = start_ms + f64::from(*bucket_us) / 1_000.0;
+            format!("{}\u{2013}{} {unit}", value_at(start_ms), value_at(end_ms))
+        };
+        let count = counts[index];
+        let share = if total == 0 {
+            0.0
+        } else {
+            count as f64 / total as f64 * 100.0
+        };
+        let tooltip = v_flex()
+            .absolute()
+            .top(px(CHART_TOOLTIP_TOP))
+            .min_w(px(CHART_TOOLTIP_WIDTH))
+            .gap(px(4.0))
+            .py(px(8.0))
+            .px(px(10.0))
+            .rounded(px(RADIUS_MD))
+            .border_1()
+            .border_color(palette.border_strong)
+            .bg(palette.overlay)
+            .shadow(palette.shadow.clone())
+            .text_size(px(12.0))
+            .text_color(palette.fg)
+            .map(|tooltip| {
+                // Right of the crosshair on the left half, left of it on the right half.
+                if fraction <= 0.5 {
+                    tooltip
+                        .left(relative(fraction))
+                        .ml(px(CHART_TOOLTIP_OFFSET))
+                } else {
+                    tooltip
+                        .right(relative(1.0 - fraction))
+                        .mr(px(CHART_TOOLTIP_OFFSET))
+                }
+            })
+            .child(
+                div()
+                    .font_family(mono_font.clone())
+                    .text_size(px(11.0))
+                    .text_color(palette.fg_muted)
+                    .pb(px(2.0))
+                    .child(range),
+            )
+            .child(
+                h_flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .child(
+                        div()
+                            .flex_none()
+                            .size(px(8.0))
+                            .rounded(px(2.0))
+                            .bg(palette.accent_text),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .whitespace_nowrap()
+                            .text_color(palette.fg_muted)
+                            .child(t!("load_test.results.requests")),
+                    )
+                    .child(div().font_family(mono_font.clone()).child(format!(
+                        "{} \u{b7} {} %",
+                        format_integer(count),
+                        format_decimal(share, 1)
+                    ))),
+            );
+        div()
+            .absolute()
+            .size_full()
+            .child(
+                div()
+                    .absolute()
+                    .top_0()
+                    .h_full()
+                    .left(relative(fraction))
+                    .w(px(1.0))
+                    .bg(palette.fg.opacity(CROSSHAIR_OPACITY)),
+            )
+            .child(tooltip)
+    });
 
     Card::new()
         .child(
@@ -598,12 +709,28 @@ fn render_distribution(
                 )
                 .child(
                     h_flex()
+                        .id("load-test-histogram")
+                        .relative()
                         .flex_1()
                         .h(px(HISTOGRAM_HEIGHT))
                         .items_end()
-                        .gap(px(3.0))
                         .border_b_1()
                         .border_color(palette.border)
+                        .cursor_crosshair()
+                        .on_hover({
+                            let weak = weak.clone();
+                            move |hovered, _, cx| {
+                                if !*hovered {
+                                    let _ = weak.update(cx, |view, cx| {
+                                        if view.histogram_hover.take().is_some() {
+                                            cx.notify();
+                                        }
+                                    });
+                                }
+                            }
+                        })
+                        // Each bar fills its whole column, without gaps between columns, so the
+                        // pointer is always over one of them.
                         .children(counts.iter().enumerate().map(|(index, count)| {
                             let fraction = (*count as f32 / max as f32)
                                 .clamp(if *count > 0 { 0.03 } else { 0.0 }, 1.0);
@@ -613,12 +740,32 @@ fn render_distribution(
                             } else {
                                 palette.accent_text
                             };
+                            let weak = weak.clone();
                             div()
+                                .id(("load-test-histogram-bar", index))
                                 .flex_1()
-                                .h(relative(fraction))
-                                .rounded_t(px(3.0))
-                                .bg(color)
-                        })),
+                                .h_full()
+                                .px(px(1.5))
+                                .flex()
+                                .flex_col()
+                                .justify_end()
+                                .on_mouse_move(move |_, _, cx| {
+                                    let _ = weak.update(cx, |view, cx| {
+                                        if view.histogram_hover != Some(index) {
+                                            view.histogram_hover = Some(index);
+                                            cx.notify();
+                                        }
+                                    });
+                                })
+                                .child(
+                                    div()
+                                        .w_full()
+                                        .h(relative(fraction))
+                                        .rounded_t(px(3.0))
+                                        .bg(color),
+                                )
+                        }))
+                        .children(hover_layer),
                 ),
         )
         .child(
