@@ -42,6 +42,9 @@ pub(crate) struct LoadRunHandle {
     /// Ticks since the results were last recomputed in the background, see
     /// [`AppView::tick_load_test`].
     ticks_since_refresh: u32,
+    /// Ticks the tab's log has gone without the newest requests because a background computation
+    /// was still reading it, see [`AppView::tick_load_test`].
+    ticks_behind: u32,
     /// Kept alive only so it is not dropped (and cancelled) while the run is in progress; see
     /// `views/send.rs`'s `SendingTask::_task` doc comment for the same pattern, including why
     /// dropping this from inside its own body (as the tick loop below does once a run ends) is
@@ -227,6 +230,7 @@ impl AppView {
                 started_at_unix,
                 config_summary,
                 ticks_since_refresh: 0,
+                ticks_behind: 0,
                 _tick: tick,
             },
         );
@@ -266,8 +270,18 @@ impl AppView {
         load_test.snapshot = Some(snapshot);
         load_test.refresh_chart();
         if let Some(log) = load_test.log.as_mut() {
-            // Copies the log only when a background task still holds the previous one.
-            handle.run.read_samples(Arc::make_mut(&mut log.0));
+            // While a background computation still reads the log, copying it to append would cost
+            // the whole log on this thread: the new requests wait for a later tick instead, since
+            // `read_samples` appends whatever is missing. Only a log a second behind is copied.
+            if let Some(log) = Arc::get_mut(&mut log.0) {
+                handle.run.read_samples(log);
+                handle.ticks_behind = 0;
+            } else if handle.ticks_behind >= REFRESH_EVERY_TICKS {
+                handle.run.read_samples(Arc::make_mut(&mut log.0));
+                handle.ticks_behind = 0;
+            } else {
+                handle.ticks_behind += 1;
+            }
         }
         if refresh {
             self.refresh_load_results(tab_id, cx);

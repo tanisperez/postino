@@ -50,13 +50,7 @@ impl AppView {
             && load_test.analysis.as_ref().map(|(done, _)| done) != Some(&key)
             && tasks.analysis.as_ref().map(|(pending, _)| pending) != Some(&key)
         {
-            let target_count = load_test.target_rows.len().max(
-                log.samples()
-                    .iter()
-                    .map(|sample| sample.target as usize + 1)
-                    .max()
-                    .unwrap_or(0),
-            );
+            let target_rows = load_test.target_rows.len();
             let elapsed_secs = load_test
                 .snapshot
                 .as_ref()
@@ -71,6 +65,14 @@ impl AppView {
             let task = cx.spawn(async move |weak, cx| {
                 let stats = cx
                     .background_spawn(async move {
+                        // Every request is read here, off the UI thread.
+                        let target_count = target_rows.max(
+                            log.samples()
+                                .iter()
+                                .map(|sample| sample.target as usize + 1)
+                                .max()
+                                .unwrap_or(0),
+                        );
                         postino_load::window_stats(
                             &log,
                             target_count,
