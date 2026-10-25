@@ -145,7 +145,7 @@ impl ExportSource {
         });
         let elapsed_secs = snapshot.elapsed.as_secs_f64();
         let run_secs = (load_test.shown_duration_secs() as f64)
-            .max(elapsed_secs.ceil())
+            .max(elapsed_secs.floor())
             .max(1.0) as u32;
         // The tab's statistics are of its selected window: they are what is exported when that
         // window is, or when there is none.

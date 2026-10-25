@@ -147,7 +147,7 @@ pub enum RunMeta {
         /// The configured duration, in seconds.
         total_secs: u64,
     },
-    /// A run that completed. The p95 latency in whole milliseconds, if a snapshot exists.
+    /// A run that completed. The p95 latency rounded to whole milliseconds, if a snapshot exists.
     Done(Option<u64>),
     /// A run that was stopped early, with its p95 in milliseconds.
     Stopped(Option<u64>),
@@ -177,7 +177,7 @@ pub fn run_status(load_test: &LoadTestTab) -> (RunDot, RunMeta) {
     let p95_ms = load_test
         .snapshot
         .as_ref()
-        .map(|snapshot| u64::from(snapshot.p95) / 1000);
+        .map(|snapshot| (u64::from(snapshot.p95) + 500) / 1000);
     let has_errors = load_test
         .snapshot
         .as_ref()

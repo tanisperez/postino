@@ -494,12 +494,14 @@ fn render_export_menu(
     use gpui_kit::assets::IconName as Lucide;
 
     let tab_id = tab_id.to_string();
-    let rows = load_test.current_analysis().map_or(
-        load_test.snapshot.as_ref().map_or(0, |s| s.total),
-        |stats| stats.total,
-    );
     let window = load_test.window;
     let window_only = load_test.export_window_only;
+    let whole_run = load_test.snapshot.as_ref().map_or(0, |s| s.total);
+    // The selected window's requests, unless "Only the window" is off.
+    let rows = match load_test.current_analysis() {
+        Some(stats) if window.is_none() || window_only => stats.total,
+        _ => whole_run,
+    };
     let entries: [(Lucide, &str, &str, String, ExportFormat); 4] = [
         (
             Lucide::FileText,

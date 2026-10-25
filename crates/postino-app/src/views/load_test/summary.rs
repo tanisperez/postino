@@ -629,7 +629,7 @@ fn render_distribution(
                 .font_family(mono_font.clone())
                 .text_size(px(10.5))
                 .text_color(palette.fg_subtle)
-                .children((0..=4).map(|step| div().child(x_label(step as f64 / 4.0, step == 4)))),
+                .children((0..=5).map(|step| div().child(x_label(step as f64 / 5.0, step == 5)))),
         )
         .into_any_element()
 }

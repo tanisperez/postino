@@ -62,7 +62,7 @@ impl AppView {
                 .as_ref()
                 .map_or(0.0, |snapshot| snapshot.elapsed.as_secs_f64());
             let run_secs = (load_test.shown_duration_secs() as f64)
-                .max(elapsed_secs.ceil())
+                .max(elapsed_secs.floor())
                 .max(1.0) as u32;
             let range = load_test.window_range();
             let log = log.clone();
