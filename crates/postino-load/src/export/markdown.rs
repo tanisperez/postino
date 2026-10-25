@@ -1,12 +1,12 @@
 //! [`to_markdown`], the Markdown rendering of a [`Report`].
 //!
 //! The output is GitHub flavored Markdown: a title, the verdict and thresholds, the KPIs, the
-//! per request table, the status shares and the error groups. The chart and the histogram have no
-//! Markdown form and are left out. The report carries no column headers for the KPIs and the
-//! statuses (it only has their labels), so those two tables are laid out transposed: one column
-//! per KPI or status and one row per line of information.
+//! per request table (with a totals row and the status shares), the latency percentiles and the
+//! error groups. The chart and the histograms have no Markdown form and are left out. The report
+//! carries no column headers for the KPIs (it only has their labels), so that table is laid out
+//! transposed: one column per KPI and one row per line of information.
 
-use super::report::{Report, ReportAlign, ReportTable};
+use super::report::{Report, ReportAlign, ReportStatus, ReportTable};
 
 /// The mark before a passed check.
 const PASS: &str = "\u{2705}";
@@ -60,18 +60,47 @@ pub fn to_markdown(report: &Report) -> String {
 
     if !report.per_request.headers.is_empty() {
         blocks.push(format!("## {}", one_line(&report.per_request.title)));
-        blocks.push(table(&report.per_request));
+        blocks.push(request_table(&report.per_request));
+        if let Some(column) = report
+            .per_request
+            .statuses
+            .as_ref()
+            .filter(|c| c.rows.is_empty())
+            && !column.total.is_empty()
+        {
+            blocks.push(format!(
+                "{}: {}",
+                one_line(&column.header),
+                status_text(&column.total)
+            ));
+        }
     }
 
-    if !report.statuses.is_empty() {
-        blocks.push(format!("## {}", one_line(&report.statuses_title)));
-        let headers: Vec<String> = report.statuses.iter().map(|s| s.label.clone()).collect();
-        let shares: Vec<String> = report
-            .statuses
+    if let Some(latency) = &report.latency {
+        blocks.push(format!("## {}", one_line(&latency.title)));
+        blocks.push(one_line(&latency.note));
+        let rows: Vec<Vec<String>> = latency
+            .rows
             .iter()
-            .map(|s| s.share_text.clone())
+            .map(|row| {
+                let cells = std::iter::once(&row.name).chain(&row.cells);
+                // The row of all requests, which has no color, is the bold one.
+                cells
+                    .map(|c| {
+                        if row.color.is_none() {
+                            bold(c)
+                        } else {
+                            c.clone()
+                        }
+                    })
+                    .collect()
+            })
             .collect();
-        blocks.push(grid(&headers, &[ReportAlign::Right], &[shares]));
+        blocks.push(grid(
+            &latency.headers,
+            &[ReportAlign::Left, ReportAlign::Right],
+            &rows,
+        ));
     }
 
     blocks.push(format!("## {}", one_line(&report.labels.errors)));
@@ -164,9 +193,46 @@ fn kpi_table(report: &Report) -> String {
     grid(&headers, &[ReportAlign::Right], &rows)
 }
 
-/// A report table as a Markdown table.
-fn table(table: &ReportTable) -> String {
-    grid(&table.headers, &table.align, &table.rows)
+/// The per request table: the status column after the others when the rows have their statuses,
+/// the totals row in bold.
+fn request_table(table: &ReportTable) -> String {
+    let column = table.statuses.as_ref().filter(|c| !c.rows.is_empty());
+    let mut headers = table.headers.clone();
+    let mut align = table.align.clone();
+    let mut rows = table.rows.clone();
+    if let Some(column) = column {
+        headers.push(column.header.clone());
+        align.push(ReportAlign::Left);
+        for (row, statuses) in rows.iter_mut().zip(&column.rows) {
+            row.push(status_text(statuses));
+        }
+    }
+    if let Some(total) = &table.total {
+        let mut row: Vec<String> = total.iter().map(|c| bold(c)).collect();
+        if let Some(column) = column {
+            row.push(status_text(&column.total));
+        }
+        rows.push(row);
+    }
+    grid(&headers, &align, &rows)
+}
+
+/// `text` in bold, an empty cell stays empty.
+fn bold(text: &str) -> String {
+    if text.is_empty() {
+        String::new()
+    } else {
+        format!("**{text}**")
+    }
+}
+
+/// The statuses as text: `200 98.6 %, 429 1.4 %`.
+fn status_text(statuses: &[ReportStatus]) -> String {
+    statuses
+        .iter()
+        .map(|s| format!("{} {}", s.label, s.share_text))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// A Markdown table. `align` is applied per column; a shorter slice repeats its last entry.
@@ -229,9 +295,19 @@ mod tests {
 
     use super::*;
     use crate::export::report::{
-        ReportErrorGroup, ReportKpi, ReportLabels, ReportStatus, ReportThreshold, ReportTone,
-        ReportVerdict, Rgb,
+        ReportErrorGroup, ReportKpi, ReportLabels, ReportLatency, ReportLatencyRow, ReportStatus,
+        ReportStatusColumn, ReportThreshold, ReportTone, ReportVerdict, Rgb,
     };
+
+    fn status(label: &str, share_text: &str) -> ReportStatus {
+        ReportStatus {
+            label: label.into(),
+            share: 0.5,
+            share_text: share_text.into(),
+            count_text: "1".into(),
+            color: Rgb(0, 128, 0),
+        }
+    }
 
     fn labels() -> ReportLabels {
         ReportLabels {
@@ -264,20 +340,15 @@ mod tests {
             thresholds: vec![],
             kpis: vec![kpi("Req/s", "100", ""), kpi("p50", "12", "ms")],
             chart: None,
-            histogram: None,
-            statuses_title: "Responses by status".into(),
-            statuses: vec![ReportStatus {
-                label: "200".into(),
-                share: 1.0,
-                share_text: "100 %".into(),
-                color: Rgb(0, 128, 0),
-            }],
             per_request: ReportTable {
                 title: "Requests".into(),
                 headers: vec!["Request".into(), "Count".into()],
                 align: vec![ReportAlign::Left, ReportAlign::Right],
                 rows: vec![vec!["GET list".into(), "500".into()]],
+                total: Some(vec!["All requests".into(), "500".into()]),
+                statuses: None,
             },
+            latency: None,
             errors: vec![],
             labels: labels(),
         }
@@ -351,12 +422,7 @@ Finished \u{b7} 10 VUs \u{b7} 5 s
 | Request | Count |
 | --- | ---: |
 | GET list | 500 |
-
-## Responses by status
-
-| 200 |
-| ---: |
-| 100 % |
+| **All requests** | **500** |
 
 ## Errors
 
@@ -365,6 +431,57 @@ No errors
 *Generated by Postino 0.4.0 on 2026-10-23 12:04*
 ";
         assert_eq!(to_markdown(&minimal()), expected);
+    }
+
+    #[test]
+    fn statuses_become_a_column_and_the_latency_a_table() {
+        let mut report = minimal();
+        report.per_request.statuses = Some(ReportStatusColumn {
+            header: "Statuses".into(),
+            rows: vec![vec![status("200", "98,6 %"), status("429", "1,4 %")]],
+            total: vec![status("200", "98,6 %"), status("429", "1,4 %")],
+        });
+        report.latency = Some(ReportLatency {
+            title: "Latency".into(),
+            caption: "ignored".into(),
+            note: "Successful responses only, 3 errors left out.".into(),
+            histograms: vec![],
+            headers: vec!["Request".into(), "Count".into(), "p50".into()],
+            rows: vec![
+                ReportLatencyRow {
+                    name: "All requests".into(),
+                    color: None,
+                    cells: vec!["500".into(), "12 ms".into()],
+                },
+                ReportLatencyRow {
+                    name: "GET list".into(),
+                    color: Some(Rgb(1, 2, 3)),
+                    cells: vec!["500".into(), "12 ms".into()],
+                },
+            ],
+            curves: None,
+        });
+        let md = to_markdown(&report);
+        assert!(md.contains(
+            "| Request | Count | Statuses |\n| --- | ---: | --- |\n\
+             | GET list | 500 | 200 98,6 %, 429 1,4 % |\n\
+             | **All requests** | **500** | 200 98,6 %, 429 1,4 % |"
+        ));
+        assert!(md.contains(
+            "## Latency\n\nSuccessful responses only, 3 errors left out.\n\n\
+             | Request | Count | p50 |\n| --- | ---: | ---: |\n\
+             | **All requests** | **500** | **12 ms** |\n| GET list | 500 | 12 ms |"
+        ));
+        assert!(md.find("## Latency") < md.find("## Errors"));
+
+        // Without the statuses of each request, the totals are a line under the table.
+        report.per_request.statuses = Some(ReportStatusColumn {
+            header: "Statuses".into(),
+            rows: vec![],
+            total: vec![status("200", "100 %")],
+        });
+        let md = to_markdown(&report);
+        assert!(md.contains("| **All requests** | **500** |\n\nStatuses: 200 100 %"));
     }
 
     #[test]

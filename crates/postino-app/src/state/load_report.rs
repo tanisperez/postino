@@ -11,24 +11,27 @@ use std::ops::Range;
 use chrono::{Local, TimeZone};
 use gpui_kit::Rgba;
 use postino_load::export::report::{
-    Report, ReportAlign, ReportAxis, ReportChart, ReportErrorGroup, ReportHistogram, ReportKpi,
-    ReportLabels, ReportReferenceLine, ReportSeries, ReportSeriesStyle, ReportStatus, ReportTable,
-    ReportThreshold, ReportTone, ReportVerdict, Rgb,
+    Report, ReportAlign, ReportAxis, ReportChart, ReportCurveLine, ReportCurves, ReportErrorGroup,
+    ReportKpi, ReportLabels, ReportLatency, ReportLatencyRow, ReportReferenceLine,
+    ReportRequestHistogram, ReportSeries, ReportSeriesStyle, ReportStatus, ReportStatusColumn,
+    ReportTable, ReportThreshold, ReportTone, ReportVerdict, Rgb,
 };
 use postino_load::{
-    ErrorExample, ErrorGroup, LatencyHistogram, LoadSnapshot, StatusKey, Threshold,
-    ThresholdInputs, ThresholdMetric, WindowStats, evaluate_thresholds,
+    ErrorExample, ErrorGroup, LatencyHistogram, LatencyOptions, LatencyPercentiles, LatencyScale,
+    LoadSnapshot, SampleLog, StatusKey, Threshold, ThresholdInputs, ThresholdMetric, WindowStats,
+    evaluate_thresholds, latency_view,
 };
 use rust_i18n::t;
 
 use super::load_results::{
-    ChartData, ChartSeriesKey, SummaryData, format_bucket_width, format_latency_ms, mmss, ms_axis,
-    rps_axis, window_label, x_labels_from,
+    ChartData, ChartSeriesKey, SummaryData, format_latency_ms, mmss, ms_axis, rps_axis,
+    window_label, x_labels_from,
 };
 use super::load_test::{
     DeltaTone, LoadTestStatus, delta_tone, format_delta, format_trimmed, threshold_label,
     threshold_metric_label,
 };
+use super::locale::plural;
 use super::number::{format_decimal, format_integer};
 use super::response_render::reason_phrase;
 use crate::theme::palette::{Palette, PostinoColors};
@@ -36,11 +39,11 @@ use crate::theme::palette::{Palette, PostinoColors};
 /// The share of the left axis' height the virtual users area reaches, like the dashboard chart.
 const VUS_AREA_SHARE: f64 = 0.9;
 
-/// Where the histogram bars turn to the warning color, in milliseconds, like the dashboard.
-const HISTOGRAM_WARNING_MS: f64 = 110.0;
+/// The ticks of the percentile chart's latency axis, in milliseconds, before the powers of ten.
+const CURVE_TICKS: [f64; 4] = [1.0, 2.0, 3.0, 5.0];
 
-/// How many labels the histogram's x axis has.
-const HISTOGRAM_LABELS: usize = 6;
+/// How much room the percentile chart's axis leaves around the fastest and slowest latency.
+const CURVE_MARGIN: f64 = 0.08;
 
 /// The colors of a report: the light theme's chart series, tones and status colors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,8 +60,12 @@ pub struct ReportColors {
     pub p99: Rgb,
     /// The compared run's dashed line.
     pub baseline: Rgb,
-    /// A timeout or a failure, and the goal lines of the chart.
+    /// The goal lines of the chart.
     pub bad: Rgb,
+    /// A timeout or a failure, a darker red than a 5xx.
+    pub failure: Rgb,
+    /// The color of each request, by target index, cycling.
+    pub requests: [Rgb; 6],
     /// A 2xx status.
     pub status_ok: Rgb,
     /// A 3xx status.
@@ -85,12 +92,19 @@ impl ReportColors {
             p99: rgb(palette.series_color(ChartSeriesKey::P99)),
             baseline: rgb(palette.series_color(ChartSeriesKey::Baseline)),
             bad: rgb(palette.danger),
+            failure: darken(rgb(palette.danger)),
+            requests: std::array::from_fn(|index| rgb(palette.request_color(index))),
             status_ok: status(200),
             status_redirect: status(301),
             status_client: status(400),
             status_server: status(500),
             neutral: rgb(palette.fg_muted),
         }
+    }
+
+    /// The color of request `index`.
+    fn request(&self, index: usize) -> Rgb {
+        self.requests[index % self.requests.len()]
     }
 
     /// The color of `status`'s bar and label.
@@ -101,7 +115,7 @@ impl ReportColors {
             StatusKey::Code(code) if (400..500).contains(&code) => self.status_client,
             StatusKey::Code(code) if code >= 500 => self.status_server,
             StatusKey::Code(_) => self.neutral,
-            StatusKey::Timeout | StatusKey::Failed => self.bad,
+            StatusKey::Timeout | StatusKey::Failed => self.failure,
         }
     }
 }
@@ -120,6 +134,12 @@ fn rgb(color: gpui_kit::Hsla) -> Rgb {
     let rgba = Rgba::from(color);
     let channel = |value: f32| (value.clamp(0.0, 1.0) * 255.0).round() as u8;
     Rgb(channel(rgba.r), channel(rgba.g), channel(rgba.b))
+}
+
+/// `color` 30 % darker.
+fn darken(color: Rgb) -> Rgb {
+    let channel = |value: u8| (f32::from(value) * 0.7).round() as u8;
+    Rgb(channel(color.0), channel(color.1), channel(color.2))
 }
 
 /// Everything [`build_report`] needs about one run.
@@ -156,6 +176,11 @@ pub struct ReportInput<'a> {
     pub window_only: bool,
     /// Each target's method and name, by target index.
     pub targets: &'a [(String, String)],
+    /// The run's requests, for the Latency section. `None` for a run without saved requests,
+    /// which has no such section.
+    pub log: Option<&'a SampleLog>,
+    /// How many requests the run had.
+    pub target_count: usize,
     /// The error groups of the covered range, most frequent first.
     pub error_groups: &'a [ErrorGroup],
     /// The first error of each status of the whole run, for the groups' samples.
@@ -224,10 +249,8 @@ pub fn build_report(input: &ReportInput) -> Report {
         thresholds,
         kpis: kpis(input),
         chart: chart(input),
-        histogram: histogram(input),
-        statuses_title: t!("load_test.status_breakdown.title").into_owned(),
-        statuses: statuses(input),
         per_request: per_request(input),
+        latency: latency(input),
         errors: errors(input),
         labels: ReportLabels {
             summary: t!("load_test.results.summary").into_owned(),
@@ -631,57 +654,6 @@ fn is_latency(metric: ThresholdMetric) -> bool {
     )
 }
 
-/// The latency distribution, `None` for a run without requests.
-fn histogram(input: &ReportInput) -> Option<ReportHistogram> {
-    let (bucket_us, counts) = &input.summary.histogram;
-    if counts.is_empty() {
-        return None;
-    }
-    let bucket_ms = f64::from(*bucket_us) / 1_000.0;
-    let colors = counts
-        .iter()
-        .enumerate()
-        .map(|(index, _)| {
-            if index as f64 * bucket_ms >= HISTOGRAM_WARNING_MS {
-                input.colors.p95
-            } else {
-                input.colors.rps
-            }
-        })
-        .collect();
-
-    // Evenly spaced bar edges, the last label marking the open ended bucket.
-    let edges = counts.len() - 1;
-    let labels = HISTOGRAM_LABELS.min(counts.len());
-    let x_labels = (0..labels)
-        .map(|index| {
-            let edge = if labels < 2 {
-                0
-            } else {
-                edges * index / (labels - 1)
-            };
-            let text = format_trimmed(edge as f64 * bucket_ms);
-            if index + 1 == labels && labels > 1 {
-                format!("{text}+ ms")
-            } else {
-                text
-            }
-        })
-        .collect();
-
-    Some(ReportHistogram {
-        title: t!("load_test.distribution.title").into_owned(),
-        caption: t!(
-            "load_test.distribution.caption",
-            width = format_bucket_width(*bucket_us)
-        )
-        .into_owned(),
-        counts: counts.clone(),
-        colors,
-        x_labels,
-    })
-}
-
 /// A status as text: the HTTP code, or the translated "Timeout" or "Failed".
 fn status_text(status: StatusKey) -> String {
     match status {
@@ -691,12 +663,14 @@ fn status_text(status: StatusKey) -> String {
     }
 }
 
-/// "Responses by status": a row for each status with at least one request.
-fn statuses(input: &ReportInput) -> Vec<ReportStatus> {
-    let total = input.summary.total.max(1) as f64;
-    input
-        .summary
-        .statuses
+/// The statuses of `counts` out of `total` requests, ascending as given, those with requests.
+fn status_list(
+    counts: &[(StatusKey, u64)],
+    total: u64,
+    colors: &ReportColors,
+) -> Vec<ReportStatus> {
+    let total = total.max(1) as f64;
+    counts
         .iter()
         .filter(|(_, count)| *count > 0)
         .map(|(status, count)| {
@@ -705,7 +679,8 @@ fn statuses(input: &ReportInput) -> Vec<ReportStatus> {
                 label: status_text(*status),
                 share,
                 share_text: format!("{} %", format_decimal(share * 100.0, 1)),
-                color: input.colors.status(*status),
+                count_text: format_integer(*count),
+                color: colors.status(*status),
             }
         })
         .collect()
@@ -720,10 +695,10 @@ fn target_label(targets: &[(String, String)], index: usize) -> String {
     }
 }
 
-/// The per request table.
+/// The per request table: a row per request, the totals row of all of them and the statuses.
 fn per_request(input: &ReportInput) -> ReportTable {
-    let rows = input
-        .summary
+    let summary = input.summary;
+    let rows = summary
         .per_target
         .iter()
         .enumerate()
@@ -738,6 +713,34 @@ fn per_request(input: &ReportInput) -> ReportTable {
             ]
         })
         .collect();
+    let total = vec![
+        t!("load_export.all_requests").into_owned(),
+        format_integer(summary.total),
+        format_latency_ms(f64::from(summary.p50) / 1_000.0),
+        format_latency_ms(f64::from(summary.p95) / 1_000.0),
+        format_latency_ms(f64::from(summary.p99) / 1_000.0),
+        format!("{} %", format_decimal(summary.error_rate * 100.0, 1)),
+    ];
+    let total_statuses = status_list(&summary.statuses, summary.total, input.colors);
+    // A run without saved requests does not know the statuses of each request.
+    let statuses = (!total_statuses.is_empty()).then(|| ReportStatusColumn {
+        header: t!("load_export.statuses").into_owned(),
+        rows: if summary.target_statuses.is_empty() {
+            Vec::new()
+        } else {
+            (0..summary.per_target.len())
+                .map(|index| {
+                    let counts = summary
+                        .target_statuses
+                        .get(index)
+                        .map_or(&[][..], Vec::as_slice);
+                    let target_total = counts.iter().map(|(_, count)| count).sum();
+                    status_list(counts, target_total, input.colors)
+                })
+                .collect()
+        },
+        total: total_statuses,
+    });
     ReportTable {
         title: t!("load_test.table.per_request").into_owned(),
         headers: vec![
@@ -757,7 +760,203 @@ fn per_request(input: &ReportInput) -> ReportTable {
             ReportAlign::Right,
         ],
         rows,
+        total: Some(total),
+        statuses,
     }
+}
+
+/// A latency in microseconds as text, `"-"` for none.
+fn latency_cell(us: u32, count: u64) -> String {
+    if count == 0 {
+        "-".to_string()
+    } else {
+        format_latency_ms(f64::from(us) / 1_000.0)
+    }
+}
+
+/// A y tick of the percentile chart: `"20 ms"`, `"1 s"`.
+fn tick_label(ms: f64) -> String {
+    if ms >= 1_000.0 {
+        format!("{} s", format_trimmed(ms / 1_000.0))
+    } else {
+        format!("{} ms", format_trimmed(ms))
+    }
+}
+
+/// The ticks of the percentile chart's axis in milliseconds: 1, 2, 3 and 5 times each power of
+/// ten.
+fn curve_ticks_ms() -> impl Iterator<Item = f64> {
+    (-1..=6).flat_map(|power| CURVE_TICKS.iter().map(move |tick| tick * 10f64.powi(power)))
+}
+
+/// The latency by percentile chart of the requests' `curves` (microseconds), `None` when none
+/// has responses.
+fn curves(input: &ReportInput, curves: &[Vec<u32>]) -> Option<ReportCurves> {
+    let lines: Vec<ReportCurveLine> = curves
+        .iter()
+        .enumerate()
+        .filter(|(_, values)| !values.is_empty())
+        .map(|(index, values)| ReportCurveLine {
+            name: target_label(input.targets, index),
+            color: input.colors.request(index),
+            values_us: values.iter().map(|us| f64::from(*us)).collect(),
+        })
+        .collect();
+    let all = lines.iter().flat_map(|line| &line.values_us);
+    let fastest = all.clone().copied().fold(f64::INFINITY, f64::min) / 1_000.0;
+    let slowest = all.copied().fold(0.0, f64::max) / 1_000.0;
+    if lines.is_empty() {
+        return None;
+    }
+    // The axis reaches the nearest ticks around the data, with a little room.
+    let low = curve_ticks_ms()
+        .take_while(|tick| *tick <= fastest * (1.0 - CURVE_MARGIN))
+        .last()
+        .unwrap_or(0.1);
+    let high = curve_ticks_ms()
+        .find(|tick| *tick >= slowest * (1.0 + CURVE_MARGIN))
+        .unwrap_or(slowest.max(low * 2.0));
+    Some(ReportCurves {
+        title: t!("load_export.latency.curves_title").into_owned(),
+        subtitle: t!("load_export.latency.curves_axes").into_owned(),
+        lines,
+        y_min_us: low * 1_000.0,
+        y_max_us: high * 1_000.0,
+        y_ticks: curve_ticks_ms()
+            .filter(|tick| (low..=high).contains(tick))
+            .map(|tick| (tick * 1_000.0, tick_label(tick)))
+            .collect(),
+        x_ticks: vec![
+            t!("load_export.latency.min").into_owned(),
+            "p90".to_string(),
+            "p99".to_string(),
+            format!("p{}", format_decimal(99.9, 1)),
+        ],
+    })
+}
+
+/// One request's small histogram, on its own linear axis.
+fn request_histogram(
+    input: &ReportInput,
+    log: &SampleLog,
+    options: &LatencyOptions,
+    index: usize,
+    stats: &LatencyPercentiles,
+) -> ReportRequestHistogram {
+    let view = latency_view(
+        log,
+        input.target_count,
+        &LatencyOptions {
+            target: Some(index),
+            ..options.clone()
+        },
+    );
+    let histogram = &view.histogram;
+    let colors = input.colors;
+    let at = |us: u32| histogram.fraction(f64::from(us));
+    let edge = |us: f64| format_latency_ms(us / 1_000.0);
+    let (low, high) = match (histogram.edges_us.first(), histogram.edges_us.last()) {
+        (Some(low), Some(high)) => (*low, *high),
+        _ => (0.0, 0.0),
+    };
+    let series = [
+        ("p50", stats.p50, colors.p50),
+        ("p95", stats.p95, colors.p95),
+        ("p99", stats.p99, colors.p99),
+    ];
+    ReportRequestHistogram {
+        name: target_label(input.targets, index),
+        color: colors.request(index),
+        count_text: plural("load_export.latency.responses", stats.count as usize),
+        counts: histogram.counts.iter().map(|bin| bin[index]).collect(),
+        markers: series
+            .iter()
+            .map(|(_, us, color)| (at(*us), *color))
+            .collect(),
+        x_labels: vec![edge(low), edge((low + high) / 2.0), edge(high)],
+        caption: series
+            .iter()
+            .map(|(name, us, color)| {
+                (
+                    format!("{name} {}", format_latency_ms(f64::from(*us) / 1_000.0)),
+                    *color,
+                )
+            })
+            .collect(),
+    }
+}
+
+/// The Latency section of the covered range: successful responses only, `None` without the
+/// run's requests.
+fn latency(input: &ReportInput) -> Option<ReportLatency> {
+    let log = input.log?;
+    let range = input
+        .window
+        .filter(|_| input.window_only)
+        .map(|(first, last)| first as u32..last as u32 + 1);
+    let targets = input.target_count.max(input.targets.len());
+    let options = LatencyOptions {
+        range,
+        include_errors: false,
+        target: None,
+        scale: LatencyScale::Linear,
+    };
+    let view = latency_view(log, targets, &options);
+
+    let histograms = view
+        .per_target
+        .iter()
+        .enumerate()
+        .filter(|(_, stats)| stats.count > 0)
+        .map(|(index, stats)| request_histogram(input, log, &options, index, stats))
+        .collect();
+
+    let row = |name: String, color: Option<Rgb>, stats: &LatencyPercentiles| ReportLatencyRow {
+        name,
+        color,
+        cells: vec![
+            format_integer(stats.count),
+            latency_cell(stats.p50, stats.count),
+            latency_cell(stats.p90, stats.count),
+            latency_cell(stats.p95, stats.count),
+            latency_cell(stats.p99, stats.count),
+            latency_cell(stats.max, stats.count),
+        ],
+    };
+    let mut rows = vec![row(
+        t!("load_export.all_requests").into_owned(),
+        None,
+        &view.all,
+    )];
+    rows.extend(view.per_target.iter().enumerate().map(|(index, stats)| {
+        row(
+            target_label(input.targets, index),
+            Some(input.colors.request(index)),
+            stats,
+        )
+    }));
+
+    Some(ReportLatency {
+        title: t!("load_export.latency.title").into_owned(),
+        caption: t!("load_export.latency.caption").into_owned(),
+        note: if view.excluded == 0 {
+            t!("load_export.latency.note_none").into_owned()
+        } else {
+            plural("load_export.latency.note", view.excluded as usize)
+        },
+        histograms,
+        headers: vec![
+            t!("common.request").into_owned(),
+            t!("load_test.table.count").into_owned(),
+            "p50".to_string(),
+            "p90".to_string(),
+            "p95".to_string(),
+            "p99".to_string(),
+            t!("load_export.latency.max").into_owned(),
+        ],
+        rows,
+        curves: curves(input, &view.curves),
+    })
 }
 
 /// The title of an error group: `"429 Too Many Requests"`, `"No response in 30 s"` or
@@ -850,7 +1049,7 @@ pub fn local_date_time(unix: i64) -> String {
 #[allow(clippy::expect_used)]
 mod tests {
     use super::*;
-    use postino_load::{SecondPoint, TargetStats};
+    use postino_load::{SampleRecord, SecondPoint, TargetStats};
     use pretty_assertions::assert_eq;
 
     fn snapshot(rps: f64, p99_us: u32, error_rate: f64, total: u64) -> LoadSnapshot {
@@ -961,6 +1160,7 @@ mod tests {
         groups: Vec<ErrorGroup>,
         examples: Vec<ErrorExample>,
         colors: ReportColors,
+        log: Option<SampleLog>,
     }
 
     impl Fixture {
@@ -988,6 +1188,7 @@ mod tests {
                 groups: groups(),
                 examples: examples(),
                 colors: ReportColors::light(),
+                log: Some(log()),
             }
         }
 
@@ -1008,6 +1209,8 @@ mod tests {
                 window: None,
                 window_only: false,
                 targets: &self.targets,
+                log: self.log.as_ref(),
+                target_count: 2,
                 error_groups: &self.groups,
                 error_examples: &self.examples,
                 timeout_secs: 30,
@@ -1146,52 +1349,137 @@ mod tests {
         assert_eq!(report.kpis[5].delta, None);
     }
 
-    #[test]
-    fn the_histogram_names_its_bucket_width() {
-        let fixture = Fixture::new();
-        let histogram = build_report(&fixture.input())
-            .histogram
-            .expect("the run has requests");
-        assert_eq!(histogram.caption, "requests per 4 ms interval");
-        assert_eq!(histogram.counts.len(), 26);
-        assert_eq!(
-            histogram.x_labels,
-            vec!["0", "20", "40", "60", "80", "100+ ms"]
-        );
-        assert_eq!(histogram.colors.len(), 26);
-        assert_eq!(histogram.colors[0], fixture.colors.rps);
-        // 100 ms is under the warning edge, a 10 ms bucket width reaches it at the 12th bar.
-        assert_eq!(histogram.colors[25], fixture.colors.rps);
-        let mut slow = fixture.summary.clone();
-        slow.histogram.0 = 10_000;
-        let mut input = fixture.input();
-        input.summary = &slow;
-        let histogram = build_report(&input)
-            .histogram
-            .expect("the run has requests");
-        assert_eq!(histogram.colors[10], fixture.colors.rps);
-        assert_eq!(histogram.colors[11], fixture.colors.p95);
+    /// 100 successful responses per request (about 300 ms and 2 s), and 3 errors of the second
+    /// one in the second 5.
+    fn log() -> SampleLog {
+        let mut log = SampleLog::new();
+        let url = log.intern("http://t/x");
+        let mut push = |elapsed_ms: u32, target: u32, status: StatusKey, latency_ms: u32| {
+            log.push(SampleRecord {
+                elapsed_ms,
+                vu: 0,
+                target,
+                url,
+                status,
+                latency_us: latency_ms * 1_000,
+                size: 0,
+                is_error: status.is_error(),
+            });
+        };
+        for i in 0..100u32 {
+            let second = i % 10;
+            push(second * 1_000, 0, StatusKey::Code(200), 300 + i % 5);
+            push(second * 1_000, 1, StatusKey::Code(200), 2_000 + i % 3);
+        }
+        for _ in 0..3 {
+            push(5_000, 1, StatusKey::Code(429), 1);
+        }
+        log
     }
 
     #[test]
-    fn statuses_and_the_per_request_table_are_labeled() {
+    fn the_per_request_table_has_a_totals_row_and_status_bars() {
         let fixture = Fixture::new();
-        let report = build_report(&fixture.input());
-        let labels: Vec<&str> = report
-            .statuses
-            .iter()
-            .map(|status| status.label.as_str())
-            .collect();
+        let table = build_report(&fixture.input()).per_request;
+        assert_eq!(table.rows[1][0], "POST create");
+        assert_eq!(table.rows[1][2], "14 ms");
+        assert_eq!(table.rows[1][5], "2.5 %");
+        let total = table.total.expect("a totals row");
+        assert_eq!(total.len(), table.headers.len());
+        assert_eq!(total[0], "All requests");
+        assert_eq!(total[1], "1,000");
+        assert_eq!(total[4], "62 ms");
+        assert_eq!(total[5], "1.0 %");
+
+        let column = table.statuses.expect("the run has statuses");
+        assert_eq!(column.header, "Statuses");
+        let labels: Vec<&str> = column.total.iter().map(|s| s.label.as_str()).collect();
         assert_eq!(labels, vec!["200", "429", "Timeout"]);
-        assert_eq!(report.statuses[0].share_text, "90.0 %");
-        assert_eq!(report.statuses[2].color, fixture.colors.bad);
-        assert_eq!(report.per_request.rows[1][0], "POST create");
-        assert_eq!(report.per_request.rows[1][2], "14 ms");
-        assert_eq!(report.per_request.rows[1][5], "2.5 %");
+        assert_eq!(column.total[0].share_text, "90.0 %");
+        assert_eq!(column.total[0].count_text, "900");
+        assert_eq!(column.total[2].color, fixture.colors.failure);
+        assert_ne!(fixture.colors.failure, fixture.colors.status_server);
+        // The second request: 300 of 400 are 200, shares are of its own requests.
+        assert_eq!(column.rows.len(), 2);
+        assert_eq!(column.rows[0].len(), 1);
+        assert_eq!(column.rows[1][0].share_text, "75.0 %");
+        assert_eq!(column.rows[1][1].share_text, "22.5 %");
+    }
+
+    #[test]
+    fn without_the_statuses_of_each_request_there_is_no_column_but_the_totals() {
+        let fixture = Fixture::new();
+        let mut summary = fixture.summary.clone();
+        summary.target_statuses.clear();
+        let mut input = fixture.input();
+        input.summary = &summary;
+        let column = build_report(&input)
+            .per_request
+            .statuses
+            .expect("the totals stay");
+        assert!(column.rows.is_empty());
+        assert_eq!(column.total.len(), 3);
+    }
+
+    #[test]
+    fn the_latency_section_reads_successful_responses_per_request() {
+        let fixture = Fixture::new();
+        let latency = build_report(&fixture.input())
+            .latency
+            .expect("the run has its requests");
         assert_eq!(
-            report.per_request.rows[0].len(),
-            report.per_request.headers.len()
+            latency.note,
+            "Successful responses only, 3 errors left out."
         );
+        assert_eq!(latency.histograms.len(), 2);
+        let fast = &latency.histograms[0];
+        assert_eq!(fast.name, "GET list");
+        assert_eq!(fast.color, fixture.colors.request(0));
+        assert_eq!(fast.count_text, "100 responses");
+        assert_eq!(fast.counts.iter().sum::<u64>(), 100);
+        assert_eq!(fast.x_labels.len(), 3);
+        assert_eq!(fast.caption[0].0, "p50 302 ms");
+        assert_eq!(fast.markers.len(), 3);
+        // Each request has its own axis: the slow one starts near 2 s.
+        assert!(latency.histograms[1].x_labels[0].ends_with(" s"));
+
+        assert_eq!(latency.rows[0].name, "All requests");
+        assert_eq!(latency.rows[0].color, None);
+        assert_eq!(latency.rows[0].cells[0], "200");
+        assert_eq!(latency.rows[2].color, Some(fixture.colors.request(1)));
+        assert_eq!(latency.rows[2].cells[1], "2.0 s");
+        assert_eq!(latency.headers.len(), latency.rows[0].cells.len() + 1);
+
+        let curves = latency.curves.expect("two lines");
+        assert_eq!(curves.lines.len(), 2);
+        assert_eq!(curves.lines[0].values_us.len(), 61);
+        assert_eq!(curves.x_ticks, vec!["min", "p90", "p99", "p99.9"]);
+        let labels: Vec<&str> = curves.y_ticks.iter().map(|(_, l)| l.as_str()).collect();
+        assert_eq!(
+            labels,
+            vec!["200 ms", "300 ms", "500 ms", "1 s", "2 s", "3 s"]
+        );
+        assert!((curves.y_min_us - 200_000.0).abs() < 1.0);
+        assert!((curves.y_max_us - 3_000_000.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn the_latency_section_follows_the_window_and_needs_the_log() {
+        let fixture = Fixture::new();
+        // The errors are in the second 5: a window without it leaves none out.
+        let mut input = fixture.input();
+        input.window = Some((0, 3));
+        input.window_only = true;
+        let latency = build_report(&input).latency.expect("a section");
+        assert_eq!(latency.note, "Successful responses only.");
+        assert_eq!(latency.rows[0].cells[0], "80");
+        // Only shaded, the report still covers the whole run.
+        input.window_only = false;
+        let latency = build_report(&input).latency.expect("a section");
+        assert_eq!(latency.rows[0].cells[0], "200");
+
+        input.log = None;
+        assert_eq!(build_report(&input).latency, None);
     }
 
     #[test]
@@ -1234,7 +1522,7 @@ mod tests {
         assert_eq!(colors.p50, Rgb(0x1f, 0x8f, 0x80));
         assert_eq!(colors.p99, Rgb(0xcf, 0x5b, 0x3a));
         assert_eq!(colors.status(StatusKey::Code(204)), colors.status_ok);
-        assert_eq!(colors.status(StatusKey::Failed), colors.bad);
+        assert_eq!(colors.status(StatusKey::Failed), colors.failure);
     }
 
     #[test]

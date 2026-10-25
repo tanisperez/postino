@@ -3,7 +3,7 @@
 //!
 //! The app builds a `Report` in the interface language, with numbers already formatted for it,
 //! so this crate never translates or formats anything for the user: the renderers only lay out
-//! the strings they are given. The chart and histogram also carry raw numbers, since they are
+//! the strings they are given. The chart and histograms also carry raw numbers, since they are
 //! drawn, not printed.
 
 /// A color for the PDF, as 8 bit RGB. The app passes its light theme colors, since a PDF is
@@ -134,22 +134,7 @@ pub struct ReportChart {
     pub window: Option<(usize, usize)>,
 }
 
-/// The latency distribution: bars of equal width.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ReportHistogram {
-    /// The card title, for example `"Latency distribution"`.
-    pub title: String,
-    /// The caption on the right, for example `"requests per 4 ms interval"`.
-    pub caption: String,
-    /// The count of each bar.
-    pub counts: Vec<u64>,
-    /// Each bar's color, same length as `counts`.
-    pub colors: Vec<Rgb>,
-    /// The x axis labels, left to right, evenly spaced.
-    pub x_labels: Vec<String>,
-}
-
-/// One row of "Responses by status".
+/// One status of a request or of all of them: `"200"`, its share and its color.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReportStatus {
     /// The status, for example `"200"` or `"Timeout"`.
@@ -158,8 +143,23 @@ pub struct ReportStatus {
     pub share: f64,
     /// The share as text, for example `"98,2 %"`.
     pub share_text: String,
+    /// How many requests, formatted.
+    pub count_text: String,
     /// The bar and label color.
     pub color: Rgb,
+}
+
+/// The status column of the per request table: the PDF draws a stacked bar per row and a legend
+/// of the exact codes below the table, the Markdown report writes the codes and shares.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReportStatusColumn {
+    /// The column header, for example `"Statuses"`.
+    pub header: String,
+    /// The statuses of each table row, same length as the table's rows. Empty when the run did
+    /// not keep them per request: there is no column then, only the totals.
+    pub rows: Vec<Vec<ReportStatus>>,
+    /// The statuses of all requests, ascending: the totals row's cell and the legend.
+    pub total: Vec<ReportStatus>,
 }
 
 /// How a table column is aligned.
@@ -171,7 +171,7 @@ pub enum ReportAlign {
     Right,
 }
 
-/// A plain table of text cells.
+/// A table of text cells, with an optional totals row and status column.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReportTable {
     /// The table title.
@@ -182,6 +182,89 @@ pub struct ReportTable {
     pub align: Vec<ReportAlign>,
     /// The rows, each the same length as `headers`.
     pub rows: Vec<Vec<String>>,
+    /// The totals row drawn in bold after the rows, same length as `headers`.
+    pub total: Option<Vec<String>>,
+    /// The status column, after the last of `headers`.
+    pub statuses: Option<ReportStatusColumn>,
+}
+
+/// One row of the latency percentile table.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReportLatencyRow {
+    /// The request, or "All requests".
+    pub name: String,
+    /// The request's color for the swatch; `None` for "All requests", which is drawn in bold.
+    pub color: Option<Rgb>,
+    /// The count and the percentiles, formatted, one per header after the name.
+    pub cells: Vec<String>,
+}
+
+/// The small histogram of one request, on its own latency axis.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReportRequestHistogram {
+    /// The request.
+    pub name: String,
+    /// The request's color: the swatch and the bars.
+    pub color: Rgb,
+    /// For example `"1,200 responses"`.
+    pub count_text: String,
+    /// The responses of each bin, evenly spaced over the axis.
+    pub counts: Vec<u64>,
+    /// Vertical dashed markers: where they sit on the axis (`0.0` to `1.0`) and their color.
+    pub markers: Vec<(f64, Rgb)>,
+    /// The labels under the axis: start, middle and end.
+    pub x_labels: Vec<String>,
+    /// The colored caption under the axis, for example `("p50 310 ms", color)`.
+    pub caption: Vec<(String, Rgb)>,
+}
+
+/// One request's line of the latency by percentile chart.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReportCurveLine {
+    /// The request, written at the line's right end.
+    pub name: String,
+    /// The line color.
+    pub color: Rgb,
+    /// The latency in microseconds at each point, evenly spaced over the x axis. Never empty.
+    pub values_us: Vec<f64>,
+}
+
+/// The latency by percentile chart: log axes.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReportCurves {
+    /// The chart title, for example `"Latency by percentile"`.
+    pub title: String,
+    /// The note after the title, for example `"log axes"`.
+    pub subtitle: String,
+    /// One line per request with responses.
+    pub lines: Vec<ReportCurveLine>,
+    /// The bottom of the y axis, in microseconds.
+    pub y_min_us: f64,
+    /// The top of the y axis, in microseconds.
+    pub y_max_us: f64,
+    /// The y ticks inside the axis: the latency in microseconds and its label.
+    pub y_ticks: Vec<(f64, String)>,
+    /// The x tick labels, left to right, evenly spaced: min, p90, p99 and p99.9.
+    pub x_ticks: Vec<String>,
+}
+
+/// The "Latency" section: successful responses per request.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReportLatency {
+    /// The section title, for example `"Latency"`.
+    pub title: String,
+    /// The caption over the histograms: they have their own axes.
+    pub caption: String,
+    /// What was left out, for example `"Successful responses only, 12 errors left out."`.
+    pub note: String,
+    /// One histogram per request with responses.
+    pub histograms: Vec<ReportRequestHistogram>,
+    /// The percentile table headers, the request column first.
+    pub headers: Vec<String>,
+    /// The rows: "All requests" first, then each request.
+    pub rows: Vec<ReportLatencyRow>,
+    /// The latency by percentile chart, `None` when no request has responses.
+    pub curves: Option<ReportCurves>,
 }
 
 /// One group of the Errors tab.
@@ -239,14 +322,10 @@ pub struct Report {
     pub kpis: Vec<ReportKpi>,
     /// The chart, `None` when the run has no per second data.
     pub chart: Option<ReportChart>,
-    /// The latency distribution.
-    pub histogram: Option<ReportHistogram>,
-    /// The "Responses by status" title.
-    pub statuses_title: String,
-    /// "Responses by status".
-    pub statuses: Vec<ReportStatus>,
-    /// The per request table.
+    /// The per request table, with its totals row and status column.
     pub per_request: ReportTable,
+    /// The latency section, `None` for a run without saved requests.
+    pub latency: Option<ReportLatency>,
     /// The error groups, most frequent first.
     pub errors: Vec<ReportErrorGroup>,
     /// Headings and fixed texts.

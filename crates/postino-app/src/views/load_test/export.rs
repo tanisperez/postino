@@ -2,7 +2,7 @@
 //! copying the summary as Markdown (`Ctrl+Shift+C`).
 //!
 //! Everything that costs time runs on the background executor: the statistics of the covered
-//! range, rendering the PDF, building the CSV and the JSON and writing the file. The UI thread
+//! range, the report's latency tables (they read the whole log), rendering the PDF, building the CSV and the JSON and writing the file. The UI thread
 //! only gathers what the tab holds (cheap clones and `Arc`s), formats the report's texts and
 //! shows the result.
 
@@ -252,6 +252,8 @@ impl ExportSource {
             window: self.window,
             window_only: self.window_only,
             targets: &self.targets,
+            log: self.log.as_deref(),
+            target_count: self.target_count,
             error_groups: &stats.error_groups,
             error_examples: &self.snapshot.error_examples,
             timeout_secs: self.timeout_secs,
@@ -365,15 +367,10 @@ impl AppView {
             let stats = cx
                 .background_spawn(async move { covered.covered_stats() })
                 .await;
-            let report = if format.is_report() {
-                let (source, stats) = (source.clone(), stats.clone());
-                this.update_in(cx, |_, _, _| source.report(&stats)).ok()
-            } else {
-                None
-            };
             let target = path.clone();
             let written = cx
                 .background_spawn(async move {
+                    let report = format.is_report().then(|| source.report(&stats));
                     let bytes = source.render(format, report.as_ref(), &stats)?;
                     std::fs::write(&target, bytes).map_err(|error| error.to_string())
                 })
@@ -439,10 +436,13 @@ impl AppView {
             let stats = cx
                 .background_spawn(async move { covered.covered_stats() })
                 .await;
+            let number = source.number;
+            let markdown = cx
+                .background_spawn(async move { to_markdown(&source.report(&stats)) })
+                .await;
             let _ = this.update_in(cx, |_, window, cx| {
-                let markdown = to_markdown(&source.report(&stats));
                 cx.write_to_clipboard(ClipboardItem::new_string(markdown));
-                log::info!("load test run {} summary copied as markdown", source.number);
+                log::info!("load test run {number} summary copied as markdown");
                 window.push_notification(
                     Notification::success(t!("load_test.export.copied").into_owned()),
                     cx,

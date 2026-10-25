@@ -1,9 +1,9 @@
 //! [`to_pdf`], the PDF rendering of a [`Report`].
 //!
 //! An A4 portrait document on a white background, laid out top to bottom: title, verdict and
-//! threshold chips, the KPI grid, the "Performance over time" chart, the latency histogram next to
-//! the status bars, the per request table and the error groups. Everything is vector: the chart
-//! and the histogram are drawn from the report's raw numbers, the check and cross marks are
+//! threshold chips, the KPI grid, the "Performance over time" chart, the per request table with
+//! its status bars, the latency section (a histogram per request, the percentile table and the
+//! latency by percentile chart) and the error groups. Everything is vector: the charts are drawn from the report's raw numbers, the check and cross marks are
 //! small strokes, not font glyphs.
 //!
 //! The layout is done in two steps. `Layout` places every block and records plain drawing
@@ -21,8 +21,8 @@ use draw::{Line, Op, Paint, Shape, render};
 use text::{Fonts, Style, Weight, clean};
 
 use super::report::{
-    Report, ReportAlign, ReportAxis, ReportChart, ReportErrorGroup, ReportHistogram, ReportKpi,
-    ReportSeriesStyle, ReportTone, Rgb,
+    Report, ReportAlign, ReportAxis, ReportChart, ReportCurves, ReportErrorGroup, ReportKpi,
+    ReportLatency, ReportRequestHistogram, ReportSeriesStyle, ReportStatus, ReportTone, Rgb,
 };
 
 /// The TrueType bytes of the four faces a report is set in. The app passes the Geist and Geist
@@ -76,6 +76,8 @@ const BOTTOM: f32 = PAGE_H - MARGIN - 12.0;
 const FOOTER_Y: f32 = PAGE_H - MARGIN + 2.0;
 /// The space between two blocks.
 const GAP: f32 = 14.0;
+/// The height of a request's histogram in the latency section.
+const HIST_H: f32 = 56.0;
 
 // The fixed light theme neutrals.
 const TEXT: Rgb = Rgb(0x1b, 0x1c, 0x21);
@@ -133,8 +135,10 @@ fn layout(report: &Report, fonts: &Fonts<'_>) -> Vec<Vec<Op>> {
     if let Some(chart) = &report.chart {
         l.chart(chart);
     }
-    l.distribution(report);
     l.per_request(report);
+    if let Some(latency) = &report.latency {
+        l.latency(latency);
+    }
     l.errors(report);
     l.footers(report);
     l.pages
@@ -795,187 +799,24 @@ impl Layout<'_, '_> {
         }
     }
 
-    // The latency histogram on the left and the status bars on the right.
-    fn distribution(&mut self, report: &Report) {
-        let hist = report.histogram.as_ref();
-        if hist.is_none() && report.statuses.is_empty() {
-            return;
-        }
-        let gap = GAP;
-        let (hist_w, status_w) = if hist.is_some() && !report.statuses.is_empty() {
-            let hw = (CONTENT_W - gap) * 1.3 / 2.3;
-            (hw, CONTENT_W - gap - hw)
-        } else if hist.is_some() {
-            (CONTENT_W, 0.0)
-        } else {
-            (0.0, CONTENT_W)
-        };
-        let status_h = 11.0 + 14.0 + 8.0 + report.statuses.len() as f32 * 18.0 + 6.0;
-        let h = if hist.is_some() { 150.0 } else { 0.0_f32 }.max(if report.statuses.is_empty() {
-            0.0
-        } else {
-            status_h
-        });
-        self.ensure(h);
-        let y = self.y;
-        if let Some(hist) = hist {
-            self.histogram(hist, (LEFT, y, hist_w, h));
-        }
-        if !report.statuses.is_empty() {
-            let x = LEFT + CONTENT_W - status_w;
-            self.card((x, y, status_w, h));
-            self.text(
-                x + 12.0,
-                y + 20.0,
-                &report.statuses_title,
-                Style::new(Weight::Medium, 10.0, TEXT),
-                status_w - 24.0,
-            );
-            for (i, s) in report.statuses.iter().enumerate() {
-                let row = y + 11.0 + 14.0 + 8.0 + i as f32 * 18.0;
-                let base = row + 9.0;
-                let code_w = 44.0;
-                let share_w = 38.0;
-                self.text(
-                    x + 12.0,
-                    base + 3.0,
-                    &s.label,
-                    Style::new(Weight::Mono, 8.5, s.color),
-                    code_w - 4.0,
-                );
-                let bar_x = x + 12.0 + code_w;
-                let bar_w = (status_w - 24.0 - code_w - share_w - 8.0).max(10.0);
-                self.rect(
-                    (bar_x, base - 2.5, bar_w, 5.0),
-                    2.5,
-                    Some((GRID, 1.0)),
-                    None,
-                );
-                let fill = bar_w * s.share.clamp(0.0, 1.0) as f32;
-                if fill > 0.0 {
-                    self.rect(
-                        (bar_x, base - 2.5, fill.max(2.5), 5.0),
-                        2.5,
-                        Some((s.color, 1.0)),
-                        None,
-                    );
-                }
-                self.text_right(
-                    x + status_w - 12.0,
-                    base + 3.0,
-                    &s.share_text,
-                    Style::new(Weight::Regular, 8.0, MUTED),
-                    share_w,
-                );
-            }
-        }
-        self.y += h + GAP;
-    }
-
-    // The latency histogram card.
-    fn histogram(&mut self, hist: &ReportHistogram, (x, y, w, h): (f32, f32, f32, f32)) {
-        const PAD: f32 = 12.0;
-        self.card((x, y, w, h));
-        let caption_w = self.width(&clean(&hist.caption), Weight::Regular, 8.0);
-        let title_w = self.width(&clean(&hist.title), Weight::Medium, 10.0);
-        let caption_max = (w - 2.0 * PAD - title_w - 10.0).max(0.0).min(caption_w);
-        self.text(
-            x + PAD,
-            y + 20.0,
-            &hist.title,
-            Style::new(Weight::Medium, 10.0, TEXT),
-            w - 2.0 * PAD - caption_max - 10.0,
-        );
-        self.text_right(
-            x + w - PAD,
-            y + 20.0,
-            &hist.caption,
-            Style::new(Weight::Regular, 8.0, SUBTLE),
-            caption_max,
-        );
-
-        let max = hist.counts.iter().copied().max().unwrap_or(0);
-        let axis_w = self.width(&max.to_string(), Weight::Mono, 7.0).max(10.0) + 6.0;
-        let plot_l = x + PAD + axis_w;
-        let plot_r = x + w - PAD;
-        let plot_w = (plot_r - plot_l).max(10.0);
-        let plot_t = y + 34.0;
-        let plot_h = h - 34.0 - 28.0;
-        let plot_b = plot_t + plot_h;
-        for (i, label) in [max.to_string(), (max / 2).to_string(), "0".to_string()]
-            .iter()
-            .enumerate()
-        {
-            let ly = plot_t + plot_h * i as f32 / 2.0;
-            self.text_right(
-                plot_l - 6.0,
-                ly + 7.0 * 0.36,
-                label,
-                Style::new(Weight::Mono, 7.0, SUBTLE),
-                f32::INFINITY,
-            );
-            if i < 2 {
-                self.line((plot_l, ly), (plot_r, ly), Line::solid(GRID, 0.6));
-            }
-        }
-        self.line(
-            (plot_l, plot_b),
-            (plot_r, plot_b),
-            Line::solid(BORDER, 0.75),
-        );
-        let n = hist.counts.len();
-        if n > 0 && max > 0 {
-            let gap = if n > 1 {
-                (plot_w * 0.012).min(2.0)
-            } else {
-                0.0
-            };
-            let bar_w = (plot_w - gap * (n - 1) as f32) / n as f32;
-            for (i, &count) in hist.counts.iter().enumerate() {
-                if count == 0 {
-                    continue;
-                }
-                let bar_h = (plot_h * (count as f64 / max as f64) as f32).max(1.0);
-                let color = hist.colors.get(i).copied().unwrap_or(ACCENT);
-                let bx = plot_l + i as f32 * (bar_w + gap);
-                self.rect(
-                    (bx, plot_b - bar_h, bar_w, bar_h),
-                    0.0,
-                    Some((color, 1.0)),
-                    None,
-                );
-            }
-        }
-        let n_labels = hist.x_labels.len();
-        for (i, label) in hist.x_labels.iter().enumerate() {
-            let label_w = self.width(&clean(label), Weight::Mono, 7.0);
-            let frac = if n_labels < 2 {
-                0.0
-            } else {
-                i as f32 / (n_labels - 1) as f32
-            };
-            let cx = (plot_l + plot_w * frac).clamp(plot_l, plot_r - label_w / 2.0);
-            let cx = cx.max(plot_l + label_w / 2.0).min(plot_r - label_w / 2.0);
-            self.text_center(
-                cx,
-                plot_b + 12.0,
-                label,
-                Style::new(Weight::Mono, 7.0, SUBTLE),
-            );
-        }
-    }
-
     // The per request table, row by row with a repeated header.
     fn per_request(&mut self, report: &Report) {
         const ROW: f32 = 18.0;
         const HEAD: f32 = 20.0;
         const SIZE: f32 = 8.5;
         const COL_GAP: f32 = 12.0;
+        const BAR_W: f32 = 96.0;
         let table = &report.per_request;
         let n = table.headers.len();
         if n == 0 {
             return;
         }
+        // The status bars take a column of their own after the others.
+        let bars = table
+            .statuses
+            .as_ref()
+            .filter(|column| !column.rows.is_empty());
+        let avail = CONTENT_W - bars.map_or(0.0, |_| BAR_W + COL_GAP);
         let right = |i: usize| {
             table.align.get(i).copied().unwrap_or(ReportAlign::Left) == ReportAlign::Right
         };
@@ -991,6 +832,7 @@ impl Layout<'_, '_> {
                 let cells = table
                     .rows
                     .iter()
+                    .chain(&table.total)
                     .filter_map(|r| r.get(i))
                     .map(|c| self.width(&clean(c), weight, SIZE))
                     .fold(0.0, f32::max);
@@ -1002,17 +844,17 @@ impl Layout<'_, '_> {
         let gaps = COL_GAP * (n - 1) as f32;
         let mut widths = natural.clone();
         if n_left == 0 {
-            widths = vec![(CONTENT_W - gaps) / n as f32; n];
+            widths = vec![(avail - gaps) / n as f32; n];
         } else {
             let mut right_w = (0..n)
                 .filter(|&i| right(i))
                 .map(|i| natural[i])
                 .fold(0.0, f32::max);
             let min_left = 90.0 * n_left as f32;
-            if n_right as f32 * right_w + gaps + min_left > CONTENT_W {
-                right_w = ((CONTENT_W - gaps - min_left) / n_right.max(1) as f32).max(30.0);
+            if n_right as f32 * right_w + gaps + min_left > avail {
+                right_w = ((avail - gaps - min_left) / n_right.max(1) as f32).max(30.0);
             }
-            let left_total = (CONTENT_W - gaps - n_right as f32 * right_w).max(0.0);
+            let left_total = (avail - gaps - n_right as f32 * right_w).max(0.0);
             let left_natural: f32 = (0..n).filter(|&i| !right(i)).map(|i| natural[i]).sum();
             for i in 0..n {
                 widths[i] = if right(i) {
@@ -1025,7 +867,26 @@ impl Layout<'_, '_> {
             }
         }
 
-        let first_rows = table.rows.len().min(2);
+        // The headers, widths and alignment with the status column last.
+        let mut headers = table.headers.clone();
+        let mut flags = right_flags(table.align.as_slice(), n);
+        let mut all_widths = widths.clone();
+        if let Some(column) = bars {
+            headers.push(column.header.clone());
+            flags.push(false);
+            all_widths.push(BAR_W);
+        }
+        let mut rows: Vec<TableRow<'_>> = table
+            .rows
+            .iter()
+            .enumerate()
+            .map(|(i, row)| (row, false, bars.and_then(|c| c.rows.get(i))))
+            .collect();
+        if let Some(total) = &table.total {
+            rows.push((total, true, bars.map(|c| &c.total)));
+        }
+
+        let first_rows = rows.len().min(2);
         self.ensure(16.0 + 6.0 + HEAD + first_rows as f32 * ROW);
         self.text(
             LEFT,
@@ -1035,46 +896,308 @@ impl Layout<'_, '_> {
             CONTENT_W,
         );
         self.y += 16.0 + 6.0;
-        self.table_header(
-            &table.headers,
-            &widths,
-            &right_flags(table.align.as_slice(), n),
-            COL_GAP,
-            HEAD,
-        );
-        for row in &table.rows {
+        self.table_header(&headers, &all_widths, &flags, COL_GAP, HEAD);
+        for (row, bold, statuses) in rows {
             if self.y + ROW > BOTTOM {
                 self.new_page();
-                self.table_header(
-                    &table.headers,
-                    &widths,
-                    &right_flags(table.align.as_slice(), n),
-                    COL_GAP,
-                    HEAD,
-                );
+                self.table_header(&headers, &all_widths, &flags, COL_GAP, HEAD);
             }
             let base = self.y + ROW / 2.0 + SIZE * 0.36;
             let mut x = LEFT;
             for (i, &width) in widths.iter().enumerate() {
                 let cell = row.get(i).map_or("", String::as_str);
                 if right(i) {
-                    self.text_right(
-                        x + width,
-                        base,
-                        cell,
-                        Style::new(Weight::Mono, SIZE, TEXT),
-                        width,
-                    );
+                    let weight = if bold { Weight::Semibold } else { Weight::Mono };
+                    self.text_right(x + width, base, cell, Style::new(weight, SIZE, TEXT), width);
                 } else {
-                    self.text(
-                        x,
-                        base,
-                        cell,
-                        Style::new(Weight::Regular, SIZE, TEXT),
-                        width,
-                    );
+                    let weight = if bold {
+                        Weight::Semibold
+                    } else {
+                        Weight::Regular
+                    };
+                    self.text(x, base, cell, Style::new(weight, SIZE, TEXT), width);
                 }
                 x += width + COL_GAP;
+            }
+            if let Some(statuses) = statuses {
+                self.status_bar(x, self.y + ROW / 2.0, BAR_W, statuses);
+            }
+            self.y += ROW;
+            self.line(
+                (LEFT, self.y),
+                (LEFT + CONTENT_W, self.y),
+                Line::solid(GRID, 0.6),
+            );
+        }
+        self.y += 8.0;
+        if let Some(column) = &table.statuses {
+            self.status_legend(&column.total);
+        }
+        self.y += GAP - 8.0;
+    }
+
+    /// A stacked bar of `statuses`, one segment per run of the same color (2xx, 3xx, ...), `w`
+    /// wide and centered on `mid_y`.
+    fn status_bar(&mut self, x: f32, mid_y: f32, w: f32, statuses: &[ReportStatus]) {
+        const H: f32 = 6.0;
+        let top = mid_y - H / 2.0;
+        self.rect((x, top, w, H), 3.0, Some((GRID, 1.0)), None);
+        let mut runs: Vec<(Rgb, f64)> = Vec::new();
+        for s in statuses {
+            match runs.last_mut() {
+                Some((color, share)) if *color == s.color => *share += s.share,
+                _ => runs.push((s.color, s.share)),
+            }
+        }
+        let mut at = x;
+        let end = x + w;
+        for (color, share) in runs {
+            let seg = (w * share.clamp(0.0, 1.0) as f32).max(1.5).min(end - at);
+            if seg <= 0.0 {
+                break;
+            }
+            self.rect((at, top, seg, H), 0.0, Some((color, 1.0)), None);
+            at += seg;
+        }
+    }
+
+    /// The exact codes of all requests with count and share, wrapping onto more lines.
+    fn status_legend(&mut self, statuses: &[ReportStatus]) {
+        const SIZE: f32 = 7.5;
+        const LINE: f32 = 12.0;
+        if statuses.is_empty() {
+            return;
+        }
+        let item = |l: &Self, s: &ReportStatus| {
+            let label = l.width(&clean(&s.label), Weight::Mono, SIZE);
+            let rest = l.width(
+                &clean(&format!("{}  {}", s.count_text, s.share_text)),
+                Weight::Regular,
+                SIZE,
+            );
+            (label, label + 5.0 + rest)
+        };
+        let widths: Vec<f32> = statuses.iter().map(|s| 9.0 + item(self, s).1).collect();
+        let (places, rows) = flow(&widths, CONTENT_W, 14.0);
+        self.ensure(rows as f32 * LINE);
+        for ((s, &(row, dx)), &w) in statuses.iter().zip(&places).zip(&widths) {
+            let (x, base) = (LEFT + dx, self.y + row as f32 * LINE + 8.0);
+            self.rect((x, base - 6.0, 6.0, 6.0), 1.5, Some((s.color, 1.0)), None);
+            let (label_w, _) = item(self, s);
+            self.text(
+                x + 9.0,
+                base,
+                &s.label,
+                Style::new(Weight::Mono, SIZE, TEXT),
+                w,
+            );
+            self.text(
+                x + 9.0 + label_w + 5.0,
+                base,
+                &format!("{}  {}", s.count_text, s.share_text),
+                Style::new(Weight::Regular, SIZE, MUTED),
+                w,
+            );
+        }
+        self.y += rows as f32 * LINE;
+    }
+
+    // The latency section: a histogram per request, the percentile table and the percentile
+    // chart.
+    fn latency(&mut self, latency: &ReportLatency) {
+        const COLS: usize = 3;
+        const COL_GAP: f32 = 16.0;
+        let cell_w = (CONTENT_W - COL_GAP * (COLS - 1) as f32) / COLS as f32;
+        self.ensure(16.0 + 14.0 + 100.0);
+        self.text(
+            LEFT,
+            self.y + 11.0,
+            &latency.title,
+            Style::new(Weight::Semibold, 11.0, TEXT),
+            CONTENT_W,
+        );
+        self.y += 16.0;
+        if !latency.caption.is_empty() {
+            self.text(
+                LEFT,
+                self.y + 8.0,
+                &latency.caption,
+                Style::new(Weight::Regular, 8.5, MUTED),
+                CONTENT_W,
+            );
+        }
+        self.y += 16.0;
+
+        for chunk in latency.histograms.chunks(COLS) {
+            let rows = chunk
+                .iter()
+                .map(|h| self.histogram_caption_rows(h, cell_w))
+                .max()
+                .unwrap_or(1);
+            let height = 16.0 + HIST_H + 14.0 + rows as f32 * 11.0;
+            self.ensure(height);
+            for (i, h) in chunk.iter().enumerate() {
+                let x = LEFT + i as f32 * (cell_w + COL_GAP);
+                self.request_histogram(h, x, self.y, cell_w);
+            }
+            self.y += height + 10.0;
+        }
+
+        self.latency_table(latency);
+        if let Some(curves) = &latency.curves {
+            self.curves(curves);
+        }
+    }
+
+    /// The caption lines a histogram needs in a cell `w` wide.
+    fn histogram_caption_rows(&self, h: &ReportRequestHistogram, w: f32) -> usize {
+        let widths: Vec<f32> = h
+            .caption
+            .iter()
+            .map(|(text, _)| self.width(&clean(text), Weight::Mono, 7.0))
+            .collect();
+        flow(&widths, w, 8.0).1.max(1)
+    }
+
+    // One request's histogram: header, bars with the percentile markers, labels and caption.
+    fn request_histogram(&mut self, h: &ReportRequestHistogram, x: f32, y: f32, w: f32) {
+        self.rect((x, y + 2.0, 6.0, 6.0), 1.5, Some((h.color, 1.0)), None);
+        let count_w = self.width(&clean(&h.count_text), Weight::Regular, 7.5);
+        self.text_right(
+            x + w,
+            y + 8.0,
+            &h.count_text,
+            Style::new(Weight::Regular, 7.5, MUTED),
+            count_w,
+        );
+        self.text(
+            x + 10.0,
+            y + 8.0,
+            &h.name,
+            Style::new(Weight::Mono, 8.0, TEXT),
+            (w - 10.0 - count_w - 6.0).max(10.0),
+        );
+
+        let top = y + 16.0;
+        let bottom = top + HIST_H;
+        let max = h.counts.iter().copied().max().unwrap_or(0);
+        let n = h.counts.len();
+        if n > 0 && max > 0 {
+            let gap = if w / n as f32 > 3.0 { 0.6 } else { 0.0 };
+            let bar_w = w / n as f32;
+            for (i, &count) in h.counts.iter().enumerate() {
+                if count == 0 {
+                    continue;
+                }
+                let bar_h = (HIST_H - 6.0) * (count as f64 / max as f64) as f32;
+                self.rect(
+                    (
+                        x + i as f32 * bar_w,
+                        bottom - bar_h.max(0.8),
+                        (bar_w - gap).max(0.5),
+                        bar_h.max(0.8),
+                    ),
+                    0.0,
+                    Some((h.color, 1.0)),
+                    None,
+                );
+            }
+        }
+        for &(at, color) in &h.markers {
+            let mx = x + w * at.clamp(0.0, 1.0) as f32;
+            let stroke = Line {
+                dash: Some((2.5, 2.0)),
+                ..Line::solid(color, 0.8)
+            };
+            self.line((mx, top), (mx, bottom), stroke);
+        }
+        self.line((x, bottom), (x + w, bottom), Line::solid(BORDER, 0.75));
+
+        let label_y = bottom + 9.0;
+        let style = Style::new(Weight::Mono, 6.5, SUBTLE);
+        let last = h.x_labels.len().saturating_sub(1);
+        for (i, label) in h.x_labels.iter().enumerate() {
+            if i == 0 {
+                self.text(x, label_y, label, style, w / 2.0);
+            } else if i == last {
+                self.text_right(x + w, label_y, label, style, w / 2.0);
+            } else {
+                self.text_center(x + w / 2.0, label_y, label, style);
+            }
+        }
+
+        let widths: Vec<f32> = h
+            .caption
+            .iter()
+            .map(|(text, _)| self.width(&clean(text), Weight::Mono, 7.0))
+            .collect();
+        let (places, _) = flow(&widths, w, 8.0);
+        for ((text, color), &(row, dx)) in h.caption.iter().zip(&places) {
+            self.text(
+                x + dx,
+                bottom + 21.0 + row as f32 * 11.0,
+                text,
+                Style::new(Weight::Mono, 7.0, *color),
+                w - dx,
+            );
+        }
+    }
+
+    // The percentile table: "All requests" bold first, a color swatch per request.
+    fn latency_table(&mut self, latency: &ReportLatency) {
+        const ROW: f32 = 17.0;
+        const HEAD: f32 = 20.0;
+        const SIZE: f32 = 8.5;
+        const COL_GAP: f32 = 10.0;
+        const NUM_W: f32 = 50.0;
+        let n = latency.headers.len();
+        if n == 0 || latency.rows.is_empty() {
+            return;
+        }
+        let mut widths = vec![NUM_W; n];
+        widths[0] = CONTENT_W - (NUM_W + COL_GAP) * (n - 1) as f32;
+        let flags: Vec<bool> = (0..n).map(|i| i > 0).collect();
+        self.ensure(HEAD + 2.0 * ROW);
+        self.table_header(&latency.headers, &widths, &flags, COL_GAP, HEAD);
+        for row in &latency.rows {
+            if self.y + ROW > BOTTOM {
+                self.new_page();
+                self.table_header(&latency.headers, &widths, &flags, COL_GAP, HEAD);
+            }
+            let base = self.y + ROW / 2.0 + SIZE * 0.36;
+            let bold = row.color.is_none();
+            let mut x = LEFT;
+            if let Some(color) = row.color {
+                self.rect(
+                    (x, self.y + ROW / 2.0 - 3.0, 6.0, 6.0),
+                    1.5,
+                    Some((color, 1.0)),
+                    None,
+                );
+                x += 10.0;
+            }
+            let (weight, name_style) = if bold {
+                (Weight::Semibold, Weight::Semibold)
+            } else {
+                (Weight::Mono, Weight::Mono)
+            };
+            self.text(
+                x,
+                base,
+                &row.name,
+                Style::new(name_style, SIZE, TEXT),
+                widths[0] - (x - LEFT),
+            );
+            let mut cx = LEFT + widths[0] + COL_GAP;
+            for cell in &row.cells {
+                self.text_right(
+                    cx + NUM_W,
+                    base,
+                    cell,
+                    Style::new(weight, SIZE, TEXT),
+                    NUM_W,
+                );
+                cx += NUM_W + COL_GAP;
             }
             self.y += ROW;
             self.line(
@@ -1084,6 +1207,151 @@ impl Layout<'_, '_> {
             );
         }
         self.y += GAP;
+    }
+
+    // The latency by percentile chart: log axes, each line named at its right end.
+    fn curves(&mut self, curves: &ReportCurves) {
+        const PLOT_H: f32 = 130.0;
+        const TICK: f32 = 7.0;
+        const LABEL_GAP: f32 = 9.0;
+        let lines: Vec<_> = curves
+            .lines
+            .iter()
+            .filter(|l| !l.values_us.is_empty())
+            .collect();
+        if lines.is_empty() {
+            return;
+        }
+        self.ensure(16.0 + PLOT_H + 24.0);
+        let title_w = self.width(&clean(&curves.title), Weight::Semibold, 9.5);
+        self.text(
+            LEFT,
+            self.y + 10.0,
+            &curves.title,
+            Style::new(Weight::Semibold, 9.5, TEXT),
+            CONTENT_W,
+        );
+        if !curves.subtitle.is_empty() {
+            self.text(
+                LEFT + title_w + 6.0,
+                self.y + 10.0,
+                &format!("\u{b7} {}", curves.subtitle),
+                Style::new(Weight::Regular, 8.0, MUTED),
+                CONTENT_W - title_w - 6.0,
+            );
+        }
+        self.y += 20.0;
+
+        let y_gutter = curves
+            .y_ticks
+            .iter()
+            .map(|(_, l)| self.width(&clean(l), Weight::Mono, TICK))
+            .fold(0.0, f32::max)
+            + 6.0;
+        let name_gutter = lines
+            .iter()
+            .map(|l| self.width(&clean(&l.name), Weight::Mono, 7.5))
+            .fold(0.0, f32::max)
+            .min(120.0)
+            + 8.0;
+        let plot_l = LEFT + y_gutter;
+        let plot_r = LEFT + CONTENT_W - name_gutter;
+        let plot_w = plot_r - plot_l;
+        let plot_t = self.y + 4.0;
+        let plot_b = plot_t + PLOT_H;
+        let (lo, hi) = (curves.y_min_us.max(1.0).ln(), curves.y_max_us.max(2.0).ln());
+        let y_at = |us: f64| -> f32 {
+            let f = if hi > lo {
+                ((us.max(1.0).ln() - lo) / (hi - lo)).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            plot_b - PLOT_H * f as f32
+        };
+
+        for (value, label) in &curves.y_ticks {
+            let y = y_at(*value);
+            self.line((plot_l, y), (plot_r, y), Line::solid(GRID, 0.6));
+            self.text_right(
+                plot_l - 6.0,
+                y + TICK * 0.36,
+                label,
+                Style::new(Weight::Mono, TICK, MUTED),
+                f32::INFINITY,
+            );
+        }
+        let n_x = curves.x_ticks.len();
+        for (i, label) in curves.x_ticks.iter().enumerate() {
+            let frac = if n_x < 2 {
+                0.0
+            } else {
+                i as f32 / (n_x - 1) as f32
+            };
+            let x = plot_l + plot_w * frac;
+            self.line((x, plot_t), (x, plot_b), Line::solid(GRID, 0.6));
+            let w = self.width(&clean(label), Weight::Mono, TICK);
+            let cx = x.clamp(LEFT + w / 2.0, plot_r + name_gutter - w / 2.0);
+            self.text_center(
+                cx,
+                plot_b + 12.0,
+                label,
+                Style::new(Weight::Mono, TICK, MUTED),
+            );
+        }
+        self.line(
+            (plot_l, plot_b),
+            (plot_r, plot_b),
+            Line::solid(BORDER, 0.75),
+        );
+
+        let mut ends: Vec<(usize, f32)> = Vec::new();
+        for (index, line) in lines.iter().enumerate() {
+            let n = line.values_us.len();
+            let pts: Vec<(f32, f32)> = line
+                .values_us
+                .iter()
+                .enumerate()
+                .map(|(i, v)| {
+                    let frac = if n < 2 {
+                        0.0
+                    } else {
+                        i as f32 / (n - 1) as f32
+                    };
+                    (plot_l + plot_w * frac, y_at(*v))
+                })
+                .collect();
+            if let Some(&(_, y)) = pts.last() {
+                ends.push((index, y));
+            }
+            self.stroke_run(pts, Line::solid(line.color, 1.5));
+        }
+
+        // Labels at the right ends, nudged apart so two close lines do not collide.
+        ends.sort_by(|a, b| a.1.total_cmp(&b.1));
+        for i in 1..ends.len() {
+            ends[i].1 = ends[i].1.max(ends[i - 1].1 + LABEL_GAP);
+        }
+        let limit = plot_b + 4.0;
+        if let Some(last) = ends.last().map(|e| e.1).filter(|y| *y > limit) {
+            let shift = last - limit;
+            for e in &mut ends {
+                e.1 -= shift;
+            }
+            for i in (0..ends.len().saturating_sub(1)).rev() {
+                ends[i].1 = ends[i].1.min(ends[i + 1].1 - LABEL_GAP);
+            }
+        }
+        for (index, y) in ends {
+            let line = lines[index];
+            self.text(
+                plot_r + 5.0,
+                y + 7.5 * 0.36,
+                &line.name,
+                Style::new(Weight::Mono, 7.5, line.color),
+                name_gutter - 5.0,
+            );
+        }
+        self.y = plot_b + 20.0 + GAP;
     }
 
     // A table header row: muted labels over a line.
@@ -1267,6 +1535,9 @@ impl Layout<'_, '_> {
         }
     }
 }
+
+/// A row of the per request table: its cells, whether it is the bold totals row and its statuses.
+type TableRow<'a> = (&'a Vec<String>, bool, Option<&'a Vec<ReportStatus>>);
 
 /// Which columns are right aligned, for `n` columns.
 fn right_flags(align: &[ReportAlign], n: usize) -> Vec<bool> {
