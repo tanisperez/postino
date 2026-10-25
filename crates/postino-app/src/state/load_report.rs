@@ -22,8 +22,8 @@ use postino_load::{
 use rust_i18n::t;
 
 use super::load_results::{
-    ChartData, ChartSeriesKey, SummaryData, X_DIVISIONS, format_bucket_width, format_latency_ms,
-    mmss, ms_axis, rps_axis, window_label, x_labels,
+    ChartData, ChartSeriesKey, SummaryData, format_bucket_width, format_latency_ms, mmss, ms_axis,
+    rps_axis, window_label, x_labels_from,
 };
 use super::load_test::{
     DeltaTone, LoadTestStatus, delta_tone, format_delta, format_trimmed, threshold_label,
@@ -498,11 +498,19 @@ fn chart(input: &ReportInput) -> Option<ReportChart> {
     let baseline = data.baseline.as_deref().map(slice);
 
     let left = rps_axis(finite_max(&rps));
+    // Like the app's chart, the axis reaches the goal lines so they are drawn where they belong.
     let right = ms_axis(
         [&p50, &p90, &p99]
             .into_iter()
             .chain(baseline.as_ref())
             .map(|values| finite_max(values))
+            .chain(
+                input
+                    .thresholds
+                    .iter()
+                    .filter(|threshold| is_latency(threshold.metric))
+                    .map(|threshold| threshold.limit),
+            )
             .fold(0.0, f64::max),
     );
 
@@ -580,12 +588,7 @@ fn chart(input: &ReportInput) -> Option<ReportChart> {
     let reference_lines = input
         .thresholds
         .iter()
-        .filter(|threshold| {
-            matches!(
-                threshold.metric,
-                ThresholdMetric::P50 | ThresholdMetric::P95 | ThresholdMetric::P99
-            )
-        })
+        .filter(|threshold| is_latency(threshold.metric))
         .map(|threshold| ReportReferenceLine {
             axis: ReportAxis::Right,
             value: threshold.limit,
@@ -612,24 +615,18 @@ fn chart(input: &ReportInput) -> Option<ReportChart> {
         right_max: right.max,
         left_ticks: left.labels,
         right_ticks: right.labels,
-        x_ticks: second_labels(range.start, range.len()),
+        x_ticks: x_labels_from(range.start as u64, range.len() as u64),
         reference_lines,
         window: shaded,
     })
 }
 
-/// The x axis labels of a stretch of `len` seconds starting at second `start`: [`x_labels`] for
-/// the whole run, shifted by `start` for a window.
-fn second_labels(start: usize, len: usize) -> Vec<String> {
-    if start == 0 {
-        return x_labels(len as u64);
-    }
-    (0..=X_DIVISIONS as u64)
-        .map(|index| {
-            let secs = start as u64 + len as u64 * index / X_DIVISIONS as u64;
-            format!("{}s", format_integer(secs))
-        })
-        .collect()
+/// Whether `metric` is a latency, drawn as a goal line on the chart's ms axis.
+fn is_latency(metric: ThresholdMetric) -> bool {
+    matches!(
+        metric,
+        ThresholdMetric::P50 | ThresholdMetric::P95 | ThresholdMetric::P99
+    )
 }
 
 /// The latency distribution, `None` for a run without requests.

@@ -84,9 +84,10 @@ impl<'a> Face<'a> {
         text.chars().map(|c| self.advance(c)).sum::<f32>() / self.units_per_em * size
     }
 
-    /// `text` cut with an ellipsis so that it is at most `max` points wide.
+    /// `text` cut with an ellipsis so that it is at most `max` points wide. A `max` measured from
+    /// the same text, after a few additions and subtractions, still keeps it whole.
     pub(super) fn fit(&self, text: &str, size: f32, max: f32) -> String {
-        if self.width(text, size) <= max {
+        if self.width(text, size) <= max + 0.01 {
             return text.to_string();
         }
         let ellipsis = self.width(self.ellipsis, size);

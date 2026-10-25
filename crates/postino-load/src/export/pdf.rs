@@ -418,18 +418,38 @@ impl Layout<'_, '_> {
         if kpis.is_empty() {
             return;
         }
+        const PAD: f32 = 10.0;
         let has_goal = kpis.iter().any(|k| k.goal.is_some());
         let h = if has_goal { 62.0 } else { 48.0 };
-        self.ensure(h);
-        let y = self.y;
-        let cell_w = CONTENT_W / kpis.len() as f32;
-        self.card((LEFT, y, CONTENT_W, h));
+        // One row, or two like the app's grid when a goal would not fit a sixth of the width.
+        let goal_fits = |columns: usize| {
+            let room = CONTENT_W / columns as f32 - 2.0 * PAD - 11.0;
+            kpis.iter()
+                .filter_map(|k| k.goal.as_ref())
+                .all(|(goal, _)| self.width(&clean(goal), Weight::Regular, 7.5) <= room)
+        };
+        let columns = if goal_fits(kpis.len()) {
+            kpis.len()
+        } else {
+            kpis.len().div_ceil(2)
+        };
+        let rows = kpis.len().div_ceil(columns);
+        let card_h = h * rows as f32;
+        self.ensure(card_h);
+        let top = self.y;
+        let cell_w = CONTENT_W / columns as f32;
+        self.card((LEFT, top, CONTENT_W, card_h));
+        for row in 1..rows {
+            let y = top + h * row as f32;
+            self.line((LEFT, y), (LEFT + CONTENT_W, y), Line::solid(BORDER, 0.75));
+        }
         for (i, k) in kpis.iter().enumerate() {
-            let x = LEFT + i as f32 * cell_w;
-            if i > 0 {
+            let x = LEFT + (i % columns) as f32 * cell_w;
+            let y = top + (i / columns) as f32 * h;
+            if i % columns > 0 {
                 self.line((x, y + 8.0), (x, y + h - 8.0), Line::solid(BORDER, 0.75));
             }
-            let pad = 10.0;
+            let pad = PAD;
             let inner = cell_w - 2.0 * pad;
             let mut label_w = inner;
             if let Some(delta) = &k.delta {
@@ -487,7 +507,7 @@ impl Layout<'_, '_> {
                 );
             }
         }
-        self.y += h + GAP;
+        self.y += card_h + GAP;
     }
 
     // The "Performance over time" card.

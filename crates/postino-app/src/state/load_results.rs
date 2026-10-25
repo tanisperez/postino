@@ -105,6 +105,13 @@ fn format_axis_number(value: f64) -> String {
 /// [`X_DIVISIONS`] rounded labels.
 #[must_use]
 pub fn x_labels(duration_secs: u64) -> Vec<String> {
+    x_labels_from(0, duration_secs)
+}
+
+/// Like [`x_labels`] for a stretch of `duration_secs` seconds starting at second `start_secs`,
+/// the chart of a window.
+#[must_use]
+pub fn x_labels_from(start_secs: u64, duration_secs: u64) -> Vec<String> {
     let dividing = |divisions: &u64| duration_secs.is_multiple_of(*divisions);
     let nice_step = |divisions: &u64| {
         let step = duration_secs / divisions;
@@ -117,7 +124,7 @@ pub fn x_labels(duration_secs: u64) -> Vec<String> {
         .unwrap_or(X_DIVISIONS as u64);
     (0..=divisions)
         .map(|index| {
-            let secs = (duration_secs * index + divisions / 2) / divisions;
+            let secs = start_secs + (duration_secs * index + divisions / 2) / divisions;
             format!("{}s", format_integer(secs))
         })
         .collect()
@@ -763,6 +770,10 @@ mod tests {
         );
         assert_eq!(x_labels(20), vec!["0s", "5s", "10s", "15s", "20s"]);
         assert_eq!(x_labels(7).len(), 7);
+        assert_eq!(
+            x_labels_from(5, 5),
+            vec!["5s", "6s", "7s", "8s", "9s", "10s"]
+        );
     }
 
     #[test]
