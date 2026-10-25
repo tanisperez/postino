@@ -426,9 +426,22 @@ pub struct LoadTestTab {
     pub chart: Option<Shared<ChartData>>,
     /// The Latency tab's request selector, histogram scale and "Include errors".
     pub latency_options: LatencyChoice,
-    /// The Latency tab's data, computed in the background from [`Self::log`], and the key it
-    /// was computed for.
-    pub latency: Option<(LatencyKey, Shared<LatencyView>)>,
+    /// The Latency tab's data, computed in the background from [`Self::log`] (and
+    /// [`Self::compare_log`]), and the key it was computed for.
+    pub latency: Option<(LatencyKey, Shared<LatencyData>)>,
+    /// The saved requests of the compared run and its number, loaded in the background when it
+    /// is picked, for the Latency tab. `None` without a comparison, while loading, or for a run
+    /// saved without them.
+    pub compare_log: Option<(u32, Shared<SampleLog>)>,
+}
+
+/// The Latency tab's data: this run's, and the compared run's on the same histogram bins.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct LatencyData {
+    /// This run.
+    pub view: LatencyView,
+    /// The compared run, when its requests are loaded.
+    pub compare: Option<LatencyView>,
 }
 
 /// What the Latency tab's controls ask for.
@@ -449,6 +462,8 @@ pub struct LatencyKey {
     pub analysis: AnalysisKey,
     /// [`LoadTestTab::latency_options`].
     pub choice: LatencyChoice,
+    /// The compared run whose requests are loaded, if any.
+    pub compare: Option<u32>,
 }
 
 /// What [`LoadTestTab::analysis`] was computed from: the log (by generation and length) and the
@@ -512,6 +527,7 @@ impl LoadTestTab {
             chart: None,
             latency_options: LatencyChoice::default(),
             latency: None,
+            compare_log: None,
         }
     }
 
@@ -584,18 +600,28 @@ impl LoadTestTab {
         self.analysis_key().map(|analysis| LatencyKey {
             analysis,
             choice: self.latency_options,
+            compare: self.current_compare_log().map(|(number, _)| number),
         })
     }
 
     /// The Latency tab's data, when it is up to date or at least of the same run and choices. A
     /// stale value (a live refresh in flight) is still shown instead of nothing.
     #[must_use]
-    pub fn current_latency(&self) -> Option<&LatencyView> {
+    pub fn current_latency(&self) -> Option<&LatencyData> {
         let (key, view) = self.latency.as_ref()?;
         (key.analysis.generation == self.log_generation
             && key.analysis.window == self.window
             && key.choice == self.latency_options)
             .then_some(&**view)
+    }
+
+    /// [`Self::compare_log`] when it belongs to the run picked in "Compare with".
+    #[must_use]
+    pub fn current_compare_log(&self) -> Option<(u32, &Shared<SampleLog>)> {
+        self.compare_log
+            .as_ref()
+            .filter(|(number, _)| self.compare_with == Some(*number))
+            .map(|(number, log)| (*number, log))
     }
 
     /// The statistics shown, when they are up to date or at least of the same run. A stale

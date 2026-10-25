@@ -394,6 +394,8 @@ impl AppView {
             load_test.compare_snapshot = snapshot;
             load_test.refresh_chart();
         });
+        self.load_load_test_compare_samples(tab_id, cx);
+        self.refresh_load_results(tab_id, cx);
     }
 
     /// Loads a past run and shows it in the dashboard, as if it had just finished

@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use gpui_kit::*;
 
 use crate::state::load_results::{ResultsTab, Shared, filter_requests};
-use crate::state::load_test::{AnalysisKey, LatencyKey, RequestsKey};
+use crate::state::load_test::{AnalysisKey, LatencyData, LatencyKey, RequestsKey};
 use crate::views::root::AppView;
 
 /// The background computations in flight for one tab, with the key each was started for, so a
@@ -21,6 +21,7 @@ pub(crate) struct LoadResultTasks {
     latency: Option<(LatencyKey, Task<()>)>,
     requests: Option<(RequestsKey, Task<()>)>,
     samples: Option<Task<()>>,
+    compare_samples: Option<Task<()>>,
 }
 
 /// Every tab's [`LoadResultTasks`], by tab id.
@@ -111,6 +112,9 @@ impl AppView {
                 scale: key.choice.scale,
             };
             let log = log.clone();
+            let compare_log = load_test
+                .current_compare_log()
+                .map(|(_, compare)| compare.clone());
             let tab_id = tab_id.to_string();
             let done_key = key.clone();
             let task = cx.spawn(async move |weak, cx| {
@@ -123,7 +127,17 @@ impl AppView {
                                 .max()
                                 .unwrap_or(0),
                         );
-                        postino_load::latency_view(&log, target_count, &options)
+                        let view = postino_load::latency_view(&log, target_count, &options);
+                        // The compared run on this run's bins, so the two read on one scale.
+                        let compare = compare_log.map(|compare| {
+                            postino_load::latency_view_on(
+                                &compare,
+                                target_count,
+                                &options,
+                                &view.histogram,
+                            )
+                        });
+                        LatencyData { view, compare }
                     })
                     .await;
                 let _ = weak.update(cx, |view_state, cx| {
@@ -172,6 +186,65 @@ impl AppView {
             });
             tasks.requests = Some((key, task));
         }
+    }
+
+    /// Loads the saved requests of the run `tab_id` compares with in the background, for the
+    /// Latency tab, unless they are already loaded. A run saved without them leaves
+    /// [`crate::state::load_test::LoadTestTab::compare_log`] empty.
+    pub(crate) fn load_load_test_compare_samples(&mut self, tab_id: &str, cx: &mut Context<Self>) {
+        let Some(root) = self
+            .state
+            .workspace
+            .as_ref()
+            .map(|workspace| workspace.root().to_path_buf())
+        else {
+            return;
+        };
+        let Some(load_test) = self
+            .state
+            .tabs
+            .index_of(tab_id)
+            .and_then(|index| self.state.tabs.get(index))
+            .and_then(|tab| tab.load_test())
+        else {
+            return;
+        };
+        let Some(number) = load_test.compare_with else {
+            return;
+        };
+        if load_test.current_compare_log().is_some() {
+            return;
+        }
+        let tab_id_owned = tab_id.to_string();
+        let task = cx.spawn(async move |weak, cx| {
+            let loaded = cx
+                .background_spawn(async move { postino_load::history::load_samples(&root, number) })
+                .await;
+            let _ = weak.update(cx, |view, cx| {
+                if let Some(tasks) = view.load_result_tasks.get_mut(&tab_id_owned) {
+                    tasks.compare_samples = None;
+                }
+                let log = match loaded {
+                    Ok(log) => log,
+                    Err(error) => {
+                        log::warn!(
+                            "could not load the requests of load test run {number}: {error}"
+                        );
+                        None
+                    }
+                };
+                view.edit_load_test(&tab_id_owned, cx, |load_test| {
+                    if load_test.compare_with == Some(number) {
+                        load_test.compare_log = log.map(|log| (number, Shared::new(log)));
+                    }
+                });
+                view.refresh_load_results(&tab_id_owned, cx);
+            });
+        });
+        self.load_result_tasks
+            .entry(tab_id.to_string())
+            .or_default()
+            .compare_samples = Some(task);
     }
 
     /// Loads the saved requests of past run `number` in the background (decompressing a large

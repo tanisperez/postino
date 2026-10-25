@@ -605,3 +605,18 @@ _version: 2
   es: "Calculando la latencia..."
   gl: "Calculando a latencia..."
   it: "Calcolo della latenza..."
+"load_test.latency.same_scale":
+  en: "%{run}, same scale"
+  es: "%{run}, misma escala"
+  gl: "%{run}, mesma escala"
+  it: "%{run}, stessa scala"
+"load_test.latency.delta_hint":
+  en: "Δ against %{run} · click a row to focus it"
+  es: "Δ frente a %{run} · haz clic en una fila para centrarte en ella"
+  gl: "Δ fronte a %{run} · preme nunha fila para centrarte nela"
+  it: "Δ rispetto a %{run} · fai clic su una riga per metterla a fuoco"
+"load_test.latency.log_axes_compare":
+  en: "log axes · dashed: %{run}"
+  es: "ejes logarítmicos · discontinua: %{run}"
+  gl: "eixes logarítmicos · descontinua: %{run}"
+  it: "assi logaritmici · tratteggio: %{run}"

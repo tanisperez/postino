@@ -68,6 +68,7 @@ pub use compare::{Delta, DeltaUnit, compare};
 pub use config::{LoadConfig, LoadTarget};
 pub use latency::{
     LatencyOptions, LatencyPercentiles, LatencyScale, LatencyView, StackedHistogram, latency_view,
+    latency_view_on,
 };
 pub use metrics::{ErrorExample, LoadSnapshot, SecondPoint, TargetStats};
 pub use run::{LoadRun, LoadSummary, SnapshotReader};

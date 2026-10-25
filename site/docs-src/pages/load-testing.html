@@ -104,7 +104,7 @@ description: Run load tests against a request or a whole folder in Postino with 
     <dt>Latency by percentile</dt>
     <dd>One line per request, from the fastest response (<strong>min</strong>) to the p99.9, on log axes: how slow the slowest 10%, 1% and 0.1% of the responses were. A flat line is a request with steady times; a line that climbs at the right has a tail. While a request is focused, the others are dimmed. Hover to read every line at a percentile.</dd>
 </dl>
-<p>During a run the Latency tab updates live.</p>
+<p>When you compare with another run, the Latency tab shows it too, on the same scale: a dashed outline over the histogram (scaled to this run's number of responses, so the shapes compare; the tooltip adds that run's share), dashed lines in the curve, and under each percentile the change against that run, green when faster and red when slower (&ldquo;&plusmn;0&rdquo; below a millisecond). The other run's saved requests are read in the background, so it shows up a moment after you pick it; a run saved without them is left out of this tab. During a run the Latency tab updates live.</p>
 
 <h3 id="window">Selecting a window</h3>
 <p>Once the run has ended, drag across the chart to select a stretch of time, in whole seconds. Everything in the results then covers only that window: the figures, the per request table and its statuses, the Latency, Requests and Errors tabs and their counts. A <strong>Window</strong> chip next to the tabs shows the range; click the chart or the chip to clear it and go back to the whole run. The threshold verdict always judges the whole run. The window is not available while the run is in progress, or for a run without per request detail.</p>

@@ -152,6 +152,29 @@ pub struct LatencyView {
 /// requests. See the [module docs](self).
 #[must_use]
 pub fn latency_view(log: &SampleLog, target_count: usize, options: &LatencyOptions) -> LatencyView {
+    build_view(log, target_count, options, None)
+}
+
+/// [`latency_view`] with the histogram on the bins of `axis` (another run's), for comparing two
+/// runs on the same scale. Responses outside the axis are left out of the histogram, but not of
+/// the percentiles and curves.
+#[must_use]
+pub fn latency_view_on(
+    log: &SampleLog,
+    target_count: usize,
+    options: &LatencyOptions,
+    axis: &StackedHistogram,
+) -> LatencyView {
+    build_view(log, target_count, options, Some(axis))
+}
+
+/// [`latency_view`], on the bins of `axis` when given.
+fn build_view(
+    log: &SampleLog,
+    target_count: usize,
+    options: &LatencyOptions,
+    axis: Option<&StackedHistogram>,
+) -> LatencyView {
     let mut latencies: Vec<Vec<u32>> = vec![Vec::new(); target_count];
     let mut errors = vec![0u64; target_count];
     for sample in log.samples() {
@@ -183,7 +206,17 @@ pub fn latency_view(log: &SampleLog, target_count: usize, options: &LatencyOptio
 
     let selected = options.target.filter(|target| *target < target_count);
     let shown_values = selected.map_or(all.as_slice(), |target| latencies[target].as_slice());
-    let histogram = histogram(&latencies, shown_values, selected, options.scale);
+    let histogram = match axis {
+        Some(axis) => {
+            let mut histogram = StackedHistogram {
+                counts: vec![vec![0; target_count]; axis.counts.len()],
+                ..axis.clone()
+            };
+            fill(&mut histogram, &latencies, selected, false);
+            histogram
+        }
+        None => histogram(&latencies, shown_values, selected, options.scale),
+    };
     let excluded = if options.include_errors {
         0
     } else {
@@ -282,18 +315,36 @@ fn histogram(
         scale,
         step_us,
     };
+    fill(&mut histogram, per_target, selected, true);
+    histogram
+}
+
+/// Counts the responses of `per_target` (only `selected` when one is) into the bins of
+/// `histogram`. With `clamp`, a response outside the axis goes to the first or last bin;
+/// without it, it is left out.
+fn fill(
+    histogram: &mut StackedHistogram,
+    per_target: &[Vec<u32>],
+    selected: Option<usize>,
+    clamp: bool,
+) {
     let bins = histogram.counts.len();
+    let (Some(&low), Some(&high)) = (histogram.edges_us.first(), histogram.edges_us.last()) else {
+        return;
+    };
     for (target, values) in per_target.iter().enumerate() {
         if selected.is_some_and(|selected| selected != target) {
             continue;
         }
         for &latency in values {
-            let bin =
-                ((histogram.fraction(f64::from(latency)) * bins as f64) as usize).min(bins - 1);
+            let latency = f64::from(latency);
+            if !clamp && (latency < low || latency > high) {
+                continue;
+            }
+            let bin = ((histogram.fraction(latency) * bins as f64) as usize).min(bins - 1);
             histogram.counts[bin][target] += 1;
         }
     }
-    histogram
 }
 
 #[cfg(test)]
@@ -454,6 +505,32 @@ mod tests {
         );
         // 100 ms sits halfway between 10 ms and 1 s on a log axis.
         assert!((histogram.fraction(100_000.0) - 0.5).abs() < 0.02);
+    }
+
+    #[test]
+    fn a_compared_run_is_binned_on_the_same_axis() {
+        let this = log_of(&[(0, 0, 200, 300), (0, 0, 200, 400)]);
+        let other = log_of(&[(0, 0, 200, 305), (0, 0, 200, 5_000)]);
+        let options = options(None, LatencyScale::Linear);
+        let view = latency_view(&this, 1, &options);
+        let compared = latency_view_on(&other, 1, &options, &view.histogram);
+        assert_eq!(compared.histogram.edges_us, view.histogram.edges_us);
+        // 305 ms lands in the 300 ms bin (10 ms wide); 5 s is past the axis and left out.
+        let bin = |histogram: &StackedHistogram, us: f64| {
+            ((histogram.fraction(us) * histogram.counts.len() as f64) as usize)
+                .min(histogram.counts.len() - 1)
+        };
+        assert_eq!(
+            compared.histogram.counts[bin(&view.histogram, 300_000.0)][0],
+            1
+        );
+        let binned: u64 = (0..compared.histogram.counts.len())
+            .map(|index| compared.histogram.total(index))
+            .sum();
+        assert_eq!(binned, 1);
+        // The percentiles still count every response.
+        assert_eq!(compared.all.count, 2);
+        assert_eq!(compared.all.max, 5_000_000);
     }
 
     #[test]

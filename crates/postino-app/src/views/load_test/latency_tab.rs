@@ -18,7 +18,7 @@ use postino_load::{LatencyPercentiles, LatencyScale, LatencyView, StackedHistogr
 use super::requests_tab::FILTER_HEIGHT;
 use super::summary::target_row_label;
 use crate::state::load_results::{ChartSeriesKey, format_latency_ms, plain_axis};
-use crate::state::load_test::LoadTestTab;
+use crate::state::load_test::{DeltaTone, LoadTestTab};
 use crate::state::locale;
 use crate::state::number::{format_decimal, format_integer};
 use crate::theme::metrics::{CHART_TOOLTIP_OFFSET, CHART_TOOLTIP_TOP, RADIUS_LG, RADIUS_MD};
@@ -59,6 +59,8 @@ const TABLE_MIN_WIDTH: f32 = 520.0;
 const CURVE_MIN_WIDTH: f32 = 340.0;
 /// Width of the percentiles table's numeric columns.
 const PERCENTILE_COLUMN_WIDTH: f32 = 54.0;
+/// Height of a percentiles table row with the change against the compared run under each value.
+const PERCENTILE_COMPARED_ROW_HEIGHT: f32 = 44.0;
 /// Height of a percentiles table row.
 const PERCENTILE_ROW_HEIGHT: f32 = 34.0;
 /// Opacity of a request's curve while another request is focused.
@@ -79,11 +81,20 @@ impl AppView {
                 .compact(true)
                 .into_any_element();
         }
-        let Some(view) = load_test.current_latency() else {
+        let Some(data) = load_test.current_latency() else {
             return EmptyState::new(t!("load_test.latency.loading"))
                 .compact(true)
                 .into_any_element();
         };
+        let view = &data.view;
+        let compare = data
+            .compare
+            .as_ref()
+            .zip(load_test.compare_with.map(super::dashboard::run_title));
+        let compare = compare.as_ref().map(|(compare, title)| Compared {
+            view: compare,
+            title,
+        });
         let palette = cx.palette();
         let ui_font = cx.theme().font_family.clone();
         let mono_font = cx.theme().mono_font_family.clone();
@@ -110,6 +121,7 @@ impl AppView {
                 &mono_font,
                 load_test,
                 view,
+                compare,
                 &names,
             ))
             .child(
@@ -125,7 +137,7 @@ impl AppView {
                             .min_w_0()
                             .child(render_percentiles(
                                 weak, tab_id, &palette, &ui_font, &mono_font, load_test, view,
-                                &names,
+                                compare, &names,
                             )),
                     )
                     .child(
@@ -133,11 +145,18 @@ impl AppView {
                             .flex_grow(1.0)
                             .flex_basis(px(CURVE_MIN_WIDTH))
                             .min_w_0()
-                            .child(render_curve(&palette, load_test, view, &names)),
+                            .child(render_curve(&palette, load_test, view, compare, &names)),
                     ),
             )
             .into_any_element()
     }
+}
+
+/// The run compared with, and its title (`Run #2`).
+#[derive(Clone, Copy)]
+struct Compared<'a> {
+    view: &'a LatencyView,
+    title: &'a str,
 }
 
 /// The text of a latency in microseconds.
@@ -453,6 +472,7 @@ fn histogram_ticks(histogram: &StackedHistogram) -> Vec<f64> {
 
 /// The latency distribution card: the bars stacked by request, the peak labels (all requests)
 /// or the p50, p95 and p99 markers (one request), and the hovered bin's tooltip.
+#[allow(clippy::too_many_arguments)]
 fn render_histogram(
     weak: WeakEntity<AppView>,
     hover: Option<usize>,
@@ -460,6 +480,7 @@ fn render_histogram(
     mono_font: &SharedString,
     load_test: &LoadTestTab,
     view: &LatencyView,
+    compare: Option<Compared>,
     names: &[String],
 ) -> AnyElement {
     let histogram = &view.histogram;
@@ -488,12 +509,29 @@ fn render_histogram(
                     .child(names.get(*target).cloned().unwrap_or_default()),
             )
     });
+    let compare_legend = compare.map(|compare| {
+        h_flex()
+            .items_center()
+            .gap(px(6.0))
+            .text_color(palette.fg_muted)
+            .child(
+                div()
+                    .flex_none()
+                    .size(px(10.0))
+                    .rounded(px(2.0))
+                    .border_1()
+                    .border_dashed()
+                    .border_color(palette.fg_muted),
+            )
+            .child(t!("load_test.latency.same_scale", run = compare.title))
+    });
     let title = panel_title(
         t!("load_test.distribution.title").into_owned(),
         hint,
         palette,
     )
-    .children(legend);
+    .children(legend)
+    .children(compare_legend);
 
     let bins = histogram.counts.len();
     if bins == 0 {
@@ -510,10 +548,22 @@ fn render_histogram(
             )
             .into_any_element();
     }
-    let peak = (0..bins).map(|bin| histogram.total(bin)).max().unwrap_or(0);
+    // The compared run, scaled to this run's number of responses so the shapes compare.
+    let compare_counts: Option<Vec<f64>> = compare
+        .filter(|compare| compare.view.histogram.counts.len() == bins && compare.view.shown > 0)
+        .map(|compare| {
+            let scale = view.shown as f64 / compare.view.shown as f64;
+            (0..bins)
+                .map(|bin| compare.view.histogram.total(bin) as f64 * scale)
+                .collect()
+        });
+    let peak = (0..bins)
+        .map(|bin| histogram.total(bin) as f64)
+        .chain(compare_counts.iter().flatten().copied())
+        .fold(0.0, f64::max);
     // Room above the tallest bar for the peak labels.
     let headroom = if choice.target.is_none() { 1.3 } else { 1.0 };
-    let axis = plain_axis(peak as f64 * headroom);
+    let axis = plain_axis(peak * headroom);
     let y_max = axis.max.max(1.0);
 
     // One column per bin, the requests stacked bottom up in target order.
@@ -750,6 +800,42 @@ fn render_histogram(
             )
             .children(rows)
             .children(empty)
+            .children(compare.map(|compare| {
+                let count = compare
+                    .view
+                    .histogram
+                    .counts
+                    .get(bin)
+                    .map_or(0, |counts| counts.iter().sum::<u64>());
+                h_flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .child(
+                        div()
+                            .flex_none()
+                            .size(px(8.0))
+                            .rounded(px(2.0))
+                            .border_1()
+                            .border_dashed()
+                            .border_color(palette.fg_muted),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .truncate()
+                            .text_color(palette.fg_muted)
+                            .child(compare.title.to_string()),
+                    )
+                    .child(
+                        div()
+                            .w(px(52.0))
+                            .text_right()
+                            .font_family(mono_font.clone())
+                            .text_color(palette.fg_subtle)
+                            .child(share_text(count, compare.view.shown)),
+                    )
+            }))
     });
 
     let ticks = axis.labels.len();
@@ -827,6 +913,9 @@ fn render_histogram(
                                 })
                                 .children(grid)
                                 .children(columns)
+                                .children(compare_counts.map(|counts| {
+                                    compare_outline(counts, y_max, palette.fg.opacity(0.7))
+                                }))
                                 .children(marks)
                                 .children(tooltip),
                         ),
@@ -855,6 +944,33 @@ fn render_histogram(
         .into_any_element()
 }
 
+/// The compared run's histogram as a dashed step outline over the bars: `counts` per bin, on an
+/// axis from 0 to `y_max`.
+fn compare_outline(counts: Vec<f64>, y_max: f64, color: Hsla) -> impl IntoElement {
+    canvas(
+        |_, _, _| (),
+        move |bounds, _, window, _| {
+            let width = f32::from(bounds.size.width);
+            let height = f32::from(bounds.size.height);
+            let bins = counts.len().max(1) as f32;
+            let at = |x: f32, y: f32| point(bounds.origin.x + px(x), bounds.origin.y + px(y));
+            let mut builder = PathBuilder::stroke(px(1.25)).dash_array(&[px(3.0), px(3.0)]);
+            builder.move_to(at(0.0, height));
+            for (bin, count) in counts.iter().enumerate() {
+                let y = height - (count / y_max).clamp(0.0, 1.0) as f32 * height;
+                builder.line_to(at(bin as f32 / bins * width, y));
+                builder.line_to(at((bin + 1) as f32 / bins * width, y));
+            }
+            builder.line_to(at(width, height));
+            if let Ok(path) = builder.build() {
+                window.paint_path(path, color);
+            }
+        },
+    )
+    .absolute()
+    .size_full()
+}
+
 /// A share of `total` as a percentage, with two decimals below 1 %.
 fn share_text(count: u64, total: u64) -> String {
     let share = count as f64 / total.max(1) as f64 * 100.0;
@@ -875,6 +991,7 @@ fn render_percentiles(
     mono_font: &SharedString,
     load_test: &LoadTestTab,
     view: &LatencyView,
+    compare: Option<Compared>,
     names: &[String],
 ) -> AnyElement {
     let selected = load_test.latency_options.target;
@@ -915,7 +1032,10 @@ fn render_percentiles(
     .font_weight(FontWeight::MEDIUM)
     .text_color(palette.fg_subtle);
 
-    let row = |target: Option<usize>, stats: &LatencyPercentiles, first: bool| {
+    let row = |target: Option<usize>,
+               stats: &LatencyPercentiles,
+               before: Option<&LatencyPercentiles>,
+               first: bool| {
         let (color, name, font) = match target {
             None => (
                 palette.fg_subtle,
@@ -937,11 +1057,28 @@ fn render_percentiles(
                 .into_any_element(),
             div().child(format_integer(stats.count)).into_any_element(),
         ];
-        cells.extend(
-            [stats.p50, stats.p90, stats.p95, stats.p99, stats.max]
-                .into_iter()
-                .map(|us| div().child(latency_text(us)).into_any_element()),
-        );
+        let values = [stats.p50, stats.p90, stats.p95, stats.p99, stats.max];
+        let previous =
+            before.map(|before| [before.p50, before.p90, before.p95, before.p99, before.max]);
+        cells.extend(values.into_iter().enumerate().map(|(index, us)| {
+            let delta = previous.map(|previous| {
+                let (text, tone) = latency_delta(us, previous[index]);
+                div()
+                    .text_size(px(10.5))
+                    .font_weight(FontWeight::NORMAL)
+                    .text_color(match tone {
+                        DeltaTone::Better => palette.success,
+                        DeltaTone::Worse => palette.danger,
+                        DeltaTone::Neutral => palette.fg_subtle,
+                    })
+                    .child(text)
+            });
+            v_flex()
+                .items_end()
+                .child(latency_text(us))
+                .children(delta)
+                .into_any_element()
+        }));
         let item_weak = weak.clone();
         let tab_id = tab_id.to_string();
         line(cells)
@@ -949,7 +1086,11 @@ fn render_percentiles(
                 "load-test-latency-row-{}",
                 target.map_or(-1, |index| index as i64)
             )))
-            .h(px(PERCENTILE_ROW_HEIGHT))
+            .h(px(if before.is_some() {
+                PERCENTILE_COMPARED_ROW_HEIGHT
+            } else {
+                PERCENTILE_ROW_HEIGHT
+            }))
             .when(!first, |row| row.border_t_1().border_color(palette.border))
             .when(target.is_none(), |row| {
                 row.font_weight(FontWeight::SEMIBOLD)
@@ -966,10 +1107,16 @@ fn render_percentiles(
             })
     };
 
-    let mut rows = vec![row(None, &view.all, true)];
+    let before_all = compare.map(|compare| &compare.view.all);
+    let mut rows = vec![row(None, &view.all, before_all, true)];
     for (index, stats) in view.per_target.iter().enumerate() {
-        rows.push(row(Some(index), stats, false));
+        let before = compare.and_then(|compare| compare.view.per_target.get(index));
+        rows.push(row(Some(index), stats, before, false));
     }
+    let hint = match compare {
+        Some(compare) => t!("load_test.latency.delta_hint", run = compare.title).into_owned(),
+        None => t!("load_test.latency.click_hint").into_owned(),
+    };
 
     v_flex()
         .border_1()
@@ -982,7 +1129,7 @@ fn render_percentiles(
         .child(
             panel_title(
                 t!("load_test.latency.percentiles").into_owned(),
-                t!("load_test.latency.click_hint").into_owned(),
+                hint,
                 palette,
             )
             .font_family(ui_font.clone())
@@ -992,6 +1139,26 @@ fn render_percentiles(
         .child(header)
         .children(rows)
         .into_any_element()
+}
+
+/// The change from `before` to `now` (microseconds) as the percentiles table writes it under a
+/// value, `+12 ms` or `\u{2212}0.3 s`, and whether it is better: lower is better, and less than a
+/// millisecond either way is no change.
+fn latency_delta(now: u32, before: u32) -> (String, DeltaTone) {
+    let change_ms = (f64::from(now) - f64::from(before)) / 1_000.0;
+    if change_ms.abs() < 1.0 {
+        return ("\u{b1}0".to_string(), DeltaTone::Neutral);
+    }
+    let sign = if change_ms > 0.0 { "+" } else { "\u{2212}" };
+    let tone = if change_ms > 0.0 {
+        DeltaTone::Worse
+    } else {
+        DeltaTone::Better
+    };
+    (
+        format!("{sign}{}", format_latency_ms(change_ms.abs())),
+        tone,
+    )
 }
 
 /// The decades a log axis spans, from the one at or below `low` to the one at or above `high`,
@@ -1037,23 +1204,26 @@ fn render_curve(
     palette: &Palette,
     load_test: &LoadTestTab,
     view: &LatencyView,
+    compare: Option<Compared>,
     names: &[String],
 ) -> AnyElement {
     let selected = load_test.latency_options.target;
+    let compare_curves = compare.map_or(&[][..], |compare| compare.view.curves.as_slice());
     let finite = view
         .curves
         .iter()
+        .chain(compare_curves)
         .flatten()
         .map(|us| f64::from(*us) / 1_000.0)
         .filter(|ms| *ms > 0.0);
     let (low, high) = finite.fold((f64::INFINITY, 0.0f64), |(low, high), ms| {
         (low.min(ms), high.max(ms))
     });
-    let title = panel_title(
-        t!("load_test.latency.curve").into_owned(),
-        t!("load_test.latency.log_axes").into_owned(),
-        palette,
-    );
+    let hint = match compare {
+        Some(compare) => t!("load_test.latency.log_axes_compare", run = compare.title).into_owned(),
+        None => t!("load_test.latency.log_axes").into_owned(),
+    };
+    let title = panel_title(t!("load_test.latency.curve").into_owned(), hint, palette);
     if !low.is_finite() {
         return panel(palette).child(title).into_any_element();
     }
@@ -1072,15 +1242,50 @@ fn render_curve(
         order.retain(|index| *index != target);
         order.push(target);
     }
+    let log_values = |curve: &[u32]| -> Vec<f64> {
+        curve
+            .iter()
+            .map(|us| (f64::from(*us).max(1.0) / 1_000.0).log10() - f64::from(bottom))
+            .collect()
+    };
+    // The compared run's lines first, dashed, under this run's.
+    if let Some(compare) = compare {
+        for target in &order {
+            let Some(curve) = compare_curves
+                .get(*target)
+                .filter(|curve| !curve.is_empty())
+            else {
+                continue;
+            };
+            let dimmed = selected.is_some_and(|selected| selected != *target);
+            let color = palette
+                .request_color(*target)
+                .opacity(if dimmed { 0.12 } else { 0.6 });
+            chart = chart.series(
+                ChartSeries::new(
+                    format!(
+                        "{} \u{b7} {}",
+                        names.get(*target).cloned().unwrap_or_default(),
+                        compare.title
+                    ),
+                    color,
+                    log_values(curve),
+                )
+                .style(SeriesStyle::dashed(1.25, 4.0, 3.0))
+                .dot(false)
+                .tooltip_order(1_000 + *target as i32)
+                .format(move |value| {
+                    format_latency_ms(10f64.powf(value + f64::from(bottom))).into()
+                }),
+            );
+        }
+    }
     for target in order {
         let curve = &view.curves[target];
         if curve.is_empty() {
             continue;
         }
-        let values: Vec<f64> = curve
-            .iter()
-            .map(|us| (f64::from(*us).max(1.0) / 1_000.0).log10() - f64::from(bottom))
-            .collect();
+        let values = log_values(curve);
         let focused = selected == Some(target);
         let color = palette.request_color(target);
         let color = if selected.is_some() && !focused {
