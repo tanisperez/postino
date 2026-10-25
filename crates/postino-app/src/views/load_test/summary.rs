@@ -1,7 +1,9 @@
 //! The Summary tab of the load test results: the KPIs (with the change against the compared run
 //! and the threshold goals), the "Performance over time" chart (hover, legend toggles and window
-//! selection), the latency distribution, the responses by status and the per request table.
+//! selection) and the per request table with each request's responses by status. The latency
+//! distribution has its own tab (`latency_tab.rs`).
 
+use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -11,39 +13,41 @@ use postino_core::Method;
 use postino_load::{LoadSnapshot, StatusKey, Threshold, ThresholdMetric};
 
 use crate::state::load_results::{
-    ChartSeriesKey, SummaryData, format_bucket_width, format_latency_ms, ms_axis, rps_axis,
-    second_range_label, x_labels,
+    ChartSeriesKey, SummaryData, VuLabelKind, format_latency_ms, ms_axis, planned_vus, rps_axis,
+    second_range_label, vu_labels, x_labels,
 };
 use crate::state::load_test::{
     DeltaTone, LoadTestTab, delta_tone, format_delta, format_trimmed, threshold_metric_label,
 };
+use crate::state::locale;
 use crate::state::number::{format_decimal, format_integer};
-use crate::theme::metrics::{
-    CHART_TOOLTIP_OFFSET, CHART_TOOLTIP_TOP, CHART_TOOLTIP_WIDTH, RADIUS_LG, RADIUS_MD,
-};
+use crate::state::response_render::reason_phrase;
+use crate::theme::metrics::{RADIUS_LG, RADIUS_MD};
 use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::{
-    AxisSide, Card, ChartAxis, ChartSeries, DataCell, DataColumn, DataTable, MethodBadge,
-    ReferenceLine, SeriesStyle, TimeSeriesChart,
+    AxisSide, ChartAxis, ChartLabel, ChartSeries, DataCell, DataColumn, DataTable, LabelPlacement,
+    MethodBadge, ReferenceLine, SeriesStyle, TimeSeriesChart,
 };
 use crate::views::root::AppView;
 
-/// Height of the chart, from the design (a 188 px plot and its labels).
-const CHART_HEIGHT: f32 = 220.0;
-/// Height of the latency distribution's bars.
-const HISTOGRAM_HEIGHT: f32 = 110.0;
-/// Opacity of the distribution's hover crosshair, drawn in the text color like the chart's.
-const CROSSHAIR_OPACITY: f32 = 0.35;
-/// Base width of one half of the distribution and statuses row: two that do not fit side by side
-/// wrap, by flex layout, instead of squashing.
-const TWO_COLUMN_MIN_WIDTH: f32 = 320.0;
+/// Height of the chart, from the design v3 (a 272 px plot, its axis titles and its labels).
+const CHART_HEIGHT: f32 = 320.0;
+/// Width of the per request table's status bar column.
+const STATUS_COLUMN_WIDTH: f32 = 220.0;
+/// Width of a status bar's tooltip.
+const STATUS_TOOLTIP_WIDTH: f32 = 250.0;
+/// Height of a status bar.
+const STATUS_BAR_HEIGHT: f32 = 8.0;
+/// Opacity of a timeout or a failure in a status bar, a darker red than a 5xx next to it.
+const FAILURE_OPACITY: f32 = 0.6;
 /// Minimum width of one KPI cell; the two groups of three wrap as whole groups.
 const KPI_CELL_MIN_WIDTH: f32 = 96.0;
 /// A per request error rate above which its cell turns `warning` (1 %).
 const PER_REQUEST_WARNING_ERROR_RATE: f64 = 0.01;
 /// The virtual users area reaches this fraction of the chart's height at its peak, like the
-/// design, so it never touches the top.
-const VUS_HEIGHT_FRACTION: f64 = 0.9;
+/// design: it has no axis of its own, so it stays well clear of the req/s gridlines it could be
+/// read against.
+const VUS_HEIGHT_FRACTION: f64 = 0.5;
 
 impl AppView {
     /// Renders the Summary tab of the load test tab `tab_id`.
@@ -56,48 +60,17 @@ impl AppView {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let palette = cx.palette();
+        let ui_font = cx.theme().font_family.clone();
         let mono_font = cx.theme().mono_font_family.clone();
         let weak = cx.weak_entity();
 
         v_flex()
             .gap(px(14.0))
             .child(render_kpis(&palette, load_test, summary))
-            .child(render_chart(
-                weak.clone(),
-                tab_id,
-                &palette,
-                load_test,
-                snapshot,
+            .child(render_chart(weak, tab_id, &palette, load_test, snapshot))
+            .child(render_per_request(
+                &palette, &ui_font, &mono_font, load_test, summary,
             ))
-            .child(
-                h_flex()
-                    .min_w_0()
-                    .flex_wrap()
-                    .gap(px(14.0))
-                    .items_start()
-                    .child(
-                        div()
-                            .flex_grow(1.3)
-                            .flex_basis(px(TWO_COLUMN_MIN_WIDTH))
-                            .min_w_0()
-                            .child(render_distribution(
-                                weak.clone(),
-                                self.histogram_hover,
-                                &palette,
-                                &mono_font,
-                                load_test,
-                                summary,
-                            )),
-                    )
-                    .child(
-                        div()
-                            .flex_grow(1.0)
-                            .flex_basis(px(TWO_COLUMN_MIN_WIDTH))
-                            .min_w_0()
-                            .child(render_statuses(&palette, &mono_font, summary)),
-                    ),
-            )
-            .child(render_per_request(&palette, &mono_font, load_test, summary))
             .into_any_element()
     }
 }
@@ -326,10 +299,10 @@ fn series_label(key: ChartSeriesKey, load_test: &LoadTestTab) -> String {
         ChartSeriesKey::Vus => "VUs".to_string(),
         ChartSeriesKey::Rps => t!("load_test.kpi.rps").into_owned(),
         ChartSeriesKey::P50 => "p50".to_string(),
-        ChartSeriesKey::P90 => "p90".to_string(),
+        ChartSeriesKey::P95 => "p95".to_string(),
         ChartSeriesKey::P99 => "p99".to_string(),
         ChartSeriesKey::Baseline => format!(
-            "{} \u{b7} p99",
+            "{} \u{b7} p95",
             load_test
                 .compare_with
                 .map(super::dashboard::run_title)
@@ -419,8 +392,12 @@ fn render_chart(
     let mut chart = TimeSeriesChart::new("load-test-chart", count)
         .height(CHART_HEIGHT)
         .surface(palette.raised)
-        .left_axis(ChartAxis::new(left.max, left.labels).label_color(palette.accent_text))
-        .right_axis(ChartAxis::new(right.max, right.labels))
+        .left_axis(
+            ChartAxis::new(left.max, left.labels)
+                .label_color(palette.accent_text)
+                .title("req/s"),
+        )
+        .right_axis(ChartAxis::new(right.max, right.labels).title("ms"))
         .x_labels(x_labels(duration_secs))
         .time_label(|index| second_range_label(index).into())
         .selection(load_test.window);
@@ -437,19 +414,19 @@ fn render_chart(
         let series = match key {
             ChartSeriesKey::Vus => ChartSeries::new(label, color, data.vus.clone())
                 .style(SeriesStyle::area(color.opacity(0.08), color.opacity(0.35)))
-                .scale_max((data.max_vus / VUS_HEIGHT_FRACTION).max(1.0))
+                .scale_max(vu_scale(load_test, data.max_vus))
                 .dot(false)
                 .format(|value| format_integer(value.round() as u64).into()),
             ChartSeriesKey::Rps => ChartSeries::new(label, color, data.rps.clone())
                 .style(SeriesStyle::line(2.25))
                 .format(|value| format_integer(value.round().max(0.0) as u64).into()),
-            ChartSeriesKey::P50 | ChartSeriesKey::P90 | ChartSeriesKey::P99 => {
+            ChartSeriesKey::P50 | ChartSeriesKey::P95 | ChartSeriesKey::P99 => {
                 let values = match key {
                     ChartSeriesKey::P50 => data.p50.clone(),
-                    ChartSeriesKey::P90 => data.p90.clone(),
+                    ChartSeriesKey::P95 => data.p95.clone(),
                     _ => data.p99.clone(),
                 };
-                let width = if key == ChartSeriesKey::P99 {
+                let width = if key == ChartSeriesKey::P95 {
                     1.75
                 } else {
                     1.5
@@ -463,7 +440,7 @@ fn render_chart(
                 let Some(values) = data.baseline.clone() else {
                     continue;
                 };
-                ChartSeries::new(label, color.opacity(0.55), values)
+                ChartSeries::new(label, color.opacity(0.6), values)
                     .side(AxisSide::Right)
                     .style(SeriesStyle::dashed(1.5, 4.0, 4.0))
                     .dot(false)
@@ -471,6 +448,9 @@ fn render_chart(
             }
         };
         chart = chart.series(series.tooltip_order(order));
+    }
+    if !load_test.hidden_series.contains(&ChartSeriesKey::Vus) {
+        chart = with_vu_labels(chart, palette, load_test, &data.vus, count);
     }
     for threshold in latency_limits {
         chart = chart.reference_line(ReferenceLine::new(
@@ -529,256 +509,86 @@ fn render_chart(
         .into_any_element()
 }
 
-/// The lowest latency limit among the run's thresholds, in milliseconds: distribution bars from
-/// there on are drawn in `warning`.
-fn lowest_latency_limit(load_test: &LoadTestTab) -> Option<f64> {
-    load_test
-        .run_thresholds
-        .iter()
-        .filter(|threshold| {
-            matches!(
-                threshold.metric,
-                ThresholdMetric::P50 | ThresholdMetric::P95 | ThresholdMetric::P99
-            )
-        })
-        .map(|threshold| threshold.limit)
-        .reduce(f64::min)
+/// The scale of the virtual users area, so its peak (the configured count, or the most seen)
+/// sits at [`VUS_HEIGHT_FRACTION`] of the plot, a live ramp-up included.
+fn vu_scale(load_test: &LoadTestTab, max_vus: f64) -> f64 {
+    let peak = load_test.run_vus.map_or(0.0, f64::from).max(max_vus);
+    peak.max(1.0) / VUS_HEIGHT_FRACTION
 }
 
-/// The latency distribution: one bar per bucket, the y labels, and the x labels from 0 to the
-/// open ended last bucket.
-fn render_distribution(
-    weak: WeakEntity<AppView>,
-    hover: Option<usize>,
+/// Adds the virtual users labels to `chart` (the area has no axis of its own, so its labels give
+/// its values) and, ahead of a live run, the rest of the configured profile as a dashed outline.
+fn with_vu_labels(
+    mut chart: TimeSeriesChart,
     palette: &Palette,
-    mono_font: &SharedString,
     load_test: &LoadTestTab,
-    summary: &SummaryData,
-) -> AnyElement {
-    let (bucket_us, counts) = &summary.histogram;
-    let max = counts.iter().copied().max().unwrap_or(0).max(1);
-    let total: u64 = counts.iter().sum();
-    let warn_from = lowest_latency_limit(load_test);
-    let buckets = counts.len().saturating_sub(1).max(1) as u32;
-    let span_ms = f64::from(*bucket_us) * f64::from(buckets) / 1_000.0;
-    let in_seconds = span_ms >= 1_000.0;
-    let unit = if in_seconds { "s" } else { "ms" };
-    let value_at = |ms: f64| {
-        if in_seconds {
-            format_trimmed(ms / 1_000.0)
-        } else {
-            format_trimmed(ms)
-        }
-    };
-    let x_label = |fraction: f64, last: bool| {
-        let value = value_at(span_ms * fraction);
-        if last {
-            format!("{value}+ {unit}")
-        } else {
-            value
-        }
-    };
-
-    // The crosshair and tooltip of the bar under the pointer, like the chart's.
-    let bar_count = counts.len();
-    let hover_layer = hover.filter(|index| *index < bar_count).map(|index| {
-        let fraction = (index as f32 + 0.5) / bar_count as f32;
-        let start_ms = f64::from(*bucket_us) * index as f64 / 1_000.0;
-        let range = if index + 1 == bar_count {
-            format!("{}+ {unit}", value_at(start_ms))
-        } else {
-            let end_ms = start_ms + f64::from(*bucket_us) / 1_000.0;
-            format!("{}\u{2013}{} {unit}", value_at(start_ms), value_at(end_ms))
-        };
-        let count = counts[index];
-        let share = if total == 0 {
-            0.0
-        } else {
-            count as f64 / total as f64 * 100.0
-        };
-        let tooltip = v_flex()
-            .absolute()
-            .top(px(CHART_TOOLTIP_TOP))
-            .min_w(px(CHART_TOOLTIP_WIDTH))
-            .gap(px(4.0))
-            .py(px(8.0))
-            .px(px(10.0))
-            .rounded(px(RADIUS_MD))
-            .border_1()
-            .border_color(palette.border_strong)
-            .bg(palette.overlay)
-            .shadow(palette.shadow.clone())
-            .text_size(px(12.0))
-            .text_color(palette.fg)
-            .map(|tooltip| {
-                // Right of the crosshair on the left half, left of it on the right half.
-                if fraction <= 0.5 {
-                    tooltip
-                        .left(relative(fraction))
-                        .ml(px(CHART_TOOLTIP_OFFSET))
-                } else {
-                    tooltip
-                        .right(relative(1.0 - fraction))
-                        .mr(px(CHART_TOOLTIP_OFFSET))
-                }
-            })
-            .child(
-                div()
-                    .font_family(mono_font.clone())
-                    .text_size(px(11.0))
-                    .text_color(palette.fg_muted)
-                    .pb(px(2.0))
-                    .child(range),
+    vus: &[f64],
+    count: usize,
+) -> TimeSeriesChart {
+    let running = load_test.is_running();
+    let target = load_test.run_vus;
+    let max_vus = vus
+        .iter()
+        .copied()
+        .filter(|v| v.is_finite())
+        .fold(0.0, f64::max);
+    let scale = vu_scale(load_test, max_vus);
+    if running
+        && let (Some(target), Some(ramp_up)) = (target, load_test.run_ramp_up_secs)
+        && let Some(edge) = vus.len().checked_sub(1)
+    {
+        let color = palette.series_color(ChartSeriesKey::Vus).opacity(0.45);
+        chart = chart.series(
+            ChartSeries::new(
+                t!("load_test.chart.planned"),
+                color,
+                planned_vus(count, edge, target, ramp_up),
             )
-            .child(
-                h_flex()
-                    .items_center()
-                    .gap(px(8.0))
-                    .child(
-                        div()
-                            .flex_none()
-                            .size(px(8.0))
-                            .rounded(px(2.0))
-                            .bg(palette.accent_text),
-                    )
-                    .child(
-                        div()
-                            .flex_1()
-                            .whitespace_nowrap()
-                            .text_color(palette.fg_muted)
-                            .child(t!("load_test.results.requests")),
-                    )
-                    .child(div().font_family(mono_font.clone()).child(format!(
-                        "{} \u{b7} {} %",
-                        format_integer(count),
-                        format_decimal(share, 1)
-                    ))),
-            );
-        div()
-            .absolute()
-            .size_full()
-            .child(
-                div()
-                    .absolute()
-                    .top_0()
-                    .h_full()
-                    .left(relative(fraction))
-                    .w(px(1.0))
-                    .bg(palette.fg.opacity(CROSSHAIR_OPACITY)),
-            )
-            .child(tooltip)
-    });
-
-    Card::new()
-        .child(
-            h_flex()
-                .justify_between()
-                .gap(px(8.0))
-                .child(
-                    div()
-                        .font_weight(FontWeight::MEDIUM)
-                        .child(t!("load_test.distribution.title")),
-                )
-                .child(
-                    div()
-                        .min_w_0()
-                        .truncate()
-                        .text_size(px(12.0))
-                        .text_color(palette.fg_subtle)
-                        .child(t!(
-                            "load_test.distribution.caption",
-                            width = format_bucket_width(*bucket_us)
-                        )),
+            .style(SeriesStyle::dashed(1.0, 3.0, 3.0))
+            .scale_max(scale)
+            .dot(false)
+            .format(|value| format_integer(value.round() as u64).into())
+            .tooltip_order(i32::MAX),
+        );
+    }
+    let labels = vu_labels(vus, target.filter(|_| running));
+    for label in &labels {
+        let (text, placement) = match label.kind {
+            VuLabelKind::Plateau => (
+                format!("{} VUs", format_integer(label.vus)),
+                LabelPlacement::BeforeBelow,
+            ),
+            VuLabelKind::ThinPlateau => (
+                format!("{} VUs", format_integer(label.vus)),
+                LabelPlacement::BeforeAbove,
+            ),
+            VuLabelKind::LiveEdge { target } => (
+                format!(
+                    "{} \u{2192} {} VUs",
+                    format_integer(label.vus),
+                    format_integer(target)
                 ),
-        )
-        .child(
-            h_flex()
-                .gap(px(8.0))
-                .child(
-                    v_flex()
-                        .w(px(40.0))
-                        .h(px(HISTOGRAM_HEIGHT))
-                        .justify_between()
-                        .items_end()
-                        .font_family(mono_font.clone())
-                        .text_size(px(10.5))
-                        .text_color(palette.fg_subtle)
-                        .child(format_integer(max))
-                        .child(format_integer(max / 2))
-                        .child("0"),
-                )
-                .child(
-                    h_flex()
-                        .id("load-test-histogram")
-                        .relative()
-                        .flex_1()
-                        .h(px(HISTOGRAM_HEIGHT))
-                        .items_end()
-                        .border_b_1()
-                        .border_color(palette.border)
-                        .cursor_crosshair()
-                        .on_hover({
-                            let weak = weak.clone();
-                            move |hovered, _, cx| {
-                                if !*hovered {
-                                    let _ = weak.update(cx, |view, cx| {
-                                        if view.histogram_hover.take().is_some() {
-                                            cx.notify();
-                                        }
-                                    });
-                                }
-                            }
-                        })
-                        // Each bar fills its whole column, without gaps between columns, so the
-                        // pointer is always over one of them.
-                        .children(counts.iter().enumerate().map(|(index, count)| {
-                            let fraction = (*count as f32 / max as f32)
-                                .clamp(if *count > 0 { 0.03 } else { 0.0 }, 1.0);
-                            let start_ms = f64::from(*bucket_us) * index as f64 / 1_000.0;
-                            let color = if warn_from.is_some_and(|limit| start_ms >= limit) {
-                                palette.warning
-                            } else {
-                                palette.accent_text
-                            };
-                            let weak = weak.clone();
-                            div()
-                                .id(("load-test-histogram-bar", index))
-                                .flex_1()
-                                .h_full()
-                                .px(px(1.5))
-                                .flex()
-                                .flex_col()
-                                .justify_end()
-                                .on_mouse_move(move |_, _, cx| {
-                                    let _ = weak.update(cx, |view, cx| {
-                                        if view.histogram_hover != Some(index) {
-                                            view.histogram_hover = Some(index);
-                                            cx.notify();
-                                        }
-                                    });
-                                })
-                                .child(
-                                    div()
-                                        .w_full()
-                                        .h(relative(fraction))
-                                        .rounded_t(px(3.0))
-                                        .bg(color),
-                                )
-                        }))
-                        .children(hover_layer),
-                ),
-        )
-        .child(
-            h_flex()
-                .w_full()
-                .pl(px(48.0))
-                .justify_between()
-                .font_family(mono_font.clone())
-                .text_size(px(10.5))
-                .text_color(palette.fg_subtle)
-                .children((0..=5).map(|step| div().child(x_label(step as f64 / 5.0, step == 5)))),
-        )
-        .into_any_element()
+                LabelPlacement::AfterAbove,
+            ),
+        };
+        chart = chart.label(
+            ChartLabel::new(label.index, f64::from(label.vus), text)
+                .scale_max(scale)
+                .placement(placement),
+        );
+    }
+    // A quiet caption at the foot of the ramp, once the run has one to show.
+    if !running
+        && let Some(ramp_up) = load_test.run_ramp_up_secs.filter(|secs| *secs > 0)
+        && !labels.is_empty()
+    {
+        chart = chart.label(
+            ChartLabel::new(0, 0.0, t!("load_test.chart.ramp_up", secs = ramp_up))
+                .placement(LabelPlacement::AfterOnBase)
+                .boxed(false),
+        );
+    }
+    chart
 }
 
 /// The color of one status' bar and label: the HTTP status range colors, `danger` for a timeout
@@ -799,61 +609,6 @@ pub(crate) fn status_key_label(status: &StatusKey) -> String {
     }
 }
 
-/// "Responses by status": one row per status with a bar and its share.
-fn render_statuses(
-    palette: &Palette,
-    mono_font: &SharedString,
-    summary: &SummaryData,
-) -> AnyElement {
-    let total = summary.total.max(1) as f64;
-
-    Card::new()
-        .child(
-            div()
-                .font_weight(FontWeight::MEDIUM)
-                .child(t!("load_test.status_breakdown.title")),
-        )
-        .children(summary.statuses.iter().map(|(status, count)| {
-            let color = status_key_color(palette, status);
-            let fraction = (*count as f64 / total).clamp(0.0, 1.0);
-            h_flex()
-                .items_center()
-                .gap(px(10.0))
-                .text_size(px(12.0))
-                .child(
-                    div()
-                        .w(px(62.0))
-                        .font_family(mono_font.clone())
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(color)
-                        .child(status_key_label(status)),
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .h(px(8.0))
-                        .rounded(px(4.0))
-                        .bg(palette.surface)
-                        .overflow_hidden()
-                        .child(
-                            div()
-                                .h_full()
-                                .w(relative(fraction.max(0.01) as f32))
-                                .rounded(px(4.0))
-                                .bg(color),
-                        ),
-                )
-                .child(
-                    div()
-                        .w(px(64.0))
-                        .text_right()
-                        .text_color(palette.fg_muted)
-                        .child(format!("{} %", format_decimal(fraction * 100.0, 1))),
-                )
-        }))
-        .into_any_element()
-}
-
 /// Each target's HTTP method and display name, by target index: a generic "Target N" for a run
 /// saved before the labels were kept.
 pub(crate) fn target_row_label(load_test: &LoadTestTab, index: usize) -> (Option<Method>, String) {
@@ -866,14 +621,155 @@ pub(crate) fn target_row_label(load_test: &LoadTestTab, index: usize) -> (Option
     }
 }
 
-/// The per request table: request, Total, p50, p95, p99 and Errors.
+/// The color of a status' segment in a status bar: its range color, and a darker red for a
+/// timeout or a failure so it stands apart from a 5xx next to it.
+fn status_segment_color(palette: &Palette, status: &StatusKey) -> Hsla {
+    match status {
+        StatusKey::Code(_) => status_key_color(palette, status),
+        StatusKey::Timeout | StatusKey::Failed => palette.danger.opacity(FAILURE_OPACITY),
+    }
+}
+
+/// A status with its reason phrase, as the status bar's tooltip lists it: `200 OK`, `418`,
+/// `Timeout`.
+fn status_with_phrase(status: &StatusKey) -> String {
+    match status {
+        StatusKey::Code(code) => match reason_phrase(*code) {
+            Some(phrase) => format!("{code} {phrase}"),
+            None => code.to_string(),
+        },
+        _ => status_key_label(status),
+    }
+}
+
+/// A share of `total` as a percentage, with two decimals below 1 % so a rare status does not
+/// read as zero.
+fn share_text(count: u64, total: u64) -> String {
+    let share = count as f64 / total.max(1) as f64 * 100.0;
+    format!(
+        "{} %",
+        format_decimal(share, if share < 1.0 { 2 } else { 1 })
+    )
+}
+
+/// The status bar of one row of the per request table: a segment per status range (2xx, 3xx,
+/// 4xx, 5xx, then timeouts and failures), with the exact codes, counts and shares in a tooltip.
+fn status_bar(
+    id: SharedString,
+    title: String,
+    statuses: &[(StatusKey, u64)],
+    palette: &Palette,
+    mono_font: &SharedString,
+) -> AnyElement {
+    let total: u64 = statuses.iter().map(|(_, count)| count).sum();
+    let mut segments: Vec<(Hsla, u64)> = Vec::new();
+    for (status, count) in statuses {
+        let color = status_segment_color(palette, status);
+        match segments.iter_mut().find(|(existing, _)| *existing == color) {
+            Some((_, sum)) => *sum += count,
+            None => segments.push((color, *count)),
+        }
+    }
+    let mut by_count = statuses.to_vec();
+    by_count.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
+    let tooltip_palette = palette.clone();
+    let tooltip_font = mono_font.clone();
+    let tooltip_title = t!(
+        "load_test.status_bar.title",
+        name = title,
+        responses = locale::plural("load_test.status_bar.responses", total as usize)
+    )
+    .into_owned();
+
+    div()
+        .id(id)
+        .w_full()
+        .h(px(STATUS_BAR_HEIGHT))
+        .flex()
+        .gap(px(1.0))
+        .rounded(px(STATUS_BAR_HEIGHT / 2.0))
+        .overflow_hidden()
+        .bg(palette.surface)
+        .children(segments.into_iter().map(|(color, count)| {
+            div()
+                .h_full()
+                .flex_grow(count as f32)
+                .flex_basis(px(0.0))
+                .bg(color)
+        }))
+        .tooltip(move |window, cx| {
+            let palette = tooltip_palette.clone();
+            let mono_font = tooltip_font.clone();
+            let title = tooltip_title.clone();
+            let rows = by_count.clone();
+            Tooltip::element(move |_, _| {
+                v_flex()
+                    .w(px(STATUS_TOOLTIP_WIDTH))
+                    .gap(px(5.0))
+                    .py(px(8.0))
+                    .text_size(px(12.0))
+                    .text_color(palette.fg)
+                    .child(
+                        div()
+                            .text_size(px(11.0))
+                            .text_color(palette.fg_muted)
+                            .child(title.clone()),
+                    )
+                    .children(rows.iter().map(|(status, count)| {
+                        h_flex()
+                            .items_center()
+                            .gap(px(8.0))
+                            .child(
+                                div()
+                                    .flex_none()
+                                    .size(px(8.0))
+                                    .rounded(px(2.0))
+                                    .bg(status_segment_color(&palette, status)),
+                            )
+                            .child(div().flex_1().truncate().child(status_with_phrase(status)))
+                            .child(
+                                div()
+                                    .font_family(mono_font.clone())
+                                    .child(format_integer(*count)),
+                            )
+                            .child(
+                                div()
+                                    .w(px(52.0))
+                                    .text_right()
+                                    .font_family(mono_font.clone())
+                                    .text_color(palette.fg_muted)
+                                    .child(share_text(*count, total)),
+                            )
+                    }))
+            })
+            .bg(tooltip_palette.overlay)
+            .border_color(tooltip_palette.border_strong)
+            .rounded(px(RADIUS_MD))
+            .px(px(10.0))
+            .build(window, cx)
+        })
+        .into_any_element()
+}
+
+/// The per request table: request, Total, p50, p95, p99, Errors and the responses by status, then
+/// a totals row for all requests.
 fn render_per_request(
     palette: &Palette,
+    ui_font: &SharedString,
     mono_font: &SharedString,
     load_test: &LoadTestTab,
     summary: &SummaryData,
 ) -> AnyElement {
     let ms = |us: u32| format_latency_ms(f64::from(us) / 1_000.0);
+    let errors_cell = |error_rate: f64| {
+        let cell = DataCell::text(format!("{} %", format_decimal(error_rate * 100.0, 1)));
+        if error_rate > PER_REQUEST_WARNING_ERROR_RATE {
+            cell.color(palette.warning)
+        } else {
+            cell
+        }
+    };
+    let has_statuses = !summary.target_statuses.is_empty();
     let mut table = DataTable::new("load-test-per-request-table")
         .column(DataColumn::new(t!("load_test.table.per_request")))
         .column(DataColumn::numeric(t!("load_test.kpi.total")))
@@ -881,30 +777,63 @@ fn render_per_request(
         .column(DataColumn::numeric("p95"))
         .column(DataColumn::numeric("p99"))
         .column(DataColumn::numeric(t!("load_test.kpi.errors")));
+    if has_statuses {
+        table = table
+            .column(DataColumn::new(t!("load_test.requests.status")).width(STATUS_COLUMN_WIDTH));
+    }
     for (index, stats) in summary.per_target.iter().enumerate() {
         let (method, name) = target_row_label(load_test, index);
-        let errors = DataCell::text(format!("{} %", format_decimal(stats.error_rate * 100.0, 1)));
-        let errors = if stats.error_rate > PER_REQUEST_WARNING_ERROR_RATE {
-            errors.color(palette.warning)
-        } else {
-            errors
-        };
-        table = table.row([
+        let mut cells = vec![
             DataCell::element(
                 h_flex()
                     .min_w_0()
                     .items_center()
                     .gap(px(8.0))
                     .children(method.map(MethodBadge::label))
-                    .child(div().min_w_0().truncate().child(name)),
+                    .child(div().min_w_0().truncate().child(name.clone())),
             ),
             DataCell::text(format_integer(stats.count)),
             DataCell::text(ms(stats.p50)),
             DataCell::text(ms(stats.p95)),
             DataCell::text(ms(stats.p99)),
-            errors,
-        ]);
+            errors_cell(stats.error_rate),
+        ];
+        if let Some(statuses) = summary.target_statuses.get(index) {
+            cells.push(DataCell::element(status_bar(
+                format!("load-test-status-bar-{index}").into(),
+                name,
+                statuses,
+                palette,
+                mono_font,
+            )));
+        }
+        table = table.row(cells);
     }
+    let all_requests = t!("load_test.table.all_requests").into_owned();
+    let mut total = vec![
+        DataCell::element(
+            div()
+                .min_w_0()
+                .truncate()
+                .font_family(ui_font.clone())
+                .child(all_requests.clone()),
+        ),
+        DataCell::text(format_integer(summary.total)),
+        DataCell::text(ms(summary.p50)),
+        DataCell::text(ms(summary.p95)),
+        DataCell::text(ms(summary.p99)),
+        errors_cell(summary.error_rate),
+    ];
+    if has_statuses {
+        total.push(DataCell::element(status_bar(
+            "load-test-status-bar-all".into(),
+            all_requests,
+            &summary.statuses,
+            palette,
+            mono_font,
+        )));
+    }
+    table = table.total_row(total);
     // The table's own `mono` would use telaio's monospace font; the user's choice is inherited
     // from here instead, like the rest of the dashboard.
     div()

@@ -386,6 +386,9 @@ pub struct LoadTestTab {
     /// How many virtual users the run shown was configured with, for the Requests tab's VU
     /// filter. `None` before the first run.
     pub run_vus: Option<u32>,
+    /// The ramp-up the run shown was configured with, in seconds, for the chart's virtual users
+    /// labels. `None` before the first run.
+    pub run_ramp_up_secs: Option<u64>,
     /// When the run shown started, as Unix seconds. `None` before the first run.
     pub run_started_at: Option<u64>,
     /// The results tab shown.
@@ -466,6 +469,7 @@ impl LoadTestTab {
             run_duration_secs: None,
             run_thresholds: Vec::new(),
             run_vus: None,
+            run_ramp_up_secs: None,
             run_started_at: None,
             results_tab: ResultsTab::Summary,
             window: None,

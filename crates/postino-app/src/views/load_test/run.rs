@@ -175,6 +175,7 @@ impl AppView {
             load_test.run_duration_secs = Some(resolved.duration_secs);
             load_test.run_thresholds = resolved.thresholds.clone();
             load_test.run_vus = Some(resolved.vus);
+            load_test.run_ramp_up_secs = Some(resolved.ramp_up_secs);
             load_test.run_started_at = Some(started_at_unix);
             load_test.replace_log(Some(postino_load::SampleLog::new()));
         });

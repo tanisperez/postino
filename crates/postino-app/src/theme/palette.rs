@@ -30,7 +30,7 @@ const LIGHT: MethodTokens = MethodTokens {
     delete: "#cf3535",
 };
 
-/// The load test chart's latency series colors that are not palette tokens (p90 uses `warning`).
+/// The load test chart's latency series colors that are not palette tokens (p95 uses `warning`).
 struct ChartTokens {
     p50: &'static str,
     p99: &'static str,
@@ -91,8 +91,8 @@ pub trait PostinoColors {
     fn syntax_color(&self, capture: &str) -> Hsla;
 
     /// The color of one load test chart series: `accent_text` for requests per second, two
-    /// chart colors of Postino's own for p50 and p99 (the compared run's p99 too, drawn dashed),
-    /// `warning` for p90 and `fg_subtle` for the virtual users area.
+    /// chart colors of Postino's own for p50 and p99, `warning` for p95 (the compared run's p95
+    /// too, drawn dashed) and `fg_subtle` for the virtual users area.
     fn series_color(&self, key: ChartSeriesKey) -> Hsla;
 }
 
@@ -140,8 +140,8 @@ impl PostinoColors for Palette {
             ChartSeriesKey::Vus => self.fg_subtle,
             ChartSeriesKey::Rps => self.accent_text,
             ChartSeriesKey::P50 => telaio_ui::palette::hex(tokens.p50),
-            ChartSeriesKey::P90 => self.warning,
-            ChartSeriesKey::P99 | ChartSeriesKey::Baseline => telaio_ui::palette::hex(tokens.p99),
+            ChartSeriesKey::P95 | ChartSeriesKey::Baseline => self.warning,
+            ChartSeriesKey::P99 => telaio_ui::palette::hex(tokens.p99),
         }
     }
 }

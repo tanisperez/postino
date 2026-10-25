@@ -439,6 +439,7 @@ impl AppView {
             load_test.run_duration_secs = Some(record.config.duration_secs);
             load_test.run_thresholds = record.thresholds.clone();
             load_test.run_vus = Some(record.config.vus);
+            load_test.run_ramp_up_secs = Some(record.config.ramp_up_secs);
             load_test.run_started_at = Some(record.started_at_unix);
             load_test.snapshot = Some(record.snapshot);
             load_test.refresh_chart();

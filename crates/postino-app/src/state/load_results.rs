@@ -43,21 +43,25 @@ pub fn nice_step(value: f64) -> f64 {
         .unwrap_or(10.0 * magnitude)
 }
 
-/// The requests per second axis: plain integers, the top one followed by `"/s"`, like the
-/// design's `0, 600, 1.200, 1.800, 2.400/s`.
+/// The requests per second axis: plain numbers, like the design's `0, 600, 1.200, 1.800,
+/// 2.400`. The unit goes in the axis title.
 #[must_use]
 pub fn rps_axis(max_value: f64) -> AxisScale {
+    plain_axis(max_value)
+}
+
+/// The milliseconds axis: plain numbers, like the design's `0, 25, 50, 75, 100`. The unit goes
+/// in the axis title.
+#[must_use]
+pub fn ms_axis(max_value: f64) -> AxisScale {
+    plain_axis(max_value)
+}
+
+/// An axis from 0 to a nice number at or above `max_value`, its labels plain numbers.
+fn plain_axis(max_value: f64) -> AxisScale {
     let step = nice_step(max_value);
     let labels = (0..=AXIS_DIVISIONS)
-        .map(|index| {
-            let value = step * index as f64;
-            let text = format_axis_number(value);
-            if index == AXIS_DIVISIONS {
-                format!("{text}/s")
-            } else {
-                text
-            }
-        })
+        .map(|index| format_axis_number(step * index as f64))
         .collect();
     AxisScale {
         max: step * AXIS_DIVISIONS as f64,
@@ -65,25 +69,15 @@ pub fn rps_axis(max_value: f64) -> AxisScale {
     }
 }
 
-/// The milliseconds axis: the top label followed by `" ms"`, like the design's
-/// `0, 25, 50, 75, 100 ms`.
-#[must_use]
-pub fn ms_axis(max_value: f64) -> AxisScale {
-    let step = nice_step(max_value);
-    let labels = (0..=AXIS_DIVISIONS)
-        .map(|index| {
-            let value = step * index as f64;
-            let text = format_axis_number(value);
-            if index == AXIS_DIVISIONS {
-                format!("{text} ms")
-            } else {
-                text
-            }
-        })
-        .collect();
-    AxisScale {
-        max: step * AXIS_DIVISIONS as f64,
-        labels,
+impl AxisScale {
+    /// The same axis with `suffix` after its top label (`"/s"`, `" ms"`), for a chart without
+    /// axis titles.
+    #[must_use]
+    pub fn with_top_suffix(mut self, suffix: &str) -> Self {
+        if let Some(top) = self.labels.last_mut() {
+            top.push_str(suffix);
+        }
+        self
     }
 }
 
@@ -205,17 +199,18 @@ pub fn url_path(url: &str) -> &str {
 /// One series of the results chart, the key its legend toggle hides it by.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ChartSeriesKey {
-    /// Active virtual users, an area on the left axis scaled to 90 % of its height.
+    /// Active virtual users, an area with a scale of its own that peaks at half the chart's
+    /// height.
     Vus,
     /// Requests per second, on the left axis.
     Rps,
     /// Median latency, on the right axis.
     P50,
-    /// 90th percentile latency, on the right axis.
-    P90,
+    /// 95th percentile latency, on the right axis.
+    P95,
     /// 99th percentile latency, on the right axis.
     P99,
-    /// The compared run's 99th percentile, dashed, on the right axis.
+    /// The compared run's 95th percentile, dashed, on the right axis.
     Baseline,
 }
 
@@ -225,7 +220,7 @@ impl ChartSeriesKey {
         ChartSeriesKey::Vus,
         ChartSeriesKey::Baseline,
         ChartSeriesKey::P99,
-        ChartSeriesKey::P90,
+        ChartSeriesKey::P95,
         ChartSeriesKey::P50,
         ChartSeriesKey::Rps,
     ];
@@ -235,7 +230,7 @@ impl ChartSeriesKey {
         ChartSeriesKey::Vus,
         ChartSeriesKey::Rps,
         ChartSeriesKey::P50,
-        ChartSeriesKey::P90,
+        ChartSeriesKey::P95,
         ChartSeriesKey::P99,
         ChartSeriesKey::Baseline,
     ];
@@ -573,11 +568,11 @@ pub struct ChartData {
     pub rps: Arc<[f64]>,
     /// Median latency, in milliseconds.
     pub p50: Arc<[f64]>,
-    /// 90th percentile latency, in milliseconds.
-    pub p90: Arc<[f64]>,
+    /// 95th percentile latency, in milliseconds.
+    pub p95: Arc<[f64]>,
     /// 99th percentile latency, in milliseconds.
     pub p99: Arc<[f64]>,
-    /// The compared run's 99th percentile, in milliseconds, when it has one per second.
+    /// The compared run's 95th percentile, in milliseconds, when it has one per second.
     pub baseline: Option<Arc<[f64]>>,
     /// The largest requests per second.
     pub max_rps: f64,
@@ -588,9 +583,9 @@ pub struct ChartData {
 }
 
 impl ChartData {
-    /// The chart data of `snapshot`'s per second series, with `compare`'s p99 as the baseline.
-    /// A second with no request is a gap (`NAN`) in the latency series. Runs saved before p50,
-    /// p90 and p99 were kept per second have them at zero everywhere: those series are gaps too.
+    /// The chart data of `snapshot`'s per second series, with `compare`'s p95 as the baseline.
+    /// A second with no request is a gap (`NAN`) in the latency series. Runs saved before p50
+    /// and p99 were kept per second have them at zero everywhere: those series are gaps too.
     #[must_use]
     pub fn new(snapshot: &LoadSnapshot, compare: Option<&LoadSnapshot>) -> Self {
         let series = &snapshot.series;
@@ -608,10 +603,10 @@ impl ChartData {
                 .collect()
         };
         let p50 = latency(|point| point.p50);
-        let p90 = latency(|point| point.p90);
+        let p95 = latency(|point| point.p95);
         let p99 = latency(|point| point.p99);
         let baseline = compare.and_then(|compare| {
-            compare.series.iter().any(|point| point.p99 > 0).then(|| {
+            compare.series.iter().any(|point| point.p95 > 0).then(|| {
                 compare
                     .series
                     .iter()
@@ -619,7 +614,7 @@ impl ChartData {
                         if point.rps <= 0.0 {
                             f64::NAN
                         } else {
-                            f64::from(point.p99) / 1_000.0
+                            f64::from(point.p95) / 1_000.0
                         }
                     })
                     .collect::<Arc<[f64]>>()
@@ -632,7 +627,7 @@ impl ChartData {
                 .filter(|value| value.is_finite())
                 .fold(0.0, f64::max)
         };
-        let max_ms = [&p50, &p90, &p99]
+        let max_ms = [&p50, &p95, &p99]
             .into_iter()
             .map(|values| finite_max(values))
             .chain(baseline.as_deref().map(finite_max))
@@ -645,12 +640,113 @@ impl ChartData {
             vus,
             rps,
             p50,
-            p90,
+            p95,
             p99,
             baseline,
             max_ms,
         }
     }
+}
+
+/// The shortest run of seconds with the same virtual users that counts as a plateau.
+const VU_PLATEAU_MIN_SECS: usize = 3;
+/// A plateau lower than this share of the peak is too thin to hold its label inside its area.
+const VU_THIN_SHARE: f64 = 0.2;
+
+/// Where a virtual users label of the chart sits, see [`vu_labels`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VuLabelKind {
+    /// At the end of a plateau, inside its area.
+    Plateau,
+    /// At the end of a plateau too thin to hold it, above the area.
+    ThinPlateau,
+    /// At the live edge of a run still ramping up, with the count it ramps up to.
+    LiveEdge {
+        /// The configured virtual users.
+        target: u32,
+    },
+}
+
+/// One label of the chart's virtual users area: the second it marks and its count.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VuLabel {
+    /// The second, an index of the chart.
+    pub index: usize,
+    /// The virtual users at that second.
+    pub vus: u32,
+    /// Where it sits.
+    pub kind: VuLabelKind,
+}
+
+/// The labels of the virtual users area, since it has no axis of its own: one at the end of each
+/// plateau (at least [`VU_PLATEAU_MIN_SECS`] seconds with the same count), or, while a run still
+/// ramps up to `live_target`, a single one at the live edge.
+#[must_use]
+pub fn vu_labels(vus: &[f64], live_target: Option<u32>) -> Vec<VuLabel> {
+    let counts: Vec<u32> = vus
+        .iter()
+        .map(|value| {
+            if value.is_finite() {
+                value.round().max(0.0) as u32
+            } else {
+                0
+            }
+        })
+        .collect();
+    let Some(&last) = counts.last() else {
+        return Vec::new();
+    };
+    if let Some(target) = live_target
+        && last < target
+    {
+        return vec![VuLabel {
+            index: counts.len() - 1,
+            vus: last,
+            kind: VuLabelKind::LiveEdge { target },
+        }];
+    }
+    let peak = counts.iter().copied().max().unwrap_or(0);
+    let mut labels = Vec::new();
+    let mut start = 0;
+    for end in 1..=counts.len() {
+        if end < counts.len() && counts[end] == counts[start] {
+            continue;
+        }
+        let value = counts[start];
+        if end - start >= VU_PLATEAU_MIN_SECS && value > 0 {
+            let thin = f64::from(value) < f64::from(peak) * VU_THIN_SHARE;
+            labels.push(VuLabel {
+                index: end - 1,
+                vus: value,
+                kind: if thin {
+                    VuLabelKind::ThinPlateau
+                } else {
+                    VuLabelKind::Plateau
+                },
+            });
+        }
+        start = end;
+    }
+    labels
+}
+
+/// The configured virtual users profile from second `from` to the end of a chart of `count`
+/// seconds, `NAN` before it: a linear ramp from 0 to `vus` over `ramp_up_secs`, then flat. The
+/// chart draws it dashed ahead of a live run, so the plateau to come is already visible.
+#[must_use]
+pub fn planned_vus(count: usize, from: usize, vus: u32, ramp_up_secs: u64) -> Arc<[f64]> {
+    (0..count)
+        .map(|second| {
+            if second < from {
+                f64::NAN
+            } else if ramp_up_secs == 0 {
+                f64::from(vus)
+            } else {
+                let started = f64::from(vus) * (second + 1) as f64 / ramp_up_secs as f64;
+                started.round().min(f64::from(vus))
+            }
+        })
+        .collect()
 }
 
 /// What the Summary tab shows, from a window's statistics or, without them, a snapshot.
@@ -675,6 +771,9 @@ pub struct SummaryData {
     pub statuses: Vec<(StatusKey, u64)>,
     /// Per target statistics, by target index.
     pub per_target: Vec<TargetStats>,
+    /// Requests per status of each target, by target index. Empty when built from a snapshot,
+    /// which does not keep them.
+    pub target_statuses: Vec<Vec<(StatusKey, u64)>>,
 }
 
 impl SummaryData {
@@ -691,6 +790,7 @@ impl SummaryData {
             histogram: (stats.histogram.bucket_us, stats.histogram.counts.clone()),
             statuses: stats.statuses.clone(),
             per_target: stats.per_target.clone(),
+            target_statuses: stats.target_statuses.clone(),
         }
     }
 
@@ -708,6 +808,7 @@ impl SummaryData {
             histogram: (10_000, snapshot.histogram.to_vec()),
             statuses: snapshot.status_counts.clone(),
             per_target: snapshot.per_target.clone(),
+            target_statuses: Vec::new(),
         }
     }
 
@@ -756,10 +857,57 @@ mod tests {
     fn axes_label_every_grid_line_with_the_unit_on_top() {
         let rps = rps_axis(1_900.0);
         assert!((rps.max - 2_000.0).abs() < 1e-9);
-        assert_eq!(rps.labels, vec!["0", "500", "1,000", "1,500", "2,000/s"]);
+        assert_eq!(rps.labels, vec!["0", "500", "1,000", "1,500", "2,000"]);
         let ms = ms_axis(9.0);
         assert!((ms.max - 10.0).abs() < 1e-9);
-        assert_eq!(ms.labels, vec!["0", "2.5", "5", "7.5", "10 ms"]);
+        assert_eq!(ms.labels, vec!["0", "2.5", "5", "7.5", "10"]);
+        assert_eq!(ms.with_top_suffix(" ms").labels[4], "10 ms");
+    }
+
+    #[test]
+    fn plateaus_of_virtual_users_are_labeled_at_their_end() {
+        // A 4 s ramp to 40, a plateau, a step down to 4 and the last second stopping.
+        let vus = [10.0, 20.0, 30.0, 40.0, 40.0, 40.0, 40.0, 4.0, 4.0, 4.0, 1.0];
+        assert_eq!(
+            vu_labels(&vus, None),
+            vec![
+                VuLabel {
+                    index: 6,
+                    vus: 40,
+                    kind: VuLabelKind::Plateau
+                },
+                VuLabel {
+                    index: 9,
+                    vus: 4,
+                    kind: VuLabelKind::ThinPlateau
+                },
+            ]
+        );
+        assert!(vu_labels(&[], None).is_empty());
+    }
+
+    #[test]
+    fn a_live_run_still_ramping_up_labels_its_edge() {
+        let vus = [5.0, 10.0, 15.0];
+        assert_eq!(
+            vu_labels(&vus, Some(50)),
+            vec![VuLabel {
+                index: 2,
+                vus: 15,
+                kind: VuLabelKind::LiveEdge { target: 50 }
+            }]
+        );
+        // Once it reaches the target, its plateau is labeled like a finished run's.
+        let vus = [25.0, 50.0, 50.0, 50.0];
+        assert_eq!(vu_labels(&vus, Some(50))[0].kind, VuLabelKind::Plateau);
+    }
+
+    #[test]
+    fn the_planned_profile_ramps_up_then_stays_flat() {
+        let planned = planned_vus(6, 2, 50, 4);
+        assert!(planned[0].is_nan() && planned[1].is_nan());
+        assert_eq!(&planned[2..], &[38.0, 50.0, 50.0, 50.0]);
+        assert_eq!(&planned_vus(2, 0, 7, 0)[..], &[7.0, 7.0]);
     }
 
     #[test]
@@ -955,8 +1103,9 @@ mod tests {
             point.p90 = 0;
             point.p99 = 0;
         }
+        // p95 was always kept per second, so even an old run can be the baseline.
         let with_old_baseline = ChartData::new(&snapshot, Some(&old));
-        assert!(with_old_baseline.baseline.is_none());
+        assert!(with_old_baseline.baseline.is_some());
         assert!(
             ChartData::new(&old, None)
                 .p99

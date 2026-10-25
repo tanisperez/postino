@@ -495,3 +495,33 @@ _version: 2
   es: "Cargando las peticiones..."
   gl: "Cargando as peticións..."
   it: "Caricamento delle richieste..."
+"load_test.chart.ramp_up":
+  en: "ramp-up %{secs} s"
+  es: "subida gradual %{secs} s"
+  gl: "subida gradual %{secs} s"
+  it: "incremento graduale %{secs} s"
+"load_test.chart.planned":
+  en: "Planned VUs"
+  es: "VUs previstos"
+  gl: "VUs previstos"
+  it: "VU previsti"
+"load_test.table.all_requests":
+  en: "All requests"
+  es: "Todas las peticiones"
+  gl: "Todas as peticións"
+  it: "Tutte le richieste"
+"load_test.status_bar.title":
+  en: "%{name} · %{responses}"
+  es: "%{name} · %{responses}"
+  gl: "%{name} · %{responses}"
+  it: "%{name} · %{responses}"
+"load_test.status_bar.responses.one":
+  en: "%{count} response"
+  es: "%{count} respuesta"
+  gl: "%{count} resposta"
+  it: "%{count} risposta"
+"load_test.status_bar.responses.other":
+  en: "%{count} responses"
+  es: "%{count} respuestas"
+  gl: "%{count} respostas"
+  it: "%{count} risposte"

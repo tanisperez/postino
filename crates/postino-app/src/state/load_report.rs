@@ -51,8 +51,8 @@ pub struct ReportColors {
     pub rps: Rgb,
     /// The median latency line.
     pub p50: Rgb,
-    /// The 90th percentile latency line, also the slow histogram bars.
-    pub p90: Rgb,
+    /// The 95th percentile latency line, also the slow histogram bars.
+    pub p95: Rgb,
     /// The 99th percentile latency line.
     pub p99: Rgb,
     /// The compared run's dashed line.
@@ -81,7 +81,7 @@ impl ReportColors {
             vus: rgb(palette.series_color(ChartSeriesKey::Vus)),
             rps: rgb(palette.series_color(ChartSeriesKey::Rps)),
             p50: rgb(palette.series_color(ChartSeriesKey::P50)),
-            p90: rgb(palette.series_color(ChartSeriesKey::P90)),
+            p95: rgb(palette.series_color(ChartSeriesKey::P95)),
             p99: rgb(palette.series_color(ChartSeriesKey::P99)),
             baseline: rgb(palette.series_color(ChartSeriesKey::Baseline)),
             bad: rgb(palette.danger),
@@ -267,6 +267,7 @@ pub fn stats_from_snapshot(snapshot: &LoadSnapshot) -> WindowStats {
         },
         statuses: snapshot.status_counts.clone(),
         per_target: snapshot.per_target.clone(),
+        target_statuses: Vec::new(),
         error_groups: Vec::new(),
     }
 }
@@ -493,14 +494,14 @@ fn chart(input: &ReportInput) -> Option<ReportChart> {
     let rps = slice(&data.rps);
     let vus = slice(&data.vus);
     let p50 = slice(&data.p50);
-    let p90 = slice(&data.p90);
+    let p95 = slice(&data.p95);
     let p99 = slice(&data.p99);
     let baseline = data.baseline.as_deref().map(slice);
 
-    let left = rps_axis(finite_max(&rps));
+    let left = rps_axis(finite_max(&rps)).with_top_suffix("/s");
     // Like the app's chart, the axis reaches the goal lines so they are drawn where they belong.
     let right = ms_axis(
-        [&p50, &p90, &p99]
+        [&p50, &p95, &p99]
             .into_iter()
             .chain(baseline.as_ref())
             .map(|values| finite_max(values))
@@ -512,7 +513,8 @@ fn chart(input: &ReportInput) -> Option<ReportChart> {
                     .map(|threshold| threshold.limit),
             )
             .fold(0.0, f64::max),
-    );
+    )
+    .with_top_suffix(" ms");
 
     let max_vus = finite_max(&vus);
     let vus_area = vus
@@ -547,7 +549,7 @@ fn chart(input: &ReportInput) -> Option<ReportChart> {
     )];
     if let (Some(values), Some((number, _))) = (baseline, input.compare) {
         series.push(line(
-            format!("{} \u{b7} p99", run_title(number)),
+            format!("{} \u{b7} p95", run_title(number)),
             colors.baseline,
             ReportAxis::Right,
             ReportSeriesStyle::Dashed(1.25),
@@ -563,11 +565,11 @@ fn chart(input: &ReportInput) -> Option<ReportChart> {
             p99,
         ),
         line(
-            "p90".to_string(),
-            colors.p90,
+            "p95".to_string(),
+            colors.p95,
             ReportAxis::Right,
             ReportSeriesStyle::Line(1.25),
-            p90,
+            p95,
         ),
         line(
             "p50".to_string(),
@@ -641,7 +643,7 @@ fn histogram(input: &ReportInput) -> Option<ReportHistogram> {
         .enumerate()
         .map(|(index, _)| {
             if index as f64 * bucket_ms >= HISTOGRAM_WARNING_MS {
-                input.colors.p90
+                input.colors.p95
             } else {
                 input.colors.rps
             }
@@ -911,6 +913,14 @@ mod tests {
                     error_rate: 0.025,
                 },
             ],
+            target_statuses: vec![
+                vec![(StatusKey::Code(200), 600)],
+                vec![
+                    (StatusKey::Code(200), 300),
+                    (StatusKey::Code(429), 90),
+                    (StatusKey::Timeout, 10),
+                ],
+            ],
         }
     }
 
@@ -1107,7 +1117,7 @@ mod tests {
         assert_eq!(chart.window, Some((34, 46)));
         assert_eq!(chart.series.len(), 6);
         assert_eq!(chart.series[0].label, "VUs");
-        assert_eq!(chart.series[1].label, "Run #2 \u{b7} p99");
+        assert_eq!(chart.series[1].label, "Run #2 \u{b7} p95");
         assert_eq!(chart.series[1].style, ReportSeriesStyle::Dashed(1.25));
         assert_eq!(chart.series[0].values.len(), 60);
         // 50 of 50 virtual users reach 90 % of the left axis.
@@ -1160,7 +1170,7 @@ mod tests {
             .histogram
             .expect("the run has requests");
         assert_eq!(histogram.colors[10], fixture.colors.rps);
-        assert_eq!(histogram.colors[11], fixture.colors.p90);
+        assert_eq!(histogram.colors[11], fixture.colors.p95);
     }
 
     #[test]

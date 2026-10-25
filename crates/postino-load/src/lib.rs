@@ -13,6 +13,7 @@
 //! per completed request. [`LoadRun::read_samples`] copies the new part of it while the run goes
 //! on, [`LoadSummary::log`] holds all of it at the end, [`window::window_stats`] computes the
 //! statistics of any time window of it, with the histogram, the statuses and the error groups,
+//! [`latency::latency_view`] the latency per request (histogram, percentiles and curve),
 //! [`history::save_samples`] stores it next to the run and [`export`] writes it as CSV or JSON.
 //!
 //! # Concurrency model
@@ -55,6 +56,7 @@ mod config;
 mod csv_text;
 pub mod export;
 pub mod history;
+pub mod latency;
 mod metrics;
 mod run;
 pub mod samples;
@@ -64,6 +66,9 @@ pub mod window;
 
 pub use compare::{Delta, DeltaUnit, compare};
 pub use config::{LoadConfig, LoadTarget};
+pub use latency::{
+    LatencyOptions, LatencyPercentiles, LatencyScale, LatencyView, StackedHistogram, latency_view,
+};
 pub use metrics::{ErrorExample, LoadSnapshot, SecondPoint, TargetStats};
 pub use run::{LoadRun, LoadSummary, SnapshotReader};
 pub use samples::{SampleLog, SampleRecord};

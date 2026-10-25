@@ -124,6 +124,9 @@ pub struct WindowStats {
     pub statuses: Vec<(StatusKey, u64)>,
     /// Metrics per target, indexed like [`crate::LoadConfig::targets`].
     pub per_target: Vec<TargetStats>,
+    /// How many samples of each target have each status, indexed like [`Self::per_target`] and
+    /// ordered like [`Self::statuses`].
+    pub target_statuses: Vec<Vec<(StatusKey, u64)>>,
     /// The errors grouped by status, the most frequent first, built only from samples inside the
     /// window.
     pub error_groups: Vec<ErrorGroup>,
@@ -178,6 +181,7 @@ pub fn window_stats(
     let mut target_errors = vec![0u64; target_count];
     let mut errors = 0u64;
     let mut statuses: Vec<(StatusKey, u64)> = Vec::new();
+    let mut target_statuses: Vec<Vec<(StatusKey, u64)>> = vec![Vec::new(); target_count];
     let mut groups: Vec<GroupBuilder> = Vec::new();
 
     for sample in log.samples() {
@@ -226,12 +230,9 @@ pub fn window_stats(
         if sample.is_error {
             errors += 1;
         }
-        match statuses
-            .iter_mut()
-            .find(|(status, _)| *status == sample.status)
-        {
-            Some((_, count)) => *count += 1,
-            None => statuses.push((sample.status, 1)),
+        count_status(&mut statuses, sample.status);
+        if let Some(counts) = target_statuses.get_mut(target) {
+            count_status(counts, sample.status);
         }
         if let Some(values) = target_latencies.get_mut(target) {
             values.push(sample.latency_us);
@@ -262,6 +263,9 @@ pub fn window_stats(
         .collect();
 
     statuses.sort_by_key(|(status, _)| status_order(*status));
+    for counts in &mut target_statuses {
+        counts.sort_by_key(|(status, _)| status_order(*status));
+    }
 
     let mut error_groups: Vec<ErrorGroup> = groups
         .into_iter()
@@ -297,7 +301,16 @@ pub fn window_stats(
         histogram: histogram(&latencies, p99),
         statuses,
         per_target,
+        target_statuses,
         error_groups,
+    }
+}
+
+/// Adds one sample of `status` to `counts`.
+fn count_status(counts: &mut Vec<(StatusKey, u64)>, status: StatusKey) {
+    match counts.iter_mut().find(|(key, _)| *key == status) {
+        Some((_, count)) => *count += 1,
+        None => counts.push((status, 1)),
     }
 }
 
@@ -463,6 +476,22 @@ mod tests {
         assert_eq!(stats.per_target[0].p50, 20_000);
         assert_eq!(stats.per_target[0].p99, 40_000);
         assert!((stats.per_target[0].error_rate - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn each_target_counts_its_own_statuses_in_the_window() {
+        let log = log_of(&[
+            (0, 0, StatusKey::Code(500), 1),
+            (0, 0, OK, 1),
+            (0, 1, OK, 1),
+            (0, 0, OK, 1),
+            (1_000, 1, StatusKey::Timeout, 1),
+        ]);
+        let stats = window_stats(&log, 2, 2, Some(0..1), 2.0);
+        assert_eq!(
+            stats.target_statuses,
+            vec![vec![(OK, 2), (StatusKey::Code(500), 1)], vec![(OK, 1)],]
+        );
     }
 
     #[test]
