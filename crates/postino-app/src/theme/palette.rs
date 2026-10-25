@@ -46,6 +46,17 @@ const CHART_DARK: ChartTokens = ChartTokens {
     p99: "#f08060",
 };
 
+/// The colors that tell the requests of a load test apart in the Latency tab and the report, in
+/// order; a run with more requests cycles through them. From the design v3: in the dark theme
+/// the first two are `accent_text` and `info`, in the light one `accent` and a lighter `info`.
+const REQUESTS_LIGHT: [&str; 6] = [
+    "#4f57d8", "#1c78b8", "#b0479a", "#3f8a3a", "#a8641c", "#7a4fd6",
+];
+
+const REQUESTS_DARK: [&str; 6] = [
+    "#a3a9ff", "#62b3f0", "#e58fd0", "#8fd18a", "#e0a96d", "#b9a2ff",
+];
+
 const DARK: MethodTokens = MethodTokens {
     get: "#4fc88f",
     post: "#e8b75a",
@@ -94,6 +105,9 @@ pub trait PostinoColors {
     /// chart colors of Postino's own for p50 and p99, `warning` for p95 (the compared run's p95
     /// too, drawn dashed) and `fg_subtle` for the virtual users area.
     fn series_color(&self, key: ChartSeriesKey) -> Hsla;
+
+    /// The color of request `index` of a load test (its target index), cycling through six.
+    fn request_color(&self, index: usize) -> Hsla;
 }
 
 impl PostinoColors for Palette {
@@ -144,6 +158,15 @@ impl PostinoColors for Palette {
             ChartSeriesKey::P99 => telaio_ui::palette::hex(tokens.p99),
         }
     }
+
+    fn request_color(&self, index: usize) -> Hsla {
+        let tokens = if self.dark {
+            &REQUESTS_DARK
+        } else {
+            &REQUESTS_LIGHT
+        };
+        telaio_ui::palette::hex(tokens[index % tokens.len()])
+    }
 }
 
 #[cfg(test)]
@@ -193,6 +216,16 @@ mod tests {
         assert_eq!(dark.series_color(ChartSeriesKey::Rps), dark.accent_text);
         let light = Palette::default_light();
         assert_eq!(to_hex(light.series_color(ChartSeriesKey::P50)), "#1f8f80");
+    }
+
+    #[test]
+    fn request_colors_start_with_the_accent_and_info_and_cycle() {
+        let dark = Palette::default_dark();
+        assert_eq!(dark.request_color(0), dark.accent_text);
+        assert_eq!(dark.request_color(1), dark.info);
+        assert_eq!(dark.request_color(6), dark.request_color(0));
+        let light = Palette::default_light();
+        assert_eq!(to_hex(light.request_color(2)), "#b0479a");
     }
 
     #[test]
