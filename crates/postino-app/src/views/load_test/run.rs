@@ -13,7 +13,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use gpui_kit::*;
 use postino_load::history::{LoadConfigSummary, RunRecord};
-use postino_load::{LoadConfig, LoadRun, LoadSummary, LoadTarget};
+use postino_load::{LoadConfig, LoadRun, LoadSnapshot, LoadSummary, LoadTarget};
 use postino_runner::Runner;
 
 use crate::state::load_results::Shared;
@@ -179,12 +179,16 @@ impl AppView {
         let run = LoadRun::start(config, environment, session_env, runner);
 
         let tick_tab_id = tab_id.clone();
+        let reader = run.snapshot_reader();
         let tick = cx.spawn(async move |weak, cx| {
             loop {
                 cx.background_executor().timer(TICK_INTERVAL).await;
-                let Ok(still_running) =
-                    weak.update(cx, |view, cx| view.tick_load_test(&tick_tab_id, cx))
-                else {
+                // Sorting every latency of a long run takes long enough to drop frames.
+                let reader = reader.clone();
+                let snapshot = cx.background_spawn(async move { reader.snapshot() }).await;
+                let Ok(still_running) = weak.update(cx, |view, cx| {
+                    view.tick_load_test(&tick_tab_id, snapshot, cx)
+                }) else {
                     return;
                 };
                 if still_running {
@@ -229,16 +233,21 @@ impl AppView {
         cx.notify();
     }
 
-    /// Reads the run's current metrics and stores them on the tab. Returns whether the run is
-    /// still going, so the tick loop above knows when to stop polling and finalize it.
+    /// Stores the run's current metrics, read in the background by the tick loop above, on the
+    /// tab. Returns whether the run is still going, so the tick loop knows when to stop polling
+    /// and finalize it.
     ///
     /// Also appends the requests completed since the last tick to the tab's log, and every
     /// [`REFRESH_EVERY_TICKS`] ticks recomputes the results from it in the background.
-    fn tick_load_test(&mut self, tab_id: &str, cx: &mut Context<Self>) -> bool {
+    fn tick_load_test(
+        &mut self,
+        tab_id: &str,
+        snapshot: LoadSnapshot,
+        cx: &mut Context<Self>,
+    ) -> bool {
         let Some(handle) = self.load_runs.get_mut(tab_id) else {
             return false;
         };
-        let snapshot = handle.run.snapshot();
         let still_running = !handle.run.is_finished();
         handle.ticks_since_refresh += 1;
         let refresh = handle.ticks_since_refresh >= REFRESH_EVERY_TICKS;

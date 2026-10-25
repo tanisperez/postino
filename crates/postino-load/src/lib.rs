@@ -36,8 +36,8 @@
 //!   user thread locks it briefly to record one sample: push a few numbers, update a few
 //!   counters, append the request to the [`SampleLog`] that lives inside the aggregator (so the
 //!   log needs no lock of its own and always agrees with the counters), then unlock.
-//!   [`LoadRun::snapshot`] locks it too, to compute a [`LoadSnapshot`] from whatever has been
-//!   recorded so far, and so does [`LoadRun::read_samples`], to copy only the samples the
+//!   [`LoadRun::snapshot`] locks it too, to copy whatever has been recorded so far, and sorts
+//!   the copies into a [`LoadSnapshot`] after unlocking, and so does [`LoadRun::read_samples`], to copy only the samples the
 //!   caller's own log does not have yet. Nothing panics while holding this lock (see
 //!   `src/run.rs`'s `lock_metrics`), so a poisoned lock is not expected; if it ever happened
 //!   anyway, the lock is still recovered rather than propagating the panic to every virtual user
@@ -65,7 +65,7 @@ pub mod window;
 pub use compare::{Delta, DeltaUnit, compare};
 pub use config::{LoadConfig, LoadTarget};
 pub use metrics::{ErrorExample, LoadSnapshot, SecondPoint, TargetStats};
-pub use run::{LoadRun, LoadSummary};
+pub use run::{LoadRun, LoadSummary, SnapshotReader};
 pub use samples::{SampleLog, SampleRecord};
 pub use status::StatusKey;
 pub use threshold::{

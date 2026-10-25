@@ -287,14 +287,24 @@ impl Aggregator {
     /// this type only tracks what samples were recorded, not when "now" is.
     ///
     /// Sorts a fresh copy of the latencies of every percentile it computes, so this is
-    /// `O(n log n)` in the number of samples recorded so far (see the module docs). That is fine
-    /// to call every 250 ms for the sample counts a single-machine load test produces. The
-    /// exception is the per second series: each completed second is sorted once and its
-    /// percentiles are kept, which is why this takes `&mut self`.
+    /// `O(n log n)` in the number of samples recorded so far (see the module docs). A caller
+    /// holding the metrics lock calls [`Self::pending_snapshot`] instead and sorts after
+    /// releasing it.
     pub(crate) fn snapshot(&mut self, elapsed: Duration, active_vus: u32) -> LoadSnapshot {
-        let mut sorted_global = self.global_latencies_us.clone();
-        sorted_global.sort_unstable();
+        self.pending_snapshot(elapsed, active_vus).finish()
+    }
 
+    /// The part of [`Self::snapshot`] that reads the aggregator: the counters, the per second
+    /// series and unsorted copies of the latencies, an `O(n)` copy. The `O(n log n)` sorts are
+    /// left to [`PendingSnapshot::finish`], so [`crate::LoadRun::snapshot`] releases the metrics
+    /// lock before them and the virtual users are not blocked while it sorts. The exception is
+    /// the per second series: each completed second is sorted once and its percentiles are kept,
+    /// which is why this takes `&mut self`.
+    pub(crate) fn pending_snapshot(
+        &mut self,
+        elapsed: Duration,
+        active_vus: u32,
+    ) -> PendingSnapshot {
         let error_rate = ratio(self.errors, self.total);
 
         let completed_seconds = elapsed.as_secs() as usize;
@@ -332,36 +342,32 @@ impl Aggregator {
             .collect();
         let rps = series.last().map_or(0.0, |point| point.rps);
 
-        let per_target = self
-            .per_target
-            .iter()
-            .map(|bucket| {
-                let mut sorted = bucket.latencies_us.clone();
-                sorted.sort_unstable();
-                TargetStats {
+        PendingSnapshot {
+            snapshot: LoadSnapshot {
+                elapsed,
+                active_vus,
+                total: self.total,
+                rps,
+                p50: 0,
+                p95: 0,
+                p99: 0,
+                error_rate,
+                series,
+                histogram: self.histogram,
+                status_counts: self.status_counts.clone(),
+                per_target: Vec::new(),
+                error_examples: self.error_examples.clone(),
+            },
+            global_latencies_us: self.global_latencies_us.clone(),
+            per_target: self
+                .per_target
+                .iter()
+                .map(|bucket| PendingTarget {
                     count: bucket.count,
-                    p50: percentile(&sorted, 50.0),
-                    p95: percentile(&sorted, 95.0),
-                    p99: percentile(&sorted, 99.0),
-                    error_rate: ratio(bucket.errors, bucket.count),
-                }
-            })
-            .collect();
-
-        LoadSnapshot {
-            elapsed,
-            active_vus,
-            total: self.total,
-            rps,
-            p50: percentile(&sorted_global, 50.0),
-            p95: percentile(&sorted_global, 95.0),
-            p99: percentile(&sorted_global, 99.0),
-            error_rate,
-            series,
-            histogram: self.histogram,
-            status_counts: self.status_counts.clone(),
-            per_target,
-            error_examples: self.error_examples.clone(),
+                    errors: bucket.errors,
+                    latencies_us: bucket.latencies_us.clone(),
+                })
+                .collect(),
         }
     }
 
@@ -380,6 +386,53 @@ impl Aggregator {
     pub(crate) fn final_snapshot(&mut self, elapsed: Duration) -> LoadSnapshot {
         let mut snapshot = self.snapshot(elapsed, 0);
         snapshot.rps = average_rps(self.total, elapsed);
+        snapshot
+    }
+}
+
+/// A [`LoadSnapshot`] whose percentiles are not computed yet, from
+/// [`Aggregator::pending_snapshot`]: it owns unsorted copies of the latencies, so it can be
+/// finished without the aggregator or its lock.
+pub(crate) struct PendingSnapshot {
+    /// Everything but `p50`, `p95`, `p99` and `per_target`, which [`Self::finish`] fills in.
+    snapshot: LoadSnapshot,
+    global_latencies_us: Vec<u32>,
+    per_target: Vec<PendingTarget>,
+}
+
+/// One target's counters and unsorted latencies, copied for [`PendingSnapshot::finish`].
+struct PendingTarget {
+    count: u64,
+    errors: u64,
+    latencies_us: Vec<u32>,
+}
+
+impl PendingSnapshot {
+    /// Sorts the latencies and returns the complete [`LoadSnapshot`], `O(n log n)`.
+    pub(crate) fn finish(self) -> LoadSnapshot {
+        let Self {
+            mut snapshot,
+            global_latencies_us: mut sorted_global,
+            per_target,
+        } = self;
+        sorted_global.sort_unstable();
+        snapshot.p50 = percentile(&sorted_global, 50.0);
+        snapshot.p95 = percentile(&sorted_global, 95.0);
+        snapshot.p99 = percentile(&sorted_global, 99.0);
+        snapshot.per_target = per_target
+            .into_iter()
+            .map(|target| {
+                let mut sorted = target.latencies_us;
+                sorted.sort_unstable();
+                TargetStats {
+                    count: target.count,
+                    p50: percentile(&sorted, 50.0),
+                    p95: percentile(&sorted, 95.0),
+                    p99: percentile(&sorted, 99.0),
+                    error_rate: ratio(target.errors, target.count),
+                }
+            })
+            .collect();
         snapshot
     }
 }

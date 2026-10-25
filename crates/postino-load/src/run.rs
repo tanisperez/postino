@@ -49,6 +49,28 @@ struct Shared {
     start: Instant,
 }
 
+/// Reads the live metrics of a [`LoadRun`] from any thread, see [`LoadRun::snapshot_reader`].
+#[derive(Clone)]
+pub struct SnapshotReader {
+    shared: Arc<Shared>,
+}
+
+impl SnapshotReader {
+    /// The same as [`LoadRun::snapshot`].
+    #[must_use]
+    pub fn snapshot(&self) -> LoadSnapshot {
+        read_snapshot(&self.shared)
+    }
+}
+
+/// Copies the metrics under the lock and computes the percentiles after releasing it.
+fn read_snapshot(shared: &Shared) -> LoadSnapshot {
+    let elapsed = shared.start.elapsed();
+    let active_vus = shared.active_vus.load(Ordering::SeqCst);
+    let pending = lock_metrics(&shared.metrics).pending_snapshot(elapsed, active_vus);
+    pending.finish()
+}
+
 /// A load test in progress, or one that has already finished. Created with [`LoadRun::start`].
 pub struct LoadRun {
     shared: Arc<Shared>,
@@ -116,13 +138,21 @@ impl LoadRun {
         }
     }
 
-    /// A live read of the current metrics. Cheap enough to call every 250 ms from the UI; see
-    /// the crate docs for the cost of computing percentiles.
+    /// A live read of the current metrics. It sorts every latency recorded so far (see the
+    /// crate docs for the cost of computing percentiles), after releasing the metrics lock, so a
+    /// UI calls it off its own thread through [`Self::snapshot_reader`].
     #[must_use]
     pub fn snapshot(&self) -> LoadSnapshot {
-        let elapsed = self.shared.start.elapsed();
-        let active_vus = self.shared.active_vus.load(Ordering::SeqCst);
-        lock_metrics(&self.shared.metrics).snapshot(elapsed, active_vus)
+        read_snapshot(&self.shared)
+    }
+
+    /// A handle that reads [`Self::snapshot`] from another thread, for as long as it is kept,
+    /// even after [`Self::join`].
+    #[must_use]
+    pub fn snapshot_reader(&self) -> SnapshotReader {
+        SnapshotReader {
+            shared: Arc::clone(&self.shared),
+        }
     }
 
     /// Appends to `log` the samples and URLs recorded since the last call, so a caller that keeps
