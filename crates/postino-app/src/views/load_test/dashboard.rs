@@ -93,10 +93,12 @@ impl AppView {
                 .child(self.render_load_test_requests(tab_id, &load_test, &summary, window, cx))
                 .into_any_element(),
             tab => {
-                let content = if tab == ResultsTab::Summary {
-                    self.render_load_test_summary(tab_id, &load_test, &snapshot, &summary, cx)
-                } else {
-                    self.render_load_test_errors(tab_id, &load_test, &snapshot, cx)
+                let content = match tab {
+                    ResultsTab::Summary => {
+                        self.render_load_test_summary(tab_id, &load_test, &snapshot, &summary, cx)
+                    }
+                    ResultsTab::Latency => self.render_load_test_latency(tab_id, &load_test, cx),
+                    _ => self.render_load_test_errors(tab_id, &load_test, &snapshot, cx),
                 };
                 // The header and the tabs scroll away with the content, like the design.
                 v_flex()
@@ -762,6 +764,10 @@ fn render_tabs(
         .item(item(
             ResultsTab::Summary,
             t!("load_test.results.summary").into_owned(),
+        ))
+        .item(item(
+            ResultsTab::Latency,
+            t!("load_test.results.latency").into_owned(),
         ))
         .item(
             item(

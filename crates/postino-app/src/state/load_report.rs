@@ -1080,9 +1080,6 @@ mod tests {
     }
 
     fn summary() -> SummaryData {
-        let mut counts = vec![0; 26];
-        counts[1] = 900;
-        counts[2] = 100;
         SummaryData {
             rps: 2_000.0,
             p50: 12_000,
@@ -1090,7 +1087,6 @@ mod tests {
             p99: 62_000,
             error_rate: 0.01,
             total: 1_000,
-            histogram: (4_000, counts),
             statuses: vec![
                 (StatusKey::Code(200), 900),
                 (StatusKey::Code(429), 90),

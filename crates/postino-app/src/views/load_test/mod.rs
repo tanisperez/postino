@@ -9,6 +9,7 @@ pub(crate) mod config_panel;
 pub(crate) mod dashboard;
 pub(crate) mod errors_tab;
 pub(crate) mod export;
+pub(crate) mod latency_tab;
 pub(crate) mod requests_tab;
 pub(crate) mod results_data;
 pub(crate) mod run;
@@ -27,7 +28,7 @@ use postino_load::ThresholdMetric;
 use crate::state::load_results::{
     ChartSeriesKey, RequestColumn, RequestFilter, ResultsTab, StatusFilter,
 };
-use crate::state::load_test::{self, LoadTestTab, LoadTestTarget};
+use crate::state::load_test::{self, LatencyChoice, LoadTestTab, LoadTestTarget};
 
 use super::root::AppView;
 
@@ -463,6 +464,18 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         self.edit_load_test(tab_id, cx, |load_test| load_test.results_tab = results_tab);
+        self.refresh_load_results(tab_id, cx);
+    }
+
+    /// Changes the Latency tab's controls with `edit` and computes its data again.
+    pub(crate) fn edit_load_test_latency(
+        &mut self,
+        tab_id: &str,
+        cx: &mut Context<Self>,
+        edit: impl FnOnce(&mut LatencyChoice),
+    ) {
+        self.latency_hover = None;
+        self.edit_load_test(tab_id, cx, |load_test| edit(&mut load_test.latency_options));
         self.refresh_load_results(tab_id, cx);
     }
 

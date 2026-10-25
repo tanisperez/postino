@@ -1,15 +1,16 @@
 //! Keeping a load test tab's derived results up to date: the statistics of the selected window
-//! (`postino_load::window_stats`) and the Requests tab's filtered, sorted rows
-//! (`state::load_results::filter_requests`) are computed on the background executor, never in
-//! `render`, whenever their key (`state::load_test::AnalysisKey`, `RequestsKey`) no longer
-//! matches the tab. Also loads a past run's saved requests.
+//! (`postino_load::window_stats`), the Latency tab's data (`postino_load::latency_view`) and the
+//! Requests tab's filtered, sorted rows (`state::load_results::filter_requests`) are computed on
+//! the background executor, never in `render`, whenever their key
+//! (`state::load_test::AnalysisKey`, `LatencyKey`, `RequestsKey`) no longer matches the tab.
+//! Also loads a past run's saved requests.
 
 use std::collections::HashMap;
 
 use gpui_kit::*;
 
 use crate::state::load_results::{ResultsTab, Shared, filter_requests};
-use crate::state::load_test::{AnalysisKey, RequestsKey};
+use crate::state::load_test::{AnalysisKey, LatencyKey, RequestsKey};
 use crate::views::root::AppView;
 
 /// The background computations in flight for one tab, with the key each was started for, so a
@@ -17,6 +18,7 @@ use crate::views::root::AppView;
 #[derive(Default)]
 pub(crate) struct LoadResultTasks {
     analysis: Option<(AnalysisKey, Task<()>)>,
+    latency: Option<(LatencyKey, Task<()>)>,
     requests: Option<(RequestsKey, Task<()>)>,
     samples: Option<Task<()>>,
 }
@@ -26,8 +28,9 @@ pub(crate) type LoadResultTaskMap = HashMap<String, LoadResultTasks>;
 
 impl AppView {
     /// Starts whatever background computation `tab_id`'s results are missing: the window
-    /// statistics, and the Requests rows while the Requests tab is shown. A no-op when
-    /// everything is up to date or already being computed.
+    /// statistics, the Latency data while the Latency tab is shown, and the Requests rows while
+    /// the Requests tab is shown. A no-op when everything is up to date or already being
+    /// computed.
     pub(crate) fn refresh_load_results(&mut self, tab_id: &str, cx: &mut Context<Self>) {
         let Some(load_test) = self
             .state
@@ -93,6 +96,47 @@ impl AppView {
                 });
             });
             tasks.analysis = Some((key, task));
+        }
+
+        if load_test.results_tab == ResultsTab::Latency
+            && let Some(key) = load_test.latency_key()
+            && load_test.latency.as_ref().map(|(done, _)| done) != Some(&key)
+            && tasks.latency.as_ref().map(|(pending, _)| pending) != Some(&key)
+        {
+            let target_rows = load_test.target_rows.len();
+            let options = postino_load::LatencyOptions {
+                range: load_test.window_range(),
+                include_errors: key.choice.include_errors,
+                target: key.choice.target,
+                scale: key.choice.scale,
+            };
+            let log = log.clone();
+            let tab_id = tab_id.to_string();
+            let done_key = key.clone();
+            let task = cx.spawn(async move |weak, cx| {
+                let view = cx
+                    .background_spawn(async move {
+                        let target_count = target_rows.max(
+                            log.samples()
+                                .iter()
+                                .map(|sample| sample.target as usize + 1)
+                                .max()
+                                .unwrap_or(0),
+                        );
+                        postino_load::latency_view(&log, target_count, &options)
+                    })
+                    .await;
+                let _ = weak.update(cx, |view_state, cx| {
+                    if let Some(tasks) = view_state.load_result_tasks.get_mut(&tab_id) {
+                        tasks.latency = None;
+                    }
+                    view_state.edit_load_test(&tab_id, cx, |load_test| {
+                        load_test.latency = Some((done_key, Shared::new(view)));
+                    });
+                    view_state.refresh_load_results(&tab_id, cx);
+                });
+            });
+            tasks.latency = Some((key, task));
         }
 
         if load_test.results_tab == ResultsTab::Requests

@@ -176,18 +176,31 @@ latency lines. The PDF report draws the same series with the light column.
 
 | Series | Light | Dark | Token |
 | --- | --- | --- | --- |
-| Requests/s (line, histogram bars) | `#3f47c4` | `#a3a9ff` | `accent_text` |
+| Requests/s (line, left axis titled `req/s`) | `#3f47c4` | `#a3a9ff` | `accent_text` |
 | p50 | `#1f8f80` | `#5fc9b8` | chart token |
-| p90 (and the slow histogram bars) | `#9a6500` | `#e8b75a` | `warning` |
+| p95 | `#9a6500` | `#e8b75a` | `warning` |
 | p99 | `#cf5b3a` | `#f08060` | chart token |
-| Baseline (compared run's p99, dashed, 55% opacity) | `#cf5b3a` | `#f08060` | same as p99 |
-| Virtual users (area, 90% of the left axis) | `#8b8e9a` | `#6f7280` | `fg_subtle` |
+| Baseline (compared run's p95, dashed, 60% opacity) | `#9a6500` | `#e8b75a` | same as p95 |
+| Virtual users (area peaking at half the plot, no axis, labeled plateaus) | `#8b8e9a` | `#6f7280` | `fg_subtle` |
 | Latency goal lines | `#cf3535` | `#f27171` | `danger` |
+
+The Latency tab tells requests apart by color (`PostinoColors::request_color`, cycling through
+six); its p50, p95 and p99 markers use the chart's series colors.
+
+| Request | Light | Dark |
+| --- | --- | --- |
+| 1 | `#4f57d8` (`accent`) | `#a3a9ff` (`accent_text`) |
+| 2 | `#1c78b8` | `#62b3f0` (`info`) |
+| 3 | `#b0479a` | `#e58fd0` |
+| 4 | `#3f8a3a` | `#8fd18a` |
+| 5 | `#a8641c` | `#e0a96d` |
+| 6 | `#7a4fd6` | `#b9a2ff` |
 
 The verdict strip uses `success` / `success_subtle` for "Thresholds passed" and `danger` /
 `danger_subtle` for "Not passed". KPI deltas are `success` when better and `danger` when worse.
-Status colors in the responses by status panel and the Requests table follow
-`Palette::status_colors`; a timeout or a failure is `danger`.
+Status colors in the per request table's status bars and in the Requests table follow
+`Palette::status_colors`; a timeout or a failure is `danger` (at 60% opacity in a status bar, so
+it stands apart from a 5xx next to it).
 
 ## Typography
 

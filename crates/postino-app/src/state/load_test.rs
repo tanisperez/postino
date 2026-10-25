@@ -6,7 +6,9 @@
 
 use postino_core::Method;
 use postino_load::history::RunRecordHeader;
-use postino_load::{LoadSnapshot, SampleLog, Threshold, ThresholdMetric, WindowStats};
+use postino_load::{
+    LatencyScale, LatencyView, LoadSnapshot, SampleLog, Threshold, ThresholdMetric, WindowStats,
+};
 use postino_workspace::Node;
 
 use rust_i18n::t;
@@ -422,6 +424,31 @@ pub struct LoadTestTab {
     /// The chart's series, rebuilt by [`Self::refresh_chart`] whenever [`Self::snapshot`] or
     /// [`Self::compare_snapshot`] changes.
     pub chart: Option<Shared<ChartData>>,
+    /// The Latency tab's request selector, histogram scale and "Include errors".
+    pub latency_options: LatencyChoice,
+    /// The Latency tab's data, computed in the background from [`Self::log`], and the key it
+    /// was computed for.
+    pub latency: Option<(LatencyKey, Shared<LatencyView>)>,
+}
+
+/// What the Latency tab's controls ask for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct LatencyChoice {
+    /// The request the histogram shows, by target index; `None` for all of them.
+    pub target: Option<usize>,
+    /// The histogram's latency axis.
+    pub scale: LatencyScale,
+    /// Whether errors count too.
+    pub include_errors: bool,
+}
+
+/// What [`LoadTestTab::latency`] was computed from: the log and window, and the controls.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LatencyKey {
+    /// The log and the window.
+    pub analysis: AnalysisKey,
+    /// [`LoadTestTab::latency_options`].
+    pub choice: LatencyChoice,
 }
 
 /// What [`LoadTestTab::analysis`] was computed from: the log (by generation and length) and the
@@ -483,6 +510,8 @@ impl LoadTestTab {
             analysis: None,
             requests: None,
             chart: None,
+            latency_options: LatencyChoice::default(),
+            latency: None,
         }
     }
 
@@ -549,6 +578,26 @@ impl LoadTestTab {
         })
     }
 
+    /// The key [`Self::latency`] should have, `None` without a log.
+    #[must_use]
+    pub fn latency_key(&self) -> Option<LatencyKey> {
+        self.analysis_key().map(|analysis| LatencyKey {
+            analysis,
+            choice: self.latency_options,
+        })
+    }
+
+    /// The Latency tab's data, when it is up to date or at least of the same run and choices. A
+    /// stale value (a live refresh in flight) is still shown instead of nothing.
+    #[must_use]
+    pub fn current_latency(&self) -> Option<&LatencyView> {
+        let (key, view) = self.latency.as_ref()?;
+        (key.analysis.generation == self.log_generation
+            && key.analysis.window == self.window
+            && key.choice == self.latency_options)
+            .then_some(&**view)
+    }
+
     /// The statistics shown, when they are up to date or at least of the same run. A stale
     /// value of the same run (a live refresh in flight) is still shown instead of nothing.
     #[must_use]
@@ -571,7 +620,10 @@ impl LoadTestTab {
         self.log_generation += 1;
         self.analysis = None;
         self.requests = None;
+        self.latency = None;
         self.window = None;
+        // Another run may have other requests.
+        self.latency_options.target = None;
     }
 
     /// Rebuilds [`Self::chart`] from the current snapshot and compared run.

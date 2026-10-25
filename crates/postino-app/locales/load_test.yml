@@ -200,11 +200,6 @@ _version: 2
   es: "Fallida"
   gl: "Fallida"
   it: "Fallita"
-"load_test.status_breakdown.title":
-  en: "Responses by status"
-  es: "Respuestas por estado"
-  gl: "Respostas por estado"
-  it: "Risposte per stato"
 "load_test.table.count":
   en: "Count"
   es: "Cantidad"
@@ -300,11 +295,6 @@ _version: 2
   es: "Tramo %{range}"
   gl: "Tramo %{range}"
   it: "Intervallo %{range}"
-"load_test.distribution.caption":
-  en: "requests per %{width} interval"
-  es: "peticiones por intervalo de %{width}"
-  gl: "peticións por intervalo de %{width}"
-  it: "richieste per intervallo di %{width}"
 "load_test.table.per_request":
   en: "Per request"
   es: "Por petición"
@@ -525,3 +515,93 @@ _version: 2
   es: "%{count} respuestas"
   gl: "%{count} respostas"
   it: "%{count} risposte"
+"load_test.results.latency":
+  en: "Latency"
+  es: "Latencia"
+  gl: "Latencia"
+  it: "Latenza"
+"load_test.latency.request":
+  en: "Request"
+  es: "Petición"
+  gl: "Petición"
+  it: "Richiesta"
+"load_test.latency.linear":
+  en: "Linear"
+  es: "Lineal"
+  gl: "Lineal"
+  it: "Lineare"
+"load_test.latency.log":
+  en: "Log"
+  es: "Log"
+  gl: "Log"
+  it: "Log"
+"load_test.latency.include_errors":
+  en: "Include errors"
+  es: "Incluir errores"
+  gl: "Incluír erros"
+  it: "Includi errori"
+"load_test.latency.live":
+  en: "Live"
+  es: "En directo"
+  gl: "En directo"
+  it: "In diretta"
+"load_test.latency.excluded.one":
+  en: "%{count} error excluded"
+  es: "%{count} error excluido"
+  gl: "%{count} erro excluído"
+  it: "%{count} errore escluso"
+"load_test.latency.excluded.other":
+  en: "%{count} errors excluded"
+  es: "%{count} errores excluidos"
+  gl: "%{count} erros excluídos"
+  it: "%{count} errori esclusi"
+"load_test.latency.bin_linear":
+  en: "responses per %{width} bin"
+  es: "respuestas por intervalo de %{width}"
+  gl: "respostas por intervalo de %{width}"
+  it: "risposte per intervallo di %{width}"
+"load_test.latency.bin_log":
+  en: "responses per bin, log latency axis"
+  es: "respuestas por intervalo, eje de latencia logarítmico"
+  gl: "respostas por intervalo, eixe de latencia logarítmico"
+  it: "risposte per intervallo, asse della latenza logaritmico"
+"load_test.latency.axis":
+  en: "responses"
+  es: "respuestas"
+  gl: "respostas"
+  it: "risposte"
+"load_test.latency.percentiles":
+  en: "Percentiles"
+  es: "Percentiles"
+  gl: "Percentís"
+  it: "Percentili"
+"load_test.latency.click_hint":
+  en: "Click a row to focus it"
+  es: "Haz clic en una fila para centrarte en ella"
+  gl: "Preme nunha fila para centrarte nela"
+  it: "Fai clic su una riga per metterla a fuoco"
+"load_test.latency.curve":
+  en: "Latency by percentile"
+  es: "Latencia por percentil"
+  gl: "Latencia por percentil"
+  it: "Latenza per percentile"
+"load_test.latency.log_axes":
+  en: "log axes"
+  es: "ejes logarítmicos"
+  gl: "eixes logarítmicos"
+  it: "assi logaritmici"
+"load_test.latency.bin_tooltip":
+  en: "%{range} · %{count} of %{total}"
+  es: "%{range} · %{count} de %{total}"
+  gl: "%{range} · %{count} de %{total}"
+  it: "%{range} · %{count} su %{total}"
+"load_test.latency.no_responses":
+  en: "No responses"
+  es: "Sin respuestas"
+  gl: "Sen respostas"
+  it: "Nessuna risposta"
+"load_test.latency.loading":
+  en: "Computing the latency..."
+  es: "Calculando la latencia..."
+  gl: "Calculando a latencia..."
+  it: "Calcolo della latenza..."

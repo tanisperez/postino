@@ -32,7 +32,7 @@ use crate::views::root::AppView;
 use super::summary::{status_key_label, target_row_label};
 
 /// Height of the filter bar's controls, from the design.
-const FILTER_HEIGHT: f32 = 28.0;
+pub(crate) const FILTER_HEIGHT: f32 = 28.0;
 /// Width of the search box, from the design.
 const SEARCH_WIDTH: f32 = 230.0;
 /// The table's columns' widths from the design: #, time, VU, (request is flexible), status,
@@ -227,7 +227,7 @@ fn render_status_filter(
 }
 
 /// A bordered filter button: a muted `label`, the current `value` and a chevron.
-fn filter_button(
+pub(crate) fn filter_button(
     id: &'static str,
     palette: &Palette,
     label: String,

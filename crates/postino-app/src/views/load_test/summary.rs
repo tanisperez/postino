@@ -32,8 +32,9 @@ use crate::views::root::AppView;
 
 /// Height of the chart, from the design v3 (a 272 px plot, its axis titles and its labels).
 const CHART_HEIGHT: f32 = 320.0;
-/// Width of the per request table's status bar column.
-const STATUS_COLUMN_WIDTH: f32 = 220.0;
+/// Width of the per request table's numeric columns, a little under the table's default so the
+/// status bars still fit next to the configuration panel.
+const NUMERIC_COLUMN_WIDTH: f32 = 54.0;
 /// Width of a status bar's tooltip.
 const STATUS_TOOLTIP_WIDTH: f32 = 250.0;
 /// Height of a status bar.
@@ -772,14 +773,14 @@ fn render_per_request(
     let has_statuses = !summary.target_statuses.is_empty();
     let mut table = DataTable::new("load-test-per-request-table")
         .column(DataColumn::new(t!("load_test.table.per_request")))
-        .column(DataColumn::numeric(t!("load_test.kpi.total")))
-        .column(DataColumn::numeric("p50"))
-        .column(DataColumn::numeric("p95"))
-        .column(DataColumn::numeric("p99"))
-        .column(DataColumn::numeric(t!("load_test.kpi.errors")));
+        .column(DataColumn::numeric(t!("load_test.kpi.total")).width(NUMERIC_COLUMN_WIDTH))
+        .column(DataColumn::numeric("p50").width(NUMERIC_COLUMN_WIDTH))
+        .column(DataColumn::numeric("p95").width(NUMERIC_COLUMN_WIDTH))
+        .column(DataColumn::numeric("p99").width(NUMERIC_COLUMN_WIDTH))
+        .column(DataColumn::numeric(t!("load_test.kpi.errors")).width(NUMERIC_COLUMN_WIDTH));
+    // The status bars share the leftover width with the names.
     if has_statuses {
-        table = table
-            .column(DataColumn::new(t!("load_test.requests.status")).width(STATUS_COLUMN_WIDTH));
+        table = table.column(DataColumn::new(t!("load_test.requests.status")));
     }
     for (index, stats) in summary.per_target.iter().enumerate() {
         let (method, name) = target_row_label(load_test, index);

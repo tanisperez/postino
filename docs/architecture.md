@@ -110,9 +110,15 @@ Results v2 (#155 to #158) added these pieces to `postino-load`:
   `history::load_samples`; a run saved before it existed has no file and still loads.
 - `metrics.rs`: `LoadSnapshot.series` has p50, p90, p95, p99 and the active virtual users for each
   second, and `error_examples` keeps the first error of each status (160 characters of body).
-- `window.rs`: `window_stats` computes the figures, histogram, statuses, per request statistics and
-  error groups of a range of whole seconds from the log, which is how a selected chart window
-  filters everything. The app runs it on the background executor and caches it.
+- `window.rs`: `window_stats` computes the figures, histogram, statuses (overall and per request),
+  per request statistics and error groups of a range of whole seconds from the log, which is how a
+  selected chart window filters everything. The app runs it on the background executor and caches
+  it.
+- `latency.rs`: `latency_view` computes the Latency tab from the log: each request's percentiles,
+  its latency by percentile curve (61 points from the fastest response to p99.9) and a histogram
+  stacked by request, linear with round bin widths or log with fixed bins, for all requests or one.
+  Errors are left out unless asked for. The app runs it in the background, keyed by the window and
+  the tab's controls, only while the Latency tab is shown.
 - `threshold.rs`: `Threshold`, `ThresholdMetric` (p50, p95, p99, error rate as upper bounds,
   requests per second as a lower bound) and `evaluate`. Thresholds never stop a run; they are saved
   in the `RunRecord` and give the verdict.

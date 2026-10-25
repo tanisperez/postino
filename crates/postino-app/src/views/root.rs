@@ -177,7 +177,7 @@ pub struct AppView {
     pub(crate) load_runs: HashMap<String, crate::views::load_test::run::LoadRunHandle>,
     /// The latency distribution bar under the pointer, for its crosshair and tooltip. Only the
     /// active tab shows a distribution, so one slot is enough.
-    pub(crate) histogram_hover: Option<usize>,
+    pub(crate) latency_hover: Option<usize>,
     /// The background computations of every load test tab's results
     /// (`views/load_test/results_data.rs`).
     pub(crate) load_result_tasks: crate::views::load_test::results_data::LoadResultTaskMap,
@@ -326,7 +326,7 @@ impl AppView {
             snippet_language: SnippetLanguage::Curl,
             load_test_entities: crate::views::load_test::LoadTestEntities::default(),
             load_runs: HashMap::new(),
-            histogram_hover: None,
+            latency_hover: None,
             load_result_tasks: HashMap::new(),
             nav: state::navigation::NavState::default(),
             env_rows: Vec::new(),

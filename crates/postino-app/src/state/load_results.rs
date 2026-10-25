@@ -57,8 +57,10 @@ pub fn ms_axis(max_value: f64) -> AxisScale {
     plain_axis(max_value)
 }
 
-/// An axis from 0 to a nice number at or above `max_value`, its labels plain numbers.
-fn plain_axis(max_value: f64) -> AxisScale {
+/// An axis from 0 to a nice number at or above `max_value`, its labels plain numbers, such as
+/// the Latency tab's response counts.
+#[must_use]
+pub fn plain_axis(max_value: f64) -> AxisScale {
     let step = nice_step(max_value);
     let labels = (0..=AXIS_DIVISIONS)
         .map(|index| format_axis_number(step * index as f64))
@@ -239,9 +241,11 @@ impl ChartSeriesKey {
 /// Which results tab is shown.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ResultsTab {
-    /// KPIs, the chart, the distribution, statuses and the per request table.
+    /// KPIs, the chart and the per request table.
     #[default]
     Summary,
+    /// The latency distribution, percentiles and curve of each request.
+    Latency,
     /// Every request, filtered and sorted.
     Requests,
     /// One group per error kind.
@@ -764,9 +768,6 @@ pub struct SummaryData {
     pub error_rate: f64,
     /// Requests.
     pub total: u64,
-    /// The latency distribution's bucket width, in microseconds, and its counts (the last bucket
-    /// is open ended).
-    pub histogram: (u32, Vec<u64>),
     /// Requests per status.
     pub statuses: Vec<(StatusKey, u64)>,
     /// Per target statistics, by target index.
@@ -787,15 +788,13 @@ impl SummaryData {
             p99: stats.p99,
             error_rate: stats.error_rate,
             total: stats.total,
-            histogram: (stats.histogram.bucket_us, stats.histogram.counts.clone()),
             statuses: stats.statuses.clone(),
             per_target: stats.per_target.clone(),
             target_statuses: stats.target_statuses.clone(),
         }
     }
 
-    /// The Summary of a snapshot: a live run, or a past run without its saved requests. Its
-    /// histogram has the engine's fixed 10 ms buckets.
+    /// The Summary of a snapshot: a live run, or a past run without its saved requests.
     #[must_use]
     pub fn from_snapshot(snapshot: &LoadSnapshot) -> Self {
         Self {
@@ -805,7 +804,6 @@ impl SummaryData {
             p99: snapshot.p99,
             error_rate: snapshot.error_rate,
             total: snapshot.total,
-            histogram: (10_000, snapshot.histogram.to_vec()),
             statuses: snapshot.status_counts.clone(),
             per_target: snapshot.per_target.clone(),
             target_statuses: Vec::new(),
@@ -822,17 +820,6 @@ impl SummaryData {
             p99_ms: f64::from(self.p99) / 1_000.0,
             error_rate: self.error_rate,
         }
-    }
-}
-
-/// A bucket width as text, for the distribution's caption: `"4 ms"`, `"0.5 ms"`, `"1 s"`.
-#[must_use]
-pub fn format_bucket_width(bucket_us: u32) -> String {
-    let ms = f64::from(bucket_us) / 1_000.0;
-    if ms >= 1_000.0 {
-        format!("{} s", format_axis_number(ms / 1_000.0))
-    } else {
-        format!("{} ms", format_axis_number(ms))
     }
 }
 
@@ -1123,13 +1110,6 @@ mod tests {
         assert_eq!(url_path("https://api.example.com"), "/");
         assert_eq!(url_path("https://api.example.com?q=1"), "?q=1");
         assert_eq!(url_path("not a url"), "not a url");
-    }
-
-    #[test]
-    fn bucket_widths() {
-        assert_eq!(format_bucket_width(4_000), "4 ms");
-        assert_eq!(format_bucket_width(500), "0.5 ms");
-        assert_eq!(format_bucket_width(2_000_000), "2 s");
     }
 
     #[test]
