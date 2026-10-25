@@ -12,11 +12,20 @@ description: Every file Postino reads and writes, in your workspace and on your 
         <tr><td><code>**/*.postino</code></td><td>One request per file. See <a href="file-format.html">File format</a>.</td><td>Yes</td></tr>
         <tr><td><code>environments/&lt;name&gt;.env</code></td><td>Shared variables of an environment.</td><td>Yes</td></tr>
         <tr><td><code>environments/&lt;name&gt;.local.env</code></td><td>Secrets and personal overrides.</td><td><strong>No</strong>, add <code>*.local.env</code> to <code>.gitignore</code></td></tr>
-        <tr><td><code>.postino/runs/NNNN.json</code></td><td>Load test run history, one file per run.</td><td>Your choice</td></tr>
+        <tr><td><code>.postino/runs/NNNN.json</code></td><td>Load test run history, one file per run: its configuration, thresholds and metrics.</td><td>Your choice</td></tr>
+        <tr><td><code>.postino/runs/NNNN.samples.csv.gz</code></td><td>Every request of that run, compressed. See <a href="#load-test-runs">Load test runs</a>.</td><td>Your choice</td></tr>
         <tr><td><code>.gitignore</code></td><td>Written once, when Postino creates the workspace. It ignores <code>*.local.env</code> and <code>.postino/runs/</code>.</td><td>Yes</td></tr>
     </tbody>
 </table></div>
 <p>Postino never writes anything else into the workspace: no settings, no cache, no lock files. It never edits the <code>.gitignore</code> of a folder you open.</p>
+
+<h2 id="load-test-runs">Load test runs</h2>
+<p>Each <a href="load-testing.html">load test</a> run is saved as two files in <code>.postino/runs/</code>, numbered with four digits:</p>
+<ul>
+    <li><code>NNNN.json</code> is small. It holds the run number, when it started, the target, the configuration (virtual users, duration, ramp-up, think time, Stop on errors, Reuse connections and the number of requests, never their bodies or secrets), the <strong>thresholds</strong> the run was started with, whether it stopped early, the method and name of each request, and the final metrics: totals, percentiles, the series per second (requests per second, virtual users, p50, p90, p95 and p99), the latency histogram, the status counts, the per request statistics and an example of each kind of error.</li>
+    <li><code>NNNN.samples.csv.gz</code> is the gzip of a CSV with one line per request the run made. Its header is <code>elapsed_ms,vu,target,status,latency_us,size,error,url</code>: the time since the start in milliseconds, the virtual user (from 0), the index of the request in the target, the status (the HTTP code, <code>timeout</code> or <code>failed</code>), the latency in microseconds, the size of the response in bytes, <code>1</code> if it counted as an error and <code>0</code> otherwise, and the URL. You can read it with any tool that handles gzip and CSV. Postino reads it only when you open the run's Requests or Errors tab, select a window or export, so listing runs stays fast. It grows with the number of requests of the run.</li>
+</ul>
+<p>Runs saved by older versions of Postino have only the <code>.json</code> file. They still open, but without per request detail, see <a href="load-testing.html#history">Run history</a>. Deleting a <code>.samples.csv.gz</code> file does the same to a newer run, and deleting both files removes the run.</p>
 
 <h2>On your system</h2>
 <p>Postino's own state lives in the standard folders of each system.</p>

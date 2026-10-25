@@ -34,7 +34,7 @@ shop/
 ```
 <ul>
     <li><code>*.local.env</code> must always be ignored: it is where passwords, tokens and keys go.</li>
-    <li><code>.postino/runs/</code> holds the load test run history. Commit it if you want to keep performance results with the code, ignore it otherwise.</li>
+    <li><code>.postino/runs/</code> holds the load test run history, a JSON file and a compressed per request log for each run (the second grows with the number of requests). Commit it if you want to keep performance results with the code, ignore it otherwise.</li>
     <li>A workspace created by Postino, with <a href="workspaces.html#creating-a-workspace">New workspace</a> or for a Postman import, already has a <code>.gitignore</code> with both lines. Postino never edits the <code>.gitignore</code> of a folder you open, so add them yourself to an existing repository.</li>
     <li>Postino keeps everything else (settings, recent workspaces, the active environment, logs) outside the workspace, so none of it shows up in your diffs. See <a href="files-and-folders.html">Files and folders</a>.</li>
 </ul>

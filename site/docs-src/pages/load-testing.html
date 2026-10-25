@@ -1,8 +1,8 @@
 title: Load testing
-description: Run load tests against a request or a whole folder in Postino with virtual users, ramp-up and think time, read live throughput and latency, and compare runs.
+description: Run load tests against a request or a whole folder in Postino with virtual users, ramp-up and think time, set pass or fail thresholds, read live throughput and latency, inspect every request, compare runs and export reports.
 ---
 <h1>Load testing</h1>
-<p class="lead">Point a load test at one request or a whole folder, choose how many virtual users to run and for how long, and watch throughput and latency live. Every run is saved, so you can compare it with the previous one.</p>
+<p class="lead">Point a load test at one request or a whole folder, choose how many virtual users to run and for how long, and watch throughput and latency live. Add thresholds to get a pass or fail verdict. Every run is saved with every request it made, so you can inspect it later, compare it with an earlier run and export it.</p>
 
 <div class="shot">
     <img class="light" src="../img/loadtest-light.webp" width="2018" height="1282" loading="lazy" alt="The Load tests panel and a finished load test run with throughput and latency charts.">
@@ -38,6 +38,20 @@ description: Run load tests against a request or a whole folder in Postino with 
 </table></div>
 <p>A value outside its range is brought back into it when the run starts. Load tests use the active environment.</p>
 
+<h3 id="thresholds">Thresholds</h3>
+<p>Under <strong>Thresholds</strong> (&ldquo;fails the run if missed&rdquo;) you can set goals that decide whether a run passes. Press <strong>Add threshold</strong> and pick a metric; the menu lists the metrics that have no row yet, so each metric has at most one threshold. Remove a row with its button.</p>
+<div class="table"><table>
+    <thead><tr><th>Metric</th><th>Rule</th><th>Unit</th><th>Value of a new row</th></tr></thead>
+    <tbody>
+        <tr><td>p50</td><td>passes when the median latency is below the limit</td><td>ms</td><td>100</td></tr>
+        <tr><td>p95</td><td>passes when the p95 latency is below the limit</td><td>ms</td><td>250</td></tr>
+        <tr><td>p99</td><td>passes when the p99 latency is below the limit</td><td>ms</td><td>500</td></tr>
+        <tr><td>Errors</td><td>passes when the error rate is below the limit</td><td>%</td><td>1</td></tr>
+        <tr><td>Requests/s</td><td>passes when the throughput is at least the limit</td><td>requests per second</td><td>100</td></tr>
+    </tbody>
+</table></div>
+<p>A limit is a number of zero or more, with a comma or a period as the decimal separator; the error rate limit cannot be above 100. A row whose text is not a valid limit is ignored when the run starts. A run passes when every threshold is met, over the whole run, and is <strong>not passed</strong> when any one is missed. Thresholds never stop a run: that is what <strong>Stop on errors</strong> is for. They are saved with the run, so an old run is checked against the goals it was started with.</p>
+
 <h2>How a run works</h2>
 <ul>
     <li>Each virtual user is a separate thread that loops over the target: one request, or every request of the folder in order, then the think time, then again, until the duration is over or you press <strong>Stop run</strong>.</li>
@@ -53,40 +67,80 @@ description: Run load tests against a request or a whole folder in Postino with 
 <p>Turn it off to measure clients that always connect from scratch: every request opens a new connection, with its TCP connect and TLS handshake, and closes it afterwards. Expect fewer requests per second and higher latencies, mostly over HTTPS, and a server that may run out of ports or sockets sooner.</p>
 <p>A request to a server whose certificate is not trusted (with <a href="settings.html">Invalid certificates</a> set to <strong>Send with warning</strong>) is verified once per virtual user, and its later requests are sent without verification straight away.</p>
 
-<h2>Reading the dashboard</h2>
-<p>The dashboard updates live while the run is in progress. Its header shows the run number and state: <strong>Running</strong>, <strong>Finished</strong> (the full duration elapsed), <strong>Stopped</strong> (by hand or by Stop on errors) or <strong>Failed</strong> (the run could not start), and how the run connected: <strong>Keep-alive</strong> or <strong>New connections</strong>.</p>
+<h2>Reading the results</h2>
+<p>The results update live while the run is in progress and keep their layout once it ends. Charts, tables and the tabs below work on the whole run, or on a window of it, see <a href="#window">Selecting a window</a>.</p>
+
+<h3>Header</h3>
+<p>The header shows the run number (<strong>Run #3</strong>), a badge with its state, and a line with how the run connected (<strong>Keep-alive</strong> or <strong>New connections</strong>) and when it started, as a day and a time (for example &ldquo;Today 14:32&rdquo;). The states are <strong>Running</strong>, <strong>Finished</strong> (the full duration elapsed), <strong>Stopped</strong> (by hand or by Stop on errors) and <strong>Failed</strong> (the run could not start). While the run is in progress the header shows a progress bar; once it ends it shows the <a href="#compare">Compare with</a> and <a href="#export">Export</a> menus.</p>
+
+<h3>Verdict</h3>
+<p>When the run had thresholds and has ended, a strip under the header says <strong>Thresholds passed</strong> or <strong>Not passed</strong> followed by how many were missed (&ldquo;1 of 3&rdquo;). Next to it there is one chip per threshold with its rule (for example <code>p99 &lt; 50 ms</code> or <code>Requests/s &ge; 1,800</code>), the value the whole run reached, and a check or a cross.</p>
+
+<h3>Tabs</h3>
+<p>The results have three tabs: <strong>Summary</strong>, <strong>Requests</strong> and <strong>Errors</strong>. Requests and Errors show a count: the requests of the run or window, and the requests that failed. A run saved before Postino kept every request has no detail for the last two tabs and says so, see <a href="#history">Run history</a>.</p>
+
+<h3>Summary</h3>
 <dl>
-    <dt>Requests/s</dt>
-    <dd>Throughput: the requests completed during the last full second.</dd>
-    <dt>p50, p95, p99</dt>
-    <dd>Latency percentiles over the whole run. p95 is 120 ms means that 95% of requests took 120 ms or less. Percentiles use the nearest rank method, so every value shown is a latency that actually happened.</dd>
-    <dt>Errors</dt>
-    <dd>The share of requests that failed. A request counts as an error when it timed out, could not be sent, its pre-request script threw, or its status was 400 or higher. Failed tests and post-response script errors are not counted.</dd>
-    <dt>Total</dt>
-    <dd>The number of requests completed.</dd>
-    <dt>Throughput and latency</dt>
-    <dd>A chart with one point per second: requests completed in that second and their p95 latency.</dd>
+    <dt>Requests/s, p50, p95, p99, Errors, Total</dt>
+    <dd>Six figures. Requests/s is the throughput over the run. p50, p95 and p99 are latency percentiles: p95 is 120 ms means that 95% of requests took 120 ms or less (nearest rank, so every value shown is a latency that actually happened). Errors is the share of requests that failed: a request counts as an error when it timed out, could not be sent, its pre-request script threw, or its status was 400 or higher. Failed tests and post-response script errors are not counted. Total is the number of requests completed. When you compare with another run, each figure also shows its change, colored as better or worse. When a threshold covers a figure, a line under it says <strong>goal</strong> followed by the rule, green when met and red when missed.</dd>
+    <dt>Performance over time</dt>
+    <dd>A chart with one point per second and two vertical axes. The left axis is for the virtual users (an area) and Requests/s; the right axis is for the latencies p50, p90 and p99. When you compare with another run, a dashed line shows the p99 of that run. A red horizontal line marks each latency threshold (&ldquo;p99 goal 50 ms&rdquo;). The legend above the chart turns each series on and off. Hover the chart to see a crosshair and the values of every visible series for that second.</dd>
     <dt>Latency distribution</dt>
-    <dd>A histogram of all latencies.</dd>
+    <dd>A histogram of the latencies of the requests, in 25 intervals. The width of an interval adapts to the run or window: the smallest round width with which the bars reach past the p99, shown in the caption (&ldquo;requests per 10 ms interval&rdquo;). The last bar adds up everything above it.</dd>
     <dt>Responses by status</dt>
-    <dd>How many responses came back with each status code, plus <strong>Timeout</strong> and <strong>Failed</strong>.</dd>
+    <dd>How many responses came back with each status code, plus <strong>Timeout</strong> and <strong>Failed</strong>, with their share.</dd>
     <dt>Per request</dt>
-    <dd>For a collection, one row per request with its count, p50, p95, p99 and error rate.</dd>
+    <dd>One row per request of the target, with its method, count, p50, p95, p99 and error rate. An error rate above 1% is highlighted.</dd>
 </dl>
 
-<h2>Comparing runs</h2>
-<p>Use <strong>Compare with</strong> to pick an earlier run. The comparison shows, for Requests/s, p95, p99 and Errors, the previous value, the current one and the change, colored as better or worse:</p>
-<ul>
-    <li>Requests/s and latencies change as a percentage of the previous value.</li>
-    <li>The error rate changes in percentage points: going from 2% to 5% is +3 points.</li>
-    <li>Higher is better for Requests/s; lower is better for p95, p99 and Errors.</li>
-</ul>
-<p>Compare runs with the same configuration, or the difference says more about the settings than about your API. When one of the two runs reused connections and the other did not, the comparison says so under its rows.</p>
+<h3 id="window">Selecting a window</h3>
+<p>Once the run has ended, drag across the chart to select a stretch of time, in whole seconds. Everything in the results then covers only that window: the figures, the distribution, the statuses, the per request table, the Requests and Errors tabs and their counts. A <strong>Window</strong> chip next to the tabs shows the range; click the chart or the chip to clear it and go back to the whole run. The threshold verdict always judges the whole run. The window is not available while the run is in progress, or for a run without per request detail.</p>
 
-<h2>Run history</h2>
-<p>Every run is saved as a JSON file in <code>.postino/runs/</code> inside the workspace, numbered <code>0001.json</code>, <code>0002.json</code> and so on. A run file holds when it started, what it targeted, its configuration (without request bodies or secrets) and the final metrics. <strong>Previous runs</strong> lists them, newest first, with how each one connected (<strong>Keep-alive</strong> or <strong>New connections</strong>), and opening one shows its dashboard. Runs saved before the <strong>Reuse connections</strong> option existed always opened new connections, and show as such.</p>
+<h3>Requests</h3>
+<p>Every request the run made, in a table with the columns <strong>#</strong> (the position in the run), <strong>Time</strong> (since the start), <strong>VU</strong> (the virtual user, from 1), <strong>Request</strong> (method and URL), <strong>Status</strong>, <strong>Latency</strong> (with a bar) and <strong>Size</strong> of the response. Click a header to sort; the default is slowest first, and latency and size start from the largest value. A line shows how many requests match and the column used to sort them. The bar above the table filters:</p>
+<ul>
+    <li><strong>Search URL or request</strong> matches part of the URL or of the request name, ignoring case.</li>
+    <li>A status control: <strong>All</strong>, one class of status codes (2xx, 4xx, ...) for each class the run had, <strong>Timeout</strong> and <strong>Failed</strong>.</li>
+    <li><strong>Latency</strong> keeps the requests at or above a value (<strong>Any</strong>, or &ge; a round number of milliseconds based on the run).</li>
+    <li><strong>VU</strong> keeps the requests of one virtual user.</li>
+    <li><strong>Only errors</strong> keeps the requests counted as errors.</li>
+</ul>
+<p>If nothing matches, the table says <strong>No request matches the filters</strong>. The table is virtualized, so a long run stays quick to scroll.</p>
+
+<h3>Errors</h3>
+<p>One card for each kind of error in the run or window: an HTTP status (&ldquo;429 Too Many Requests&rdquo;), a timeout (&ldquo;No response in 30 s&rdquo;) or a failure (&ldquo;Request failed&rdquo;). A card shows the number of requests and their share, a small chart of when they happened over the whole run, <strong>First · last</strong> (the time of the first and the last one), the <strong>Affected requests</strong>, and an example: the status and the first 160 characters of the body of the first error of that kind (or the error text for a timeout or failure). <strong>View requests</strong> opens the Requests tab filtered to that status with <strong>Only errors</strong> on. With no errors the tab says <strong>No errors</strong> (or <strong>No errors in this window</strong>).</p>
+
+<h2 id="compare">Comparing runs</h2>
+<p>The <strong>Compare with</strong> menu in the header lists the earlier runs of the same target, each with its day and requests per second, and <strong>No comparison</strong>. Picking a run changes the results in place, there is no separate panel:</p>
+<ul>
+    <li>Each figure of the Summary shows its change against that run. Requests/s, latencies and Total change as a percentage of the previous value. The error rate changes in percentage points: going from 2% to 5% is +3 pt.</li>
+    <li>Higher is better for Requests/s and Total; lower is better for the latencies and Errors. The change is colored accordingly.</li>
+    <li>The chart draws the p99 of that run as a dashed line.</li>
+    <li>The Markdown and PDF exports say which run they were compared with.</li>
+</ul>
+<p>Compare runs with the same configuration, or the difference says more about the settings than about your API.</p>
+
+<h2 id="export">Exporting</h2>
+<p>The <strong>Export</strong> menu saves the run to a file you choose (the suggested name is <code>run-0003.md</code>, with the run number and the extension of the format) and shows a notification with the path when it is done. The files cover the whole run, or only the selected window, see below.</p>
+<div class="table"><table>
+    <thead><tr><th>Format</th><th>Content</th></tr></thead>
+    <tbody>
+        <tr><td><strong>Markdown</strong> (<code>.md</code>)</td><td>The summary, the thresholds and the verdict, the figures with their comparison, the per request table, the share of each status and the error groups. GitHub flavored Markdown. The chart and the distribution have no Markdown form and are left out.</td></tr>
+        <tr><td><strong>PDF</strong> (<code>.pdf</code>)</td><td>An A4 report on white paper, ready to attach: the verdict and thresholds, the figures, the performance chart, the latency distribution with the statuses, the per request table and the error groups. The charts are drawn as vectors.</td></tr>
+        <tr><td><strong>CSV</strong> (<code>.csv</code>)</td><td>One row per request. The menu shows how many rows it will have.</td></tr>
+        <tr><td><strong>JSON</strong> (<code>.json</code>)</td><td>The whole run for other tools: the run and its configuration, the summary, the thresholds with the value reached and whether each passed, the series per second (requests per second, virtual users, p50, p90, p95, p99), the histogram, the statuses, the per request statistics, the error groups with an example and every request.</td></tr>
+    </tbody>
+</table></div>
+<p>Markdown and PDF follow the interface language, with numbers formatted for it. CSV and JSON are for programs: their column and key names are always English, numbers use a period as the decimal separator, and times and latencies are plain numbers in milliseconds.</p>
+<p>The CSV has the columns <code>id</code>, <code>time_ms</code>, <code>vu</code> (from 1), <code>method</code>, <code>request</code>, <code>url</code>, <code>status</code> (the HTTP code, <code>timeout</code> or <code>failed</code>), <code>latency_ms</code> (three decimals), <code>size_bytes</code> and <code>error</code> (<code>1</code> or <code>0</code>). The JSON has the top level keys <code>run</code>, <code>summary</code>, <code>thresholds</code>, <code>series</code>, <code>histogram</code>, <code>statuses</code>, <code>per_request</code>, <code>errors</code> and <code>requests</code>. For a run without per request detail the CSV has no rows and the JSON an empty <code>requests</code> list.</p>
+<p>While a window is selected, the menu has a checkbox <strong>Only the window</strong> followed by the range. With it on, every format covers just that window and the file name includes the seconds (<code>run-0003-34-46s.md</code>). With it off, the files cover the whole run.</p>
+<p><strong>Copy summary as Markdown</strong>, also <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>C</kbd> (<kbd>Cmd</kbd> <kbd>Shift</kbd> <kbd>C</kbd> on macOS) while a load test tab is active, puts the Markdown report on the clipboard instead of in a file. It is handy for a pull request or an issue comment.</p>
+
+<h2 id="history">Run history</h2>
+<p>Every run is saved in <code>.postino/runs/</code> inside the workspace, numbered <code>0001</code>, <code>0002</code> and so on, as two files: <code>0001.json</code> holds when it started, what it targeted, its configuration (without request bodies or secrets), its thresholds and the final metrics; <code>0001.samples.csv.gz</code> holds every request the run made, compressed. See <a href="files-and-folders.html#load-test-runs">Files and folders</a>. <strong>Previous runs</strong> lists the runs, newest first, with how each one connected (<strong>Keep-alive</strong> or <strong>New connections</strong>), and opening one shows its results exactly as when it ended, including the Requests and Errors tabs, the window selection and the exports.</p>
+<p>Runs saved by older versions of Postino still open. They have no <code>.samples.csv.gz</code> file, so their Requests and Errors tabs say <strong>Runs saved by older versions of Postino have no per request detail</strong>, they cannot select a window, and their CSV and JSON exports have no requests. Their figures, charts and histogram are the ones that were saved. Runs saved before the <strong>Reuse connections</strong> option existed always opened new connections, and show as such.</p>
 <p>The Load tests panel of the sidebar lists the runs of the current session with their state and p95.</p>
-<p>Whether to commit <code>.postino/runs/</code> is up to you. Committing it keeps a performance history next to the code; ignoring it keeps the repository small. See <a href="git.html">Working with git</a>.</p>
+<p>Whether to commit <code>.postino/runs/</code> is up to you. Committing it keeps a performance history next to the code; ignoring it keeps the repository small. A run keeps one line per request, so a long run can take a lot of space. See <a href="git.html">Working with git</a>.</p>
 
 <h2>Tips</h2>
 <ul>
@@ -94,5 +148,6 @@ description: Run load tests against a request or a whole folder in Postino with 
     <li>Use a ramp-up. Starting hundreds of users at once measures the connection storm, not steady state.</li>
     <li>A think time of a few hundred milliseconds makes virtual users behave more like real ones.</li>
     <li>Keep tests in the post-response script cheap: they run on every iteration.</li>
+    <li>Set thresholds before you start, so a regression shows as <strong>Not passed</strong> instead of a number you have to remember.</li>
     <li>Watch the <strong>Responses by status</strong> panel: a fast run full of 429 or 503 responses is not a fast API.</li>
 </ul>

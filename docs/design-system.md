@@ -168,6 +168,27 @@ The values are CSS. gpui's `blur_radius` is the gaussian's standard deviation, h
   environment" is a hollow ring in `fg_subtle`.
 - Tests tab count: `success` when all pass, `danger` otherwise.
 
+### Load test chart
+
+The "Performance over time" chart of the load test results (`Palette::series_color`, in
+`theme/palette.rs`) uses palette tokens where one fits and two colors of Postino's own for the
+latency lines. The PDF report draws the same series with the light column.
+
+| Series | Light | Dark | Token |
+| --- | --- | --- | --- |
+| Requests/s (line, histogram bars) | `#3f47c4` | `#a3a9ff` | `accent_text` |
+| p50 | `#1f8f80` | `#5fc9b8` | chart token |
+| p90 (and the slow histogram bars) | `#9a6500` | `#e8b75a` | `warning` |
+| p99 | `#cf5b3a` | `#f08060` | chart token |
+| Baseline (compared run's p99, dashed, 55% opacity) | `#cf5b3a` | `#f08060` | same as p99 |
+| Virtual users (area, 90% of the left axis) | `#8b8e9a` | `#6f7280` | `fg_subtle` |
+| Latency goal lines | `#cf3535` | `#f27171` | `danger` |
+
+The verdict strip uses `success` / `success_subtle` for "Thresholds passed" and `danger` /
+`danger_subtle` for "Not passed". KPI deltas are `success` when better and `danger` when worse.
+Status colors in the responses by status panel and the Requests table follow
+`Palette::status_colors`; a timeout or a failure is `danger`.
+
 ## Typography
 
 - UI font **Geist**, base 13 px (user setting 11 to 16). Mono font **Geist Mono**, 12.5 px in

@@ -21,7 +21,8 @@ shop-api/
 ├── health.postino
 └── .postino/
     └── runs/                  # load test history
-        └── 0001.json
+        ├── 0001.json
+        └── 0001.samples.csv.gz
 ```
 <dl>
     <dt>Workspace</dt>
@@ -33,7 +34,7 @@ shop-api/
     <dt>Environments</dt>
     <dd>The top-level <code>environments/</code> folder holds <code>.env</code> files instead of requests and is not shown in the collection tree. See <a href="environments.html">Environments and variables</a>.</dd>
     <dt><code>.postino/</code></dt>
-    <dd>Postino's own data for this workspace. Today it only holds the load test run history in <code>.postino/runs/</code>.</dd>
+    <dd>Postino's own data for this workspace. Today it only holds the load test run history in <code>.postino/runs/</code>, two files per run (see <a href="files-and-folders.html#load-test-runs">Files and folders</a>).</dd>
 </dl>
 
 <h2>What the sidebar shows</h2>

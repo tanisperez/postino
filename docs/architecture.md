@@ -48,7 +48,7 @@ window bootstrap and the About header), all shared with the other apps. `postino
 | `postino-script` | The `ScriptEngine` trait and its QuickJS implementation (`rquickjs`). |
 | `postino-http` | Sends a resolved request with `ureq` 3 (blocking, rustls) and measures timing. |
 | `postino-runner` | The pipeline: variables, pre script, interpolate, send, post script. Also `preview`, which resolves a request without scripts or network. |
-| `postino-load` | The load test engine, live metrics aggregation, run comparison and run history. |
+| `postino-load` | The load test engine, live metrics aggregation, the per request sample log, thresholds, time window statistics, run comparison, run history and the report exports (Markdown, PDF, CSV, JSON). |
 | `postino-cli` | The terminal commands that print and exit without opening the window (`--help`, `--version`; later load tests and reports from the terminal). No `gpui` code of its own. The shared plumbing (version line, help header and footer, exit codes, console attach) is `telaio_app::cli`; this crate also holds Postino's `IDENTITY`. |
 | `postino-app` | The `gpui` binary (`postino`). Only UI and glue. |
 
@@ -98,8 +98,28 @@ in short sleeps. With "Reuse connections" on (the default), each user sends thro
 `postino_http::Client` of its own (`Runner::run_with`), whose `ureq` agent keeps the connection
 open between requests; a shared one would not do, since `ureq` keeps at most 3 idle connections
 per host in a pool. Off, it calls `Runner::run`, which opens a new connection per request, as a
-normal send from a tab does. Finished runs are saved as JSON in `<workspace>/.postino/runs/<NNNN>.json`. The
-workspace scanner skips hidden folders, so the history never shows up as a collection.
+normal send from a tab does. Finished runs are saved in `<workspace>/.postino/runs/` as `<NNNN>.json` (the `RunRecord`: config
+summary, thresholds, snapshot) and `<NNNN>.samples.csv.gz` (the sample log). The workspace scanner
+skips hidden folders, so the history never shows up as a collection.
+
+Results v2 (#155 to #158) added these pieces to `postino-load`:
+
+- `samples.rs`: `SampleLog`, one 28 byte `Copy` `SampleRecord` per completed request (time, virtual
+  user, target, status, latency, size, error) plus an interned URL table. The aggregator fills it
+  while the run goes. It is saved as gzipped CSV by `history::save_samples` and read back with
+  `history::load_samples`; a run saved before it existed has no file and still loads.
+- `metrics.rs`: `LoadSnapshot.series` has p50, p90, p95, p99 and the active virtual users for each
+  second, and `error_examples` keeps the first error of each status (160 characters of body).
+- `window.rs`: `window_stats` computes the figures, histogram, statuses, per request statistics and
+  error groups of a range of whole seconds from the log, which is how a selected chart window
+  filters everything. The app runs it on the background executor and caches it.
+- `threshold.rs`: `Threshold`, `ThresholdMetric` (p50, p95, p99, error rate as upper bounds,
+  requests per second as a lower bound) and `evaluate`. Thresholds never stop a run; they are saved
+  in the `RunRecord` and give the verdict.
+- `export/`: `report.rs` is a plain `Report` (texts already formatted and translated by
+  `postino-app/src/state/load_report.rs`, so the interface language rule lives in the app),
+  rendered by `markdown.rs` and `pdf.rs` (`krilla`, A4, vector charts, Geist fonts passed in by
+  the app). `csv.rs` and `json.rs` take the data directly and always use English names.
 
 ## Files Postino writes
 
@@ -107,7 +127,8 @@ workspace scanner skips hidden folders, so the history never shows up as a colle
 | --- | --- |
 | `<config dir>/postino/settings.toml` | User settings, applied live, no Save button. On Linux `~/.config/postino/settings.toml`. |
 | `<config dir>/postino/recent-workspaces.txt` | One absolute path per line, most recent first, at most 10. |
-| `<workspace>/.postino/runs/<NNNN>.json` | Load test history. |
+| `<workspace>/.postino/runs/<NNNN>.json` | Load test history: configuration, thresholds and metrics of a run. |
+| `<workspace>/.postino/runs/<NNNN>.samples.csv.gz` | Every request of that run, gzipped CSV. Absent for runs saved by older versions. |
 | `<workspace>/environments/<name>.env` | Versioned environment values. |
 | `<workspace>/environments/<name>.local.env` | Secrets, merged over the `.env`, meant to be ignored by git (`*.local.env`). |
 | Logs | See `AGENTS.md`, Logging. |
