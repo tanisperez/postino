@@ -106,6 +106,17 @@ fn pass_color(passed: bool) -> Rgb {
     if passed { GOOD } else { BAD }
 }
 
+/// Where a KPI's delta is drawn, see `Layout::delta_place`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DeltaPlace {
+    /// At the end of the value's line.
+    Value,
+    /// At the end of the label's line.
+    Label,
+    /// On the line under the value.
+    Below,
+}
+
 /// Positions a row of items of the given widths, wrapping onto new rows when `max_w` is
 /// exceeded. Returns the row and the x offset of each item, and the row count.
 fn flow(widths: &[f32], max_w: f32, gap: f32) -> (Vec<(usize, f32)>, usize) {
@@ -424,7 +435,6 @@ impl Layout<'_, '_> {
         }
         const PAD: f32 = 10.0;
         let has_goal = kpis.iter().any(|k| k.goal.is_some());
-        let h = if has_goal { 62.0 } else { 48.0 };
         // One row, or two like the app's grid when a goal would not fit a sixth of the width.
         let goal_fits = |columns: usize| {
             let room = CONTENT_W / columns as f32 - 2.0 * PAD - 11.0;
@@ -438,10 +448,17 @@ impl Layout<'_, '_> {
             kpis.len().div_ceil(2)
         };
         let rows = kpis.len().div_ceil(columns);
+        let cell_w = CONTENT_W / columns as f32;
+        let inner = cell_w - 2.0 * PAD;
+        let places: Vec<DeltaPlace> = kpis.iter().map(|k| self.delta_place(k, inner)).collect();
+        let h = if has_goal || places.contains(&DeltaPlace::Below) {
+            62.0
+        } else {
+            48.0
+        };
         let card_h = h * rows as f32;
         self.ensure(card_h);
         let top = self.y;
-        let cell_w = CONTENT_W / columns as f32;
         self.card((LEFT, top, CONTENT_W, card_h));
         for row in 1..rows {
             let y = top + h * row as f32;
@@ -454,20 +471,28 @@ impl Layout<'_, '_> {
                 self.line((x, y + 8.0), (x, y + h - 8.0), Line::solid(BORDER, 0.75));
             }
             let pad = PAD;
-            let inner = cell_w - 2.0 * pad;
+            let (unit_w, value_w, value_max) = self.kpi_value_widths(k, inner);
+            let value = self.fonts.semibold.fit(&clean(&k.value), 15.0, value_max);
             let mut label_w = inner;
             if let Some(delta) = &k.delta {
                 let dw = self
                     .width(&clean(delta), Weight::Medium, 7.5)
                     .min(inner * 0.6);
+                let line = match places[i] {
+                    DeltaPlace::Value => y + 36.0,
+                    DeltaPlace::Label => {
+                        label_w = inner - dw - 4.0;
+                        y + 17.0
+                    }
+                    DeltaPlace::Below => y + 52.5,
+                };
                 self.text_right(
                     x + cell_w - pad,
-                    y + 17.0,
+                    line,
                     delta,
                     Style::new(Weight::Medium, 7.5, tone_color(k.delta_tone)),
                     dw,
                 );
-                label_w = inner - dw - 4.0;
             }
             self.text(
                 x + pad,
@@ -476,14 +501,6 @@ impl Layout<'_, '_> {
                 Style::new(Weight::Regular, 7.5, MUTED),
                 label_w,
             );
-            let unit_w = if k.unit.is_empty() {
-                0.0
-            } else {
-                self.width(&clean(&k.unit), Weight::Regular, 8.0) + 3.0
-            };
-            let value_max = (inner - unit_w).max(10.0);
-            let value = self.fonts.semibold.fit(&clean(&k.value), 15.0, value_max);
-            let value_w = self.width(&value, Weight::Semibold, 15.0);
             self.text(
                 x + pad,
                 y + 36.0,
@@ -512,6 +529,42 @@ impl Layout<'_, '_> {
             }
         }
         self.y += card_h + GAP;
+    }
+
+    /// The width of a KPI's unit (with its gap), of its value as drawn and the most its value may
+    /// take, in a cell `inner` wide.
+    fn kpi_value_widths(&self, k: &ReportKpi, inner: f32) -> (f32, f32, f32) {
+        let unit_w = if k.unit.is_empty() {
+            0.0
+        } else {
+            self.width(&clean(&k.unit), Weight::Regular, 8.0) + 3.0
+        };
+        let value_max = (inner - unit_w).max(10.0);
+        let value = self.fonts.semibold.fit(&clean(&k.value), 15.0, value_max);
+        (
+            unit_w,
+            self.width(&value, Weight::Semibold, 15.0),
+            value_max,
+        )
+    }
+
+    /// Where a KPI's delta goes in a cell `inner` wide: at the end of the value's line, like in
+    /// the app; else at the end of the label's when both fit; else on the line under the value,
+    /// unless the goal is there, which leaves the label's line with the label cut.
+    fn delta_place(&self, k: &ReportKpi, inner: f32) -> DeltaPlace {
+        let Some(delta) = &k.delta else {
+            return DeltaPlace::Value;
+        };
+        let delta_w = self.width(&clean(delta), Weight::Medium, 7.5);
+        let (unit_w, value_w, _) = self.kpi_value_widths(k, inner);
+        let label_w = self.width(&clean(&k.label), Weight::Regular, 7.5);
+        if value_w + unit_w + 6.0 + delta_w <= inner {
+            DeltaPlace::Value
+        } else if label_w + 4.0 + delta_w <= inner || k.goal.is_some() {
+            DeltaPlace::Label
+        } else {
+            DeltaPlace::Below
+        }
     }
 
     // The "Performance over time" card.
@@ -829,12 +882,14 @@ impl Layout<'_, '_> {
                 } else {
                     (Weight::Regular, Weight::Medium)
                 };
+                // The totals row is drawn in semibold, wider than the other rows' fonts.
                 let cells = table
                     .rows
                     .iter()
-                    .chain(&table.total)
-                    .filter_map(|r| r.get(i))
-                    .map(|c| self.width(&clean(c), weight, SIZE))
+                    .map(|r| (r, weight))
+                    .chain(table.total.iter().map(|r| (r, Weight::Semibold)))
+                    .filter_map(|(r, weight)| r.get(i).map(|c| (c, weight)))
+                    .map(|(c, weight)| self.width(&clean(c), weight, SIZE))
                     .fold(0.0, f32::max);
                 cells.max(self.width(&clean(&table.headers[i]), head, 7.5))
             })

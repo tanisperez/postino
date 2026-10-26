@@ -599,6 +599,50 @@ fn text_is_cut_with_an_ellipsis() {
     assert_eq!(face.fit("anything", 9.0, 1.0), "");
 }
 
+/// Every text the layout draws for `report`, on any page.
+fn drawn_texts(report: &Report) -> Vec<String> {
+    let fonts = Fonts::new(&fonts()).expect("test fonts are valid");
+    layout(report, &fonts)
+        .into_iter()
+        .flatten()
+        .filter_map(|op| match op {
+            Op::Text { text, .. } => Some(text),
+            Op::Shape { .. } => None,
+        })
+        .collect()
+}
+
+#[test]
+fn kpi_labels_and_totals_are_not_cut_by_long_deltas() {
+    let mut report = full_report();
+    report.kpis = vec![
+        with_delta(kpi("Requests/s", "209", ""), "+151.6 %", ReportTone::Good),
+        with_delta(kpi("p50", "96", "ms"), "-1.3 %", ReportTone::Good),
+        with_goal(
+            with_delta(kpi("p95", "125", "ms"), "-36.7 %", ReportTone::Good),
+            "goal < 250 ms",
+            true,
+        ),
+        with_delta(kpi("p99", "218", "ms"), "-7.8 %", ReportTone::Good),
+        with_delta(kpi("Errors", "0.0", "%"), "0.0 pt", ReportTone::Neutral),
+        with_delta(kpi("Total", "2,111", ""), "+208.6 %", ReportTone::Good),
+    ];
+    if let Some(total) = report.per_request.total.as_mut() {
+        total[4] = "218 ms".into();
+    }
+    let texts = drawn_texts(&report);
+    for whole in ["Requests/s", "Total", "+151.6 %", "+208.6 %", "218 ms"] {
+        assert!(
+            texts.iter().any(|text| text == whole),
+            "{whole} is drawn whole"
+        );
+    }
+    assert!(
+        !texts.iter().any(|text| text.contains('\u{2026}')),
+        "nothing is cut"
+    );
+}
+
 /// Writes the full report to `$CARGO_TARGET_DIR/report-sample.pdf` (and the long one next to it)
 /// to look at the layout: `cargo test -p postino-load report_sample -- --ignored`.
 #[test]
