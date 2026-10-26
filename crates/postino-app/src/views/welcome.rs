@@ -11,14 +11,14 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
-use telaio_ui::components::{MODIFIER_KEY, open_hint};
+use telaio_ui::components::{MODIFIER_KEY, labelled_checkbox, open_hint};
 
 use crate::state::settings::ThemeChoice;
 use crate::state::welcome::{QUICK_START_URL, RecentWorkspace, WelcomeTab};
 use crate::theme::metrics::{
-    RADIUS_LG, RADIUS_MD, RADIUS_XS, WELCOME_CHECKBOX_SIZE, WELCOME_COLUMN_WIDTH,
-    WELCOME_COLUMN_WIDTH_NARROW, WELCOME_LOGO_RADIUS, WELCOME_LOGO_SIZE, WELCOME_MIN_WIDTH,
-    WELCOME_RECENT_NAME_WIDTH, WELCOME_ROW_HEIGHT, WELCOME_TOP_PADDING, WELCOME_TOP_PADDING_NARROW,
+    RADIUS_LG, RADIUS_MD, WELCOME_COLUMN_WIDTH, WELCOME_COLUMN_WIDTH_NARROW, WELCOME_LOGO_RADIUS,
+    WELCOME_LOGO_SIZE, WELCOME_MIN_WIDTH, WELCOME_RECENT_NAME_WIDTH, WELCOME_ROW_HEIGHT,
+    WELCOME_TOP_PADDING, WELCOME_TOP_PADDING_NARROW,
 };
 use crate::theme::{Palette, PaletteExt};
 
@@ -476,11 +476,6 @@ fn render_footer(
     let dot = || separator_dot(palette);
 
     let checkbox_weak = weak;
-    let (box_bg, box_border) = if show_welcome {
-        (palette.accent, palette.accent)
-    } else {
-        (palette.accent.opacity(0.0), palette.border_strong)
-    };
 
     h_flex()
         .flex_wrap()
@@ -523,33 +518,16 @@ fn render_footer(
         )
         .child(div().flex_1())
         .child(
-            h_flex()
-                .id("welcome-show-on-start")
-                .items_center()
-                .gap(px(8.0))
-                .cursor_pointer()
-                .text_color(palette.fg_muted)
-                .child(
-                    div()
-                        .flex_none()
-                        .size(px(WELCOME_CHECKBOX_SIZE))
-                        .rounded(px(RADIUS_XS))
-                        .border_1()
-                        .border_color(box_border)
-                        .bg(box_bg)
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .text_color(palette.accent_fg)
-                        .children(
-                            show_welcome.then(|| Icon::new(Lucide::Check).with_size(px(10.0))),
-                        ),
-                )
-                .child(t!("welcome.show_on_start"))
-                .on_click(move |_, window, cx| {
-                    let _ = checkbox_weak.update(cx, |view, cx| {
-                        view.set_show_welcome(!show_welcome, window, cx)
-                    });
-                }),
+            labelled_checkbox(
+                "welcome-show-on-start",
+                show_welcome,
+                t!("welcome.show_on_start"),
+                palette,
+            )
+            .on_change(move |checked, window, cx| {
+                let checked = *checked;
+                let _ =
+                    checkbox_weak.update(cx, |view, cx| view.set_show_welcome(checked, window, cx));
+            }),
         )
 }

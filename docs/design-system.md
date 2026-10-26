@@ -368,11 +368,9 @@ Top to bottom (px unless said otherwise):
      "Search" with "(Ctrl+K)". Text `accent_text`, `fg` on hover, no underline, pointer cursor. The
      hint in parentheses is mono, 11, in the link's color, and follows the label with a gap of 4.
      On macOS the hints read "(Cmd+Shift+/)" and "(Cmd+K)".
-   - A flexible gap, then the checkbox row, gap 8, label "Show the welcome tab when Postino
-     starts" in `fg_muted`. The box is 14 (`WELCOME_CHECKBOX_SIZE`), radius 4 (`RADIUS_XS`), 1
-     border. Checked: `accent` fill and border with a 10 `check` icon in `accent_fg`. Unchecked:
-     transparent fill, `border_strong` border. The whole row is clickable and flips
-     `show_welcome`, the same setting as Settings, Appearance, Interface.
+   - A flexible gap, then telaio's `labelled_checkbox` "Show the welcome tab when Postino
+     starts", with the standard checkbox halo on hover over the box or the label. Clicking either
+     flips `show_welcome`, the same setting as Settings, Appearance, Interface.
 
 **Empty main area.** With no workspace and no tab (the welcome tab was closed), the area is `bg`
 with a centered column, gap 16: "Create a workspace or open a folder to get started." in

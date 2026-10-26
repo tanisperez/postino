@@ -98,5 +98,3 @@ pub const WELCOME_LOGO_RADIUS: f32 = 12.0;
 pub const WELCOME_ROW_HEIGHT: f32 = 34.0;
 /// Width of a recent workspace's name in the welcome tab, before its path.
 pub const WELCOME_RECENT_NAME_WIDTH: f32 = 80.0;
-/// Side length of the welcome tab's "show at startup" checkbox.
-pub const WELCOME_CHECKBOX_SIZE: f32 = 14.0;
