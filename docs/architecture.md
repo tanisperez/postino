@@ -49,7 +49,7 @@ window bootstrap and the About header), all shared with the other apps. `postino
 | `postino-http` | Sends a resolved request with `ureq` 3 (blocking, rustls) and measures timing. |
 | `postino-runner` | The pipeline: variables, pre script, interpolate, send, post script. Also `preview`, which resolves a request without scripts or network. |
 | `postino-load` | The load test engine, live metrics aggregation, the per request sample log, thresholds, time window statistics, run comparison, run history and the report exports (Markdown, PDF, CSV, JSON). |
-| `postino-cli` | The terminal commands that print and exit without opening the window (`--help`, `--version`; later load tests and reports from the terminal). No `gpui` code of its own. The shared plumbing (version line, help header and footer, exit codes, console attach) is `telaio_app::cli`; this crate also holds Postino's `IDENTITY`. |
+| `postino-cli` | The terminal commands that print and exit without opening the window (`--help`, `--version`; later load tests and reports from the terminal). No `gpui` code of its own. The shared plumbing (version line, help header and footer, exit codes, console attach) is `telaio_app::cli`; this crate also holds Postino's `IDENTITY` (the bare version) and the version label shown to people, which adds the commit captured by `build.rs` to a `-dev` version. |
 | `postino-app` | The `gpui` binary (`postino`). Only UI and glue. |
 
 `postino-load` writes its own run history under `.postino/runs/` of the workspace. That is a

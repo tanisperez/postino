@@ -163,7 +163,7 @@ fn main() -> ExitCode {
 fn log_startup(level: state::settings::LogLevel, from_env: Option<&str>, log_path: Option<&Path>) {
     log::info!(
         "Postino {} starting ({} build) on {} {}",
-        env!("CARGO_PKG_VERSION"),
+        postino_cli::version_label(),
         if cfg!(debug_assertions) {
             "debug"
         } else {

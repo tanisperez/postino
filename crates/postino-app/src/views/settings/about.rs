@@ -7,7 +7,7 @@ use gpui_kit::component::switch::Switch;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
-use postino_cli::IDENTITY;
+use postino_cli::display_identity;
 use rust_i18n::t;
 
 use crate::state::about::{self, AboutInfo};
@@ -48,7 +48,12 @@ pub(super) fn render_about(
     pane: &AboutPane,
 ) -> Vec<AnyElement> {
     vec![
-        telaio_app::about::header(&IDENTITY, &pane.info.platform, palette, mono_font_family),
+        telaio_app::about::header(
+            &display_identity(),
+            &pane.info.platform,
+            palette,
+            mono_font_family,
+        ),
         render_updates(weak, palette, mono_font_family, pane),
     ]
 }

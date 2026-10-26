@@ -9,7 +9,16 @@ channels, desktop integration and the in-app updater are described further down.
 
 - The version lives in one place: `version` under `[workspace.package]` in `Cargo.toml`.
   Versions follow SemVer.
-- The tag is `v` plus that version: `v0.1.0`. The workflow fails if they differ.
+- Between two releases the version is the next one with the `-dev` suffix (`0.4.0-dev`). Right
+  after a release, bump `version` to the next `X.Y.Z-dev`. A `-dev` version sorts below the
+  release (`0.4.0-dev < 0.4.0`), so the updater of a development build offers the release.
+- A development build shows the short commit next to the version in Settings, About, in
+  `postino --version` (`Postino 0.4.0-dev (4e74e2d)`) and in the load test report footer. It
+  comes from `postino-cli/build.rs` (`rev-parse --short HEAD`, or `POSTINO_COMMIT` when set at
+  build time, nothing without a repository, for example a source tarball). Releases and release
+  candidates show the bare version, and the updater always compares the bare version.
+- The tag is `v` plus that version: `v0.1.0`. The workflow fails if they differ, so set the final
+  version (drop `-dev`) before tagging.
 - A tag with a pre-release suffix (`v0.1.0-rc.1`, `v0.2.0-beta.2`) is accepted when the part
   before the suffix matches the version (or when the version itself has the same suffix). It is
   published as a GitHub pre-release: built and attached like any release, but never marked as
@@ -21,7 +30,8 @@ The work of a version is tracked by its GitHub milestone (`gh issue list --miles
 
 1. Check that every issue of the milestone is closed and `make format`, `make lint` and
    `make test` pass on `main`.
-2. Bump `version` in `Cargo.toml`, run `cargo check` so `Cargo.lock` follows, and commit.
+2. Set `version` in `Cargo.toml` to the release (drop `-dev`), run `cargo check` so `Cargo.lock`
+   follows, and commit.
 3. Tag and push:
 
    ```
@@ -44,6 +54,9 @@ The work of a version is tracked by its GitHub milestone (`gh issue list --miles
    the release is published. It rebuilds the APT and DNF repositories with the new packages. Its
    `release: published` trigger does not fire here, because the release workflow publishes with
    `GITHUB_TOKEN`, and events caused by that token never start other workflows.
+
+7. Bump `version` in `Cargo.toml` to the next `X.Y.Z-dev` (the next milestone), run `cargo check`
+   so `Cargo.lock` follows, and commit.
 
 The release stays a draft until every asset is uploaded, so nobody sees a half-built release.
 

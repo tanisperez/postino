@@ -15,6 +15,7 @@ pub mod info;
 
 use std::ffi::OsStr;
 use std::process::ExitCode;
+use std::sync::LazyLock;
 
 use telaio_app::AppIdentity;
 
@@ -32,6 +33,43 @@ pub const IDENTITY: AppIdentity = AppIdentity {
     env_prefix: "POSTINO",
     repository: "https://github.com/tanisperez/postino",
 };
+
+/// The short git commit this build was made from, captured by `build.rs` (or taken from the
+/// `POSTINO_COMMIT` environment variable at build time). `None` outside a repository, for example
+/// a source tarball.
+pub const COMMIT: Option<&str> = option_env!("POSTINO_COMMIT");
+
+/// The suffix of the versions between two releases (`0.4.0-dev`), whose builds show their commit.
+const DEV_SUFFIX: &str = "-dev";
+
+/// The version as shown to people: `0.4.0-dev (4e74e2d)` for a development build with a known
+/// commit, the bare version otherwise. A release is named by its tag, so it never shows a commit.
+/// The updater, the release notes link and anything machine readable use the bare version.
+pub fn format_version_label(version: &str, commit: Option<&str>) -> String {
+    match commit {
+        Some(commit) if version.ends_with(DEV_SUFFIX) => format!("{version} ({commit})"),
+        _ => version.to_string(),
+    }
+}
+
+/// [`format_version_label`] of this build.
+pub fn version_label() -> &'static str {
+    static LABEL: LazyLock<&'static str> = LazyLock::new(|| {
+        let label = format_version_label(IDENTITY.version, COMMIT);
+        // `AppIdentity` wants a `&'static str`: leaked once, for the life of the process.
+        Box::leak(label.into_boxed_str())
+    });
+    *LABEL
+}
+
+/// [`IDENTITY`] with the version label, for what only displays the version (About, the version
+/// line). Pass [`IDENTITY`] itself to everything that needs the bare version.
+pub fn display_identity() -> AppIdentity {
+    AppIdentity {
+        version: version_label(),
+        ..IDENTITY
+    }
+}
 
 /// A command line command that runs without opening the window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,6 +106,34 @@ pub fn run_if_cli(first_arg: Option<&OsStr>) -> Option<ExitCode> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_dev_build_shows_its_commit_next_to_the_version() {
+        assert_eq!(
+            format_version_label("0.4.0-dev", Some("4e74e2d")),
+            "0.4.0-dev (4e74e2d)"
+        );
+        assert_eq!(format_version_label("0.4.0-dev", None), "0.4.0-dev");
+    }
+
+    #[test]
+    fn a_release_is_named_by_its_tag_only() {
+        assert_eq!(format_version_label("0.4.0", Some("4e74e2d")), "0.4.0");
+        assert_eq!(
+            format_version_label("0.4.0-rc.1", Some("4e74e2d")),
+            "0.4.0-rc.1"
+        );
+        assert_eq!(format_version_label("0.4.0", None), "0.4.0");
+    }
+
+    #[test]
+    fn the_display_identity_only_changes_the_version() {
+        let display = display_identity();
+        assert_eq!(display.version, version_label());
+        assert_eq!(display.name, IDENTITY.name);
+        assert_eq!(display.repository, IDENTITY.repository);
+        assert!(version_label().starts_with(IDENTITY.version));
+    }
 
     #[test]
     fn no_argument_or_a_path_is_not_a_command() {

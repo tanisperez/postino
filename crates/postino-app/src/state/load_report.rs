@@ -258,7 +258,7 @@ pub fn build_report(input: &ReportInput) -> Report {
             errors: t!("load_test.results.errors").into_owned(),
             generated_by: t!(
                 "load_test.report.generated_by",
-                version = env!("CARGO_PKG_VERSION"),
+                version = postino_cli::version_label(),
                 date = local_date_time(input.generated_at)
             )
             .into_owned(),
