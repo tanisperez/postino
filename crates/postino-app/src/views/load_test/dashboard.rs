@@ -1,65 +1,53 @@
-//! The load test tab's right dashboard: the empty state and history list before a first run, and,
-//! once a snapshot exists, the header, KPI strip, throughput/latency chart, latency distribution,
-//! status breakdown, per-request table and "Compare with" panel.
+//! The load test tab's right side: the empty state and history list before a first run, and,
+//! once a run exists, the results of the design's option 6a: the header (title, status, "Compare
+//! with" and "Export"), the thresholds verdict, the Summary / Requests / Errors tabs (with the
+//! selected window's chip) and the shown tab (`summary.rs`, `requests_tab.rs`, `errors_tab.rs`).
 
 use std::time::Duration;
 
 use gpui_kit::component::button::Button;
-use gpui_kit::component::chart::LineChart;
-use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
+use gpui_kit::component::menu::DropdownMenu as _;
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
-use postino_core::Method;
 use postino_load::history::RunRecordHeader;
-use postino_load::{LoadSnapshot, StatusKey};
+use postino_load::{LoadSnapshot, ThresholdMetric};
 
 use crate::state::format::relative_day;
-use crate::state::load_test::{
-    DeltaTone, LoadTestFailure, LoadTestStatus, LoadTestTab, delta_tone, format_delta,
-};
+use crate::state::load_results::{ResultsTab, SummaryData, mmss, window_label};
+use crate::state::load_test::{LoadTestFailure, LoadTestStatus, LoadTestTab, threshold_label};
 use crate::state::number::{format_decimal, format_integer};
-use crate::theme::metrics::{
-    DATA_TABLE_COL_GAP, DATA_TABLE_FLEX_MIN_WIDTH, DATA_TABLE_NUMERIC_COL_WIDTH,
-    DATA_TABLE_PADDING_X, RADIUS_LG,
-};
-use crate::theme::{Palette, PaletteExt, PostinoColors};
-use crate::views::components::NeutralButtonExt;
+use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{
-    Card, DataCell, DataColumn, DataTable, EmptyState, InlineMessage, InlineMessageKind,
-    MethodBadge, ProgressBar,
+    Card, Chip, EmptyState, InlineMessage, InlineMessageKind, NeutralButtonExt, ProgressBar,
+    UnderlineTabItem, UnderlineTabs, menu_choice_item, menu_described_item, menu_shortcut_item,
+    menu_toggle_item, rich_menu_width,
 };
 
+use super::export::ExportFormat;
 use super::run::unix_now;
 use crate::views::root::AppView;
 
-/// Height of the throughput/latency chart's plot area, and of the latency distribution's bars.
-const CHART_HEIGHT: f32 = 150.0;
-const HISTOGRAM_HEIGHT: f32 = 110.0;
-/// A latency, in milliseconds, at or above which a latency distribution bar (and a per-request
-/// error rate) switches from `accent_text`/normal to `warning`.
-const HISTOGRAM_WARNING_MS: usize = 110;
-/// The histogram bucket width, in milliseconds (`postino_load::LoadSnapshot::histogram`'s docs).
-const HISTOGRAM_BUCKET_MS: usize = 10;
-/// Base width (flex basis) of one half of a two-column dashboard row (latency distribution + status
-/// breakdown, per-request table + compare with): when two do not fit side by side, `flex_wrap` (not
-/// a window-width measurement) stacks them vertically instead of squashing them, and each then
-/// grows to the row's width. A basis rather than a minimum width, so a pane narrower than this
-/// still shrinks the column instead of overflowing.
-const TWO_COLUMN_MIN_WIDTH: f32 = 320.0;
-/// A per-request error rate at or above which its "Errors" cell turns `warning`
-/// (1%).
-const PER_REQUEST_WARNING_ERROR_RATE: f64 = 0.01;
+/// Width of the "Compare with" menu, from the design.
+const COMPARE_MENU_WIDTH: f32 = 240.0;
+/// Width of the "Export" menu, a little over the design's 320 px: the "Copy summary as Markdown"
+/// row does not wrap or truncate, and in Spanish and Italian its shortcut hint overflowed it.
+const EXPORT_MENU_WIDTH: f32 = 344.0;
+/// Minimum width of the header's progress bar while a run is in progress.
+const PROGRESS_MIN_WIDTH: f32 = 160.0;
+/// Height of the header's buttons.
+const HEADER_BUTTON_HEIGHT: f32 = 28.0;
 
 impl AppView {
-    /// Renders the dashboard for the load test tab `tab_id`: the empty state (and history) before
-    /// a first run, or the full metrics view once a snapshot exists.
+    /// Renders the right side of the load test tab `tab_id`: the empty state (and history)
+    /// before a first run, or the results once a snapshot exists.
     pub(crate) fn render_load_test_dashboard(
         &mut self,
         tab_id: &str,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let Some(load_test) = self
@@ -72,53 +60,80 @@ impl AppView {
             return div().flex_1().into_any_element();
         };
         let palette = cx.palette();
-        let mono_font = cx.theme().mono_font_family.clone();
         let weak = cx.weak_entity();
 
         let Some(snapshot) = load_test.snapshot.clone() else {
             return render_empty_state(weak, tab_id, &palette, &load_test);
         };
+        let summary = summary_data(&load_test, &snapshot);
 
-        v_flex()
-            .id("load-test-dashboard")
+        let mut column = v_flex()
             .flex_1()
             .h_full()
             .min_w_0()
             .min_h_0()
-            .overflow_y_scrollbar()
             .px(px(20.0))
-            .py(px(16.0))
-            .gap(px(16.0))
-            .child(render_header(&palette, &mono_font, &load_test, &snapshot))
-            .child(render_kpi_strip(&palette, &snapshot))
-            .child(render_throughput_card(
-                &palette, &mono_font, &snapshot, &load_test,
-            ))
-            .child(
-                h_flex()
+            .pt(px(16.0))
+            .gap(px(14.0))
+            .child(render_header(
+                weak.clone(),
+                tab_id,
+                &palette,
+                &load_test,
+                &snapshot,
+                cx,
+            ));
+        if !load_test.is_running() && !load_test.run_thresholds.is_empty() {
+            column = column.child(render_verdict(&palette, &load_test, &snapshot));
+        }
+        column = column.child(render_tabs(weak, tab_id, &palette, &load_test, &summary));
+
+        match load_test.results_tab {
+            ResultsTab::Requests => column
+                .pb(px(16.0))
+                .child(self.render_load_test_requests(tab_id, &load_test, &summary, window, cx))
+                .into_any_element(),
+            tab => {
+                let content = match tab {
+                    ResultsTab::Summary => {
+                        self.render_load_test_summary(tab_id, &load_test, &snapshot, &summary, cx)
+                    }
+                    ResultsTab::Latency => self.render_load_test_latency(tab_id, &load_test, cx),
+                    _ => self.render_load_test_errors(tab_id, &load_test, &snapshot, cx),
+                };
+                // The header and the tabs scroll away with the content, like the design.
+                v_flex()
+                    .id("load-test-dashboard")
+                    .flex_1()
+                    .h_full()
                     .min_w_0()
-                    .flex_wrap()
-                    .gap(px(16.0))
-                    .items_start()
-                    .child(
-                        div()
-                            .flex_grow(1.3)
-                            .flex_basis(px(TWO_COLUMN_MIN_WIDTH))
-                            .min_w_0()
-                            .child(render_latency_distribution(&palette, &snapshot)),
-                    )
-                    .child(
-                        div()
-                            .flex_grow(1.0)
-                            .flex_basis(px(TWO_COLUMN_MIN_WIDTH))
-                            .min_w_0()
-                            .child(render_status_breakdown(&palette, &mono_font, &snapshot)),
-                    ),
-            )
-            .child(render_bottom_row(
-                weak, tab_id, &palette, &mono_font, &load_test, &snapshot, cx,
-            ))
-            .into_any_element()
+                    .min_h_0()
+                    .overflow_y_scrollbar()
+                    .child(column.h_auto().pb(px(24.0)).child(content))
+                    .into_any_element()
+            }
+        }
+    }
+}
+
+/// What the Summary shows: the window's statistics once computed, the snapshot's otherwise (a
+/// past run without saved requests, or before the first computation). While a run is live the
+/// KPIs always come from the snapshot, whose requests per second is the last second's.
+pub(crate) fn summary_data(load_test: &LoadTestTab, snapshot: &LoadSnapshot) -> SummaryData {
+    match load_test.current_analysis() {
+        Some(stats) => {
+            let mut data = SummaryData::from_stats(stats);
+            if load_test.is_running() {
+                data.rps = snapshot.rps;
+                data.p50 = snapshot.p50;
+                data.p95 = snapshot.p95;
+                data.p99 = snapshot.p99;
+                data.error_rate = snapshot.error_rate;
+                data.total = snapshot.total;
+            }
+            data
+        }
+        None => SummaryData::from_snapshot(snapshot),
     }
 }
 
@@ -170,11 +185,11 @@ fn failure_message(failure: &LoadTestFailure) -> String {
 }
 
 /// `"Run #N"`, the number only.
-fn run_title(number: u32) -> String {
+pub(crate) fn run_title(number: u32) -> String {
     t!("load_test.run.numbered", number = number).into_owned()
 }
 
-/// `"Run #N \u{b7} today"`, for the history list and the "Compare with" dropdown.
+/// `"Run #N \u{b7} today"`, for the history list.
 fn run_with_day(number: u32, started_at_unix: u64, now: i64) -> String {
     format!(
         "{} \u{b7} {}",
@@ -184,7 +199,7 @@ fn run_with_day(number: u32, started_at_unix: u64, now: i64) -> String {
 }
 
 /// How a run connected: "Keep-alive" when it reused its connections, "New connections" otherwise.
-fn connection_mode_label(reused: bool) -> String {
+pub(crate) fn connection_mode_label(reused: bool) -> String {
     if reused {
         t!("load_test.connections.reused")
     } else {
@@ -247,87 +262,8 @@ fn render_history_list(
         .into_any_element()
 }
 
-/// Minimum width of the header's progress bar, see [`render_header`].
-const PROGRESS_MIN_WIDTH: f32 = 160.0;
-
-/// The run header: "Run #N", the status badge, the progress bar, and `mm:ss / mm:ss` elapsed.
-fn render_header(
-    palette: &Palette,
-    mono_font: &SharedString,
-    load_test: &LoadTestTab,
-    snapshot: &LoadSnapshot,
-) -> AnyElement {
-    let run_label = load_test
-        .run_number
-        .map(run_title)
-        .unwrap_or_else(|| t!("load_test.run.plain").into_owned());
-    let (badge_label, badge_fg, badge_bg) = status_badge_colors(palette, &load_test.status);
-    let duration_secs = load_test.shown_duration_secs();
-    let total = Duration::from_secs(duration_secs);
-    let progress = if duration_secs > 0 {
-        (snapshot.elapsed.as_secs_f64() / duration_secs as f64).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-
-    h_flex()
-        .flex_wrap()
-        .items_center()
-        .gap_x(px(12.0))
-        .gap_y(px(8.0))
-        .child(
-            div()
-                .flex_none()
-                .text_size(px(16.0))
-                .font_weight(FontWeight::SEMIBOLD)
-                .child(run_label),
-        )
-        .child(
-            h_flex()
-                .flex_none()
-                .items_center()
-                .gap(px(6.0))
-                .h(px(22.0))
-                .px(px(8.0))
-                .rounded(px(6.0))
-                .bg(badge_bg)
-                .text_color(badge_fg)
-                .text_size(px(12.0))
-                .font_weight(FontWeight::SEMIBOLD)
-                .child(div().size(px(6.0)).rounded_full().bg(badge_fg))
-                .child(badge_label),
-        )
-        .when_some(load_test.run_reuse_connections, |row, reused| {
-            row.child(
-                div()
-                    .flex_none()
-                    .text_size(px(12.0))
-                    .text_color(palette.fg_muted)
-                    .child(connection_mode_label(reused)),
-            )
-        })
-        .child(
-            // With a minimum width, a narrow dashboard wraps the bar and the elapsed time onto
-            // a second line instead of squeezing the bar to a stub.
-            ProgressBar::new(progress as f32).min_width(PROGRESS_MIN_WIDTH),
-        )
-        .child(
-            div()
-                .flex_none()
-                .font_family(mono_font.clone())
-                .text_size(px(12.0))
-                .text_color(palette.fg_muted)
-                .child(format!(
-                    "{} / {}",
-                    format_mmss(snapshot.elapsed),
-                    format_mmss(total)
-                )),
-        )
-        .into_any_element()
-}
-
-/// The status badge's label and colors, : running in
-/// accent, finished in success, stopped in warning, failed in danger.
+/// The status badge's label and colors: running in accent, finished in success, stopped in
+/// warning, failed in danger.
 fn status_badge_colors(palette: &Palette, status: &LoadTestStatus) -> (String, Hsla, Hsla) {
     let (label, fg, bg) = match status {
         LoadTestStatus::NotStarted => (
@@ -359,642 +295,504 @@ fn status_badge_colors(palette: &Palette, status: &LoadTestStatus) -> (String, H
     (label.into_owned(), fg, bg)
 }
 
-/// `"mm:ss"`.
-fn format_mmss(duration: Duration) -> String {
-    let secs = duration.as_secs();
-    format!("{:02}:{:02}", secs / 60, secs % 60)
-}
-
-/// The display name of a "Compare with" row, given the engine's English label
-/// ([`postino_load::Delta::label`]), which stays the key for the formatting below.
-fn compare_label(label: &str) -> String {
-    match label {
-        "Requests/s" => t!("load_test.kpi.rps").into_owned(),
-        "Errors" => t!("load_test.kpi.errors").into_owned(),
-        other => other.to_string(),
+/// The header: "Run #N", the status badge and the connection mode with the start day, then the
+/// progress while running, or the "Compare with" and "Export" menus once the run has ended.
+fn render_header(
+    weak: WeakEntity<AppView>,
+    tab_id: &str,
+    palette: &Palette,
+    load_test: &LoadTestTab,
+    snapshot: &LoadSnapshot,
+    cx: &App,
+) -> AnyElement {
+    let run_label = load_test
+        .run_number
+        .map(run_title)
+        .unwrap_or_else(|| t!("load_test.run.plain").into_owned());
+    let (badge_label, badge_fg, badge_bg) = status_badge_colors(palette, &load_test.status);
+    let mut subtitle = Vec::new();
+    if let Some(reused) = load_test.run_reuse_connections {
+        subtitle.push(connection_mode_label(reused));
     }
-}
-
-/// Formats one "Compare with" cell's raw value per its [`postino_load::Delta::label`]: latency
-/// labels ("p95", "p99") are microseconds, converted to whole milliseconds with a unit; "Errors"
-/// is a `0.0..=1.0` fraction, shown as a percentage; anything else (`"Requests/s"`) is shown as
-/// given.
-fn format_compare_value(label: &str, value: f64) -> String {
-    match label {
-        "p95" | "p99" => format!("{} ms", format_decimal(value / 1000.0, 0)),
-        "Errors" => format!("{}%", format_decimal(value * 100.0, 1)),
-        _ => format_decimal(value, 0),
+    if let Some(started) = load_test.run_started_at {
+        subtitle.push(format!(
+            "{} {}",
+            relative_day(started as i64, unix_now() as i64),
+            crate::state::load_report::local_time(started as i64)
+        ));
     }
+
+    let mut row = h_flex()
+        .flex_wrap()
+        .items_center()
+        .gap_x(px(12.0))
+        .gap_y(px(8.0))
+        .child(
+            div()
+                .flex_none()
+                .text_size(px(16.0))
+                .font_weight(FontWeight::SEMIBOLD)
+                .child(run_label),
+        )
+        .child(
+            h_flex()
+                .flex_none()
+                .items_center()
+                .gap(px(6.0))
+                .h(px(22.0))
+                .px(px(8.0))
+                .rounded(px(6.0))
+                .bg(badge_bg)
+                .text_color(badge_fg)
+                .text_size(px(12.0))
+                .font_weight(FontWeight::SEMIBOLD)
+                .child(div().size(px(6.0)).rounded_full().bg(badge_fg))
+                .child(badge_label),
+        )
+        .when(!subtitle.is_empty(), |row| {
+            row.child(
+                div()
+                    .flex_none()
+                    .text_size(px(12.0))
+                    .text_color(palette.fg_muted)
+                    .child(subtitle.join(" \u{b7} ")),
+            )
+        })
+        .child(div().flex_1());
+
+    if load_test.is_running() {
+        let duration_secs = load_test.shown_duration_secs();
+        let progress = if duration_secs > 0 {
+            (snapshot.elapsed.as_secs_f64() / duration_secs as f64).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        row = row
+            .child(ProgressBar::new(progress as f32).min_width(PROGRESS_MIN_WIDTH))
+            .child(
+                div()
+                    .flex_none()
+                    .font_family(cx.theme().mono_font_family.clone())
+                    .text_size(px(12.0))
+                    .text_color(palette.fg_muted)
+                    .child(format!(
+                        "{} / {}",
+                        mmss(snapshot.elapsed.as_secs()),
+                        mmss(Duration::from_secs(duration_secs).as_secs())
+                    )),
+            );
+    } else {
+        row = row
+            .child(render_compare_menu(
+                weak.clone(),
+                tab_id,
+                palette,
+                load_test,
+                cx,
+            ))
+            .child(render_export_menu(weak, tab_id, palette, load_test, cx));
+    }
+    row.into_any_element()
 }
 
-/// Minimum width of one KPI cell. A group of three needs three of them, so the two groups of
-/// [`render_kpi_strip`] wrap as whole groups (3 + 3, never 4 + 2) by flex layout alone, rather
-/// than by measuring the window.
-const KPI_CELL_MIN_WIDTH: f32 = 96.0;
+/// The previous runs of the same target the "Compare with" menu offers: every one but the run
+/// shown.
+fn compare_candidates(load_test: &LoadTestTab) -> Vec<RunRecordHeader> {
+    load_test
+        .history
+        .iter()
+        .filter(|header| Some(header.number) != load_test.run_number)
+        .cloned()
+        .collect()
+}
 
-/// The KPI strip: Requests/s, p50, p95, p99, Errors, Total. Two groups of three cells: side by side
-/// in a single row when wide, stacked as 3 + 3 when narrow. The container paints the `border` color
-/// through a 1 px gap between the groups (and its own 1 px border), so the separator is right in
-/// both layouts.
-fn render_kpi_strip(palette: &Palette, snapshot: &LoadSnapshot) -> AnyElement {
-    let kpis: [(String, String, &str, bool); 6] = [
+/// The "Compare with <run>" button and its menu: one row per previous run of the same target
+/// (with its day and requests per second) and "No comparison".
+fn render_compare_menu(
+    weak: WeakEntity<AppView>,
+    tab_id: &str,
+    palette: &Palette,
+    load_test: &LoadTestTab,
+    cx: &App,
+) -> AnyElement {
+    let candidates = compare_candidates(load_test);
+    let selected = load_test
+        .compare_with
+        .filter(|number| candidates.iter().any(|header| header.number == *number));
+    let value = selected
+        .map(run_title)
+        .unwrap_or_else(|| t!("load_test.compare.nothing").into_owned());
+    let now = unix_now() as i64;
+    let tab_id = tab_id.to_string();
+
+    header_button("load-test-compare-with", palette, false, cx)
+        .child(
+            h_flex()
+                .items_center()
+                .gap(px(6.0))
+                .child(
+                    Icon::new(gpui_kit::assets::IconName::GitCompare)
+                        .small()
+                        .text_color(palette.fg_muted),
+                )
+                .child(
+                    div()
+                        .text_color(palette.fg_muted)
+                        .child(t!("load_test.compare.title")),
+                )
+                .child(value)
+                .child(
+                    Icon::new(IconName::ChevronDown)
+                        .small()
+                        .text_color(palette.fg_muted),
+                ),
+        )
+        .dropdown_menu(move |menu, _, _| {
+            let mut menu = rich_menu_width(menu, COMPARE_MENU_WIDTH);
+            for header in &candidates {
+                let number = header.number;
+                let item_weak = weak.clone();
+                let tab_id = tab_id.clone();
+                let detail = format!(
+                    "{} \u{b7} {} req/s",
+                    relative_day(header.started_at_unix as i64, now),
+                    format_integer(header.rps.round() as u64)
+                );
+                menu = menu.item(menu_choice_item(
+                    run_title(number),
+                    Some(detail.into()),
+                    selected == Some(number),
+                    move |_, cx| {
+                        let _ = item_weak.update(cx, |view, cx| {
+                            view.set_load_test_compare_with(&tab_id, Some(number), cx);
+                        });
+                    },
+                ));
+            }
+            let none_weak = weak.clone();
+            let none_tab_id = tab_id.clone();
+            menu.item(menu_choice_item(
+                t!("load_test.compare.none"),
+                None,
+                selected.is_none(),
+                move |_, cx| {
+                    let _ = none_weak.update(cx, |view, cx| {
+                        view.set_load_test_compare_with(&none_tab_id, None, cx);
+                    });
+                },
+            ))
+        })
+        .into_any_element()
+}
+
+/// The "Export" button and its menu: Markdown, PDF, CSV and JSON files, "Only the window" when a
+/// window is selected, and "Copy summary as Markdown".
+fn render_export_menu(
+    weak: WeakEntity<AppView>,
+    tab_id: &str,
+    palette: &Palette,
+    load_test: &LoadTestTab,
+    cx: &App,
+) -> AnyElement {
+    use gpui_kit::assets::IconName as Lucide;
+
+    let tab_id = tab_id.to_string();
+    let window = load_test.window;
+    let window_only = load_test.export_window_only;
+    let whole_run = load_test.snapshot.as_ref().map_or(0, |s| s.total);
+    // The selected window's requests, unless "Only the window" is off.
+    let rows = match load_test.current_analysis() {
+        Some(stats) if window.is_none() || window_only => stats.total,
+        _ => whole_run,
+    };
+    let entries: [(Lucide, &str, &str, String, ExportFormat); 4] = [
         (
-            t!("load_test.kpi.rps").into_owned(),
-            format_decimal(snapshot.rps, 0),
-            "",
-            false,
+            Lucide::FileText,
+            "Markdown",
+            ".md",
+            t!("load_test.export.markdown").into_owned(),
+            ExportFormat::Markdown,
         ),
         (
-            "p50".into(),
-            format_integer(snapshot.p50 / 1000),
-            "ms",
-            false,
+            Lucide::FileChartColumn,
+            "PDF",
+            ".pdf",
+            t!("load_test.export.pdf").into_owned(),
+            ExportFormat::Pdf,
         ),
         (
-            "p95".into(),
-            format_integer(snapshot.p95 / 1000),
-            "ms",
-            false,
+            Lucide::Sheet,
+            "CSV",
+            ".csv",
+            crate::state::locale::plural("load_test.export.csv", rows as usize),
+            ExportFormat::Csv,
         ),
         (
-            "p99".into(),
-            format_integer(snapshot.p99 / 1000),
-            "ms",
-            false,
-        ),
-        (
-            t!("load_test.kpi.errors").into_owned(),
-            format_decimal(snapshot.error_rate * 100.0, 1),
-            "%",
-            snapshot.error_rate > 0.0,
-        ),
-        (
-            t!("load_test.kpi.total").into_owned(),
-            format_integer(snapshot.total),
-            "",
-            false,
+            Lucide::Braces,
+            "JSON",
+            ".json",
+            t!("load_test.export.json").into_owned(),
+            ExportFormat::Json,
         ),
     ];
 
-    let mut cells = kpis.into_iter().enumerate();
-    let mut groups: Vec<AnyElement> = Vec::new();
-    for _ in 0..2 {
-        let mut group = h_flex()
-            .flex_1()
-            .min_w(px(KPI_CELL_MIN_WIDTH * 3.0))
-            .bg(palette.raised);
-        for (index, (label, value, unit, warn)) in cells.by_ref().take(3) {
-            let mut cell = v_flex()
-                .flex_1()
-                .min_w(px(KPI_CELL_MIN_WIDTH))
-                .gap(px(4.0))
-                .px(px(14.0))
-                .py(px(12.0));
-            if index % 3 != 0 {
-                cell = cell.border_l_1().border_color(palette.border);
-            }
-            group = group.child(
-                cell.child(
-                    div()
-                        .text_size(px(12.0))
-                        .text_color(palette.fg_muted)
-                        .child(label),
-                )
+    header_button("load-test-export", palette, true, cx)
+        .child(
+            h_flex()
+                .items_center()
+                .gap(px(6.0))
+                .child(Icon::new(Lucide::Share).small())
+                .child(t!("load_test.export.button"))
                 .child(
-                    h_flex()
-                        .items_baseline()
-                        .gap(px(4.0))
-                        .child(
-                            div()
-                                .text_size(px(22.0))
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .text_color(if warn { palette.warning } else { palette.fg })
-                                .child(value),
-                        )
-                        .when(!unit.is_empty(), |row| {
-                            row.child(
-                                div()
-                                    .text_size(px(12.0))
-                                    .text_color(palette.fg_subtle)
-                                    .child(unit),
-                            )
-                        }),
+                    Icon::new(IconName::ChevronDown)
+                        .small()
+                        .text_color(palette.fg_muted),
                 ),
-            );
-        }
-        groups.push(group.into_any_element());
+        )
+        .dropdown_menu(move |menu, _, _| {
+            let mut menu = rich_menu_width(menu, EXPORT_MENU_WIDTH);
+            for (icon, title, extension, description, format) in &entries {
+                let item_weak = weak.clone();
+                let tab_id = tab_id.clone();
+                let format = *format;
+                menu = menu.item(menu_described_item(
+                    EXPORT_MENU_WIDTH,
+                    Icon::new(*icon),
+                    *title,
+                    Some((*extension).into()),
+                    description.clone(),
+                    move |window, cx| {
+                        let _ = item_weak.update(cx, |view, cx| {
+                            view.export_load_test(&tab_id, format, window, cx);
+                        });
+                    },
+                ));
+            }
+            menu = menu.separator();
+            if let Some((first, last)) = window {
+                let toggle_weak = weak.clone();
+                let toggle_tab_id = tab_id.clone();
+                menu = menu.item(menu_toggle_item(
+                    t!(
+                        "load_test.export.only_window",
+                        range = window_label(first, last)
+                    ),
+                    window_only,
+                    move |checked, _, cx| {
+                        let _ = toggle_weak.update(cx, |view, cx| {
+                            view.edit_load_test(&toggle_tab_id, cx, |load_test| {
+                                load_test.export_window_only = checked;
+                            });
+                        });
+                    },
+                ));
+            }
+            let copy_weak = weak.clone();
+            let copy_tab_id = tab_id.clone();
+            menu.item(menu_shortcut_item(
+                Icon::new(Lucide::Clipboard),
+                t!("load_test.export.copy_markdown"),
+                copy_shortcut_label(),
+                move |window, cx| {
+                    let _ = copy_weak.update(cx, |view, cx| {
+                        view.copy_load_test_summary(&copy_tab_id, window, cx);
+                    });
+                },
+            ))
+        })
+        .into_any_element()
+}
+
+/// The "Copy summary as Markdown" shortcut as shown, with the platform's modifier.
+fn copy_shortcut_label() -> &'static str {
+    if cfg!(target_os = "macos") {
+        "\u{2318}\u{21e7}C"
+    } else {
+        "Ctrl+Shift+C"
     }
+}
+
+/// A bordered header button, 28 px high: neutral, or a little stronger for the primary
+/// "Export".
+fn header_button(id: &'static str, palette: &Palette, strong: bool, cx: &App) -> Button {
+    let (rest, border) = if strong {
+        (palette.hover_over(palette.raised), palette.border_strong)
+    } else {
+        (palette.raised, palette.border)
+    };
+    Button::new(id)
+        .neutral_bordered(cx, rest, border, palette.fg)
+        .border_1()
+        .h(px(HEADER_BUTTON_HEIGHT))
+        .px(px(10.0))
+        .rounded(px(7.0))
+        .text_size(px(12.5))
+        .when(strong, |button| button.font_weight(FontWeight::MEDIUM))
+}
+
+/// The thresholds verdict: "Thresholds passed" or "Not passed · N of M", then one chip per
+/// threshold with the whole run's value.
+fn render_verdict(
+    palette: &Palette,
+    load_test: &LoadTestTab,
+    snapshot: &LoadSnapshot,
+) -> AnyElement {
+    let inputs = SummaryData::from_snapshot(snapshot).threshold_inputs();
+    let outcomes = postino_load::evaluate_thresholds(&load_test.run_thresholds, &inputs);
+    let failed = outcomes.iter().filter(|outcome| !outcome.passed).count();
+    let (text, icon, fg, bg) = if failed == 0 {
+        (
+            t!("load_test.verdict.passed").into_owned(),
+            gpui_kit::assets::IconName::CircleCheck,
+            palette.success,
+            palette.success_subtle,
+        )
+    } else {
+        (
+            t!(
+                "load_test.verdict.failed",
+                failed = failed,
+                total = outcomes.len()
+            )
+            .into_owned(),
+            gpui_kit::assets::IconName::CircleX,
+            palette.danger,
+            palette.danger_subtle,
+        )
+    };
 
     h_flex()
         .flex_wrap()
-        .gap(px(1.0))
-        .border_1()
-        .border_color(palette.border)
-        .bg(palette.border)
-        .rounded(px(RADIUS_LG))
-        .overflow_hidden()
-        .children(groups)
-        .into_any_element()
-}
-
-/// The throughput and latency card: two polylines (Requests/s in `accent_text`, p95 in
-/// `warning`), each normalized to its own max (`LineChart`'s y-scale always starts at 0 and fits
-/// its own data, see `docs/gpui-notes.md`), four horizontal grid lines, and time
-/// labels from `0` to the run's configured duration.
-fn render_throughput_card(
-    palette: &Palette,
-    mono_font: &SharedString,
-    snapshot: &LoadSnapshot,
-    load_test: &LoadTestTab,
-) -> AnyElement {
-    let duration_secs = load_test.shown_duration_secs();
-    let rps_data: Vec<(usize, f64)> = snapshot
-        .series
-        .iter()
-        .enumerate()
-        .map(|(index, point)| (index, point.rps))
-        .collect();
-    let p95_data: Vec<(usize, f64)> = snapshot
-        .series
-        .iter()
-        .enumerate()
-        .map(|(index, point)| (index, f64::from(point.p95) / 1000.0))
-        .collect();
-
-    let chart = div()
-        .relative()
-        .size_full()
-        .child(
-            div()
-                .absolute()
-                .top_0()
-                .left_0()
-                .size_full()
-                .flex()
-                .flex_col()
-                .justify_between()
-                .children((0..4).map(|_| div().h(px(1.0)).w_full().bg(palette.border))),
-        )
-        .child(
-            div().absolute().top_0().left_0().size_full().child(
-                LineChart::new(rps_data)
-                    .x(|point: &(usize, f64)| SharedString::from(point.0.to_string()))
-                    .y(|point: &(usize, f64)| point.1)
-                    .stroke(palette.accent_text)
-                    .x_axis(false)
-                    .grid(false),
-            ),
-        )
-        .child(
-            div().absolute().top_0().left_0().size_full().child(
-                LineChart::new(p95_data)
-                    .x(|point: &(usize, f64)| SharedString::from(point.0.to_string()))
-                    .y(|point: &(usize, f64)| point.1)
-                    .stroke(palette.warning)
-                    .x_axis(false)
-                    .grid(false),
-            ),
-        );
-
-    Card::new()
-        .child(
-            h_flex()
-                .flex_wrap()
-                .items_center()
-                .gap_x(px(16.0))
-                .gap_y(px(4.0))
-                .text_size(px(12.0))
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w(px(170.0))
-                        .font_weight(FontWeight::MEDIUM)
-                        .text_size(px(13.0))
-                        .child(t!("load_test.chart.title")),
-                )
-                .child(
-                    h_flex()
-                        .flex_none()
-                        .gap(px(16.0))
-                        .child(legend_item(
-                            palette,
-                            palette.accent_text,
-                            t!("load_test.kpi.rps").into_owned(),
-                        ))
-                        .child(legend_item(palette, palette.warning, "p95 ms".to_string())),
-                ),
-        )
-        .child(div().h(px(CHART_HEIGHT)).w_full().child(chart))
-        .child(
-            h_flex()
-                .w_full()
-                .justify_between()
-                .font_family(mono_font.clone())
-                .text_size(px(11.0))
-                .text_color(palette.fg_subtle)
-                .children((0..=4).map(|step| {
-                    div().child(format!("{}s", format_integer(duration_secs * step / 4)))
-                })),
-        )
-        .into_any_element()
-}
-
-/// One legend entry: a short colored line and a muted label.
-fn legend_item(palette: &Palette, color: Hsla, label: String) -> AnyElement {
-    h_flex()
         .items_center()
-        .gap(px(6.0))
-        .text_color(palette.fg_muted)
-        .child(div().w(px(10.0)).h(px(2.0)).bg(color))
-        .child(label)
-        .into_any_element()
-}
-
-/// The latency distribution: 26 bars from the histogram, `accent_text`, bars at 110 ms and above in
-/// `warning`.
-fn render_latency_distribution(palette: &Palette, snapshot: &LoadSnapshot) -> AnyElement {
-    let max = snapshot.histogram.iter().copied().max().unwrap_or(0).max(1);
-
-    Card::new()
+        .gap(px(8.0))
+        .text_size(px(12.5))
         .child(
-            div()
-                .font_weight(FontWeight::MEDIUM)
-                .child(t!("load_test.distribution.title")),
-        )
-        .child(
-            h_flex()
-                .h(px(HISTOGRAM_HEIGHT))
-                .items_end()
-                .gap(px(3.0))
-                .children(snapshot.histogram.iter().enumerate().map(|(index, count)| {
-                    let fraction = (*count as f32 / max as f32)
-                        .clamp(if *count > 0 { 0.03 } else { 0.0 }, 1.0);
-                    let color = if index * HISTOGRAM_BUCKET_MS >= HISTOGRAM_WARNING_MS {
-                        palette.warning
-                    } else {
-                        palette.accent_text
-                    };
-                    div()
-                        .flex_1()
-                        .h(relative(fraction))
-                        .rounded(px(3.0))
-                        .bg(color)
-                })),
-        )
-        .child(
-            h_flex()
-                .w_full()
-                .justify_between()
-                .text_size(px(11.0))
-                .text_color(palette.fg_subtle)
-                .child("0")
-                .child("50")
-                .child("100")
-                .child("150")
-                .child("200")
-                .child("250+ ms"),
-        )
-        .into_any_element()
-}
-
-/// The color for one [`StatusKey`]'s bar and text, reusing
-/// [`crate::theme::Palette::status_colors`]'s HTTP status range mapping for
-/// [`StatusKey::Code`], and `danger` for a timeout or script/send failure.
-fn status_key_color(palette: &Palette, status: &StatusKey) -> Hsla {
-    match status {
-        StatusKey::Code(code) => palette.status_colors(Some(*code)).0,
-        StatusKey::Timeout | StatusKey::Failed => palette.danger,
-    }
-}
-
-/// The display label for one [`StatusKey`] row.
-fn status_key_label(status: &StatusKey) -> String {
-    match status {
-        StatusKey::Code(code) => code.to_string(),
-        StatusKey::Timeout => t!("load_test.status_key.timeout").into_owned(),
-        StatusKey::Failed => t!("load_test.status_key.failed").into_owned(),
-    }
-}
-
-/// "Responses by status": one row per status key with a bar and a percentage.
-fn render_status_breakdown(
-    palette: &Palette,
-    mono_font: &SharedString,
-    snapshot: &LoadSnapshot,
-) -> AnyElement {
-    let total = snapshot.total.max(1) as f64;
-
-    Card::new()
-        .child(
-            div()
-                .font_weight(FontWeight::MEDIUM)
-                .child(t!("load_test.status_breakdown.title")),
-        )
-        .children(snapshot.status_counts.iter().map(|(status, count)| {
-            let color = status_key_color(palette, status);
-            let fraction = (*count as f64 / total).clamp(0.0, 1.0);
             h_flex()
                 .items_center()
-                .gap(px(10.0))
+                .gap(px(6.0))
+                .h(px(24.0))
+                .px(px(9.0))
+                .rounded(px(6.0))
+                .bg(bg)
+                .text_color(fg)
                 .text_size(px(12.0))
+                .font_weight(FontWeight::SEMIBOLD)
+                .child(Icon::new(icon).with_size(px(12.0)))
+                .child(text),
+        )
+        .children(outcomes.iter().map(|outcome| {
+            let color = if outcome.passed {
+                palette.success
+            } else {
+                palette.danger
+            };
+            let icon = if outcome.passed {
+                gpui_kit::assets::IconName::Check
+            } else {
+                gpui_kit::assets::IconName::X
+            };
+            h_flex()
+                .items_center()
+                .gap(px(6.0))
+                .h(px(24.0))
+                .px(px(9.0))
+                .rounded(px(6.0))
+                .border_1()
+                .border_color(palette.border)
+                .child(Icon::new(icon).with_size(px(12.0)).text_color(color))
                 .child(
                     div()
-                        .w(px(62.0))
-                        .font_family(mono_font.clone())
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(color)
-                        .child(status_key_label(status)),
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .h(px(8.0))
-                        .rounded(px(4.0))
-                        .bg(palette.surface)
-                        .overflow_hidden()
-                        .child(
-                            div()
-                                .h_full()
-                                .w(relative(fraction as f32))
-                                .rounded(px(4.0))
-                                .bg(color),
-                        ),
-                )
-                .child(
-                    div()
-                        .w(px(56.0))
-                        .text_right()
                         .text_color(palette.fg_muted)
-                        .child(format!("{}%", format_decimal(fraction * 100.0, 1))),
+                        .child(threshold_label(&outcome.threshold)),
+                )
+                .child(
+                    div()
+                        .font_family(telaio_ui::fonts::MONO_FAMILY)
+                        .text_size(px(12.0))
+                        .text_color(color)
+                        .child(threshold_value(outcome.threshold.metric, outcome.value)),
                 )
         }))
         .into_any_element()
 }
 
-/// The per-request table and "Compare with" panel, side by side (hidden if there is no previous
-/// run for this target).
-fn render_bottom_row(
+/// A threshold metric's value as shown next to it: latencies with their unit, the error rate in
+/// percent, requests per second as a whole number.
+pub(crate) fn threshold_value(metric: ThresholdMetric, value: f64) -> String {
+    match metric {
+        ThresholdMetric::Rps => format_integer(value.round().max(0.0) as u64),
+        ThresholdMetric::ErrorRate => format!("{} %", format_decimal(value * 100.0, 1)),
+        _ => crate::state::load_results::format_latency_ms(value),
+    }
+}
+
+/// The Summary / Requests / Errors tabs, with the request and error counts of the window shown,
+/// and the selected window's chip on the right.
+fn render_tabs(
     weak: WeakEntity<AppView>,
     tab_id: &str,
     palette: &Palette,
-    mono_font: &SharedString,
     load_test: &LoadTestTab,
-    snapshot: &LoadSnapshot,
-    cx: &App,
+    summary: &SummaryData,
 ) -> AnyElement {
-    let compare_available: Vec<&RunRecordHeader> = load_test
-        .history
+    let errors = summary
+        .statuses
         .iter()
-        .filter(|header| Some(header.number) != load_test.run_number)
-        .collect();
-
-    // The table's own minimum width as its basis, so the row wraps before the table has to
-    // scroll sideways, which it only does when the pane itself is narrower than the table.
-    let per_request = div()
-        .flex_grow(1.3)
-        .flex_basis(px(PER_REQUEST_TABLE_MIN_WIDTH))
-        .min_w_0()
-        .child(render_per_request_table(
-            palette, mono_font, load_test, snapshot,
-        ));
-
-    if compare_available.is_empty() {
-        return h_flex()
-            .min_w_0()
-            .flex_wrap()
-            .gap(px(16.0))
-            .items_start()
-            .child(per_request)
-            .into_any_element();
+        .filter(|(status, _)| status.is_error())
+        .map(|(_, count)| count)
+        .sum::<u64>();
+    let item = |tab: ResultsTab, label: String| {
+        let item_weak = weak.clone();
+        let tab_id = tab_id.to_string();
+        UnderlineTabItem::new(label)
+            .selected(load_test.results_tab == tab)
+            .on_click(move |_, cx| {
+                let _ = item_weak.update(cx, |view, cx| {
+                    view.set_load_test_results_tab(&tab_id, tab, cx);
+                });
+            })
+    };
+    let mut errors_item = item(
+        ResultsTab::Errors,
+        t!("load_test.results.errors").into_owned(),
+    )
+    .count(format_integer(errors));
+    if errors > 0 {
+        errors_item = errors_item.count_color(palette.danger);
     }
-
-    h_flex()
-        .min_w_0()
-        .flex_wrap()
-        .gap(px(16.0))
-        .items_start()
-        .child(per_request)
-        .child(
-            div()
-                .flex_grow(1.0)
-                .flex_basis(px(TWO_COLUMN_MIN_WIDTH))
-                .min_w_0()
-                .child(render_compare_with(
-                    weak,
-                    tab_id,
-                    palette,
-                    load_test,
-                    snapshot,
-                    &compare_available,
-                    cx,
-                )),
+    let mut tabs = UnderlineTabs::new("load-test-results-tabs")
+        .height(34.0)
+        .item(item(
+            ResultsTab::Summary,
+            t!("load_test.results.summary").into_owned(),
+        ))
+        .item(item(
+            ResultsTab::Latency,
+            t!("load_test.results.latency").into_owned(),
+        ))
+        .item(
+            item(
+                ResultsTab::Requests,
+                t!("load_test.results.requests").into_owned(),
+            )
+            .count(format_integer(summary.total)),
         )
-        .into_any_element()
-}
-
-/// Minimum width of the per-request table, below which it scrolls sideways: the data table's side
-/// padding, its least flexible column (the name) and five numeric columns with their gaps.
-const PER_REQUEST_TABLE_MIN_WIDTH: f32 = 2.0 * DATA_TABLE_PADDING_X
-    + DATA_TABLE_FLEX_MIN_WIDTH
-    + 5.0 * (DATA_TABLE_NUMERIC_COL_WIDTH + DATA_TABLE_COL_GAP);
-
-/// The per-request table: method, name, Count, p50, p95, p99, Errors.
-fn render_per_request_table(
-    palette: &Palette,
-    mono_font: &SharedString,
-    load_test: &LoadTestTab,
-    snapshot: &LoadSnapshot,
-) -> AnyElement {
-    let mut table = DataTable::new("load-test-per-request-table")
-        .column(DataColumn::new(t!("common.request")))
-        .column(DataColumn::numeric(t!("load_test.table.count")))
-        .column(DataColumn::numeric("p50"))
-        .column(DataColumn::numeric("p95"))
-        .column(DataColumn::numeric("p99"))
-        .column(DataColumn::numeric(t!("load_test.kpi.errors")));
-    for (index, stats) in snapshot.per_target.iter().enumerate() {
-        let (method, name) = target_row_label(load_test, index);
-        let errors = DataCell::text(format!("{}%", format_decimal(stats.error_rate * 100.0, 1)));
-        let errors = if stats.error_rate > PER_REQUEST_WARNING_ERROR_RATE {
-            errors.color(palette.warning)
-        } else {
-            errors
-        };
-        table = table.row([
-            DataCell::element(
-                h_flex()
-                    .min_w_0()
-                    .items_center()
-                    .gap(px(8.0))
-                    .children(method.map(MethodBadge::label))
-                    .child(div().min_w_0().truncate().child(name)),
-            ),
-            DataCell::text(format_integer(stats.count)),
-            DataCell::text(format!("{} ms", format_integer(stats.p50 / 1000))),
-            DataCell::text(format!("{} ms", format_integer(stats.p95 / 1000))),
-            DataCell::text(format!("{} ms", format_integer(stats.p99 / 1000))),
-            errors,
-        ]);
-    }
-    // The table's own `mono` would use telaio's monospace font; the user's choice is inherited
-    // from here instead, like the rest of the dashboard.
-    div()
-        .font_family(mono_font.clone())
-        .child(table)
-        .into_any_element()
-}
-
-/// Each target's HTTP method and display name for the per-request table, in the same order as
-/// [`LoadSnapshot::per_target`]. `None` method, `"Target N"` name for an index beyond
-/// [`LoadTestTab::target_rows`]: a run saved before
-/// [`postino_load::history::RunRecord::target_labels`] existed has no labels to restore (that
-/// field defaults to empty for those older files), and a target list that no longer lines up
-/// (e.g. the collection was edited after the run) degrades the same way, to a generic label
-/// instead of a wrong one.
-fn target_row_label(load_test: &LoadTestTab, index: usize) -> (Option<Method>, String) {
-    match load_test.target_rows.get(index) {
-        Some((method, name)) => (Some(method.clone()), name.clone()),
-        None => (
-            None,
-            t!("load_test.table.target_n", number = index + 1).into_owned(),
-        ),
-    }
-}
-
-/// The "Compare with" panel: a dropdown of previous runs of the same target, and rows for
-/// Requests/s, p95, p99 and Errors with previous, current and a colored delta.
-fn render_compare_with(
-    weak: WeakEntity<AppView>,
-    tab_id: &str,
-    palette: &Palette,
-    load_test: &LoadTestTab,
-    snapshot: &LoadSnapshot,
-    available: &[&RunRecordHeader],
-    cx: &App,
-) -> AnyElement {
-    let now = unix_now() as i64;
-    let selected = load_test
-        .compare_with
-        .and_then(|number| available.iter().find(|header| header.number == number));
-    let trigger_label = selected
-        .map(|header| run_with_day(header.number, header.started_at_unix, now))
-        .unwrap_or_else(|| t!("load_test.compare.select").into_owned());
-
-    let header_row = h_flex()
-        .h(px(34.0))
-        .items_center()
-        .justify_between()
-        .px(px(16.0))
-        .border_b_1()
-        .border_color(palette.border)
-        .child(
-            div()
-                .font_weight(FontWeight::MEDIUM)
-                .child(t!("load_test.compare.title")),
-        )
-        .child({
-            let tab_id = tab_id.to_string();
-            let available: Vec<RunRecordHeader> =
-                available.iter().map(|header| (*header).clone()).collect();
-            Button::new("load-test-compare-with")
-                .neutral_ghost(cx, palette.fg_muted)
-                .text_color(palette.fg_muted)
-                .text_size(px(12.0))
-                .child(
-                    h_flex()
-                        .items_center()
-                        .gap(px(6.0))
-                        .child(trigger_label)
-                        .child(Icon::new(IconName::ChevronDown).small()),
-                )
-                .dropdown_menu(move |mut menu, _, _| {
-                    for header in &available {
-                        let target_weak = weak.clone();
-                        let tab_id = tab_id.clone();
-                        let number = header.number;
-                        let label = run_with_day(number, header.started_at_unix, now);
-                        menu = menu.item(PopupMenuItem::new(label).on_click(move |_, _, cx| {
-                            let _ = target_weak.update(cx, |view, cx| {
-                                view.set_load_test_compare_with(&tab_id, Some(number), cx);
-                            });
-                        }));
-                    }
-                    menu
-                })
-        });
-
-    let mut card = v_flex()
-        .border_1()
-        .border_color(palette.border)
-        .rounded(px(RADIUS_LG))
-        .bg(palette.raised)
-        .overflow_hidden()
-        .child(header_row);
-
-    if let Some(previous) = &load_test.compare_snapshot {
-        for delta in postino_load::compare(previous, snapshot) {
-            let delta_color = match delta_tone(delta.change, delta.label == "Requests/s") {
-                DeltaTone::Better => palette.success,
-                DeltaTone::Worse => palette.danger,
-                DeltaTone::Neutral => palette.fg_muted,
-            };
-            let unit = match delta.unit {
-                postino_load::DeltaUnit::Percent => "%",
-                postino_load::DeltaUnit::PercentagePoints => " pt",
-            };
-            card = card.child(
-                h_flex()
-                    .h(px(34.0))
-                    .items_center()
-                    .px(px(16.0))
-                    .border_b_1()
-                    .border_color(palette.border)
-                    .text_size(px(12.5))
-                    .child(
-                        div()
-                            .flex_1()
-                            .text_color(palette.fg_muted)
-                            .child(compare_label(delta.label)),
-                    )
-                    .child(
-                        div()
-                            .w(px(70.0))
-                            .text_right()
-                            .text_color(palette.fg_subtle)
-                            .child(format_compare_value(delta.label, delta.previous)),
-                    )
-                    .child(
-                        div()
-                            .w(px(70.0))
-                            .text_right()
-                            .child(format_compare_value(delta.label, delta.current)),
-                    )
-                    .child(
-                        div()
-                            .w(px(64.0))
-                            .text_right()
-                            .text_size(px(12.0))
-                            .font_weight(FontWeight::MEDIUM)
-                            .text_color(delta_color)
-                            .child(format_delta(delta.change, unit)),
-                    ),
-            );
-        }
-    }
-
-    let modes_differ = selected
-        .zip(load_test.run_reuse_connections)
-        .is_some_and(|(header, reused)| header.reuse_connections != reused);
-    if modes_differ && load_test.compare_snapshot.is_some() {
-        card = card.child(
-            div()
-                .px(px(16.0))
-                .py(px(8.0))
-                .text_size(px(12.0))
-                .text_color(palette.warning)
-                .child(t!("load_test.compare.connections_differ")),
+        .item(errors_item);
+    if let Some((first, last)) = load_test.window {
+        let chip_weak = weak.clone();
+        let tab_id = tab_id.to_string();
+        tabs = tabs.suffix(
+            Chip::new(
+                "load-test-window-chip",
+                t!("load_test.window.chip", range = window_label(first, last)),
+            )
+            .icon(gpui_kit::assets::IconName::Scan)
+            .on_dismiss(move |_, cx| {
+                let _ = chip_weak.update(cx, |view, cx| {
+                    view.set_load_test_window(&tab_id, None, cx);
+                });
+            }),
         );
     }
-
-    card.into_any_element()
+    tabs.into_any_element()
 }

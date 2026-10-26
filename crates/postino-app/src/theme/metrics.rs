@@ -83,6 +83,9 @@ pub const AUTH_LABEL_WIDTH: f32 = 96.0;
 pub const WELCOME_COLUMN_WIDTH: f32 = 820.0;
 /// Maximum width of the welcome tab's content column next to the sidebar.
 pub const WELCOME_COLUMN_WIDTH_NARROW: f32 = 760.0;
+/// Least width of the welcome tab's content column, padding included. A narrower tab scrolls
+/// sideways instead of cutting the files card, the theme cards and the footer.
+pub const WELCOME_MIN_WIDTH: f32 = 640.0;
 /// Space above the welcome tab's content when it fills the window.
 pub const WELCOME_TOP_PADDING: f32 = 72.0;
 /// Space above the welcome tab's content next to the sidebar.
@@ -95,5 +98,3 @@ pub const WELCOME_LOGO_RADIUS: f32 = 12.0;
 pub const WELCOME_ROW_HEIGHT: f32 = 34.0;
 /// Width of a recent workspace's name in the welcome tab, before its path.
 pub const WELCOME_RECENT_NAME_WIDTH: f32 = 80.0;
-/// Side length of the welcome tab's "show at startup" checkbox.
-pub const WELCOME_CHECKBOX_SIZE: f32 = 14.0;

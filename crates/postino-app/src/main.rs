@@ -20,10 +20,10 @@ use postino_cli::IDENTITY;
 use telaio_app::{logging, window};
 
 use actions::{
-    CloseActiveTab, ConfirmCompletion, DeleteLine, DeleteSelectedEntry, DismissCompletion,
-    NextCompletion, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, OpenWorkspace,
-    PreviousCompletion, PreviousTab, RedoRequestEdit, RenameSelectedEntry, SaveActiveTab,
-    SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
+    CloseActiveTab, ConfirmCompletion, CopyLoadTestSummary, DeleteLine, DeleteSelectedEntry,
+    DismissCompletion, NextCompletion, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts,
+    OpenWorkspace, PreviousCompletion, PreviousTab, RedoRequestEdit, RenameSelectedEntry,
+    SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
     SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
     SelectEnvironment9, SelectNoEnvironment, SendActiveTab, ShowCompletion, ToggleCollections,
     ToggleEnvironments, ToggleLoadTests, UndoRequestEdit,
@@ -163,7 +163,7 @@ fn main() -> ExitCode {
 fn log_startup(level: state::settings::LogLevel, from_env: Option<&str>, log_path: Option<&Path>) {
     log::info!(
         "Postino {} starting ({} build) on {} {}",
-        env!("CARGO_PKG_VERSION"),
+        postino_cli::version_label(),
         if cfg!(debug_assertions) {
             "debug"
         } else {
@@ -205,6 +205,7 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-k", OpenCommandPalette, None),
         KeyBinding::new("cmd-o", OpenWorkspace, None),
         KeyBinding::new("cmd-w", CloseActiveTab, None),
+        KeyBinding::new("cmd-shift-c", CopyLoadTestSummary, None),
         // Ctrl, not Option: Option + a digit types `|`, `@` or `#` on many layouts.
         KeyBinding::new("ctrl-1", ToggleCollections, None),
         KeyBinding::new("ctrl-2", ToggleEnvironments, None),
@@ -228,6 +229,7 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-k", OpenCommandPalette, None),
         KeyBinding::new("ctrl-o", OpenWorkspace, None),
         KeyBinding::new("ctrl-w", CloseActiveTab, None),
+        KeyBinding::new("ctrl-shift-c", CopyLoadTestSummary, None),
         KeyBinding::new("alt-1", ToggleCollections, None),
         KeyBinding::new("alt-2", ToggleEnvironments, None),
         KeyBinding::new("alt-3", ToggleLoadTests, None),

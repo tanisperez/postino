@@ -19,9 +19,9 @@ one dark version of each: `hero`, `scripts`, `palette`, `snippet`, `settings`,
 
 ## Requirements
 
-- Linux, KDE Plasma on Wayland with XWayland. The click coordinates are calibrated for a Plasma
-  setup where X11 pointer coordinates are 1.1 times the screenshot pixels (see `pointer()` in the
-  script); on another scale factor, adjust that function.
+- Linux, KDE Plasma on Wayland with XWayland. The click coordinates are screenshot pixels. The
+  compositor scales X11 pointer coordinates by the display scale of the monitor, and `pointer()` in
+  the script measures that factor itself (1.25 and 1.1 have been seen).
 - `spectacle`, `xdotool`, `python3`, `git` and ImageMagick (`magick`) built with WebP support.
 - An unlocked screen. Do not use the keyboard or mouse while it runs (about 3 minutes): the
   script aborts if Postino loses the focus, so keystrokes never reach another application.

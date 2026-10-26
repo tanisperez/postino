@@ -5,10 +5,17 @@
 //! stays free of `gpui` types and of workspace file IO, so it is unit-tested directly).
 
 use postino_core::Method;
-use postino_load::LoadSnapshot;
 use postino_load::history::RunRecordHeader;
+use postino_load::{
+    LatencyScale, LatencyView, LoadSnapshot, SampleLog, Threshold, ThresholdMetric, WindowStats,
+};
 use postino_workspace::Node;
 
+use rust_i18n::t;
+
+use super::load_results::{
+    ChartData, ChartSeriesKey, RequestFilter, RequestSort, ResultsTab, Shared,
+};
 use super::number::{format_decimal, format_signed_decimal};
 
 /// What a load test tab targets: a single request, or every request of a folder ("collection"), in
@@ -150,6 +157,123 @@ pub struct LoadTestConfigInputs {
     pub stop_on_error: bool,
     /// Whether "Reuse connections" is on.
     pub reuse_connections: bool,
+    /// The "Thresholds" rows, in the order they were added, at most one per metric.
+    pub thresholds: Vec<ThresholdInput>,
+}
+
+/// One "Thresholds" row of the config panel: its metric and its limit as typed, in the unit the
+/// row shows (milliseconds, percent for the error rate, requests per second).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ThresholdInput {
+    /// The metric checked.
+    pub metric: ThresholdMetric,
+    /// The limit's text.
+    pub limit: String,
+}
+
+impl ThresholdInput {
+    /// A new row for `metric`, seeded with [`default_threshold_limit`].
+    #[must_use]
+    pub fn new(metric: ThresholdMetric) -> Self {
+        Self {
+            metric,
+            limit: default_threshold_limit(metric).to_string(),
+        }
+    }
+
+    /// The [`Threshold`] this row stands for, or `None` while its text is not a valid limit
+    /// ([`parse_threshold_limit`]).
+    #[must_use]
+    pub fn resolved(&self) -> Option<Threshold> {
+        parse_threshold_limit(self.metric, &self.limit).map(|limit| Threshold {
+            metric: self.metric,
+            limit,
+        })
+    }
+}
+
+/// The limit a newly added threshold row starts with, in the unit the row shows.
+#[must_use]
+pub fn default_threshold_limit(metric: ThresholdMetric) -> &'static str {
+    match metric {
+        ThresholdMetric::P50 => "100",
+        ThresholdMetric::P95 => "250",
+        ThresholdMetric::P99 => "500",
+        ThresholdMetric::ErrorRate => "1",
+        ThresholdMetric::Rps => "100",
+    }
+}
+
+/// The unit a threshold row shows after its limit: `"ms"` for latencies, `"%"` for the error
+/// rate, nothing for requests per second.
+#[must_use]
+pub fn threshold_unit(metric: ThresholdMetric) -> &'static str {
+    match metric {
+        ThresholdMetric::P50 | ThresholdMetric::P95 | ThresholdMetric::P99 => "ms",
+        ThresholdMetric::ErrorRate => "%",
+        ThresholdMetric::Rps => "",
+    }
+}
+
+/// Parses a threshold row's text into a limit in the [`Threshold`] unit: milliseconds and
+/// requests per second as typed, the error rate from percent to a fraction. Accepts a comma or a
+/// period as the decimal separator. `None` for anything that is not a finite number of at least
+/// zero, or an error rate above 100 %.
+#[must_use]
+pub fn parse_threshold_limit(metric: ThresholdMetric, raw: &str) -> Option<f64> {
+    let value: f64 = raw.trim().replace(',', ".").parse().ok()?;
+    if !value.is_finite() || value < 0.0 {
+        return None;
+    }
+    match metric {
+        ThresholdMetric::ErrorRate if value > 100.0 => None,
+        ThresholdMetric::ErrorRate => Some(value / 100.0),
+        _ => Some(value),
+    }
+}
+
+/// A threshold as one line of text, for example `"p99 < 50 ms"`, `"Errors < 0.5 %"` or
+/// `"Requests/s >= 1,800"` (with the real greater-or-equal sign), numbers in the current
+/// language.
+#[must_use]
+pub fn threshold_label(threshold: &Threshold) -> String {
+    let (limit, unit) = match threshold.metric {
+        ThresholdMetric::ErrorRate => (format_trimmed(threshold.limit * 100.0), " %"),
+        ThresholdMetric::Rps => (format_trimmed(threshold.limit), ""),
+        _ => (format_trimmed(threshold.limit), " ms"),
+    };
+    format!(
+        "{} {} {limit}{unit}",
+        threshold_metric_label(threshold.metric),
+        threshold.metric.operator()
+    )
+}
+
+/// The display name of a threshold metric: `"p50"`, `"p95"`, `"p99"`, or the translated
+/// "Errors" and "Requests/s".
+#[must_use]
+pub fn threshold_metric_label(metric: ThresholdMetric) -> String {
+    match metric {
+        ThresholdMetric::P50 => "p50".to_string(),
+        ThresholdMetric::P95 => "p95".to_string(),
+        ThresholdMetric::P99 => "p99".to_string(),
+        ThresholdMetric::ErrorRate => t!("load_test.kpi.errors").into_owned(),
+        ThresholdMetric::Rps => t!("load_test.kpi.rps").into_owned(),
+    }
+}
+
+/// `value` with up to two decimals and no trailing zeros, in the current language: `50`, `0.5`,
+/// `1,800`.
+#[must_use]
+pub fn format_trimmed(value: f64) -> String {
+    let decimals = if (value - value.round()).abs() < 1e-9 {
+        0
+    } else if (value * 10.0 - (value * 10.0).round()).abs() < 1e-9 {
+        1
+    } else {
+        2
+    };
+    format_decimal(value, decimals)
 }
 
 impl Default for LoadTestConfigInputs {
@@ -161,6 +285,7 @@ impl Default for LoadTestConfigInputs {
             think_time_ms: DEFAULT_THINK_TIME_MS.to_string(),
             stop_on_error: true,
             reuse_connections: true,
+            thresholds: Vec::new(),
         }
     }
 }
@@ -177,13 +302,18 @@ impl LoadTestConfigInputs {
             think_time_ms: clamp_think_time_ms(&self.think_time_ms),
             stop_on_error_rate: self.stop_on_error.then_some(STOP_ON_ERROR_RATE),
             reuse_connections: self.reuse_connections,
+            thresholds: self
+                .thresholds
+                .iter()
+                .filter_map(ThresholdInput::resolved)
+                .collect(),
         }
     }
 }
 
 /// [`LoadTestConfigInputs`], parsed and clamped, in the plain numbers/durations
 /// `postino_load::LoadConfig` needs (`views/load_test/run.rs` converts the durations).
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ResolvedLoadTestConfig {
     /// The number of virtual users, `1..=500`.
     pub vus: u32,
@@ -197,6 +327,8 @@ pub struct ResolvedLoadTestConfig {
     pub stop_on_error_rate: Option<f64>,
     /// Whether each virtual user reuses its connections (`postino_load::LoadConfig`).
     pub reuse_connections: bool,
+    /// The thresholds whose limit parses; a row still being typed is left out.
+    pub thresholds: Vec<Threshold>,
 }
 
 /// A load test tab's state: held as `crate::state::tabs::TabKind::LoadTest` inside an open tab.
@@ -250,6 +382,112 @@ pub struct LoadTestTab {
     /// when a past run is viewed, since the config panel may have changed since (#135). `None`
     /// before the first run.
     pub run_duration_secs: Option<u64>,
+    /// The thresholds the run shown is checked against: set when a run starts and when a past
+    /// run is viewed, since the config panel may have changed since.
+    pub run_thresholds: Vec<Threshold>,
+    /// How many virtual users the run shown was configured with, for the Requests tab's VU
+    /// filter. `None` before the first run.
+    pub run_vus: Option<u32>,
+    /// The ramp-up the run shown was configured with, in seconds, for the chart's virtual users
+    /// labels. `None` before the first run.
+    pub run_ramp_up_secs: Option<u64>,
+    /// When the run shown started, as Unix seconds. `None` before the first run.
+    pub run_started_at: Option<u64>,
+    /// The results tab shown.
+    pub results_tab: ResultsTab,
+    /// The selected window of the chart, as inclusive second indices. `None` is the whole run.
+    pub window: Option<(usize, usize)>,
+    /// The chart series hidden from the legend.
+    pub hidden_series: Vec<ChartSeriesKey>,
+    /// The Requests tab's filters.
+    pub request_filter: RequestFilter,
+    /// The Requests tab's sort.
+    pub request_sort: RequestSort,
+    /// Whether the Export menu's "Only the window" is on.
+    pub export_window_only: bool,
+    /// Every request of the run shown: grown on every live refresh, the final log once the run
+    /// ends, or a past run's saved log. `None` before the first run, and while a past run's log
+    /// is still loading.
+    pub log: Option<Shared<SampleLog>>,
+    /// Whether the past run shown has no saved log (saved by an older version), so the Requests
+    /// and Errors tabs have nothing to show.
+    pub log_unavailable: bool,
+    /// Bumped whenever [`Self::log`] is replaced by another run's, part of the keys of the
+    /// derived data below.
+    pub log_generation: u64,
+    /// The statistics of [`Self::window`] (or the whole run), computed in the background from
+    /// [`Self::log`], and the key they were computed for.
+    pub analysis: Option<(AnalysisKey, Shared<WindowStats>)>,
+    /// The Requests tab's rows (positions in [`Self::log`]), computed in the background, and the
+    /// key they were computed for.
+    pub requests: Option<(RequestsKey, Shared<Vec<u32>>)>,
+    /// The chart's series, rebuilt by [`Self::refresh_chart`] whenever [`Self::snapshot`] or
+    /// [`Self::compare_snapshot`] changes.
+    pub chart: Option<Shared<ChartData>>,
+    /// The Latency tab's request selector, histogram scale and "Include errors".
+    pub latency_options: LatencyChoice,
+    /// The Latency tab's data, computed in the background from [`Self::log`] (and
+    /// [`Self::compare_log`]), and the key it was computed for.
+    pub latency: Option<(LatencyKey, Shared<LatencyData>)>,
+    /// The saved requests of the compared run and its number, loaded in the background when it
+    /// is picked, for the Latency tab. `None` without a comparison, while loading, or for a run
+    /// saved without them.
+    pub compare_log: Option<(u32, Shared<SampleLog>)>,
+}
+
+/// The Latency tab's data: this run's, and the compared run's on the same histogram bins.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct LatencyData {
+    /// This run.
+    pub view: LatencyView,
+    /// The compared run, when its requests are loaded.
+    pub compare: Option<LatencyView>,
+}
+
+/// What the Latency tab's controls ask for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct LatencyChoice {
+    /// The request the histogram shows, by target index; `None` for all of them.
+    pub target: Option<usize>,
+    /// The histogram's latency axis.
+    pub scale: LatencyScale,
+    /// Whether errors count too.
+    pub include_errors: bool,
+}
+
+/// What [`LoadTestTab::latency`] was computed from: the log and window, and the controls.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LatencyKey {
+    /// The log and the window.
+    pub analysis: AnalysisKey,
+    /// [`LoadTestTab::latency_options`].
+    pub choice: LatencyChoice,
+    /// The compared run whose requests are loaded, if any.
+    pub compare: Option<u32>,
+}
+
+/// What [`LoadTestTab::analysis`] was computed from: the log (by generation and length) and the
+/// window.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnalysisKey {
+    /// [`LoadTestTab::log_generation`].
+    pub generation: u64,
+    /// The log's length.
+    pub len: usize,
+    /// [`LoadTestTab::window`].
+    pub window: Option<(usize, usize)>,
+}
+
+/// What [`LoadTestTab::requests`] was computed from: the log and window, the filters and the
+/// sort.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RequestsKey {
+    /// The log and the window.
+    pub analysis: AnalysisKey,
+    /// [`LoadTestTab::request_filter`].
+    pub filter: RequestFilter,
+    /// [`LoadTestTab::request_sort`].
+    pub sort: RequestSort,
 }
 
 impl LoadTestTab {
@@ -271,6 +509,25 @@ impl LoadTestTab {
             target_rows: Vec::new(),
             run_reuse_connections: None,
             run_duration_secs: None,
+            run_thresholds: Vec::new(),
+            run_vus: None,
+            run_ramp_up_secs: None,
+            run_started_at: None,
+            results_tab: ResultsTab::Summary,
+            window: None,
+            hidden_series: Vec::new(),
+            request_filter: RequestFilter::default(),
+            request_sort: RequestSort::default(),
+            export_window_only: true,
+            log: None,
+            log_unavailable: false,
+            log_generation: 0,
+            analysis: None,
+            requests: None,
+            chart: None,
+            latency_options: LatencyChoice::default(),
+            latency: None,
+            compare_log: None,
         }
     }
 
@@ -314,6 +571,108 @@ impl LoadTestTab {
     #[must_use]
     pub fn is_running(&self) -> bool {
         self.status == LoadTestStatus::Running
+    }
+
+    /// The key [`Self::analysis`] should have for the current log and window, `None` without a
+    /// log.
+    #[must_use]
+    pub fn analysis_key(&self) -> Option<AnalysisKey> {
+        self.log.as_ref().map(|log| AnalysisKey {
+            generation: self.log_generation,
+            len: log.len(),
+            window: self.window,
+        })
+    }
+
+    /// The key [`Self::requests`] should have, `None` without a log.
+    #[must_use]
+    pub fn requests_key(&self) -> Option<RequestsKey> {
+        self.analysis_key().map(|analysis| RequestsKey {
+            analysis,
+            filter: self.request_filter.clone(),
+            sort: self.request_sort,
+        })
+    }
+
+    /// The key [`Self::latency`] should have, `None` without a log.
+    #[must_use]
+    pub fn latency_key(&self) -> Option<LatencyKey> {
+        self.analysis_key().map(|analysis| LatencyKey {
+            analysis,
+            choice: self.latency_options,
+            compare: self.current_compare_log().map(|(number, _)| number),
+        })
+    }
+
+    /// The Latency tab's data, when it is up to date or at least of the same run and choices. A
+    /// stale value (a live refresh in flight) is still shown instead of nothing.
+    #[must_use]
+    pub fn current_latency(&self) -> Option<&LatencyData> {
+        let (key, view) = self.latency.as_ref()?;
+        (key.analysis.generation == self.log_generation
+            && key.analysis.window == self.window
+            && key.choice == self.latency_options)
+            .then_some(&**view)
+    }
+
+    /// [`Self::compare_log`] when it belongs to the run picked in "Compare with".
+    #[must_use]
+    pub fn current_compare_log(&self) -> Option<(u32, &Shared<SampleLog>)> {
+        self.compare_log
+            .as_ref()
+            .filter(|(number, _)| self.compare_with == Some(*number))
+            .map(|(number, log)| (*number, log))
+    }
+
+    /// The statistics shown, when they are up to date or at least of the same run. A stale
+    /// value of the same run (a live refresh in flight) is still shown instead of nothing.
+    #[must_use]
+    pub fn current_analysis(&self) -> Option<&WindowStats> {
+        let (key, stats) = self.analysis.as_ref()?;
+        (key.generation == self.log_generation && key.window == self.window).then_some(&**stats)
+    }
+
+    /// The window as the `[start, end)` seconds range the engine takes.
+    #[must_use]
+    pub fn window_range(&self) -> Option<std::ops::Range<u32>> {
+        self.window
+            .map(|(first, last)| first as u32..last as u32 + 1)
+    }
+
+    /// Replaces the run's log with `log` (another run's, or a fresh empty one): bumps the
+    /// generation and drops every derived value and the window.
+    pub fn replace_log(&mut self, log: Option<SampleLog>) {
+        self.log = log.map(Shared::new);
+        self.log_generation += 1;
+        self.analysis = None;
+        self.requests = None;
+        self.latency = None;
+        self.window = None;
+        // Another run may have other requests.
+        self.latency_options.target = None;
+    }
+
+    /// Rebuilds [`Self::chart`] from the current snapshot and compared run.
+    pub fn refresh_chart(&mut self) {
+        self.chart = self
+            .snapshot
+            .as_ref()
+            .map(|snapshot| Shared::new(ChartData::new(snapshot, self.compare_snapshot.as_ref())));
+    }
+
+    /// The metrics that have no threshold row yet, for the "Add threshold" menu.
+    #[must_use]
+    pub fn missing_threshold_metrics(&self) -> Vec<ThresholdMetric> {
+        ThresholdMetric::ALL
+            .into_iter()
+            .filter(|metric| {
+                !self
+                    .config
+                    .thresholds
+                    .iter()
+                    .any(|input| input.metric == *metric)
+            })
+            .collect()
     }
 }
 
@@ -694,6 +1053,84 @@ mod tests {
             ]
         );
         assert!(request_ids_under(&tree, "empty").is_empty());
+    }
+
+    #[test]
+    fn threshold_limits_accept_a_comma_or_a_period_and_errors_are_percent() {
+        assert_eq!(
+            parse_threshold_limit(ThresholdMetric::P99, " 50 "),
+            Some(50.0)
+        );
+        assert_eq!(
+            parse_threshold_limit(ThresholdMetric::P99, "12,5"),
+            Some(12.5)
+        );
+        assert_eq!(
+            parse_threshold_limit(ThresholdMetric::ErrorRate, "0.5"),
+            Some(0.005)
+        );
+        assert_eq!(
+            parse_threshold_limit(ThresholdMetric::ErrorRate, "101"),
+            None
+        );
+        assert_eq!(parse_threshold_limit(ThresholdMetric::Rps, "-1"), None);
+        assert_eq!(parse_threshold_limit(ThresholdMetric::Rps, ""), None);
+        assert_eq!(parse_threshold_limit(ThresholdMetric::Rps, "inf"), None);
+    }
+
+    #[test]
+    fn resolved_config_skips_threshold_rows_that_do_not_parse() {
+        let inputs = LoadTestConfigInputs {
+            thresholds: vec![
+                ThresholdInput::new(ThresholdMetric::P99),
+                ThresholdInput {
+                    metric: ThresholdMetric::Rps,
+                    limit: "abc".to_string(),
+                },
+            ],
+            ..LoadTestConfigInputs::default()
+        };
+        assert_eq!(
+            inputs.resolved().thresholds,
+            vec![Threshold {
+                metric: ThresholdMetric::P99,
+                limit: 500.0
+            }]
+        );
+    }
+
+    #[test]
+    fn missing_threshold_metrics_leaves_out_the_ones_already_added() {
+        let mut tab = LoadTestTab::unset();
+        tab.config.thresholds = vec![ThresholdInput::new(ThresholdMetric::ErrorRate)];
+        assert_eq!(
+            tab.missing_threshold_metrics(),
+            vec![
+                ThresholdMetric::P50,
+                ThresholdMetric::P95,
+                ThresholdMetric::P99,
+                ThresholdMetric::Rps
+            ]
+        );
+    }
+
+    #[test]
+    fn threshold_label_reads_like_the_design() {
+        let p99 = Threshold {
+            metric: ThresholdMetric::P99,
+            limit: 50.0,
+        };
+        assert_eq!(threshold_label(&p99), "p99 < 50 ms");
+        let errors = Threshold {
+            metric: ThresholdMetric::ErrorRate,
+            limit: 0.005,
+        };
+        assert_eq!(threshold_label(&errors), "Errors < 0.5 %");
+        let rps = Threshold {
+            metric: ThresholdMetric::Rps,
+            limit: 1_800.0,
+        };
+        assert_eq!(threshold_label(&rps), "Requests/s \u{2265} 1,800");
     }
 
     #[test]

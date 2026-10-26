@@ -64,7 +64,9 @@ default tokens are telaio's defaults. The rest is under `crates/postino-app/src/
   `hover` and `pressed`, which barely show on an area that small. A switch shows the same halo,
   pill shaped (`switch_halo`), and so does the radio of a theme card, whose ring brightens to
   `fg_subtle` with it. Hovering a theme card also brings its frame to `fg_subtle`
-  (`fg_muted` while pressed); a card never dims.
+  (`fg_muted` while pressed); a card never dims. A checkbox drawn as a filter pill in a toolbar
+  (the load test's "Only errors" and "Include errors", `filter_checkbox`) has no halo: the whole
+  pill is the click target and hovers like the `neutral_bordered` filter buttons next to it.
 - The accent (indigo) is for the primary action, the selected row or tab, links and focus.
   Do not use it as decoration.
 - State colors are semantic: `success` green, `warning` amber, `danger` red, `info` blue. Each has
@@ -167,6 +169,44 @@ The values are CSS. gpui's `blur_radius` is the gaussian's standard deviation, h
   `danger`; contains `stag`, `test`, `qa` or `uat` is `warning`; anything else is `success`. "No
   environment" is a hollow ring in `fg_subtle`.
 - Tests tab count: `success` when all pass, `danger` otherwise.
+
+### Load test chart
+
+The "Performance over time" chart of the load test results (`Palette::series_color`, in
+`theme/palette.rs`) uses palette tokens where one fits and two colors of Postino's own for the
+latency lines. The PDF report draws the same series with the light column. It is at least 320 px
+tall (`CHART_HEIGHT`, from the design) and grows into the room the window leaves under the results;
+a canvas measures that room and asks for one more frame only when it changes.
+
+| Series | Light | Dark | Token |
+| --- | --- | --- | --- |
+| Requests/s (line, left axis titled `req/s`) | `#3f47c4` | `#a3a9ff` | `accent_text` |
+| p50 | `#1f8f80` | `#5fc9b8` | chart token |
+| p95 | `#9a6500` | `#e8b75a` | `warning` |
+| p99 | `#cf5b3a` | `#f08060` | chart token |
+| Baseline (compared run's p95, dashed, 60% opacity) | `#9a6500` | `#e8b75a` | same as p95 |
+| Virtual users (area peaking at half the plot, no axis, labeled plateaus) | `#8b8e9a` | `#6f7280` | `fg_subtle` |
+| Latency goal lines | `#cf3535` | `#f27171` | `danger` |
+
+The Latency tab tells requests apart by color (`PostinoColors::request_color`, cycling through
+six); its p50, p95 and p99 markers use the chart's series colors.
+
+| Request | Light | Dark |
+| --- | --- | --- |
+| 1 | `#4f57d8` (`accent`) | `#a3a9ff` (`accent_text`) |
+| 2 | `#1c78b8` | `#62b3f0` (`info`) |
+| 3 | `#b0479a` | `#e58fd0` |
+| 4 | `#3f8a3a` | `#8fd18a` |
+| 5 | `#a8641c` | `#e0a96d` |
+| 6 | `#7a4fd6` | `#b9a2ff` |
+
+The verdict strip uses `success` / `success_subtle` for "Thresholds passed" and `danger` /
+`danger_subtle` for "Not passed". KPI deltas are `success` when better and `danger` when worse. A KPI cell is at least 136 px wide
+(room for a nine figure total); a delta that does not fit next to its value drops under it, and
+the cells of a row stretch to the tallest one.
+Status colors in the per request table's status bars and in the Requests table follow
+`Palette::status_colors`; a timeout or a failure is `danger` (at 60% opacity in a status bar, so
+it stands apart from a 5xx next to it).
 
 ## Typography
 
@@ -277,9 +317,10 @@ workspaces (once, when the tab opens, never in `render`). It is a tab of its own
 (`TabKind::Welcome`), never dirty, with a `house` icon in `accent_text` and the label "Welcome".
 Why it exists and when it opens: GitHub #90.
 
-**Page.** `bg` fill, scrolls vertically. One column, centered horizontally, `100%` wide up to a
-maximum and stretched to the tab's height, so the footer sits at the bottom edge when the content
-is short. Line height 1.25 (gpui's default is taller and spreads the blocks apart). Side padding 40
+**Page.** `bg` fill, scrolls vertically, and sideways when the tab is narrower than the column's
+least width, 640 (`WELCOME_MIN_WIDTH`), so nothing is cut; both scrollbars show while scrolling.
+One column, centered horizontally, `100%` wide up to a maximum and stretched to the tab's height,
+so the footer sits at the bottom edge when the content is short. Line height 1.25 (gpui's default is taller and spreads the blocks apart). Side padding 40
 and bottom padding 32 in both cases. Which case applies depends on whether the sidebar is shown (a
 workspace is open or being opened), not on the window width.
 
@@ -327,11 +368,9 @@ Top to bottom (px unless said otherwise):
      "Search" with "(Ctrl+K)". Text `accent_text`, `fg` on hover, no underline, pointer cursor. The
      hint in parentheses is mono, 11, in the link's color, and follows the label with a gap of 4.
      On macOS the hints read "(Cmd+Shift+/)" and "(Cmd+K)".
-   - A flexible gap, then the checkbox row, gap 8, label "Show the welcome tab when Postino
-     starts" in `fg_muted`. The box is 14 (`WELCOME_CHECKBOX_SIZE`), radius 4 (`RADIUS_XS`), 1
-     border. Checked: `accent` fill and border with a 10 `check` icon in `accent_fg`. Unchecked:
-     transparent fill, `border_strong` border. The whole row is clickable and flips
-     `show_welcome`, the same setting as Settings, Appearance, Interface.
+   - A flexible gap, then telaio's `labelled_checkbox` "Show the welcome tab when Postino
+     starts", with the standard checkbox halo on hover over the box or the label. Clicking either
+     flips `show_welcome`, the same setting as Settings, Appearance, Interface.
 
 **Empty main area.** With no workspace and no tab (the welcome tab was closed), the area is `bg`
 with a centered column, gap 16: "Create a workspace or open a folder to get started." in

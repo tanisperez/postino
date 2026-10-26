@@ -86,5 +86,8 @@ actions!(
         /// Redoes the last undone edit of the active request tab (`Ctrl+Shift+Z` or `Ctrl+Y`,
         /// `Cmd+Shift+Z` on macOS), where [`UndoRequestEdit`] applies.
         RedoRequestEdit,
+        /// Copies the summary of the active load test tab's results to the clipboard as Markdown
+        /// (`Ctrl+Shift+C` / `Cmd+Shift+C`), like the Export menu's "Copy summary as Markdown".
+        CopyLoadTestSummary,
     ]
 );

@@ -1,6 +1,11 @@
 //! The load test tab's left config panel: the target segmented control and picker, the numeric
-//! fields, the "Stop on errors" switch, and the Start/Stop run button.
+//! fields, the thresholds, the "Stop on errors" and "Reuse connections" switches, and the
+//! Start/Stop run button.
 
+use std::cell::Cell;
+use std::rc::Rc;
+
+use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::scroll::ScrollableElement as _;
@@ -10,13 +15,18 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
-use crate::state::load_test::{LoadTestConfigInputs, LoadTestTab, LoadTestTarget, TargetKind};
+use postino_load::ThresholdMetric;
+
+use crate::state::load_test::{
+    LoadTestConfigInputs, LoadTestTab, LoadTestTarget, TargetKind, ThresholdInput,
+    threshold_metric_label, threshold_unit,
+};
 use crate::state::locale;
 use crate::theme::metrics::{CONTROL_HEIGHT, INPUT_PADDING_X, RADIUS_MD};
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{
-    DangerButton, PrimaryButton, SegmentedControl, SegmentedItem, edit_menu, select_trigger,
-    switch_halo,
+    DangerButton, IconButton, NeutralButtonExt, PrimaryButton, SegmentedControl, SegmentedItem,
+    edit_menu, select_trigger, switch_halo,
 };
 
 use crate::views::root::AppView;
@@ -36,20 +46,95 @@ pub(crate) struct LoadTestEntities {
     duration_secs: Option<Entity<InputState>>,
     ramp_up_secs: Option<Entity<InputState>>,
     think_time_ms: Option<Entity<InputState>>,
+    /// One input per "Thresholds" row, kept in step with the rows by [`Self::sync`].
+    thresholds: Vec<(ThresholdMetric, Entity<InputState>)>,
+    /// The results' Requests tab search box.
+    pub(crate) request_search: Option<Entity<InputState>>,
+    /// The scroll position of the results' Requests table, reset to the top when its filters or
+    /// sort change.
+    pub(crate) requests_scroll: UniformListScrollHandle,
+    /// The height the Summary's chart had room for in the last frame, measured by the chart
+    /// itself (see `summary.rs`'s `render_chart`). Zero until first measured.
+    pub(crate) chart_room: Rc<Cell<f32>>,
 }
 
 impl LoadTestEntities {
-    /// Rebuilds every field entity when `tab_id` differs from what they were last built for.
+    /// Rebuilds every field entity when `tab_id` differs from what they were last built for, and
+    /// adds or drops threshold inputs as rows are added or removed.
     fn sync(
         &mut self,
         tab_id: &str,
-        config: &LoadTestConfigInputs,
+        load_test: &LoadTestTab,
         window: &mut Window,
         cx: &mut Context<AppView>,
     ) {
-        if self.built_for.as_deref() == Some(tab_id) {
-            return;
+        let config = &load_test.config;
+        if self.built_for.as_deref() != Some(tab_id) {
+            self.build(tab_id, config, &load_test.request_filter.query, window, cx);
         }
+        self.sync_thresholds(tab_id, &config.thresholds, window, cx);
+    }
+
+    /// Keeps one input per threshold row: drops the inputs of removed rows and builds one for
+    /// each new row, leaving the others (and their focus) alone.
+    fn sync_thresholds(
+        &mut self,
+        tab_id: &str,
+        rows: &[ThresholdInput],
+        window: &mut Window,
+        cx: &mut Context<AppView>,
+    ) {
+        self.thresholds
+            .retain(|(metric, _)| rows.iter().any(|row| row.metric == *metric));
+        for row in rows {
+            if self
+                .thresholds
+                .iter()
+                .any(|(metric, _)| *metric == row.metric)
+            {
+                continue;
+            }
+            let metric = row.metric;
+            let entity = build_field(
+                tab_id,
+                &row.limit,
+                window,
+                cx,
+                move |view, tab_id, value, cx| {
+                    view.set_load_test_threshold_limit(tab_id, metric, value, cx);
+                },
+            );
+            self.thresholds.push((metric, entity));
+        }
+    }
+
+    /// Builds every numeric field entity for `tab_id`.
+    fn build(
+        &mut self,
+        tab_id: &str,
+        config: &LoadTestConfigInputs,
+        query: &str,
+        window: &mut Window,
+        cx: &mut Context<AppView>,
+    ) {
+        self.thresholds.clear();
+        self.requests_scroll = UniformListScrollHandle::new();
+        let search = cx.new(|cx| {
+            InputState::new(window, cx).placeholder(t!("load_test.requests.search").into_owned())
+        });
+        search.update(cx, |state, cx| {
+            state.set_value(query.to_string(), window, cx);
+        });
+        let search_tab_id = tab_id.to_string();
+        cx.subscribe(&search, move |view, entity, event: &InputEvent, cx| {
+            if !matches!(event, InputEvent::Change) {
+                return;
+            }
+            let query = entity.read(cx).value().to_string();
+            view.edit_load_test_request_filter(&search_tab_id, cx, |filter| filter.query = query);
+        })
+        .detach();
+        self.request_search = Some(search);
         self.vus = Some(build_field(
             tab_id,
             &config.vus,
@@ -124,8 +209,7 @@ impl AppView {
         else {
             return div().into_any_element();
         };
-        self.load_test_entities
-            .sync(tab_id, &load_test.config, window, cx);
+        self.load_test_entities.sync(tab_id, &load_test, window, cx);
 
         let palette = cx.palette();
         let mono_font = cx.theme().mono_font_family.clone();
@@ -167,47 +251,66 @@ impl AppView {
                         is_running,
                         cx,
                     ))
-                    .child(render_field(
+                    .child(
+                        v_flex()
+                            .gap(px(10.0))
+                            .child(
+                                h_flex()
+                                    .gap(px(10.0))
+                                    .child(render_field(
+                                        &palette,
+                                        &mono_font,
+                                        &ui_font,
+                                        t!("load_test.config.vus").into_owned(),
+                                        self.load_test_entities.vus.as_ref(),
+                                        "VUs",
+                                        is_running,
+                                        cx,
+                                    ))
+                                    .child(render_field(
+                                        &palette,
+                                        &mono_font,
+                                        &ui_font,
+                                        t!("load_test.config.duration").into_owned(),
+                                        self.load_test_entities.duration_secs.as_ref(),
+                                        "s",
+                                        is_running,
+                                        cx,
+                                    )),
+                            )
+                            .child(
+                                h_flex()
+                                    .gap(px(10.0))
+                                    .child(render_field(
+                                        &palette,
+                                        &mono_font,
+                                        &ui_font,
+                                        t!("load_test.config.ramp_up").into_owned(),
+                                        self.load_test_entities.ramp_up_secs.as_ref(),
+                                        "s",
+                                        is_running,
+                                        cx,
+                                    ))
+                                    .child(render_field(
+                                        &palette,
+                                        &mono_font,
+                                        &ui_font,
+                                        t!("load_test.config.think_time").into_owned(),
+                                        self.load_test_entities.think_time_ms.as_ref(),
+                                        "ms",
+                                        is_running,
+                                        cx,
+                                    )),
+                            ),
+                    )
+                    .child(render_thresholds(
+                        weak.clone(),
+                        tab_id,
                         &palette,
                         &mono_font,
                         &ui_font,
-                        t!("load_test.config.vus").into_owned(),
-                        None,
-                        self.load_test_entities.vus.as_ref(),
-                        "VUs",
-                        is_running,
-                        cx,
-                    ))
-                    .child(render_field(
-                        &palette,
-                        &mono_font,
-                        &ui_font,
-                        t!("load_test.config.duration").into_owned(),
-                        None,
-                        self.load_test_entities.duration_secs.as_ref(),
-                        "s",
-                        is_running,
-                        cx,
-                    ))
-                    .child(render_field(
-                        &palette,
-                        &mono_font,
-                        &ui_font,
-                        t!("load_test.config.ramp_up").into_owned(),
-                        Some(format!("0 \u{2192} {} VUs", load_test.config.vus.trim())),
-                        self.load_test_entities.ramp_up_secs.as_ref(),
-                        "s",
-                        is_running,
-                        cx,
-                    ))
-                    .child(render_field(
-                        &palette,
-                        &mono_font,
-                        &ui_font,
-                        t!("load_test.config.think_time").into_owned(),
-                        Some(t!("load_test.config.per_iteration").into_owned()),
-                        self.load_test_entities.think_time_ms.as_ref(),
-                        "ms",
+                        &load_test,
+                        &self.load_test_entities.thresholds,
                         is_running,
                         cx,
                     ))
@@ -454,15 +557,14 @@ fn request_count_label(count: usize) -> String {
     locale::plural("load_test.config.requests", count)
 }
 
-/// One numeric field row: a label (with an optional muted hint on the right), and a bordered pill
-/// with the input and its unit suffix.
+/// One numeric field, half the panel wide: a label above a bordered pill with the input and its
+/// unit suffix.
 #[allow(clippy::too_many_arguments)]
 fn render_field(
     palette: &Palette,
     mono_font: &SharedString,
     ui_font: &SharedString,
     label: String,
-    hint: Option<String>,
     entity: Option<&Entity<InputState>>,
     unit: &'static str,
     disabled: bool,
@@ -470,15 +572,12 @@ fn render_field(
 ) -> AnyElement {
     // An id keeps the pill's hover state, so entering and leaving renders again.
     let pill_id = SharedString::from(format!("load-test-field-{label}"));
-    let mut row = h_flex().justify_between().text_size(px(12.0)).child(
-        div()
-            .font_weight(FontWeight::MEDIUM)
-            .text_color(palette.fg_muted)
-            .child(label),
-    );
-    if let Some(hint) = hint {
-        row = row.child(div().text_color(palette.fg_subtle).child(hint));
-    }
+    let row = div()
+        .text_size(px(12.0))
+        .font_weight(FontWeight::MEDIUM)
+        .text_color(palette.fg_muted)
+        .truncate()
+        .child(label);
 
     let mut pill = h_flex()
         .id(pill_id)
@@ -521,10 +620,208 @@ fn render_field(
     );
 
     v_flex()
+        .flex_1()
+        .min_w_0()
         .gap(px(6.0))
         .child(row)
         .child(pill)
         .into_any_element()
+}
+
+/// The "Thresholds" section: a label with its hint, one row per threshold, and the "Add
+/// threshold" menu of the metrics that have none yet.
+#[allow(clippy::too_many_arguments)]
+fn render_thresholds(
+    weak: WeakEntity<AppView>,
+    tab_id: &str,
+    palette: &Palette,
+    mono_font: &SharedString,
+    ui_font: &SharedString,
+    load_test: &LoadTestTab,
+    entities: &[(ThresholdMetric, Entity<InputState>)],
+    disabled: bool,
+    cx: &App,
+) -> AnyElement {
+    let mut section = v_flex().gap(px(6.0)).child(
+        h_flex()
+            .gap(px(8.0))
+            .justify_between()
+            .text_size(px(12.0))
+            .child(
+                div()
+                    .flex_none()
+                    .font_weight(FontWeight::MEDIUM)
+                    .text_color(palette.fg_muted)
+                    .child(t!("load_test.thresholds.title")),
+            )
+            .child(
+                div()
+                    .min_w_0()
+                    .truncate()
+                    .text_color(palette.fg_subtle)
+                    .child(t!("load_test.thresholds.hint")),
+            ),
+    );
+
+    for row in &load_test.config.thresholds {
+        let entity = entities
+            .iter()
+            .find(|(metric, _)| *metric == row.metric)
+            .map(|(_, entity)| entity);
+        let remove_weak = weak.clone();
+        let remove_tab_id = tab_id.to_string();
+        let metric = row.metric;
+        section = section.child(render_threshold_row(
+            palette,
+            mono_font,
+            ui_font,
+            row,
+            entity,
+            disabled,
+            move |cx| {
+                let _ = remove_weak.update(cx, |view, cx| {
+                    view.remove_load_test_threshold(&remove_tab_id, metric, cx);
+                });
+            },
+            cx,
+        ));
+    }
+
+    let missing = load_test.missing_threshold_metrics();
+    if !missing.is_empty() {
+        let tab_id = tab_id.to_string();
+        let button = Button::new("load-test-add-threshold")
+            .neutral_ghost(cx, palette.accent_text)
+            .h(px(28.0))
+            .px(px(4.0))
+            .text_size(px(12.5))
+            .disabled(disabled)
+            .when(disabled, |button| button.opacity(0.5))
+            .child(
+                h_flex()
+                    .items_center()
+                    .gap(px(6.0))
+                    .child(Icon::new(IconName::Plus).small())
+                    .child(t!("load_test.thresholds.add")),
+            );
+        let button = if disabled {
+            button.into_any_element()
+        } else {
+            button
+                .dropdown_menu(move |mut menu, _, _| {
+                    for metric in &missing {
+                        let metric = *metric;
+                        let item_weak = weak.clone();
+                        let tab_id = tab_id.clone();
+                        menu =
+                            menu.item(PopupMenuItem::new(threshold_metric_label(metric)).on_click(
+                                move |_, _, cx| {
+                                    let _ = item_weak.update(cx, |view, cx| {
+                                        view.add_load_test_threshold(&tab_id, metric, cx);
+                                    });
+                                },
+                            ));
+                    }
+                    menu
+                })
+                .into_any_element()
+        };
+        section = section.child(h_flex().child(button));
+    }
+
+    section.into_any_element()
+}
+
+/// One threshold row: the metric, its operator, the limit input with its unit, and a remove
+/// button. The border turns `danger` while the limit does not parse.
+#[allow(clippy::too_many_arguments)]
+fn render_threshold_row(
+    palette: &Palette,
+    mono_font: &SharedString,
+    ui_font: &SharedString,
+    row: &ThresholdInput,
+    entity: Option<&Entity<InputState>>,
+    disabled: bool,
+    on_remove: impl Fn(&mut App) + 'static,
+    cx: &App,
+) -> AnyElement {
+    let metric = row.metric;
+    let invalid = row.resolved().is_none();
+    let border = if invalid {
+        palette.danger
+    } else {
+        palette.border
+    };
+    let mut pill = h_flex()
+        .id(SharedString::from(format!(
+            "load-test-threshold-{metric:?}"
+        )))
+        .h(px(CONTROL_HEIGHT))
+        .items_center()
+        .gap(px(8.0))
+        .pl(px(10.0))
+        .pr(px(4.0))
+        .rounded(px(RADIUS_MD - 1.0))
+        .border_1()
+        .border_color(border)
+        .when(!disabled && !invalid, |pill| {
+            let border_strong = palette.border_strong;
+            pill.hover(move |style| style.border_color(border_strong))
+        })
+        .bg(palette.raised)
+        .text_size(px(12.5))
+        .child(
+            div()
+                .min_w(px(52.0))
+                .flex_none()
+                .text_color(palette.fg_muted)
+                .child(threshold_metric_label(metric)),
+        )
+        .child(
+            div()
+                .flex_none()
+                .font_family(mono_font.clone())
+                .text_color(palette.fg_subtle)
+                .child(metric.operator()),
+        );
+    if let Some(entity) = entity {
+        pill = pill.child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .font_family(mono_font.clone())
+                .child(
+                    Input::new(entity)
+                        .context_menu(edit_menu(entity, cx))
+                        .px_0()
+                        .h(px(CONTROL_HEIGHT))
+                        .py_0()
+                        .bordered(false)
+                        .disabled(disabled)
+                        .bg(palette.bg.opacity(0.0)),
+                ),
+        );
+    }
+    let unit = threshold_unit(metric);
+    if !unit.is_empty() {
+        pill = pill.child(
+            div()
+                .flex_none()
+                .font_family(ui_font.clone())
+                .text_size(px(12.0))
+                .text_color(palette.fg_subtle)
+                .child(unit),
+        );
+    }
+    pill.child(
+        IconButton::new(
+            SharedString::from(format!("load-test-threshold-remove-{metric:?}")),
+            IconName::Close,
+        )
+        .disabled(disabled)
+        .on_click(move |_, _, cx| on_remove(cx)),
+    )
+    .into_any_element()
 }
 
 /// A switch row ("Stop on errors", "Reuse connections"): a label and a hint on the left, the

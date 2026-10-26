@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 use postino_core::{Environment, KeyValue, Method, Request};
 use postino_http::SendOptions;
 use postino_http::test_support::{CapturedRequest, StubResponse, TestServer};
-use postino_load::{LoadConfig, LoadRun, LoadTarget, StatusKey};
+use postino_load::{LoadConfig, LoadRun, LoadTarget, SampleLog, StatusKey};
 use postino_runner::{Runner, SessionEnv};
 use postino_script::QuickJsEngine;
 use pretty_assertions::assert_eq;
@@ -309,4 +309,144 @@ fn without_reuse_every_request_opens_a_connection() {
         connections > requests / 2,
         "{requests} requests over only {connections} connections"
     );
+}
+
+#[test]
+fn the_summary_log_has_one_sample_per_request_with_resolved_urls_and_sizes() {
+    let server = TestServer::start();
+    let handle = server.serve(|captured: CapturedRequest| {
+        if captured.url == "/missing" {
+            StubResponse::new(404).with_body("nope \n  nope")
+        } else {
+            StubResponse::new(200).with_body("hello")
+        }
+    });
+    let mut environment = Environment::default();
+    environment
+        .variables
+        .push(KeyValue::new("host", server.url()));
+
+    let config = LoadConfig {
+        targets: vec![
+            LoadTarget::new("ok", get("{{host}}/ok")),
+            LoadTarget::new("missing", get("{{host}}/missing")),
+        ],
+        vus: 3,
+        duration: Duration::from_millis(600),
+        ramp_up: Duration::ZERO,
+        think_time: Duration::from_millis(5),
+        stop_on_error_rate: None,
+        reuse_connections: true,
+    };
+    let run = LoadRun::start(config, environment, SessionEnv::new(), runner());
+
+    // Poll like the UI does: the copy only ever grows, and every call appends only what is new.
+    let mut polled = SampleLog::new();
+    let mut previous_len = 0;
+    while !run.is_finished() {
+        std::thread::sleep(Duration::from_millis(50));
+        run.read_samples(&mut polled);
+        assert!(polled.len() >= previous_len);
+        previous_len = polled.len();
+    }
+    let summary = run.join();
+    drop(server);
+    handle.join().expect("test server thread panicked");
+
+    let log = &summary.log;
+    assert_eq!(log.len() as u64, summary.snapshot.total);
+    assert!(
+        log.len() > 4,
+        "expected several requests, got {}",
+        log.len()
+    );
+    assert_eq!(log.urls().len(), 2, "URLs are interned: {:?}", log.urls());
+
+    for sample in log.samples() {
+        let url = log.url(sample.url);
+        match sample.target {
+            0 => {
+                assert!(url.ends_with("/ok") && url.starts_with("http://"), "{url}");
+                assert_eq!(sample.status, StatusKey::Code(200));
+                assert_eq!(sample.size, 5);
+                assert!(!sample.is_error);
+            }
+            1 => {
+                assert!(
+                    url.ends_with("/missing") && url.starts_with("http://"),
+                    "{url}"
+                );
+                assert_eq!(sample.status, StatusKey::Code(404));
+                assert_eq!(sample.size, 12);
+                assert!(sample.is_error);
+            }
+            other => panic!("unexpected target {other}"),
+        }
+        assert!(sample.vu < 3);
+        assert!(sample.latency_us > 0);
+        assert!(sample.elapsed_ms < 5_000);
+    }
+    assert_eq!(
+        summary.snapshot.error_examples.len(),
+        1,
+        "{:?}",
+        summary.snapshot.error_examples
+    );
+    assert_eq!(
+        summary.snapshot.error_examples[0].text,
+        "HTTP 404 \u{b7} nope nope"
+    );
+
+    // What the polling loop copied while the run was live is a prefix of the final log.
+    assert!(polled.len() <= log.len());
+    assert_eq!(polled.samples(), &log.samples()[..polled.len()]);
+    assert_eq!(polled.urls(), &log.urls()[..polled.urls().len()]);
+}
+
+#[test]
+fn read_samples_called_repeatedly_ends_with_the_same_log_as_the_summary() {
+    let server = TestServer::start();
+    let handle = server.serve(|_| StubResponse::new(200));
+    let config = LoadConfig {
+        targets: vec![LoadTarget::new("a", get(format!("{}/a", server.url())))],
+        vus: 2,
+        duration: Duration::from_secs(5),
+        ramp_up: Duration::ZERO,
+        think_time: Duration::from_millis(5),
+        stop_on_error_rate: None,
+        reuse_connections: true,
+    };
+    let run = LoadRun::start(config, Environment::default(), SessionEnv::new(), runner());
+
+    // Poll until the log has grown twice, with a generous deadline for a loaded machine.
+    let mut polled = SampleLog::new();
+    let deadline = Instant::now() + Duration::from_secs(4);
+    let mut early = 0;
+    while Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(50));
+        run.read_samples(&mut polled);
+        if early == 0 {
+            early = polled.len();
+        } else if polled.len() > early {
+            break;
+        }
+    }
+    assert!(early > 0, "no sample was recorded");
+    assert!(
+        polled.len() > early,
+        "the log did not grow while the run went on"
+    );
+
+    run.stop();
+    // Wait for the supervisor to join every virtual user, then read the final state.
+    while !run.is_finished() {
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    run.read_samples(&mut polled);
+    run.read_samples(&mut polled);
+    let summary = run.join();
+    drop(server);
+    handle.join().expect("test server thread panicked");
+
+    assert_eq!(polled, summary.log);
 }

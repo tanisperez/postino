@@ -8,7 +8,7 @@ use std::io::Write;
 
 use telaio_app::cli;
 
-use crate::IDENTITY;
+use crate::display_identity;
 
 /// The command line guide `--help` links to.
 pub const DOCS_URL: &str = "https://postino.tanis.codes/docs/command-line.html";
@@ -50,9 +50,9 @@ impl Info {
     }
 }
 
-/// `Postino X.Y.Z`.
+/// `Postino X.Y.Z`, with the commit of a development build: `Postino X.Y.Z-dev (4e74e2d)`.
 fn version_line() -> String {
-    cli::version_line(&IDENTITY)
+    cli::version_line(&display_identity())
 }
 
 /// The `--help` text.
@@ -75,7 +75,7 @@ Environment variables:
   POSTINO_AUTOSEND  Request to open and send right away, such as auth/login.postino
 
 {footer}",
-        header = cli::help_header(&IDENTITY, TAGLINE),
+        header = cli::help_header(&display_identity(), TAGLINE),
         footer = cli::help_footer(DOCS_URL),
     )
 }
@@ -105,11 +105,12 @@ mod tests {
     }
 
     #[test]
-    fn the_version_output_is_the_name_and_the_package_version() {
+    fn the_version_output_is_the_name_and_the_version_label() {
         assert_eq!(
             Info::Version.output(),
-            format!("Postino {}\n", env!("CARGO_PKG_VERSION"))
+            format!("Postino {}\n", crate::version_label())
         );
+        assert!(Info::Version.output().contains(env!("CARGO_PKG_VERSION")));
     }
 
     #[test]

@@ -226,6 +226,9 @@ Found in the 2026-09-30 investigation (#32, #33, #34). Keep these rules in every
 - After upgrading `gpui-kit`, re-check the idle rule above. gpui-base 0.6.6 had a bug where an
   input whose text was set while unfocused kept blinking its cursor forever, re-rendering the
   window twice per second.
+- Dev profile: dependencies at `opt-level = 2`. Unoptimized gpui blocked the UI thread for most
+  of a load test while scrolling (37 s of 45), so a debug build alone is no measure of the UI's
+  speed; the workspace's own crates stay unoptimized.
 - Release profile: fat LTO, one codegen unit, stripped (see the comment in `Cargo.toml`). Put
   alternate builds (another profile, a dependency upgrade) under a subdirectory of `target/`:
   a full gpui build takes several GB.

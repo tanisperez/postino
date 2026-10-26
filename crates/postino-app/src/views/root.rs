@@ -175,6 +175,16 @@ pub struct AppView {
     /// in the background while another tab is active, so this is a map, not a single slot. See
     /// `views/load_test/run.rs`.
     pub(crate) load_runs: HashMap<String, crate::views::load_test::run::LoadRunHandle>,
+    /// The load test export in progress, if any, see `views/load_test/export.rs`.
+    pub(crate) export_job: Option<crate::views::load_test::export::ExportJob>,
+    /// The welcome tab's scroll position, shared by its area and its scrollbars.
+    pub(crate) welcome_scroll: ScrollHandle,
+    /// The latency distribution bar under the pointer, for its crosshair and tooltip. Only the
+    /// active tab shows a distribution, so one slot is enough.
+    pub(crate) latency_hover: Option<usize>,
+    /// The background computations of every load test tab's results
+    /// (`views/load_test/results_data.rs`).
+    pub(crate) load_result_tasks: crate::views::load_test::results_data::LoadResultTaskMap,
     /// The activity rail's section and collapsed state (`views/navigation.rs`).
     pub(crate) nav: state::navigation::NavState,
     /// The Environments panel's rows, loaded when the workspace or an environment changes
@@ -320,6 +330,10 @@ impl AppView {
             snippet_language: SnippetLanguage::Curl,
             load_test_entities: crate::views::load_test::LoadTestEntities::default(),
             load_runs: HashMap::new(),
+            latency_hover: None,
+            welcome_scroll: ScrollHandle::new(),
+            export_job: None,
+            load_result_tasks: HashMap::new(),
             nav: state::navigation::NavState::default(),
             env_rows: Vec::new(),
             git_branch: None,
@@ -1609,6 +1623,7 @@ impl Render for AppView {
             .bg(background)
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(Self::on_save_action))
+            .on_action(cx.listener(Self::on_copy_load_test_summary_action))
             .on_action(cx.listener(Self::on_send_action))
             .on_action(cx.listener(Self::on_open_settings_action))
             .on_action(cx.listener(Self::on_open_command_palette_action))

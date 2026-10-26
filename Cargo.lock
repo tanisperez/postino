@@ -1654,6 +1654,9 @@ name = "float-cmp"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98de4bbd547a563b716d8dfa9aad1cb19bfab00f4fa09a6a4ed21dbcf44ce9c4"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "float-ord"
@@ -1710,15 +1713,6 @@ name = "font-types"
 version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b38ad915f6dadd993ced50848a8291a543bd41ca62bc10740d5e64e2ab4cfd7"
-dependencies = [
- "bytemuck",
-]
-
-[[package]]
-name = "font-types"
-version = "0.12.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8eb065f3251655b3c90e22e5e363f310fc5332fb3402e37bbc94752283248f6"
 dependencies = [
  "bytemuck",
 ]
@@ -3498,6 +3492,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "krilla"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27da593198b20eeba65caeb73c2bbeec3e53ab08fa549898312ce81c4fce5e33"
+dependencies = [
+ "base64 0.22.1",
+ "bumpalo",
+ "flate2",
+ "float-cmp",
+ "indexmap",
+ "pdf-writer",
+ "rustc-hash 2.1.3",
+ "rustybuzz",
+ "siphasher",
+ "skrifa 0.42.1",
+ "smallvec",
+ "subsetter",
+ "tiny-skia-path 0.12.0",
+ "xmp-writer",
+ "yoke",
+]
+
+[[package]]
 name = "kurbo"
 version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4631,6 +4648,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdf-writer"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5e456864a7a304047bff84977dc6fb162bd956475d40ba50b2dcecaada7f753"
+dependencies = [
+ "bitflags 2.13.2",
+ "itoa",
+ "memchr",
+ "ryu",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4838,9 +4867,10 @@ dependencies = [
 
 [[package]]
 name = "postino-app"
-version = "0.3.0"
+version = "0.4.0-dev"
 dependencies = [
  "anyhow",
+ "chrono",
  "dirs 7.0.0",
  "dunce",
  "embed-resource",
@@ -4867,14 +4897,14 @@ dependencies = [
 
 [[package]]
 name = "postino-cli"
-version = "0.3.0"
+version = "0.4.0-dev"
 dependencies = [
  "telaio-app",
 ]
 
 [[package]]
 name = "postino-core"
-version = "0.3.0"
+version = "0.4.0-dev"
 dependencies = [
  "base64 0.23.1",
  "fastrand",
@@ -4885,7 +4915,7 @@ dependencies = [
 
 [[package]]
 name = "postino-format"
-version = "0.3.0"
+version = "0.4.0-dev"
 dependencies = [
  "postino-core",
  "pretty_assertions",
@@ -4896,7 +4926,7 @@ dependencies = [
 
 [[package]]
 name = "postino-http"
-version = "0.3.0"
+version = "0.4.0-dev"
 dependencies = [
  "log",
  "postino-core",
@@ -4911,8 +4941,10 @@ dependencies = [
 
 [[package]]
 name = "postino-load"
-version = "0.3.0"
+version = "0.4.0-dev"
 dependencies = [
+ "flate2",
+ "krilla",
  "postino-core",
  "postino-http",
  "postino-runner",
@@ -4920,13 +4952,14 @@ dependencies = [
  "pretty_assertions",
  "serde",
  "serde_json",
+ "skrifa 0.42.1",
  "tempfile",
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "postino-runner"
-version = "0.3.0"
+version = "0.4.0-dev"
 dependencies = [
  "log",
  "postino-core",
@@ -4940,7 +4973,7 @@ dependencies = [
 
 [[package]]
 name = "postino-script"
-version = "0.3.0"
+version = "0.4.0-dev"
 dependencies = [
  "postino-core",
  "pretty_assertions",
@@ -4952,7 +4985,7 @@ dependencies = [
 
 [[package]]
 name = "postino-workspace"
-version = "0.3.0"
+version = "0.4.0-dev"
 dependencies = [
  "log",
  "postino-core",
@@ -5379,18 +5412,17 @@ checksum = "7b634fabf032fab15307ffd272149b622260f55974d9fad689292a5d33df02e5"
 dependencies = [
  "bytemuck",
  "core_maths",
- "font-types 0.11.3",
+ "font-types",
 ]
 
 [[package]]
 name = "read-fonts"
-version = "0.41.0"
+version = "0.39.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "046a7d674daf459825b32f5062056d6882db0d2f5a479fbd76ccfc870ac18709"
+checksum = "c4ed38b89c2c77ff968c524145ad65fb010f38af5c7a224b53b81d47ac2daa81"
 dependencies = [
  "bytemuck",
- "font-types 0.12.5",
- "once_cell",
+ "font-types",
 ]
 
 [[package]]
@@ -6209,12 +6241,12 @@ dependencies = [
 
 [[package]]
 name = "skrifa"
-version = "0.44.0"
+version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "819ab7d62b1d3e72d9d9dea5650bac30424f9111364bb94928dbf5ecad1baa68"
+checksum = "0c34617370ae968efb7161bb2beb517d9084659aae19e24b89e3db25b46e4564"
 dependencies = [
  "bytemuck",
- "read-fonts 0.41.0",
+ "read-fonts 0.39.2",
 ]
 
 [[package]]
@@ -6381,6 +6413,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "subsetter"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38803281d1c23166c5ebcb455439a5d2afe711cc909cf88af72448c297756ad6"
+dependencies = [
+ "kurbo 0.13.1",
+ "rustc-hash 2.1.3",
+ "skrifa 0.42.1",
+ "write-fonts",
+]
+
+[[package]]
 name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6418,7 +6462,7 @@ version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c2499c2d826531388872b2268718aed907a39bd785ab0dcfe57fab26283f92e"
 dependencies = [
- "skrifa 0.44.0",
+ "skrifa 0.42.1",
  "yazi",
  "zeno",
 ]
@@ -6546,8 +6590,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-app"
-version = "0.4.0"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.4.0#4511a24f9ddc9130304ca5511728d8dd012ec8c6"
+version = "0.6.0"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.6.0#da4b74f57384e8d9461e44dc9ee8370b71b0066a"
 dependencies = [
  "chrono",
  "dirs 7.0.0",
@@ -6564,8 +6608,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-ui"
-version = "0.4.0"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.4.0#4511a24f9ddc9130304ca5511728d8dd012ec8c6"
+version = "0.6.0"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.6.0#da4b74f57384e8d9461e44dc9ee8370b71b0066a"
 dependencies = [
  "gpui-kit",
  "rust-i18n",
@@ -6574,8 +6618,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-update"
-version = "0.4.0"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.4.0#4511a24f9ddc9130304ca5511728d8dd012ec8c6"
+version = "0.6.0"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.6.0#da4b74f57384e8d9461e44dc9ee8370b71b0066a"
 dependencies = [
  "dirs 7.0.0",
  "log",
@@ -6714,7 +6758,7 @@ dependencies = [
  "cfg-if",
  "log",
  "png 0.17.16",
- "tiny-skia-path",
+ "tiny-skia-path 0.11.4",
 ]
 
 [[package]]
@@ -6722,6 +6766,17 @@ name = "tiny-skia-path"
 version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c9e7fc0c2e86a30b117d0462aa261b72b7a99b7ebd7deb3a14ceda95c5bdc93"
+dependencies = [
+ "arrayref",
+ "bytemuck",
+ "strict-num",
+]
+
+[[package]]
+name = "tiny-skia-path"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edca365c3faccca67d06593c5980fa6c57687de727a03131735bb85f01fdeeb9"
 dependencies = [
  "arrayref",
  "bytemuck",
@@ -7191,7 +7246,7 @@ dependencies = [
  "siphasher",
  "strict-num",
  "svgtypes 0.15.3",
- "tiny-skia-path",
+ "tiny-skia-path 0.11.4",
  "unicode-bidi",
  "unicode-script",
  "unicode-vo",
@@ -7218,7 +7273,7 @@ dependencies = [
  "siphasher",
  "strict-num",
  "svgtypes 0.16.1",
- "tiny-skia-path",
+ "tiny-skia-path 0.11.4",
  "unicode-bidi",
  "unicode-script",
  "unicode-vo",
@@ -8419,6 +8474,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 
 [[package]]
+name = "write-fonts"
+version = "0.48.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb731d4c4d93eacc69a1ad2f270f905788a98e4a3438267bcafbe08d3431c8d8"
+dependencies = [
+ "font-types",
+ "indexmap",
+ "kurbo 0.13.1",
+ "log",
+ "read-fonts 0.39.2",
+]
+
+[[package]]
 name = "writeable"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8530,6 +8598,12 @@ name = "xmlwriter"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
+
+[[package]]
+name = "xmp-writer"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9440ea3e5aeabb0ac63af70daf835274065238cdd0cec83418f417eae38bacee"
 
 [[package]]
 name = "y4m"
