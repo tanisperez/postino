@@ -20,7 +20,7 @@ help:
 	@echo "  test          Run all tests"
 	@echo "  clean         Remove build artifacts"
 	@echo "  screenshots   Regenerate the website screenshots (site/img)"
-	@echo "  video         Record the website demo video (site/video)"
+	@echo "  video         Record the website videos (site/video)"
 	@echo "  docs          Build the user documentation (site/docs-src into site/docs)"
 	@echo "  site          Build the documentation and serve the website on http://localhost:8000"
 	@echo "  sample-server Start the local server of the sample suite (HTTP 8080, HTTPS 8443 to 8447)"

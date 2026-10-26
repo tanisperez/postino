@@ -146,7 +146,8 @@ class Handler(BaseHTTPRequestHandler):
                 STORE[id_].update({k: v for k, v in body.items() if k != "id"})
                 return self.send_json(200, STORE[id_])
             if method == "DELETE":
-                del STORE[id_]
+                # Nothing is removed: a load test of the whole books folder deletes the book its
+                # create request made, then gets and updates it again.
                 return self.send_json(204)
         if path == "/orders" and method == "GET":
             return self.send_json(200, {"data": [
