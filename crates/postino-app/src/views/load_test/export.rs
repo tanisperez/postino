@@ -680,11 +680,24 @@ impl AppView {
             .map(|workspace| workspace.root().to_path_buf())
             .or_else(dirs::home_dir)
             .unwrap_or_else(|| PathBuf::from("."));
-        let receiver = cx.prompt_for_new_path(&directory, Some(&source.file_name(format)));
+        // `POSTINO_EXPORT_DIR`, a hidden debug hook for the website's screenshots: saves there
+        // under the suggested name instead of asking, since scripts cannot drive the native dialog.
+        let preset = std::env::var_os("POSTINO_EXPORT_DIR")
+            .map(|dir| PathBuf::from(dir).join(source.file_name(format)));
+        let receiver = preset
+            .is_none()
+            .then(|| cx.prompt_for_new_path(&directory, Some(&source.file_name(format))));
         let source = Arc::new(source);
         cx.spawn_in(window, async move |this, cx| {
-            let Ok(Ok(Some(path))) = receiver.await else {
-                return;
+            let path = match (preset, receiver) {
+                (Some(path), _) => path,
+                (None, Some(receiver)) => {
+                    let Ok(Ok(Some(path))) = receiver.await else {
+                        return;
+                    };
+                    path
+                }
+                (None, None) => return,
             };
             let progress = Arc::new(Progress::new(source.steps(format)));
             let started = this.update_in(cx, |view, window, cx| {
