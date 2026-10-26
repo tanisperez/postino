@@ -109,9 +109,9 @@
 
                 <div class="hero-shot">
                     <div class="shot">
-                        <img class="light" src="img/hero-light.webp" width="2018" height="1282" loading="lazy" fetchpriority="high"
+                        <img class="light" src="img/hero-light.webp" width="2220" height="1356" loading="lazy" fetchpriority="high"
                             alt="The Postino window: a sidebar with request folders, a GET request to a books API and its JSON response.">
-                        <img class="dark" src="img/hero-dark.webp" width="2018" height="1282" loading="lazy" fetchpriority="high"
+                        <img class="dark" src="img/hero-dark.webp" width="2220" height="1356" loading="lazy" fetchpriority="high"
                             alt="The Postino window: a sidebar with request folders, a GET request to a books API and its JSON response.">
                     </div>
                 </div>
@@ -133,16 +133,100 @@
             <div class="wrap">
                 <div class="section-head">
                     <span class="kicker">See it in action</span>
-                    <h2>From a request to a load test</h2>
-                    <p>Open a request, send it and check its tests, jump to another with the command palette, then point a load test at it. All from files on your disk.</p>
+                    <h2>From a file to a passing test</h2>
+                    <p>Open a request, send it and check its tests, then jump to another one with the command palette. All from plain files on your disk.</p>
                 </div>
                 <div class="demo-video">
-                    <video autoplay muted loop playsinline preload="metadata" width="1600" height="980"
+                    <video autoplay muted loop playsinline preload="metadata" width="1600" height="982"
                         poster="video/demo-poster.webp"
-                        aria-label="Postino in use: switching to the dark theme, sending a request and reading its passing tests and script, opening another request from the command palette and sending it, and running a short load test with live throughput and latency charts.">
+                        aria-label="Postino in use: switching to the dark theme, sending a request and reading its passing tests and script, then opening another request from the command palette and sending it.">
                         <source src="video/demo.webm" type="video/webm; codecs=av01.0.09M.08">
                         <source src="video/demo.mp4" type="video/mp4">
                     </video>
+                </div>
+            </div>
+        </section>
+
+        <section class="section section-alt" id="load-testing">
+            <div class="wrap">
+                <div class="section-head">
+                    <span class="kicker">Load testing</span>
+                    <h2>Load test your API without another tool</h2>
+                    <p>Point a load test at a request or a whole folder, with the same environments and scripts. Watch it live, set the goals it must meet, and dig into every request it made.</p>
+                </div>
+                <div class="demo-video">
+                    <video autoplay muted loop playsinline preload="metadata" width="1600" height="982"
+                        poster="video/loadtest-poster.webp"
+                        aria-label="A load test in Postino: choosing virtual users, ramp-up and a p95 goal, running it with live throughput and latency, the passed thresholds, selecting a window of the chart, the latency distribution compared with the previous run, and exporting a PDF report.">
+                        <source src="video/loadtest.webm" type="video/webm; codecs=av01.0.09M.08">
+                        <source src="video/loadtest.mp4" type="video/mp4">
+                    </video>
+                </div>
+
+                <div class="features load-features">
+                    <article class="feature">
+                        <div class="copy">
+                            <h3>Live results, with goals</h3>
+                            <div class="text">
+                                <p>Choose virtual users, duration, ramp-up and think time, and see requests per second and latency second by second. Add thresholds and the run tells you whether it passed.</p>
+                                <ul class="checks">
+                                    <li>Requests per second, p50, p95, p99 and error rate, each compared with an earlier run</li>
+                                    <li>Goals on any of them, drawn on the chart and checked at the end</li>
+                                    <li>Drag over the chart to study one stretch of the run</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="shot">
+                            <img class="light" src="img/loadtest-light.webp" width="2220" height="1356" loading="lazy"
+                                alt="A finished load test: its KPIs compared with the previous run, a passed p95 goal, and the performance over time chart with the virtual users.">
+                            <img class="dark" src="img/loadtest-dark.webp" width="2220" height="1356" loading="lazy"
+                                alt="A finished load test: its KPIs compared with the previous run, a passed p95 goal, and the performance over time chart with the virtual users.">
+                        </div>
+                    </article>
+
+                    <article class="feature">
+                        <div class="copy">
+                            <h3>Every latency, not an average</h3>
+                            <div class="text">
+                                <p>Every request of the run is kept. See how latency spreads, request by request, and how it moved since the last run on the same scale.</p>
+                                <ul class="checks">
+                                    <li>Latency distribution stacked by request, linear or logarithmic</li>
+                                    <li>Percentiles up to the maximum, and a curve of every percentile</li>
+                                    <li>Each request with its status, latency and virtual user, with filters and the errors grouped</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="shot">
+                            <img class="light" src="img/loadtest-latency-light.webp" width="2220" height="1356" loading="lazy"
+                                alt="The Latency tab: the latency distribution compared with the previous run and the percentiles of each request.">
+                            <img class="dark" src="img/loadtest-latency-dark.webp" width="2220" height="1356" loading="lazy"
+                                alt="The Latency tab: the latency distribution compared with the previous run and the percentiles of each request.">
+                        </div>
+                    </article>
+
+                    <article class="feature">
+                        <div class="copy">
+                            <h3>Reports ready to share</h3>
+                            <div class="text">
+                                <p>Export a run, or only the window you selected, and attach it to a ticket or a pull request. Runs are saved next to your requests, so you can open any of them later.</p>
+                                <ul class="checks">
+                                    <li>A PDF report with charts, or the same report in Markdown</li>
+                                    <li>Every request as CSV, or the whole run as JSON</li>
+                                    <li>The summary copied as Markdown with <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>C</kbd></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="shot report-pair">
+                            <div class="report-menu">
+                                <img class="light" src="img/loadtest-export-light.webp" width="1630" height="620" loading="lazy"
+                                    alt="The Export menu of a load test: Markdown, PDF, CSV and JSON, and copying the summary as Markdown.">
+                                <img class="dark" src="img/loadtest-export-dark.webp" width="1630" height="620" loading="lazy"
+                                    alt="The Export menu of a load test: Markdown, PDF, CSV and JSON, and copying the summary as Markdown.">
+                            </div>
+                            <img class="report-page" src="img/report.webp" width="1323" height="1310" loading="lazy"
+                                alt="The first page of a PDF load test report: the verdict, the KPIs and the performance over time chart.">
+                        </div>
+                    </article>
                 </div>
             </div>
         </section>
@@ -206,9 +290,9 @@
                             </div>
                         </div>
                         <div class="shot">
-                            <img class="light" src="img/scripts-light.webp" width="2018" height="1282" loading="lazy"
+                            <img class="light" src="img/scripts-light.webp" width="2220" height="1356" loading="lazy"
                                 alt="A request with a post response script and its passing tests.">
-                            <img class="dark" src="img/scripts-dark.webp" width="2018" height="1282" loading="lazy"
+                            <img class="dark" src="img/scripts-dark.webp" width="2220" height="1356" loading="lazy"
                                 alt="A request with a post response script and its passing tests.">
                         </div>
                     </article>
@@ -226,30 +310,10 @@
                             </div>
                         </div>
                         <div class="shot">
-                            <img class="light" src="img/environments-light.webp" width="2018" height="1282" loading="lazy"
+                            <img class="light" src="img/environments-light.webp" width="2220" height="1356" loading="lazy"
                                 alt="The environment editor: the staging variables, two of them stored in the gitignored local file and masked.">
-                            <img class="dark" src="img/environments-dark.webp" width="2018" height="1282" loading="lazy"
+                            <img class="dark" src="img/environments-dark.webp" width="2220" height="1356" loading="lazy"
                                 alt="The environment editor: the staging variables, two of them stored in the gitignored local file and masked.">
-                        </div>
-                    </article>
-
-                    <article class="feature">
-                        <div class="copy">
-                            <h3>Load testing built in</h3>
-                            <div class="text">
-                                <p>Point a load test at a request or a whole folder, choose virtual users, duration and ramp up, and watch throughput and latency live. Every run is saved, so you can compare it with the last one.</p>
-                                <ul class="checks">
-                                    <li>Requests per second, p50, p95 and p99 latency, error rate</li>
-                                    <li>Start a test from the Load tests panel, with every run of the session at hand</li>
-                                    <li>Run history stored next to your requests</li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="shot">
-                            <img class="light" src="img/loadtest-light.webp" width="2018" height="1282" loading="lazy"
-                                alt="The Load tests panel and a finished load test run with throughput and latency charts.">
-                            <img class="dark" src="img/loadtest-dark.webp" width="2018" height="1282" loading="lazy"
-                                alt="The Load tests panel and a finished load test run with throughput and latency charts.">
                         </div>
                     </article>
 
@@ -261,9 +325,9 @@
                             </div>
                         </div>
                         <div class="shot">
-                            <img class="light" src="img/palette-light.webp" width="2018" height="1282" loading="lazy"
+                            <img class="light" src="img/palette-light.webp" width="2220" height="1356" loading="lazy"
                                 alt="The command palette listing requests and actions.">
-                            <img class="dark" src="img/palette-dark.webp" width="2018" height="1282" loading="lazy"
+                            <img class="dark" src="img/palette-dark.webp" width="2220" height="1356" loading="lazy"
                                 alt="The command palette listing requests and actions.">
                         </div>
                     </article>
@@ -276,9 +340,9 @@
                             </div>
                         </div>
                         <div class="shot">
-                            <img class="light" src="img/snippet-light.webp" width="2018" height="1282" loading="lazy"
+                            <img class="light" src="img/snippet-light.webp" width="2220" height="1356" loading="lazy"
                                 alt="The code snippet dialog showing a curl command.">
-                            <img class="dark" src="img/snippet-dark.webp" width="2018" height="1282" loading="lazy"
+                            <img class="dark" src="img/snippet-dark.webp" width="2220" height="1356" loading="lazy"
                                 alt="The code snippet dialog showing a curl command.">
                         </div>
                     </article>
@@ -291,9 +355,9 @@
                             </div>
                         </div>
                         <div class="shot">
-                            <img class="light" src="img/settings-light.webp" width="2018" height="1282" loading="lazy"
+                            <img class="light" src="img/settings-light.webp" width="2220" height="1356" loading="lazy"
                                 alt="The Settings window with appearance options.">
-                            <img class="dark" src="img/settings-dark.webp" width="2018" height="1282" loading="lazy"
+                            <img class="dark" src="img/settings-dark.webp" width="2220" height="1356" loading="lazy"
                                 alt="The Settings window with appearance options.">
                         </div>
                     </article>
@@ -309,9 +373,9 @@
                     <p>Postino comes with a light and a dark theme built from the same palette, so neither one feels like an afterthought. Pick one in Settings or let it follow your system.</p>
                 </div>
                 <div class="themes">
-                    <img class="light" src="img/hero-light.webp" width="2018" height="1282" loading="lazy"
+                    <img class="light" src="img/hero-light.webp" width="2220" height="1356" loading="lazy"
                         alt="Postino in its light theme.">
-                    <img class="dark" src="img/hero-dark.webp" width="2018" height="1282" loading="lazy"
+                    <img class="dark" src="img/hero-dark.webp" width="2220" height="1356" loading="lazy"
                         alt="Postino in its dark theme, over the right half of the same window.">
                 </div>
                 <div class="themes-labels" aria-hidden="true"><span>Light</span><span>Dark</span></div>

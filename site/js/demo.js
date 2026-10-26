@@ -1,11 +1,12 @@
-// The demo video plays on its own, muted and in a loop. With reduced motion it stays on its
-// poster and shows the player controls instead, so it only plays when asked.
+// The demo videos play on their own, muted and in a loop. With reduced motion they stay on their
+// posters and show the player controls instead, so they only play when asked.
 (function () {
-    var video = document.querySelector(".demo-video video");
-    if (!video || !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         return;
     }
-    video.removeAttribute("autoplay");
-    video.pause();
-    video.controls = true;
+    document.querySelectorAll(".demo-video video").forEach(function (video) {
+        video.removeAttribute("autoplay");
+        video.pause();
+        video.controls = true;
+    });
 })();

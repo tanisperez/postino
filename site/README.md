@@ -44,10 +44,11 @@ documentation pages. How it is deployed: `docs/releasing.md`.
 - `fonts/`: Geist and Geist Mono (SIL OFL 1.1, `fonts/OFL.txt`), subset to Latin and converted to
   WOFF2 from the TTFs bundled by the telaio crate (`crates/telaio-ui/assets/fonts/`) with `pyftsubset`.
 - `img/`: the logo (`packaging/icons/`) and the app screenshots, WebP only.
-- `video/`: the demo video of the home page, as AV1 WebM, H.264 MP4 and a WebP poster. It plays
-  muted and in a loop; `js/demo.js` stops it and shows the controls with reduced motion.
+- `video/`: the two videos of the home page (`demo`, and `loadtest` in the Load testing section),
+  each as AV1 WebM, H.264 MP4 and a WebP poster. They play muted and in a loop; `js/demo.js` stops
+  them and shows the controls with reduced motion.
 - `screenshots/`: the tooling that regenerates `img/*-light.webp` and `img/*-dark.webp`
-  (`make screenshots`), the video (`make video`) and the Open Graph card (`og-image.sh`). It is
+  (`make screenshots`), the videos (`make video`) and the Open Graph card (`og-image.sh`). It is
   not published.
 
 Preview locally with `make site`, which builds the documentation and serves the site on

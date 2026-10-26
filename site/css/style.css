@@ -798,6 +798,35 @@ kbd {
     margin: 16px -1.4% 0;
 }
 
+/* Load testing: its feature rows sit under the section's video. */
+.load-features {
+    margin-top: 120px;
+}
+
+/* The Export menu next to the first page of the PDF report it makes. The page is always light,
+   like the report, so it gets a sheet's border and shadow on either theme. */
+.feature .report-pair {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 40px;
+    align-items: center;
+    margin: 16px 0 0;
+}
+
+/* A crop of the window, so it gets the frame the full screenshots have from their own window. */
+.report-menu img {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 24px 64px -24px rgba(0, 0, 0, 0.35);
+}
+
+.report-pair .report-page {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 24px 64px -24px rgba(0, 0, 0, 0.35);
+}
+
 /* Light and dark side by side: the dark screenshot sits on top of the light one, cut on a
    diagonal, whatever theme the page uses. */
 .themes {
@@ -1102,6 +1131,10 @@ kbd {
         gap: 88px;
     }
 
+    .load-features {
+        margin-top: 88px;
+    }
+
     .highlights ul {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -1120,6 +1153,11 @@ kbd {
 @media (max-width: 640px) {
     :root {
         --gutter: 16px;
+    }
+
+    .feature .report-pair {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 24px;
     }
 
     .site-header .wrap {

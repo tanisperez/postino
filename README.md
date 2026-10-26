@@ -33,12 +33,27 @@ Environments with their variables, secrets kept apart in a gitignored `.local.en
   <img src="site/img/environments-light.webp" alt="The environment editor: the staging variables, two of them stored in the gitignored local file and masked.">
 </picture>
 
-Load testing built in, with live throughput and latency:
+## Load testing
+
+Point a load test at a request or a whole folder, with the same environments and scripts. Watch
+requests per second and latency live, set p95 or error rate goals the run must meet, compare it
+with an earlier run, and dig into every request it made. Then export it as a PDF report, Markdown,
+CSV or JSON. [Watch the video](https://postino.tanis.codes/#load-testing):
+
+<a href="https://postino.tanis.codes/#load-testing">
+  <img src="site/video/loadtest-poster.webp" alt="A finished load test in Postino: KPIs compared with the previous run, a passed p95 goal and a window selected on the performance over time chart. Links to the video on the website.">
+</a>
+
+The latency of every request, compared with the previous run on the same scale:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="site/img/loadtest-dark.webp">
-  <img src="site/img/loadtest-light.webp" alt="The Load tests panel and a finished load test run with throughput and latency charts.">
+  <source media="(prefers-color-scheme: dark)" srcset="site/img/loadtest-latency-dark.webp">
+  <img src="site/img/loadtest-latency-light.webp" alt="The Latency tab: the latency distribution compared with the previous run and the percentiles of each request.">
 </picture>
+
+A PDF report ready to attach to a ticket or a pull request:
+
+<img src="site/img/report.webp" width="480" alt="The first page of a PDF load test report: the verdict, the KPIs and the performance over time chart.">
 
 ## Install
 
