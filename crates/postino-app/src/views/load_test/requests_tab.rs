@@ -25,7 +25,7 @@ use crate::theme::metrics::RADIUS_LG;
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{
     DataAlign, DataCell, DataColumn, EmptyState, MethodBadge, NeutralButtonExt, SegmentedControl,
-    SegmentedItem, SortOrder, VirtualDataTable, checkbox_halo,
+    SegmentedItem, SortOrder, VirtualDataTable,
 };
 use crate::views::root::AppView;
 
@@ -255,6 +255,34 @@ pub(crate) fn filter_button(
         )
 }
 
+/// A checkbox drawn as a bordered filter pill, next to the [`filter_button`]s: the whole pill is
+/// the click target and lights up on hover like them. A halo around the box alone would clash
+/// with the pill's border, and one around box and label hid the box.
+pub(crate) fn filter_checkbox(
+    id: &'static str,
+    palette: &Palette,
+    label: String,
+    checked: bool,
+) -> Checkbox {
+    let (hover, pressed) = (
+        palette.hover_over(palette.raised),
+        palette.pressed_over(palette.raised),
+    );
+    Checkbox::new(id)
+        .label(SharedString::from(label))
+        .checked(checked)
+        .h(px(FILTER_HEIGHT))
+        .items_center()
+        .px(px(10.0))
+        .rounded(px(7.0))
+        .border_1()
+        .border_color(palette.border_strong)
+        .bg(palette.raised)
+        .cursor_pointer()
+        .hover(move |style| style.bg(hover))
+        .active(move |style| style.bg(pressed))
+}
+
 /// The latency filter: any latency, or at least one of three values near the run's p50, p95
 /// and p99.
 fn render_latency_filter(
@@ -355,32 +383,21 @@ fn render_only_errors(
     load_test: &LoadTestTab,
 ) -> AnyElement {
     let tab_id = tab_id.to_string();
-    h_flex()
-        .h(px(FILTER_HEIGHT))
-        .items_center()
-        .px(px(10.0))
-        .rounded(px(7.0))
-        .border_1()
-        .border_color(palette.border_strong)
-        .bg(palette.raised)
-        .child(checkbox_halo(
-            Checkbox::new("load-test-only-errors")
-                .label(SharedString::from(
-                    t!("load_test.requests.only_errors").into_owned(),
-                ))
-                .checked(load_test.request_filter.only_errors)
-                .on_click(move |checked, _, cx| {
-                    let checked = *checked;
-                    let _ = weak.update(cx, |view, cx| {
-                        view.edit_load_test_request_filter(&tab_id, cx, |filter| {
-                            filter.only_errors = checked;
-                        });
-                    });
-                }),
-            false,
-            palette,
-        ))
-        .into_any_element()
+    filter_checkbox(
+        "load-test-only-errors",
+        palette,
+        t!("load_test.requests.only_errors").into_owned(),
+        load_test.request_filter.only_errors,
+    )
+    .on_click(move |checked, _, cx| {
+        let checked = *checked;
+        let _ = weak.update(cx, |view, cx| {
+            view.edit_load_test_request_filter(&tab_id, cx, |filter| {
+                filter.only_errors = checked;
+            });
+        });
+    })
+    .into_any_element()
 }
 
 /// The lowest latency threshold, in microseconds: slower requests are drawn in `warning`.

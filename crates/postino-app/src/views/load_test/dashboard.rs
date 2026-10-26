@@ -33,8 +33,9 @@ use crate::views::root::AppView;
 
 /// Width of the "Compare with" menu, from the design.
 const COMPARE_MENU_WIDTH: f32 = 240.0;
-/// Width of the "Export" menu, from the design.
-const EXPORT_MENU_WIDTH: f32 = 320.0;
+/// Width of the "Export" menu, a little over the design's 320 px: the "Copy summary as Markdown"
+/// row does not wrap or truncate, and in Spanish and Italian its shortcut hint overflowed it.
+const EXPORT_MENU_WIDTH: f32 = 344.0;
 /// Minimum width of the header's progress bar while a run is in progress.
 const PROGRESS_MIN_WIDTH: f32 = 160.0;
 /// Height of the header's buttons.

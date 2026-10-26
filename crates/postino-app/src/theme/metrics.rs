@@ -83,6 +83,9 @@ pub const AUTH_LABEL_WIDTH: f32 = 96.0;
 pub const WELCOME_COLUMN_WIDTH: f32 = 820.0;
 /// Maximum width of the welcome tab's content column next to the sidebar.
 pub const WELCOME_COLUMN_WIDTH_NARROW: f32 = 760.0;
+/// Least width of the welcome tab's content column, padding included. A narrower tab scrolls
+/// sideways instead of cutting the files card, the theme cards and the footer.
+pub const WELCOME_MIN_WIDTH: f32 = 640.0;
 /// Space above the welcome tab's content when it fills the window.
 pub const WELCOME_TOP_PADDING: f32 = 72.0;
 /// Space above the welcome tab's content next to the sidebar.

@@ -175,6 +175,8 @@ pub struct AppView {
     /// in the background while another tab is active, so this is a map, not a single slot. See
     /// `views/load_test/run.rs`.
     pub(crate) load_runs: HashMap<String, crate::views::load_test::run::LoadRunHandle>,
+    /// The welcome tab's scroll position, shared by its area and its scrollbars.
+    pub(crate) welcome_scroll: ScrollHandle,
     /// The latency distribution bar under the pointer, for its crosshair and tooltip. Only the
     /// active tab shows a distribution, so one slot is enough.
     pub(crate) latency_hover: Option<usize>,
@@ -327,6 +329,7 @@ impl AppView {
             load_test_entities: crate::views::load_test::LoadTestEntities::default(),
             load_runs: HashMap::new(),
             latency_hover: None,
+            welcome_scroll: ScrollHandle::new(),
             load_result_tasks: HashMap::new(),
             nav: state::navigation::NavState::default(),
             env_rows: Vec::new(),

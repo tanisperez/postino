@@ -6,6 +6,7 @@
 //! touches no file. The layout follows the "Welcome tab" section of `docs/design-system.md`.
 
 use gpui_kit::assets::IconName as Lucide;
+use gpui_kit::component::scroll::Scrollbar;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -16,8 +17,8 @@ use crate::state::settings::ThemeChoice;
 use crate::state::welcome::{QUICK_START_URL, RecentWorkspace, WelcomeTab};
 use crate::theme::metrics::{
     RADIUS_LG, RADIUS_MD, RADIUS_XS, WELCOME_CHECKBOX_SIZE, WELCOME_COLUMN_WIDTH,
-    WELCOME_COLUMN_WIDTH_NARROW, WELCOME_LOGO_RADIUS, WELCOME_LOGO_SIZE, WELCOME_RECENT_NAME_WIDTH,
-    WELCOME_ROW_HEIGHT, WELCOME_TOP_PADDING, WELCOME_TOP_PADDING_NARROW,
+    WELCOME_COLUMN_WIDTH_NARROW, WELCOME_LOGO_RADIUS, WELCOME_LOGO_SIZE, WELCOME_MIN_WIDTH,
+    WELCOME_RECENT_NAME_WIDTH, WELCOME_ROW_HEIGHT, WELCOME_TOP_PADDING, WELCOME_TOP_PADDING_NARROW,
 };
 use crate::theme::{Palette, PaletteExt};
 
@@ -98,20 +99,35 @@ impl AppView {
                 &mono_font,
             ));
 
-        div()
+        let area = div()
             .id("welcome-tab")
             .size_full()
             .bg(palette.bg)
-            .overflow_y_scroll()
+            // Both ways: below its least width the column scrolls sideways instead of being cut.
+            .overflow_scroll()
+            .track_scroll(&self.welcome_scroll)
             // Stretched, not centered: the column starts at its top padding and its footer
             // sits at the bottom of the tab.
             .child(
                 h_flex()
                     .w_full()
+                    .min_w(px(WELCOME_MIN_WIDTH))
                     .min_h_full()
                     .items_stretch()
                     .justify_center()
                     .child(column),
+            );
+        // Not `overflow_scrollbar`: its wrapper stretches the content to the area's height, so
+        // the tab would no longer scroll down.
+        div()
+            .relative()
+            .size_full()
+            .child(area)
+            .child(
+                div()
+                    .absolute()
+                    .inset_0()
+                    .child(Scrollbar::new(&self.welcome_scroll)),
             )
             .into_any_element()
     }

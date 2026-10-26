@@ -25,10 +25,10 @@ pub use telaio_ui::components::{
     MODAL_INNER_RADIUS, ModalPlacement, NeutralButtonExt, PrimaryButton, ProgressBar,
     ReferenceLine, SecondaryButton, SectionLabel, SegmentedControl, SegmentedItem, SeriesStyle,
     SortOrder, ThemeCard, TimeSeriesChart, TreeRow, UnderlineTabItem, UnderlineTabs,
-    VirtualDataTable, checkbox_halo, edit_menu, framed_dialog, menu_choice_item,
-    menu_described_item, menu_shortcut_item, menu_toggle_item, modal_body, modal_footer,
-    modal_header, open_confirm_dialog, rich_menu_width, select_label_row, select_trigger,
-    switch_halo, text_field,
+    VirtualDataTable, edit_menu, framed_dialog, menu_choice_item, menu_described_item,
+    menu_shortcut_item, menu_toggle_item, modal_body, modal_footer, modal_header,
+    open_confirm_dialog, rich_menu_width, select_label_row, select_trigger, switch_halo,
+    text_field,
 };
 pub use url_bar::UrlBar;
 pub use variable_chip::VariableChip;

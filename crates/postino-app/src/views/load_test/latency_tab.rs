@@ -5,7 +5,6 @@
 //! (`results_data.rs`); nothing here costs in proportion to the run.
 
 use gpui_kit::component::button::Button;
-use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -15,7 +14,7 @@ use rust_i18n::t;
 use postino_load::latency::{CURVE_POINTS, curve_percentile};
 use postino_load::{LatencyPercentiles, LatencyScale, LatencyView, StackedHistogram};
 
-use super::requests_tab::FILTER_HEIGHT;
+use super::requests_tab::{FILTER_HEIGHT, filter_checkbox};
 use super::summary::target_row_label;
 use crate::state::load_results::{ChartSeriesKey, format_latency_ms, plain_axis};
 use crate::state::load_test::{DeltaTone, LoadTestTab};
@@ -25,7 +24,7 @@ use crate::theme::metrics::{CHART_TOOLTIP_OFFSET, CHART_TOOLTIP_TOP, RADIUS_LG, 
 use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::{
     ChartAxis, ChartSeries, EmptyState, NeutralButtonExt, SegmentedControl, SegmentedItem,
-    SeriesStyle, TimeSeriesChart, checkbox_halo,
+    SeriesStyle, TimeSeriesChart,
 };
 use crate::views::root::AppView;
 
@@ -323,31 +322,20 @@ fn render_toolbar(
     }
 
     let errors_tab_id = tab_id.to_string();
-    let include_errors = h_flex()
-        .h(px(FILTER_HEIGHT))
-        .items_center()
-        .px(px(10.0))
-        .rounded(px(7.0))
-        .border_1()
-        .border_color(palette.border_strong)
-        .bg(palette.raised)
-        .child(checkbox_halo(
-            Checkbox::new("load-test-latency-errors")
-                .label(SharedString::from(
-                    t!("load_test.latency.include_errors").into_owned(),
-                ))
-                .checked(choice.include_errors)
-                .on_click(move |checked, _, cx| {
-                    let checked = *checked;
-                    let _ = weak.update(cx, |view, cx| {
-                        view.edit_load_test_latency(&errors_tab_id, cx, |choice| {
-                            choice.include_errors = checked;
-                        });
-                    });
-                }),
-            false,
-            palette,
-        ));
+    let include_errors = filter_checkbox(
+        "load-test-latency-errors",
+        palette,
+        t!("load_test.latency.include_errors").into_owned(),
+        choice.include_errors,
+    )
+    .on_click(move |checked, _, cx| {
+        let checked = *checked;
+        let _ = weak.update(cx, |view, cx| {
+            view.edit_load_test_latency(&errors_tab_id, cx, |choice| {
+                choice.include_errors = checked;
+            });
+        });
+    });
 
     let live = load_test.is_running().then(|| {
         h_flex()

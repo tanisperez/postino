@@ -64,7 +64,9 @@ default tokens are telaio's defaults. The rest is under `crates/postino-app/src/
   `hover` and `pressed`, which barely show on an area that small. A switch shows the same halo,
   pill shaped (`switch_halo`), and so does the radio of a theme card, whose ring brightens to
   `fg_subtle` with it. Hovering a theme card also brings its frame to `fg_subtle`
-  (`fg_muted` while pressed); a card never dims.
+  (`fg_muted` while pressed); a card never dims. A checkbox drawn as a filter pill in a toolbar
+  (the load test's "Only errors" and "Include errors", `filter_checkbox`) has no halo: the whole
+  pill is the click target and hovers like the `neutral_bordered` filter buttons next to it.
 - The accent (indigo) is for the primary action, the selected row or tab, links and focus.
   Do not use it as decoration.
 - State colors are semantic: `success` green, `warning` amber, `danger` red, `info` blue. Each has
@@ -311,9 +313,10 @@ workspaces (once, when the tab opens, never in `render`). It is a tab of its own
 (`TabKind::Welcome`), never dirty, with a `house` icon in `accent_text` and the label "Welcome".
 Why it exists and when it opens: GitHub #90.
 
-**Page.** `bg` fill, scrolls vertically. One column, centered horizontally, `100%` wide up to a
-maximum and stretched to the tab's height, so the footer sits at the bottom edge when the content
-is short. Line height 1.25 (gpui's default is taller and spreads the blocks apart). Side padding 40
+**Page.** `bg` fill, scrolls vertically, and sideways when the tab is narrower than the column's
+least width, 640 (`WELCOME_MIN_WIDTH`), so nothing is cut; both scrollbars show while scrolling.
+One column, centered horizontally, `100%` wide up to a maximum and stretched to the tab's height,
+so the footer sits at the bottom edge when the content is short. Line height 1.25 (gpui's default is taller and spreads the blocks apart). Side padding 40
 and bottom padding 32 in both cases. Which case applies depends on whether the sidebar is shown (a
 workspace is open or being opened), not on the window width.
 
