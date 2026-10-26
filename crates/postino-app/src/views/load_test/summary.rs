@@ -3,6 +3,9 @@
 //! selection) and the per request table with each request's responses by status. The latency
 //! distribution has its own tab (`latency_tab.rs`).
 
+use std::cell::Cell;
+use std::rc::Rc;
+
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -30,7 +33,8 @@ use crate::views::components::{
 };
 use crate::views::root::AppView;
 
-/// Height of the chart, from the design v3 (a 272 px plot, its axis titles and its labels).
+/// Least height of the chart, from the design v3 (a 272 px plot, its axis titles and its
+/// labels). It grows into the room left under the results.
 const CHART_HEIGHT: f32 = 320.0;
 /// Width of the per request table's numeric columns, a little under the table's default so the
 /// status bars still fit next to the configuration panel.
@@ -65,10 +69,15 @@ impl AppView {
         let mono_font = cx.theme().mono_font_family.clone();
         let weak = cx.weak_entity();
 
+        let chart_room = self.load_test_entities.chart_room.clone();
+        // Grows into the room left under the results: the chart takes it all.
         v_flex()
+            .flex_1()
             .gap(px(14.0))
             .child(render_kpis(&palette, load_test, summary))
-            .child(render_chart(weak, tab_id, &palette, load_test, snapshot))
+            .child(render_chart(
+                weak, tab_id, &palette, load_test, snapshot, chart_room,
+            ))
             .child(render_per_request(
                 &palette, &ui_font, &mono_font, load_test, summary,
             ))
@@ -319,6 +328,7 @@ fn render_chart(
     palette: &Palette,
     load_test: &LoadTestTab,
     snapshot: &LoadSnapshot,
+    room: Rc<Cell<f32>>,
 ) -> AnyElement {
     let Some(data) = load_test.chart.clone() else {
         return div().into_any_element();
@@ -391,7 +401,7 @@ fn render_chart(
     let right = ms_axis(max_ms);
 
     let mut chart = TimeSeriesChart::new("load-test-chart", count)
-        .height(CHART_HEIGHT)
+        .height(room.get().max(CHART_HEIGHT))
         .surface(palette.raised)
         .left_axis(
             ChartAxis::new(left.max, left.labels)
@@ -475,6 +485,7 @@ fn render_chart(
     }
 
     v_flex()
+        .flex_1()
         .border_1()
         .border_color(palette.border)
         .rounded(px(RADIUS_LG))
@@ -506,7 +517,30 @@ fn render_chart(
                 )
                 .children(legend),
         )
-        .child(chart)
+        .child(
+            // The chart is laid out of the flow, so the slot's height comes from the room left
+            // in the results, never from the chart. The canvas measures that height and draws one
+            // more frame only when it changed, for the chart to take it.
+            div()
+                .relative()
+                .flex_1()
+                .min_h(px(CHART_HEIGHT))
+                .child(
+                    canvas(
+                        move |bounds, window, _| {
+                            let height = f32::from(bounds.size.height);
+                            if (room.get() - height).abs() > 0.5 {
+                                room.set(height);
+                                window.refresh();
+                            }
+                        },
+                        |_, _, _, _| {},
+                    )
+                    .absolute()
+                    .size_full(),
+                )
+                .child(div().absolute().top_0().left_0().right_0().child(chart)),
+        )
         .into_any_element()
 }
 

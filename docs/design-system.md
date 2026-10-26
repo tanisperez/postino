@@ -174,7 +174,9 @@ The values are CSS. gpui's `blur_radius` is the gaussian's standard deviation, h
 
 The "Performance over time" chart of the load test results (`Palette::series_color`, in
 `theme/palette.rs`) uses palette tokens where one fits and two colors of Postino's own for the
-latency lines. The PDF report draws the same series with the light column.
+latency lines. The PDF report draws the same series with the light column. It is at least 320 px
+tall (`CHART_HEIGHT`, from the design) and grows into the room the window leaves under the results;
+a canvas measures that room and asks for one more frame only when it changes.
 
 | Series | Light | Dark | Token |
 | --- | --- | --- | --- |

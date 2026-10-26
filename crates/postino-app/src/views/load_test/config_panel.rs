@@ -2,6 +2,9 @@
 //! fields, the thresholds, the "Stop on errors" and "Reuse connections" switches, and the
 //! Start/Stop run button.
 
+use std::cell::Cell;
+use std::rc::Rc;
+
 use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
@@ -50,6 +53,9 @@ pub(crate) struct LoadTestEntities {
     /// The scroll position of the results' Requests table, reset to the top when its filters or
     /// sort change.
     pub(crate) requests_scroll: UniformListScrollHandle,
+    /// The height the Summary's chart had room for in the last frame, measured by the chart
+    /// itself (see `summary.rs`'s `render_chart`). Zero until first measured.
+    pub(crate) chart_room: Rc<Cell<f32>>,
 }
 
 impl LoadTestEntities {
