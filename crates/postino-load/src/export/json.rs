@@ -3,10 +3,12 @@
 
 use std::ops::Range;
 
-use serde::Serialize;
+use serde::ser::{Error as _, SerializeSeq as _};
+use serde::{Serialize, Serializer};
 
 use super::csv::{target_label, window_rows};
 use crate::history::{LoadConfigSummary, RunRecord, status_text};
+use crate::progress::{Progress, Ticker};
 use crate::samples::SampleLog;
 use crate::threshold::{ThresholdMetric, evaluate};
 use crate::window::WindowStats;
@@ -21,7 +23,28 @@ struct RunJson<'a> {
     statuses: Vec<StatusJson>,
     per_request: Vec<PerRequestJson<'a>>,
     errors: Vec<ErrorJson<'a>>,
-    requests: Vec<RequestJson<'a>>,
+    requests: TrackedRequests<'a>,
+}
+
+/// The requests of the document, reporting each one to a [`Progress`] as it is written: pretty
+/// printing them is most of the time of a big export. Fails once the job is cancelled.
+struct TrackedRequests<'a> {
+    rows: Vec<RequestJson<'a>>,
+    progress: &'a Progress,
+}
+
+impl Serialize for TrackedRequests<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut seq = serializer.serialize_seq(Some(self.rows.len()))?;
+        let mut ticker = Ticker::new(self.progress);
+        for row in &self.rows {
+            if !ticker.tick() {
+                return Err(S::Error::custom("cancelled"));
+            }
+            seq.serialize_element(row)?;
+        }
+        seq.end()
+    }
 }
 
 #[derive(Serialize)]
@@ -149,6 +172,31 @@ pub fn run_json(
     stats: &WindowStats,
     range: Option<Range<u32>>,
 ) -> String {
+    build(record, log, stats, range, &Progress::default())
+}
+
+/// [`run_json`] reporting to `progress` each sample of the log as it gathers the requests, then
+/// each request as it writes it (twice the log for the whole run), `None` when it is cancelled.
+#[must_use]
+pub fn run_json_with(
+    record: &RunRecord,
+    log: Option<&SampleLog>,
+    stats: &WindowStats,
+    range: Option<Range<u32>>,
+    progress: &Progress,
+) -> Option<String> {
+    let json = build(record, log, stats, range, progress);
+    (!progress.is_cancelled()).then_some(json)
+}
+
+/// [`run_json_with`]; when cancelled, the document is skipped.
+fn build(
+    record: &RunRecord,
+    log: Option<&SampleLog>,
+    stats: &WindowStats,
+    range: Option<Range<u32>>,
+    progress: &Progress,
+) -> String {
     let in_window = |second: u32| range.as_ref().is_none_or(|range| range.contains(&second));
 
     let thresholds = evaluate(&record.thresholds, &stats.threshold_inputs())
@@ -220,8 +268,9 @@ pub fn run_json(
         })
         .collect();
 
+    let mut ticker = Ticker::new(progress);
     let requests = log.map_or_else(Vec::new, |log| {
-        window_rows(log, range.as_ref())
+        window_rows(log, range.as_ref(), &mut ticker)
             .map(|(id, sample)| {
                 let (method, request) = target_label(&record.target_labels, sample.target);
                 RequestJson {
@@ -276,8 +325,15 @@ pub fn run_json(
             .collect(),
         per_request,
         errors,
-        requests,
+        requests: TrackedRequests {
+            rows: requests,
+            progress,
+        },
     };
+    drop(ticker);
+    if progress.is_cancelled() {
+        return String::new();
+    }
     // Plain data with string keys cannot fail to serialize; an empty document is the fallback
     // instead of a panic.
     serde_json::to_string_pretty(&export).unwrap_or_else(|_| "{}".to_string())
@@ -401,6 +457,26 @@ mod tests {
 
     fn parse(json: &str) -> Value {
         serde_json::from_str(json).expect("the export is valid JSON")
+    }
+
+    #[test]
+    fn the_progress_counts_the_log_twice_and_a_cancel_drops_the_document() {
+        let log = log();
+        let stats = window_stats(&log, 2, 3, None, 3.0);
+        let progress = Progress::new(1);
+        progress.begin_step(0, 2 * log.len() as u64);
+        let json = run_json_with(&record(), Some(&log), &stats, None, &progress);
+        assert_eq!(
+            json.map(|json| parse(&json)["requests"].as_array().map(Vec::len)),
+            Some(Some(5))
+        );
+        assert_eq!(progress.fraction(), 1.0);
+
+        progress.cancel();
+        assert_eq!(
+            run_json_with(&record(), Some(&log), &stats, None, &progress),
+            None
+        );
     }
 
     #[test]

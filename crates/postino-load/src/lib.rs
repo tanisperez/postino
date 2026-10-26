@@ -58,6 +58,7 @@ pub mod export;
 pub mod history;
 pub mod latency;
 mod metrics;
+pub mod progress;
 mod run;
 pub mod samples;
 mod status;
@@ -71,10 +72,11 @@ pub use latency::{
     latency_view_on,
 };
 pub use metrics::{ErrorExample, LoadSnapshot, SecondPoint, TargetStats};
+pub use progress::Progress;
 pub use run::{LoadRun, LoadSummary, SnapshotReader};
 pub use samples::{SampleLog, SampleRecord};
 pub use status::StatusKey;
 pub use threshold::{
     Threshold, ThresholdInputs, ThresholdMetric, ThresholdOutcome, evaluate as evaluate_thresholds,
 };
-pub use window::{ErrorGroup, LatencyHistogram, WindowStats, window_stats};
+pub use window::{ErrorGroup, LatencyHistogram, WindowStats, window_stats, window_stats_with};

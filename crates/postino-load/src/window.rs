@@ -21,6 +21,7 @@
 use std::ops::Range;
 
 use crate::metrics::{TargetStats, percentile};
+use crate::progress::{Progress, Ticker};
 use crate::samples::SampleLog;
 use crate::status::StatusKey;
 use crate::threshold::ThresholdInputs;
@@ -176,6 +177,40 @@ pub fn window_stats(
     range: Option<Range<u32>>,
     elapsed_secs: f64,
 ) -> WindowStats {
+    compute(
+        log,
+        target_count,
+        run_secs,
+        range,
+        elapsed_secs,
+        &Progress::default(),
+    )
+}
+
+/// [`window_stats`] reporting each sample to `progress`, `None` when it is cancelled.
+#[must_use]
+pub fn window_stats_with(
+    log: &SampleLog,
+    target_count: usize,
+    run_secs: u32,
+    range: Option<Range<u32>>,
+    elapsed_secs: f64,
+    progress: &Progress,
+) -> Option<WindowStats> {
+    let stats = compute(log, target_count, run_secs, range, elapsed_secs, progress);
+    (!progress.is_cancelled()).then_some(stats)
+}
+
+/// [`window_stats_with`], with whatever was counted when cancelled.
+fn compute(
+    log: &SampleLog,
+    target_count: usize,
+    run_secs: u32,
+    range: Option<Range<u32>>,
+    elapsed_secs: f64,
+    progress: &Progress,
+) -> WindowStats {
+    let mut ticker = Ticker::new(progress);
     let mut latencies: Vec<u32> = Vec::new();
     let mut target_latencies: Vec<Vec<u32>> = vec![Vec::new(); target_count];
     let mut target_errors = vec![0u64; target_count];
@@ -185,6 +220,9 @@ pub fn window_stats(
     let mut groups: Vec<GroupBuilder> = Vec::new();
 
     for sample in log.samples() {
+        if !ticker.tick() {
+            break;
+        }
         let second = sample.elapsed_ms / 1_000;
         let inside = range.as_ref().is_none_or(|range| range.contains(&second));
         let target = sample.target as usize;

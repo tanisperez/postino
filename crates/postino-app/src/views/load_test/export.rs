@@ -2,37 +2,60 @@
 //! copying the summary as Markdown (`Ctrl+Shift+C`).
 //!
 //! Everything that costs time runs on the background executor: the statistics of the covered
-//! range, the report's latency tables (they read the whole log), rendering the PDF, building the CSV and the JSON and writing the file. The UI thread
-//! only gathers what the tab holds (cheap clones and `Arc`s), formats the report's texts and
-//! shows the result.
+//! range, the report's latency tables (they read the whole log), rendering the PDF, building the
+//! CSV and the JSON and writing the file. The UI thread only gathers what the tab holds (cheap
+//! clones and `Arc`s), formats the report's texts and shows the result.
+//!
+//! Saving a file is a job of steps that reports to a [`Progress`] ([`run_export`]). When it takes
+//! longer than [`EXPORT_DIALOG_DELAY`], a modal shows the step, a progress bar and a Cancel
+//! button; a quick export never flashes it. The file is written next to its final name and
+//! renamed once complete, so a cancelled or failed export leaves an existing file untouched.
 
+use std::fs::File;
+use std::io::Write as _;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use gpui_kit::component::notification::Notification;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
-use postino_load::export::csv::requests_csv;
-use postino_load::export::json::run_json;
+use postino_load::export::csv::requests_csv_with;
+use postino_load::export::json::run_json_with;
 use postino_load::export::markdown::to_markdown;
 use postino_load::export::pdf::{PdfFonts, to_pdf};
 use postino_load::export::report::Report;
 use postino_load::history::{self, LoadConfigSummary, RunRecord};
-use postino_load::{LoadSnapshot, SampleLog, Threshold, WindowStats, window_stats};
+use postino_load::{
+    LoadSnapshot, Progress, SampleLog, Threshold, WindowStats, window_stats, window_stats_with,
+};
 use rust_i18n::t;
 use telaio_ui::fonts::{GEIST_MEDIUM, GEIST_MONO_REGULAR, GEIST_REGULAR, GEIST_SEMIBOLD};
 
 use crate::actions::CopyLoadTestSummary;
 use crate::state::format::shorten_path;
 use crate::state::load_report::{
-    ReportColors, ReportInput, build_report, connection_label, stats_from_snapshot, status_label,
+    ReportColors, ReportInput, build_report, connection_label, latency_units, stats_from_snapshot,
+    status_label,
 };
 use crate::state::load_results::{ChartData, Shared, SummaryData};
 use crate::state::load_test::{LoadTestStatus, LoadTestTab};
+use crate::state::number::format_integer;
+use crate::theme::PaletteExt;
+use crate::theme::metrics::{MODAL_HEADER_HEIGHT, MODAL_WIDTH_DEFAULT};
+use crate::views::components::{
+    ModalPlacement, ProgressBar, SecondaryButton, framed_dialog, modal_body, modal_footer,
+};
 use crate::views::root::AppView;
+
+/// How long an export runs before its progress modal opens.
+const EXPORT_DIALOG_DELAY: Duration = Duration::from_millis(300);
+/// How often the progress modal is redrawn while it is open.
+const EXPORT_REPAINT: Duration = Duration::from_millis(100);
+/// How many bytes are written between two checks of the progress.
+const WRITE_CHUNK: usize = 1 << 20;
 
 /// A file format of the Export menu.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,6 +78,32 @@ impl ExportFormat {
             ExportFormat::Pdf => "pdf",
             ExportFormat::Csv => "csv",
             ExportFormat::Json => "json",
+        }
+    }
+
+    /// The name shown to people, in the progress modal.
+    fn title(self) -> &'static str {
+        match self {
+            ExportFormat::Markdown => "Markdown",
+            ExportFormat::Pdf => "PDF",
+            ExportFormat::Csv => "CSV",
+            ExportFormat::Json => "JSON",
+        }
+    }
+
+    /// Whether the format needs the statistics of the covered range (the CSV only lists the
+    /// requests).
+    fn needs_stats(self) -> bool {
+        self != ExportFormat::Csv
+    }
+
+    /// How many times building the file goes through the log: the CSV writes every request,
+    /// the JSON gathers them and then writes them, the reports do not list them.
+    fn request_passes(self) -> u64 {
+        match self {
+            ExportFormat::Csv => 1,
+            ExportFormat::Json => 2,
+            ExportFormat::Markdown | ExportFormat::Pdf => 0,
         }
     }
 
@@ -229,8 +278,36 @@ impl ExportSource {
         })
     }
 
-    /// The report of the covered range, with its texts in the interface language.
-    fn report(&self, stats: &WindowStats) -> Report {
+    /// [`Self::covered_stats`] reporting its pass over the log to `progress`, `None` when it is
+    /// cancelled.
+    fn covered_stats_with(&self, progress: &Progress) -> Option<Arc<WindowStats>> {
+        match (&self.analysis, &self.log) {
+            (None, Some(log)) => window_stats_with(
+                log,
+                self.target_count,
+                self.run_secs,
+                self.range(),
+                self.elapsed_secs,
+                progress,
+            )
+            .map(Arc::new),
+            _ => Some(self.covered_stats()),
+        }
+    }
+
+    /// How many samples the log has, `0` without one.
+    fn samples(&self) -> u64 {
+        self.log.as_ref().map_or(0, |log| log.len() as u64)
+    }
+
+    /// How many steps exporting `format` takes, see [`run_export`].
+    fn steps(&self, format: ExportFormat) -> u32 {
+        u32::from(format.needs_stats()) + u32::from(format.is_report()) + 2
+    }
+
+    /// The report of the covered range, with its texts in the interface language. Its Latency
+    /// section reports to `progress` and is left out when it is cancelled.
+    fn report(&self, stats: &WindowStats, progress: &Progress) -> Report {
         let summary = SummaryData::from_stats(stats);
         let colors = ReportColors::light();
         let input = ReportInput {
@@ -259,6 +336,7 @@ impl ExportSource {
             timeout_secs: self.timeout_secs,
             generated_at: unix_now(),
             colors: &colors,
+            progress,
         };
         build_report(&input)
     }
@@ -273,15 +351,17 @@ impl ExportSource {
         format!("run-{:04}{window}.{}", self.number, format.extension())
     }
 
-    /// The bytes of `format`, from the report or the data. Slow: run it in the background.
+    /// The bytes of `format`, from the report or the data, `Ok(None)` when `progress` is
+    /// cancelled. Slow: run it in the background.
     fn render(
         &self,
         format: ExportFormat,
         report: Option<&Report>,
-        stats: &WindowStats,
-    ) -> Result<Vec<u8>, String> {
+        stats: Option<&WindowStats>,
+        progress: &Progress,
+    ) -> Result<Option<Vec<u8>>, String> {
         match (format, report) {
-            (ExportFormat::Markdown, Some(report)) => Ok(to_markdown(report).into_bytes()),
+            (ExportFormat::Markdown, Some(report)) => Ok(Some(to_markdown(report).into_bytes())),
             (ExportFormat::Pdf, Some(report)) => to_pdf(
                 report,
                 &PdfFonts {
@@ -291,13 +371,20 @@ impl ExportSource {
                     mono: GEIST_MONO_REGULAR,
                 },
             )
+            .map(Some)
             .map_err(|error| error.to_string()),
             (ExportFormat::Csv, _) => {
                 let empty = SampleLog::new();
                 let log = self.log.as_deref().unwrap_or(&empty);
-                Ok(requests_csv(log, &self.targets, self.range()).into_bytes())
+                Ok(
+                    requests_csv_with(log, &self.targets, self.range(), progress)
+                        .map(String::into_bytes),
+                )
             }
             (ExportFormat::Json, _) => {
+                let Some(stats) = stats else {
+                    return Err("no statistics to export".to_string());
+                };
                 // The record saved when the run ended is the reference; the tab's own copy
                 // stands in when it cannot be read.
                 let saved = self
@@ -305,7 +392,10 @@ impl ExportSource {
                     .as_deref()
                     .and_then(|root| history::load(root, self.number).ok());
                 let record = saved.as_ref().unwrap_or(&self.record);
-                Ok(run_json(record, self.log.as_deref(), stats, self.range()).into_bytes())
+                Ok(
+                    run_json_with(record, self.log.as_deref(), stats, self.range(), progress)
+                        .map(String::into_bytes),
+                )
             }
             _ => Err("no report to render".to_string()),
         }
@@ -317,6 +407,237 @@ fn unix_now() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |elapsed| elapsed.as_secs() as i64)
+}
+
+/// What a step of an export does, the `stage` of its [`Progress`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ExportStage {
+    /// The statistics of the covered range.
+    Statistics = 1,
+    /// The report's Latency section.
+    Latency = 2,
+    /// Building the file's bytes.
+    Render = 3,
+    /// Writing them.
+    Write = 4,
+}
+
+impl ExportStage {
+    /// The stage `progress` is at, the first one before any.
+    fn of(progress: &Progress) -> Self {
+        match progress.stage() {
+            2 => ExportStage::Latency,
+            3 => ExportStage::Render,
+            4 => ExportStage::Write,
+            _ => ExportStage::Statistics,
+        }
+    }
+
+    /// Starts this stage on `progress`, `units` long.
+    fn begin(self, progress: &Progress, units: u64) {
+        progress.begin_step(self as u32, units);
+    }
+
+    /// The line under the modal's title.
+    fn label(self, format: ExportFormat) -> String {
+        match self {
+            ExportStage::Statistics => t!("load_test.export.progress.statistics").into_owned(),
+            ExportStage::Latency => t!("load_test.export.progress.latency").into_owned(),
+            ExportStage::Render => {
+                t!("load_test.export.progress.render", format = format.title()).into_owned()
+            }
+            ExportStage::Write => t!("load_test.export.progress.write").into_owned(),
+        }
+    }
+}
+
+/// How an export that did not fail ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ExportOutcome {
+    /// The file is saved.
+    Written,
+    /// It was cancelled; nothing was saved.
+    Cancelled,
+}
+
+/// Exports `source` as `format` to `path`, one step after another (see [`ExportSource::steps`]):
+/// the statistics when the format needs them, the report when it is one, the file's bytes and
+/// writing them. Reports to `progress` and stops at its next check once it is cancelled. Slow:
+/// run it in the background.
+fn run_export(
+    source: &ExportSource,
+    format: ExportFormat,
+    path: &Path,
+    progress: &Progress,
+) -> Result<ExportOutcome, String> {
+    let samples = source.samples();
+    let stats = if format.needs_stats() {
+        let units = if source.analysis.is_some() {
+            0
+        } else {
+            samples
+        };
+        ExportStage::Statistics.begin(progress, units);
+        let Some(stats) = source.covered_stats_with(progress) else {
+            return Ok(ExportOutcome::Cancelled);
+        };
+        Some(stats)
+    } else {
+        None
+    };
+    let report = match (&stats, format.is_report()) {
+        (Some(stats), true) => {
+            let units = source.log.as_ref().map_or(0, |log| {
+                latency_units(log.len(), source.target_count.max(source.targets.len()))
+            });
+            ExportStage::Latency.begin(progress, units);
+            let report = source.report(stats, progress);
+            if progress.is_cancelled() {
+                return Ok(ExportOutcome::Cancelled);
+            }
+            Some(report)
+        }
+        _ => None,
+    };
+    ExportStage::Render.begin(progress, samples * format.request_passes());
+    let Some(bytes) = source.render(format, report.as_ref(), stats.as_deref(), progress)? else {
+        return Ok(ExportOutcome::Cancelled);
+    };
+    ExportStage::Write.begin(progress, bytes.len() as u64);
+    write_file(path, &bytes, progress)
+}
+
+/// Writes `bytes` to `path` by chunks, reported to `progress`: first to a `.part` file next to
+/// it, renamed to `path` once complete, so a cancelled or failed export leaves whatever `path`
+/// held untouched.
+fn write_file(path: &Path, bytes: &[u8], progress: &Progress) -> Result<ExportOutcome, String> {
+    let mut name = path.file_name().unwrap_or_default().to_os_string();
+    name.push(".part");
+    let partial = path.with_file_name(name);
+    let written = write_chunks(&partial, bytes, progress).and_then(|complete| {
+        if complete {
+            std::fs::rename(&partial, path)?;
+        }
+        Ok(complete)
+    });
+    match written {
+        Ok(true) => Ok(ExportOutcome::Written),
+        Ok(false) => {
+            let _ = std::fs::remove_file(&partial);
+            Ok(ExportOutcome::Cancelled)
+        }
+        Err(error) => {
+            let _ = std::fs::remove_file(&partial);
+            Err(error.to_string())
+        }
+    }
+}
+
+/// Writes `bytes` to a new file at `path`, [`WRITE_CHUNK`] at a time; `false` when `progress` was
+/// cancelled before the end.
+fn write_chunks(path: &Path, bytes: &[u8], progress: &Progress) -> std::io::Result<bool> {
+    let mut file = File::create(path)?;
+    for chunk in bytes.chunks(WRITE_CHUNK) {
+        if progress.is_cancelled() {
+            return Ok(false);
+        }
+        file.write_all(chunk)?;
+        progress.advance(chunk.len() as u64);
+    }
+    Ok(true)
+}
+
+/// The export in progress. There is at most one: the modal keeps the user from starting another.
+pub(crate) struct ExportJob {
+    /// What is exported, for the modal's texts.
+    format: ExportFormat,
+    /// How far it has got. Also tells this export apart from a later one.
+    progress: Arc<Progress>,
+    /// Whether its progress modal is open.
+    dialog_open: bool,
+}
+
+/// Opens the progress modal of the export `progress` reports to: its step, a bar with the
+/// percent done and Cancel, the only way to close it before the export ends.
+fn open_export_dialog(
+    view: WeakEntity<AppView>,
+    format: ExportFormat,
+    progress: Arc<Progress>,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    window.open_dialog(cx, move |dialog, window, _| {
+        let view = view.clone();
+        let progress = progress.clone();
+        framed_dialog(
+            dialog.overlay_closable(false).keyboard(false),
+            MODAL_WIDTH_DEFAULT,
+            None,
+            ModalPlacement::DEFAULT,
+            window,
+            move |_, cx| {
+                let palette = cx.palette();
+                let fraction = progress.fraction();
+                let percent = format!("{} %", format_integer((fraction * 100.0).floor() as u64));
+                let cancel_progress = progress.clone();
+                let cancel_view = view.clone();
+                v_flex()
+                    .child(
+                        // `modal_header` without its close button: only Cancel ends the export.
+                        h_flex()
+                            .h(px(MODAL_HEADER_HEIGHT))
+                            .flex_none()
+                            .items_center()
+                            .px(px(20.0))
+                            .border_b_1()
+                            .border_color(palette.border)
+                            .text_size(px(15.0))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .child(t!(
+                                "load_test.export.progress.title",
+                                format = format.title()
+                            )),
+                    )
+                    .child(
+                        modal_body()
+                            .child(
+                                div()
+                                    .text_color(palette.fg_muted)
+                                    .child(ExportStage::of(&progress).label(format)),
+                            )
+                            .child(
+                                h_flex()
+                                    .items_center()
+                                    .gap(px(12.0))
+                                    .child(ProgressBar::new(fraction))
+                                    .child(
+                                        div()
+                                            .flex_none()
+                                            .min_w(px(40.0))
+                                            .text_right()
+                                            .text_color(palette.fg_muted)
+                                            .child(percent),
+                                    ),
+                            ),
+                    )
+                    .child(
+                        modal_footer(cx).child(
+                            SecondaryButton::new("load-test-export-cancel", t!("common.cancel"))
+                                .on_click(move |_, window, cx| {
+                                    cancel_progress.cancel();
+                                    let _ = cancel_view.update(cx, |view, _| {
+                                        if let Some(job) = view.export_job.as_mut() {
+                                            job.dialog_open = false;
+                                        }
+                                    });
+                                    window.close_dialog(cx);
+                                }),
+                        ),
+                    )
+                    .into_any_element()
+            },
+        )
+    });
 }
 
 impl AppView {
@@ -346,6 +667,9 @@ impl AppView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.export_job.is_some() {
+            return;
+        }
         let Some(source) = self.load_test_export_source(tab_id) else {
             return;
         };
@@ -362,27 +686,48 @@ impl AppView {
             let Ok(Ok(Some(path))) = receiver.await else {
                 return;
             };
+            let progress = Arc::new(Progress::new(source.steps(format)));
+            let started = this.update_in(cx, |view, window, cx| {
+                if view.export_job.is_some() {
+                    return false;
+                }
+                view.export_job = Some(ExportJob {
+                    format,
+                    progress: progress.clone(),
+                    dialog_open: false,
+                });
+                view.watch_export(progress.clone(), window, cx);
+                true
+            });
+            if !matches!(started, Ok(true)) {
+                return;
+            }
             let number = source.number;
-            let covered = source.clone();
-            let stats = cx
-                .background_spawn(async move { covered.covered_stats() })
-                .await;
             let target = path.clone();
-            let written = cx
-                .background_spawn(async move {
-                    let report = format.is_report().then(|| source.report(&stats));
-                    let bytes = source.render(format, report.as_ref(), &stats)?;
-                    std::fs::write(&target, bytes).map_err(|error| error.to_string())
-                })
+            let worker = progress.clone();
+            let outcome = cx
+                .background_spawn(async move { run_export(&source, format, &target, &worker) })
                 .await;
-            let _ = this.update_in(cx, |_, window, cx| {
-                let notification = match written {
-                    Ok(()) => {
+            let _ = this.update_in(cx, |view, window, cx| {
+                if let Some(job) = view.export_job.take()
+                    && job.dialog_open
+                {
+                    window.close_dialog(cx);
+                }
+                let notification = match outcome {
+                    Ok(ExportOutcome::Written) => {
                         log::info!("load test run {number} exported as {}", format.name());
                         let shown = shorten_path(&path, dirs::home_dir().as_deref());
                         Notification::success(
                             t!("load_test.export.saved", path = shown).into_owned(),
                         )
+                    }
+                    Ok(ExportOutcome::Cancelled) => {
+                        log::info!(
+                            "load test run {number} export as {} cancelled",
+                            format.name()
+                        );
+                        Notification::info(t!("load_test.export.cancelled").into_owned())
                     }
                     Err(error) => {
                         log::warn!(
@@ -396,6 +741,48 @@ impl AppView {
                 };
                 window.push_notification(notification, cx);
             });
+        })
+        .detach();
+    }
+
+    /// Redraws the progress of the export `progress` reports to while it runs: nothing during
+    /// its first [`EXPORT_DIALOG_DELAY`], then its modal every [`EXPORT_REPAINT`]. Stops when the
+    /// export ends.
+    fn watch_export(
+        &mut self,
+        progress: Arc<Progress>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let started = Instant::now();
+        cx.spawn_in(window, async move |this, cx| {
+            loop {
+                let delay = if started.elapsed() < EXPORT_DIALOG_DELAY {
+                    EXPORT_DIALOG_DELAY
+                } else {
+                    EXPORT_REPAINT
+                };
+                cx.background_executor().timer(delay).await;
+                let running = this.update_in(cx, |view, window, cx| {
+                    let weak = cx.weak_entity();
+                    let Some(job) = view
+                        .export_job
+                        .as_mut()
+                        .filter(|job| Arc::ptr_eq(&job.progress, &progress))
+                    else {
+                        return false;
+                    };
+                    if !job.dialog_open && !progress.is_cancelled() {
+                        job.dialog_open = true;
+                        open_export_dialog(weak, job.format, progress.clone(), window, cx);
+                    }
+                    window.refresh();
+                    true
+                });
+                if !matches!(running, Ok(true)) {
+                    break;
+                }
+            }
         })
         .detach();
     }
@@ -438,7 +825,9 @@ impl AppView {
                 .await;
             let number = source.number;
             let markdown = cx
-                .background_spawn(async move { to_markdown(&source.report(&stats)) })
+                .background_spawn(async move {
+                    to_markdown(&source.report(&stats, &Progress::default()))
+                })
                 .await;
             let _ = this.update_in(cx, |_, window, cx| {
                 cx.write_to_clipboard(ClipboardItem::new_string(markdown));
@@ -558,30 +947,79 @@ mod tests {
     fn every_format_renders() {
         let tab = finished_tab();
         let source = ExportSource::from_tab(&tab, 30, None).expect("a finished run");
+        let progress = Progress::default();
         let stats = source.covered_stats();
         assert_eq!(stats.total, 12);
-        let report = source.report(&stats);
+        let report = source.report(&stats, &progress);
         assert_eq!(report.title, "Run #3 \u{b7} users");
         assert_eq!(report.errors.len(), 1);
 
-        let markdown = source
-            .render(ExportFormat::Markdown, Some(&report), &stats)
-            .expect("markdown");
+        let render = |format, report| {
+            source
+                .render(format, report, Some(&stats), &progress)
+                .expect("rendered")
+                .expect("not cancelled")
+        };
+        let markdown = render(ExportFormat::Markdown, Some(&report));
         assert!(String::from_utf8_lossy(&markdown).contains("Run #3"));
 
-        let pdf = source
-            .render(ExportFormat::Pdf, Some(&report), &stats)
-            .expect("pdf");
+        let pdf = render(ExportFormat::Pdf, Some(&report));
         assert!(pdf.starts_with(b"%PDF"));
 
-        let csv = source.render(ExportFormat::Csv, None, &stats).expect("csv");
+        let csv = render(ExportFormat::Csv, None);
         assert_eq!(String::from_utf8_lossy(&csv).lines().count(), 13);
 
-        let json = source
-            .render(ExportFormat::Json, None, &stats)
-            .expect("json");
+        let json = render(ExportFormat::Json, None);
         let json: serde_json::Value = serde_json::from_slice(&json).expect("valid json");
         assert_eq!(json["run"]["number"], 3);
         assert_eq!(json["requests"].as_array().map(Vec::len), Some(12));
+    }
+
+    /// A fresh directory in the system temporary folder for one test's files.
+    fn scratch_dir(name: &str) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("postino-export-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("a scratch directory");
+        dir
+    }
+
+    #[test]
+    fn an_export_runs_every_step_and_writes_the_file() {
+        let tab = finished_tab();
+        let source = ExportSource::from_tab(&tab, 30, None).expect("a finished run");
+        let dir = scratch_dir("written");
+        for format in [ExportFormat::Pdf, ExportFormat::Csv, ExportFormat::Json] {
+            let path = dir.join(source.file_name(format));
+            let progress = Progress::new(source.steps(format));
+            let outcome = run_export(&source, format, &path, &progress).expect("exported");
+            assert_eq!(outcome, ExportOutcome::Written);
+            assert_eq!(progress.fraction(), 1.0, "{format:?}");
+            assert_eq!(ExportStage::of(&progress), ExportStage::Write);
+            assert!(path.exists());
+        }
+        let left: Vec<_> = std::fs::read_dir(&dir)
+            .expect("the directory")
+            .filter_map(Result::ok)
+            .filter(|entry| entry.file_name().to_string_lossy().ends_with(".part"))
+            .collect();
+        assert!(left.is_empty(), "no partial file is left");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_cancelled_export_keeps_the_existing_file() {
+        let tab = finished_tab();
+        let source = ExportSource::from_tab(&tab, 30, None).expect("a finished run");
+        let dir = scratch_dir("cancelled");
+        let path = dir.join("run.csv");
+        std::fs::write(&path, "before").expect("an existing file");
+        let progress = Progress::new(source.steps(ExportFormat::Csv));
+        progress.cancel();
+        let outcome = run_export(&source, ExportFormat::Csv, &path, &progress).expect("no error");
+        assert_eq!(outcome, ExportOutcome::Cancelled);
+        assert_eq!(std::fs::read_to_string(&path).expect("kept"), "before");
+        assert_eq!(std::fs::read_dir(&dir).expect("the directory").count(), 1);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

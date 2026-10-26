@@ -18,8 +18,8 @@ use postino_load::export::report::{
 };
 use postino_load::{
     ErrorExample, ErrorGroup, LatencyHistogram, LatencyOptions, LatencyPercentiles, LatencyScale,
-    LoadSnapshot, SampleLog, StatusKey, Threshold, ThresholdInputs, ThresholdMetric, WindowStats,
-    evaluate_thresholds, latency_view,
+    LoadSnapshot, Progress, SampleLog, StatusKey, Threshold, ThresholdInputs, ThresholdMetric,
+    WindowStats, evaluate_thresholds, latency::latency_view_with,
 };
 use rust_i18n::t;
 
@@ -191,6 +191,16 @@ pub struct ReportInput<'a> {
     pub generated_at: i64,
     /// The colors.
     pub colors: &'a ReportColors,
+    /// Where the Latency section reports its passes over the log and learns it was cancelled,
+    /// see [`latency_units`]. When cancelled, the section is left out.
+    pub progress: &'a Progress,
+}
+
+/// How many samples the Latency section of a report reads for a log of `samples` and
+/// `target_count` requests: the whole log once, then once per request.
+#[must_use]
+pub fn latency_units(samples: usize, target_count: usize) -> u64 {
+    samples as u64 * (1 + target_count as u64)
 }
 
 impl ReportInput<'_> {
@@ -842,15 +852,16 @@ fn request_histogram(
     options: &LatencyOptions,
     index: usize,
     stats: &LatencyPercentiles,
-) -> ReportRequestHistogram {
-    let view = latency_view(
+) -> Option<ReportRequestHistogram> {
+    let view = latency_view_with(
         log,
         input.target_count,
         &LatencyOptions {
             target: Some(index),
             ..options.clone()
         },
-    );
+        input.progress,
+    )?;
     let histogram = &view.histogram;
     let colors = input.colors;
     let at = |us: u32| histogram.fraction(f64::from(us));
@@ -864,7 +875,7 @@ fn request_histogram(
         ("p95", stats.p95, colors.p95),
         ("p99", stats.p99, colors.p99),
     ];
-    ReportRequestHistogram {
+    Some(ReportRequestHistogram {
         name: target_label(input.targets, index),
         color: colors.request(index),
         count_text: plural("load_export.latency.responses", stats.count as usize),
@@ -883,7 +894,7 @@ fn request_histogram(
                 )
             })
             .collect(),
-    }
+    })
 }
 
 /// The Latency section of the covered range: successful responses only, `None` without the
@@ -901,15 +912,17 @@ fn latency(input: &ReportInput) -> Option<ReportLatency> {
         target: None,
         scale: LatencyScale::Linear,
     };
-    let view = latency_view(log, targets, &options);
+    let view = latency_view_with(log, targets, &options, input.progress)?;
 
-    let histograms = view
-        .per_target
-        .iter()
-        .enumerate()
-        .filter(|(_, stats)| stats.count > 0)
-        .map(|(index, stats)| request_histogram(input, log, &options, index, stats))
-        .collect();
+    let mut histograms = Vec::new();
+    for (index, stats) in view.per_target.iter().enumerate() {
+        if stats.count == 0 {
+            // Its pass is skipped: count it as read, see `latency_units`.
+            input.progress.advance(log.len() as u64);
+            continue;
+        }
+        histograms.push(request_histogram(input, log, &options, index, stats)?);
+    }
 
     let row = |name: String, color: Option<Rgb>, stats: &LatencyPercentiles| ReportLatencyRow {
         name,
@@ -1157,6 +1170,7 @@ mod tests {
         examples: Vec<ErrorExample>,
         colors: ReportColors,
         log: Option<SampleLog>,
+        progress: Progress,
     }
 
     impl Fixture {
@@ -1185,6 +1199,7 @@ mod tests {
                 examples: examples(),
                 colors: ReportColors::light(),
                 log: Some(log()),
+                progress: Progress::default(),
             }
         }
 
@@ -1212,6 +1227,7 @@ mod tests {
                 timeout_secs: 30,
                 generated_at: 1_790_000_000,
                 colors: &self.colors,
+                progress: &self.progress,
             }
         }
     }
@@ -1476,6 +1492,21 @@ mod tests {
 
         input.log = None;
         assert_eq!(build_report(&input).latency, None);
+    }
+
+    #[test]
+    fn the_latency_section_reports_every_pass_and_stops_when_cancelled() {
+        let mut fixture = Fixture::new();
+        let samples = fixture.log.as_ref().map_or(0, SampleLog::len);
+        fixture.progress = Progress::new(1);
+        fixture
+            .progress
+            .begin_step(0, latency_units(samples, fixture.targets.len()));
+        assert!(build_report(&fixture.input()).latency.is_some());
+        assert_eq!(fixture.progress.fraction(), 1.0);
+
+        fixture.progress.cancel();
+        assert_eq!(build_report(&fixture.input()).latency, None);
     }
 
     #[test]

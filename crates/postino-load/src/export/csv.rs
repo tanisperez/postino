@@ -5,6 +5,7 @@ use std::ops::Range;
 
 use crate::csv_text;
 use crate::history::status_text;
+use crate::progress::{Progress, Ticker};
 use crate::samples::{SampleLog, SampleRecord};
 
 /// The header line of the exported CSV.
@@ -13,13 +14,18 @@ const HEADER: &str = "id,time_ms,vu,method,request,url,status,latency_ms,size_by
 /// Every sample of `log` inside `range` (whole seconds `[start, end)` of `elapsed_ms / 1000`,
 /// `None` for the whole run) with its `id`, the 1-based position in the log. The id is the
 /// position in the whole log, so it does not change when the window does.
+///
+/// Every sample read, inside the window or not, counts on `ticker`, and the rows end once its job
+/// is cancelled.
 pub(crate) fn window_rows<'a>(
     log: &'a SampleLog,
     range: Option<&'a Range<u32>>,
+    ticker: &'a mut Ticker<'_>,
 ) -> impl Iterator<Item = (usize, &'a SampleRecord)> {
     log.samples()
         .iter()
         .enumerate()
+        .take_while(move |_| ticker.tick())
         .filter(move |(_, sample)| {
             range.is_none_or(|range| range.contains(&(sample.elapsed_ms / 1_000)))
         })
@@ -58,10 +64,33 @@ pub fn requests_csv(
     targets: &[(String, String)],
     range: Option<Range<u32>>,
 ) -> String {
+    build(log, targets, range, &Progress::default())
+}
+
+/// [`requests_csv`] reporting each sample of the log to `progress`, `None` when it is cancelled.
+#[must_use]
+pub fn requests_csv_with(
+    log: &SampleLog,
+    targets: &[(String, String)],
+    range: Option<Range<u32>>,
+    progress: &Progress,
+) -> Option<String> {
+    let csv = build(log, targets, range, progress);
+    (!progress.is_cancelled()).then_some(csv)
+}
+
+/// [`requests_csv_with`], cut short when cancelled.
+fn build(
+    log: &SampleLog,
+    targets: &[(String, String)],
+    range: Option<Range<u32>>,
+    progress: &Progress,
+) -> String {
     let mut out = String::with_capacity(HEADER.len() + 1 + log.len() * 96);
     out.push_str(HEADER);
     out.push('\n');
-    for (id, sample) in window_rows(log, range.as_ref()) {
+    let mut ticker = Ticker::new(progress);
+    for (id, sample) in window_rows(log, range.as_ref(), &mut ticker) {
         let (method, name) = target_label(targets, sample.target);
         let _ = write!(out, "{id},{},{},", sample.elapsed_ms, sample.vu + 1);
         csv_text::push_field(&mut out, method);

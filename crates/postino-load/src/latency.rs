@@ -24,6 +24,7 @@
 use std::ops::Range;
 
 use crate::metrics::percentile;
+use crate::progress::{Progress, Ticker};
 use crate::samples::SampleLog;
 
 /// The most bins of a linear histogram.
@@ -152,7 +153,19 @@ pub struct LatencyView {
 /// requests. See the [module docs](self).
 #[must_use]
 pub fn latency_view(log: &SampleLog, target_count: usize, options: &LatencyOptions) -> LatencyView {
-    build_view(log, target_count, options, None)
+    build_view(log, target_count, options, None, &Progress::default())
+}
+
+/// [`latency_view`] reporting each sample to `progress`, `None` when it is cancelled.
+#[must_use]
+pub fn latency_view_with(
+    log: &SampleLog,
+    target_count: usize,
+    options: &LatencyOptions,
+    progress: &Progress,
+) -> Option<LatencyView> {
+    let view = build_view(log, target_count, options, None, progress);
+    (!progress.is_cancelled()).then_some(view)
 }
 
 /// [`latency_view`] with the histogram on the bins of `axis` (another run's), for comparing two
@@ -165,19 +178,25 @@ pub fn latency_view_on(
     options: &LatencyOptions,
     axis: &StackedHistogram,
 ) -> LatencyView {
-    build_view(log, target_count, options, Some(axis))
+    build_view(log, target_count, options, Some(axis), &Progress::default())
 }
 
-/// [`latency_view`], on the bins of `axis` when given.
+/// [`latency_view`], on the bins of `axis` when given, reporting each sample to `progress`. When
+/// cancelled, the view of the samples read so far.
 fn build_view(
     log: &SampleLog,
     target_count: usize,
     options: &LatencyOptions,
     axis: Option<&StackedHistogram>,
+    progress: &Progress,
 ) -> LatencyView {
     let mut latencies: Vec<Vec<u32>> = vec![Vec::new(); target_count];
     let mut errors = vec![0u64; target_count];
+    let mut ticker = Ticker::new(progress);
     for sample in log.samples() {
+        if !ticker.tick() {
+            break;
+        }
         let second = sample.elapsed_ms / 1_000;
         if !options
             .range
