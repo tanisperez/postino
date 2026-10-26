@@ -45,8 +45,9 @@ const STATUS_TOOLTIP_WIDTH: f32 = 250.0;
 const STATUS_BAR_HEIGHT: f32 = 8.0;
 /// Opacity of a timeout or a failure in a status bar, a darker red than a 5xx next to it.
 const FAILURE_OPACITY: f32 = 0.6;
-/// Minimum width of one KPI cell; the two groups of three wrap as whole groups.
-const KPI_CELL_MIN_WIDTH: f32 = 96.0;
+/// Minimum width of one KPI cell, room for a total of nine figures ("1.234.567"); the two groups
+/// of three wrap as whole groups.
+const KPI_CELL_MIN_WIDTH: f32 = 136.0;
 /// A per request error rate above which its cell turns `warning` (1 %).
 const PER_REQUEST_WARNING_ERROR_RATE: f64 = 0.01;
 /// The virtual users area reaches this fraction of the chart's height at its peak, like the
@@ -213,7 +214,9 @@ fn render_kpis(palette: &Palette, load_test: &LoadTestTab, summary: &SummaryData
     let mut cells = kpis.into_iter().enumerate();
     let mut groups: Vec<AnyElement> = Vec::new();
     for _ in 0..2 {
+        // Stretched, so a cell whose delta wrapped makes its whole row taller, labels aligned.
         let mut group = h_flex()
+            .items_stretch()
             .flex_1()
             .min_w(px(KPI_CELL_MIN_WIDTH * 3.0))
             .bg(palette.raised);
@@ -222,17 +225,21 @@ fn render_kpis(palette: &Palette, load_test: &LoadTestTab, summary: &SummaryData
             let mut cell = v_flex()
                 .flex_1()
                 .min_w(px(KPI_CELL_MIN_WIDTH))
+                .overflow_hidden()
                 .gap(px(4.0))
                 .px(px(14.0))
                 .py(px(12.0));
             if index % 3 != 0 {
                 cell = cell.border_l_1().border_color(palette.border);
             }
+            // The delta drops under the value when both do not fit side by side.
             let mut value_row = h_flex()
+                .flex_wrap()
                 .items_baseline()
-                .gap(px(4.0))
+                .gap_x(px(4.0))
                 .child(
                     div()
+                        .flex_none()
                         .text_size(px(22.0))
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(if failing { palette.danger } else { palette.fg })
@@ -241,6 +248,7 @@ fn render_kpis(palette: &Palette, load_test: &LoadTestTab, summary: &SummaryData
                 .when(!kpi.unit.is_empty(), |row| {
                     row.child(
                         div()
+                            .flex_none()
                             .text_size(px(12.0))
                             .text_color(palette.fg_subtle)
                             .child(kpi.unit),
@@ -255,6 +263,8 @@ fn render_kpis(palette: &Palette, load_test: &LoadTestTab, summary: &SummaryData
                 value_row = value_row.child(
                     div()
                         .ml_auto()
+                        .min_w_0()
+                        .truncate()
                         .text_size(px(12.0))
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(color)
@@ -293,6 +303,7 @@ fn render_kpis(palette: &Palette, load_test: &LoadTestTab, summary: &SummaryData
 
     h_flex()
         .flex_wrap()
+        .items_stretch()
         .gap(px(1.0))
         .border_1()
         .border_color(palette.border)

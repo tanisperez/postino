@@ -201,7 +201,9 @@ six); its p50, p95 and p99 markers use the chart's series colors.
 | 6 | `#7a4fd6` | `#b9a2ff` |
 
 The verdict strip uses `success` / `success_subtle` for "Thresholds passed" and `danger` /
-`danger_subtle` for "Not passed". KPI deltas are `success` when better and `danger` when worse.
+`danger_subtle` for "Not passed". KPI deltas are `success` when better and `danger` when worse. A KPI cell is at least 136 px wide
+(room for a nine figure total); a delta that does not fit next to its value drops under it, and
+the cells of a row stretch to the tallest one.
 Status colors in the per request table's status bars and in the Requests table follow
 `Palette::status_colors`; a timeout or a failure is `danger` (at 60% opacity in a status bar, so
 it stands apart from a 5xx next to it).
