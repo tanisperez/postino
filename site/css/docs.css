@@ -312,6 +312,29 @@
     margin: 24px 0 0;
 }
 
+/* A crop of the window has no shadow margin of its own: it gets a frame instead. */
+.article .shot.crop {
+    margin: 24px 0 0;
+}
+
+.article .shot.crop img {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+/* A page of the PDF report, always light like the report, as a sheet. */
+.article .report-page {
+    display: block;
+    width: 100%;
+    max-width: 480px;
+    height: auto;
+    margin: 0 auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 16px 48px -24px rgba(0, 0, 0, 0.35);
+}
+
 .article figcaption.caption {
     margin-top: 8px;
     color: var(--fg-subtle);

@@ -5,8 +5,8 @@ description: Run load tests against a request or a whole folder in Postino with 
 <p class="lead">Point a load test at one request or a whole folder, choose how many virtual users to run and for how long, and watch throughput and latency live. Add thresholds to get a pass or fail verdict. Every run is saved with every request it made, so you can inspect it later, compare it with an earlier run and export it.</p>
 
 <div class="shot">
-    <img class="light" src="../img/loadtest-light.webp" width="2018" height="1282" loading="lazy" alt="The Load tests panel and a finished load test run with throughput and latency charts.">
-    <img class="dark" src="../img/loadtest-dark.webp" width="2018" height="1282" loading="lazy" alt="The Load tests panel and a finished load test run with throughput and latency charts.">
+    <img class="light" src="../img/loadtest-light.webp" width="2220" height="1356" loading="lazy" alt="A finished load test of a folder: its KPIs compared with the previous run, a passed p95 goal and the performance over time chart with the virtual users.">
+    <img class="dark" src="../img/loadtest-dark.webp" width="2220" height="1356" loading="lazy" alt="A finished load test of a folder: its KPIs compared with the previous run, a passed p95 goal and the performance over time chart with the virtual users.">
 </div>
 
 <div class="callout warning">
@@ -96,6 +96,11 @@ description: Run load tests against a request or a whole folder in Postino with 
     <li><strong>Linear</strong> or <strong>Log</strong>: the scale of the latency axis. A log axis gives the same room to requests of very different speeds.</li>
     <li><strong>Include errors</strong>: off by default, so a fast 429 or a slow timeout does not bend the profile of a request. On the right, the tab says how many responses it counts and how many errors it left out.</li>
 </ul>
+
+<div class="shot">
+    <img class="light" src="../img/loadtest-latency-light.webp" width="2220" height="1356" loading="lazy" alt="The Latency tab: the latency distribution stacked by request and compared with the previous run, the percentiles of each request and the latency by percentile curves.">
+    <img class="dark" src="../img/loadtest-latency-dark.webp" width="2220" height="1356" loading="lazy" alt="The Latency tab: the latency distribution stacked by request and compared with the previous run, the percentiles of each request and the latency by percentile curves.">
+</div>
 <dl>
     <dt>Latency distribution</dt>
     <dd>A histogram up to the p99.9 of what it shows; the last bar also holds the slower responses. With all requests, the bars are stacked by request and each request's peak is labeled with its name and p50, so a run that mixes a fast and a slow request reads as two profiles instead of one. With one request, the axis zooms to its own range with finer intervals, and dashed lines mark its p50, p95 and p99. On a linear axis the intervals have a round width, shown in the caption (&ldquo;responses per 50 ms bin&rdquo;); on a log axis there are 72 of them. Hover an interval to see its range, its responses per request and their share.</dd>
@@ -128,13 +133,19 @@ description: Run load tests against a request or a whole folder in Postino with 
 <ul>
     <li>Each figure of the Summary shows its change against that run. Requests/s, latencies and Total change as a percentage of the previous value. The error rate changes in percentage points: going from 2% to 5% is +3 pt.</li>
     <li>Higher is better for Requests/s and Total; lower is better for the latencies and Errors. The change is colored accordingly.</li>
-    <li>The chart draws the p99 of that run as a dashed line.</li>
+    <li>The chart draws the p95 of that run as a dashed line.</li>
+    <li>The Latency tab shows that run on the same scale, see <a href="#latency">Latency</a>.</li>
     <li>The Markdown and PDF exports say which run they were compared with.</li>
 </ul>
 <p>Compare runs with the same configuration, or the difference says more about the settings than about your API.</p>
 
 <h2 id="export">Exporting</h2>
 <p>The <strong>Export</strong> menu saves the run to a file you choose (the suggested name is <code>run-0003.md</code>, with the run number and the extension of the format) and shows a notification with the path when it is done. The files cover the whole run, or only the selected window, see below.</p>
+
+<div class="shot crop">
+    <img class="light" src="../img/loadtest-export-light.webp" width="1630" height="620" loading="lazy" alt="The Export menu of a load test: Markdown, PDF, CSV and JSON, and copying the summary as Markdown.">
+    <img class="dark" src="../img/loadtest-export-dark.webp" width="1630" height="620" loading="lazy" alt="The Export menu of a load test: Markdown, PDF, CSV and JSON, and copying the summary as Markdown.">
+</div>
 <p>A big run can take a few seconds to export. When an export takes longer than a moment, a window titled <strong>Exporting PDF</strong> (or the format chosen) shows what it is doing (<strong>Computing the statistics</strong>, <strong>Computing the latencies</strong>, <strong>Building the PDF</strong>, <strong>Saving the file</strong>), a progress bar with the percent done and a <strong>Cancel</strong> button. Cancelling stops the export, shows <strong>Export cancelled</strong> and saves nothing: a file that already had that name is left as it was.</p>
 <div class="table"><table>
     <thead><tr><th>Format</th><th>Content</th></tr></thead>
@@ -145,6 +156,10 @@ description: Run load tests against a request or a whole folder in Postino with 
         <tr><td><strong>JSON</strong> (<code>.json</code>)</td><td>The whole run for other tools: the run and its configuration, the summary, the thresholds with the value reached and whether each passed, the series per second (requests per second, virtual users, p50, p90, p95, p99), the histogram, the statuses, the per request statistics, the error groups with an example and every request.</td></tr>
     </tbody>
 </table></div>
+<figure>
+    <img class="report-page" src="../img/report.webp" width="1323" height="1310" loading="lazy" alt="The top of the first page of a PDF report: the verdict, the KPIs, the performance over time chart and the per request table.">
+    <figcaption class="caption">The top of the first page of a PDF report.</figcaption>
+</figure>
 <p>Markdown and PDF follow the interface language, with numbers formatted for it. CSV and JSON are for programs: their column and key names are always English, numbers use a period as the decimal separator, and times and latencies are plain numbers in milliseconds.</p>
 <p>The CSV has the columns <code>id</code>, <code>time_ms</code>, <code>vu</code> (from 1), <code>method</code>, <code>request</code>, <code>url</code>, <code>status</code> (the HTTP code, <code>timeout</code> or <code>failed</code>), <code>latency_ms</code> (three decimals), <code>size_bytes</code> and <code>error</code> (<code>1</code> or <code>0</code>). The JSON has the top level keys <code>run</code>, <code>summary</code>, <code>thresholds</code>, <code>series</code>, <code>histogram</code>, <code>statuses</code>, <code>per_request</code>, <code>errors</code> and <code>requests</code>. For a run without per request detail the CSV has no rows and the JSON an empty <code>requests</code> list, and the Markdown and PDF reports have no Latency section and no status per request (a single line gives the statuses of the whole run).</p>
 <p>While a window is selected, the menu has a checkbox <strong>Only the window</strong> followed by the range. With it on, every format covers just that window and the file name includes the seconds (<code>run-0003-34-46s.md</code>). With it off, the files cover the whole run.</p>
