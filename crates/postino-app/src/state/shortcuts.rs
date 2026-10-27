@@ -62,12 +62,16 @@ pub fn groups() -> Vec<ShortcutGroup> {
                     &[PANEL_MODIFIER_KEY, "1"],
                 ),
                 Shortcut::new(
-                    t!("shortcuts.action.toggle_environments"),
+                    t!("shortcuts.action.toggle_source_control"),
                     &[PANEL_MODIFIER_KEY, "2"],
                 ),
                 Shortcut::new(
-                    t!("shortcuts.action.toggle_load_tests"),
+                    t!("shortcuts.action.toggle_environments"),
                     &[PANEL_MODIFIER_KEY, "3"],
+                ),
+                Shortcut::new(
+                    t!("shortcuts.action.toggle_load_tests"),
+                    &[PANEL_MODIFIER_KEY, "4"],
                 ),
                 Shortcut::new(t!("shortcuts.action.rename"), &["F2"]),
                 Shortcut::new(t!("shortcuts.action.delete"), &["Delete"]),

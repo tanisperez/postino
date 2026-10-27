@@ -17,8 +17,10 @@ use gpui_kit::*;
 use rust_i18n::t;
 
 use postino_workspace::{
-    EXAMPLE_ENVIRONMENT, EXAMPLE_REQUEST_ID, NewWorkspaceContent, WorkspaceError, create_workspace,
+    EXAMPLE_ENVIRONMENT, EXAMPLE_REQUEST_ID, GITIGNORE, NewWorkspaceContent, WorkspaceError,
+    create_workspace,
 };
+use telaio_ui::components::labelled_checkbox;
 
 use crate::state;
 use crate::state::workspace_log::log_workspace_error;
@@ -69,6 +71,12 @@ struct NewWorkspaceForm {
     error: Option<String>,
     /// What the workspace is for, taken once it has been created.
     purpose: Option<NewWorkspacePurpose>,
+    /// The git Postino detected, `None` when it is not available (design 7c).
+    git: Option<postino_git::Git>,
+    /// Whether to run `git init` in the new folder. On by default when git is available.
+    init_git: bool,
+    /// Whether the location is already inside a git repository, which hides the checkbox.
+    inside_repo: bool,
 }
 
 /// Opens the dialog for `purpose`, with `suggested_name` already typed (the export's name for an
@@ -88,11 +96,18 @@ pub(crate) fn open_new_workspace_dialog(
             None => state,
         }
     });
+    let git = view
+        .upgrade()
+        .and_then(|view| view.read(cx).git.availability.git().cloned());
+    let location = state::new_workspace::default_location_for_user();
     let form = cx.new(|_| NewWorkspaceForm {
         name: name.clone(),
-        location: state::new_workspace::default_location_for_user(),
+        inside_repo: is_inside_repo(&location),
+        location,
         error: None,
         purpose: Some(purpose),
+        init_git: git.is_some(),
+        git,
     });
     {
         // Weak, or the subscription would keep the form, and through it the input, alive forever.
@@ -130,7 +145,7 @@ pub(crate) fn open_new_workspace_dialog(
                 let create_view = view.clone();
                 v_flex()
                     .child(modal_header(t!("shell.new_workspace.title"), cx))
-                    .child(modal_body().child(render_form(&form, cx)))
+                    .child(modal_body().child(render_form(&form, &view, cx)))
                     .child(
                         modal_footer(cx)
                             .child(
@@ -167,7 +182,11 @@ fn target_of(form: &Entity<NewWorkspaceForm>, cx: &App) -> Option<PathBuf> {
 
 /// The dialog's body: a short note, the name field, the location with its "Change..." button,
 /// the path that will be created and the last error.
-fn render_form(form: &Entity<NewWorkspaceForm>, cx: &App) -> AnyElement {
+fn render_form(
+    form: &Entity<NewWorkspaceForm>,
+    view: &WeakEntity<AppView>,
+    cx: &App,
+) -> AnyElement {
     let palette = cx.palette();
     let mono_font = cx.theme().mono_font_family.clone();
     let home = dirs::home_dir();
@@ -256,6 +275,7 @@ fn render_form(form: &Entity<NewWorkspaceForm>, cx: &App) -> AnyElement {
                         .child(shown(&target)),
                 )
         }))
+        .children((!state.inside_repo).then(|| render_git_option(form, view, cx)))
         .children(
             state
                 .error
@@ -280,7 +300,9 @@ fn pick_location(form: WeakEntity<NewWorkspaceForm>, cx: &mut App) {
         let Some(location) = paths.pop() else {
             return;
         };
+        let inside_repo = is_inside_repo(&location);
         let _ = form.update(cx, |form, cx| {
+            form.inside_repo = inside_repo;
             form.location = location;
             form.error = None;
             cx.notify();
@@ -320,6 +342,17 @@ fn confirm(
             cx.notify();
         });
         return false;
+    }
+    let (git, init_git, inside_repo) = {
+        let form = form.read(cx);
+        (form.git.clone(), form.init_git, form.inside_repo)
+    };
+    if let (Some(git), true, false) = (git, init_git, inside_repo) {
+        // `git init` takes a few milliseconds, and the workspace must be a repository before it
+        // opens, so the Source Control panel finds it. A failure keeps the workspace, without git.
+        if let Err(error) = crate::views::git::init_with_gitignore(&git, &target) {
+            log::warn!("git init in the new workspace failed: {error}");
+        }
     }
     if let Some(purpose) = form.update(cx, |form, _| form.purpose.take()) {
         let _ = view.update(cx, |view, cx| {
@@ -362,4 +395,86 @@ impl AppView {
             }
         }
     }
+}
+
+/// Whether `location`, or a folder above it, is a git work tree: a `.git` folder or file there.
+/// A few metadata calls, only when the location changes.
+fn is_inside_repo(location: &Path) -> bool {
+    location
+        .ancestors()
+        .any(|folder| folder.join(".git").exists())
+}
+
+/// The "Initialize a Git repository" checkbox with the `.gitignore` it adds, or, without git, the
+/// same checkbox disabled with a link to the Git settings.
+fn render_git_option(
+    form: &Entity<NewWorkspaceForm>,
+    view: &WeakEntity<AppView>,
+    cx: &App,
+) -> AnyElement {
+    let palette = cx.palette();
+    let state = form.read(cx);
+    let available = state.git.is_some();
+    let toggle_form = form.downgrade();
+    let checkbox = labelled_checkbox(
+        "new-workspace-init-git",
+        available && state.init_git,
+        t!("shell.new_workspace.init_git"),
+        &palette,
+    )
+    .disabled(!available)
+    .on_change(move |checked, _, cx| {
+        let checked = *checked;
+        let _ = toggle_form.update(cx, |form, cx| {
+            form.init_git = checked;
+            cx.notify();
+        });
+    });
+    let mut column = v_flex().gap(px(6.0)).child(checkbox);
+    if available {
+        if state.init_git {
+            column = column
+                .child(
+                    div()
+                        .text_size(px(12.0))
+                        .text_color(palette.fg_subtle)
+                        .child(t!("shell.new_workspace.init_git_note")),
+                )
+                .child(
+                    div()
+                        .px(px(10.0))
+                        .py(px(8.0))
+                        .rounded(px(RADIUS_MD))
+                        .bg(palette.surface)
+                        .border_1()
+                        .border_color(palette.border)
+                        .font_family(cx.theme().mono_font_family.clone())
+                        .text_size(px(11.5))
+                        .text_color(palette.fg_muted)
+                        .children(GITIGNORE.lines().map(|line| div().child(line.to_string()))),
+                );
+        }
+    } else {
+        let view = view.clone();
+        column = column.child(
+            h_flex()
+                .gap(px(6.0))
+                .text_size(px(12.0))
+                .text_color(palette.fg_subtle)
+                .child(t!("shell.new_workspace.git_missing"))
+                .child(
+                    div()
+                        .id("new-workspace-git-settings")
+                        .cursor_pointer()
+                        .text_color(palette.accent_text)
+                        .hover(|style| style.underline())
+                        .child(t!("git.empty.open_settings"))
+                        .on_click(move |_, window, cx| {
+                            window.close_dialog(cx);
+                            let _ = view.update(cx, |view, cx| view.open_git_settings(window, cx));
+                        }),
+                ),
+        );
+    }
+    column.into_any_element()
 }

@@ -44,6 +44,10 @@ krilla = { version = "0.8.2", default-features = false, features = ["simple-text
 skrifa = "0.42"
 # Local time for the load test reports and the dashboard header. Already built by gpui.
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
+# The Source Control panel's file watcher (milestone 0.5.0). Both already built by gpui-component
+# and gpui, same versions.
+notify = "8.2"
+async-channel = "2.5"
 
 [workspace.lints.clippy]
 all = "warn"

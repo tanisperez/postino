@@ -235,6 +235,21 @@ _version: 2
   es: "Cambiar..."
   gl: "Cambiar..."
   it: "Cambia..."
+"shell.new_workspace.init_git":
+  en: "Initialize a Git repository"
+  es: "Inicializar un repositorio Git"
+  gl: "Inicializar un repositorio Git"
+  it: "Inizializza un repository Git"
+"shell.new_workspace.init_git_note":
+  en: "Runs git init and adds this .gitignore."
+  es: "Ejecuta git init y añade este .gitignore."
+  gl: "Executa git init e engade este .gitignore."
+  it: "Esegue git init e aggiunge questo .gitignore."
+"shell.new_workspace.git_missing":
+  en: "Git isn't available."
+  es: "Git no está disponible."
+  gl: "Git non está dispoñible."
+  it: "Git non è disponibile."
 "shell.new_workspace.target":
   en: "Creates"
   es: "Se creará"

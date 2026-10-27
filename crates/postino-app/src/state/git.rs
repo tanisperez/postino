@@ -4,11 +4,12 @@
 //! executor and stores the results here; render only reads them.
 
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
+use postino_core::Method;
 use postino_git::{Change, DetectError, Entry, Git, Head, Repo, Status};
-use postino_workspace::natural_cmp;
+use postino_workspace::{Node, natural_cmp};
 
 /// Whether the git executable could be used, as last detected.
 #[derive(Debug, Clone, Default)]
@@ -61,6 +62,13 @@ pub struct GitState {
     pub repo: RepoState,
     /// The panel's collapsed groups and folders, by [`ChangeRow::key`].
     pub collapsed: HashSet<String>,
+    /// The panel's rows, rebuilt when the status, the tree or a folding changes, never in render.
+    pub rows: Arc<Vec<ChangeRow>>,
+    /// [`staged_outside`] of the last status.
+    pub staged_outside: Arc<Vec<String>>,
+    /// The commit author from git config (`user.name` and `user.email`), read when the
+    /// repository is discovered. `None` without a repository or without an author configured.
+    pub author: Option<postino_git::Author>,
 }
 
 impl GitState {
@@ -169,6 +177,8 @@ pub struct ChangeRow {
     pub check: Check,
     /// Whether a group or folder is expanded.
     pub expanded: bool,
+    /// The HTTP method of a `.postino` file, from the collection tree ([`fill_methods`]).
+    pub method: Option<Method>,
     /// The repository relative paths of every file under the row, what staging or discarding it
     /// touches. Never empty.
     pub repo_paths: Vec<String>,
@@ -200,6 +210,7 @@ pub fn change_rows(status: &Status, prefix: &str, collapsed: &HashSet<String>) -
             count: files.len(),
             check: Check::combine(files.iter().map(|file| file.check)),
             expanded,
+            method: None,
             repo_paths: files.iter().map(|file| file.repo_path.clone()).collect(),
         });
         if expanded {
@@ -213,10 +224,50 @@ pub fn change_rows(status: &Status, prefix: &str, collapsed: &HashSet<String>) -
     rows
 }
 
-/// How many entries outside the workspace have a staged change: they would go into the next
-/// commit although the panel does not list them.
-pub fn staged_outside(status: &Status, prefix: &str) -> usize {
-    status.split_by_prefix(prefix).1
+/// The repository relative paths outside the workspace that have a staged change: they would go
+/// into the next commit although the panel does not list them.
+pub fn staged_outside(status: &Status, prefix: &str) -> Vec<String> {
+    status
+        .entries
+        .iter()
+        .filter(|entry| entry.index != Change::Unmodified && !inside(&entry.path, prefix))
+        .map(|entry| entry.path.clone())
+        .collect()
+}
+
+/// Whether the repository relative `path` is inside `prefix`.
+fn inside(path: &str, prefix: &str) -> bool {
+    prefix.is_empty()
+        || path
+            .strip_prefix(prefix)
+            .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
+}
+
+/// Fills [`ChangeRow::method`] of the `.postino` rows from the workspace's collection tree, which
+/// already holds every request's method. Deleted and broken requests keep `None`.
+pub fn fill_methods(rows: &mut [ChangeRow], tree: &[Node]) {
+    fn walk(nodes: &[Node], methods: &mut HashMap<String, Method>) {
+        for node in nodes {
+            match node {
+                Node::Folder(folder) => walk(&folder.children, methods),
+                Node::Request(request) => {
+                    if let Some(method) = &request.method {
+                        methods.insert(request.id.clone(), method.clone());
+                    }
+                }
+            }
+        }
+    }
+    if !rows.iter().any(|row| row.path.ends_with(".postino")) {
+        return;
+    }
+    let mut methods = HashMap::new();
+    walk(tree, &mut methods);
+    for row in rows {
+        if matches!(row.kind, ChangeRowKind::File { .. }) {
+            row.method = methods.get(&row.path).cloned();
+        }
+    }
 }
 
 fn group_key(group: ChangeGroup) -> &'static str {
@@ -329,6 +380,7 @@ impl FolderNode {
                 count: files.len(),
                 check: Check::combine(files.iter().map(|file| file.check)),
                 expanded,
+                method: None,
                 repo_paths: files.iter().map(|file| file.repo_path.clone()).collect(),
             });
             if expanded {
@@ -352,6 +404,7 @@ impl FolderNode {
                 count: 0,
                 check: file.check,
                 expanded: false,
+                method: None,
                 repo_paths: vec![file.repo_path.clone()],
             });
         }
@@ -480,7 +533,8 @@ mod tests {
         );
         assert_eq!(rows[2].path, "auth/login.postino");
         assert_eq!(rows[2].repo_paths, vec!["api/auth/login.postino"]);
-        assert_eq!(staged_outside(&status, "api"), 1);
+        assert_eq!(staged_outside(&status, "api"), vec!["src/main.rs"]);
+        assert!(staged_outside(&status, "").is_empty());
     }
 
     #[test]

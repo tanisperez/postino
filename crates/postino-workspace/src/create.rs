@@ -32,7 +32,7 @@ test("the server says hello", () => {
 
 /// The `.gitignore` of every new workspace: the files that are personal or generated on each
 /// machine.
-const GITIGNORE: &str = "\
+pub const GITIGNORE: &str = "\
 # Secrets and personal overrides of environments
 *.local.env
 

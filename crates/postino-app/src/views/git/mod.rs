@@ -13,6 +13,13 @@ use crate::state::git::{GitAvailability, RepoState};
 
 use super::root::AppView;
 
+mod panel;
+mod watch;
+mod write;
+
+pub(crate) use panel::INSTALL_GIT_URL;
+pub(crate) use write::init_with_gitignore;
+
 /// The git work in flight. Replacing a task drops the previous one, so only the latest result is
 /// applied.
 #[derive(Default)]
@@ -20,13 +27,20 @@ pub(crate) struct GitTasks {
     detect: Option<Task<()>>,
     discover: Option<Task<()>>,
     status: Option<Task<()>>,
+    author: Option<Task<()>>,
+    /// The write in flight (`write.rs`); the next one waits for it.
+    write: Option<Task<()>>,
+    /// The file watcher of the open repository (`watch.rs`).
+    watcher: Option<watch::GitWatcher>,
 }
 
 impl AppView {
     /// The executable the settings ask for.
     fn git_executable(&self) -> Executable {
-        // TODO(#163): read the "Git executable" setting.
-        Executable::Auto
+        match &self.state.settings.git_executable {
+            Some(path) => Executable::Path(path.clone()),
+            None => Executable::Auto,
+        }
     }
 
     /// Detects git again (at startup and when its setting changes), then discovers the open
@@ -59,7 +73,11 @@ impl AppView {
     /// workspace opens and after git is detected again.
     pub(crate) fn discover_git_repo(&mut self, cx: &mut Context<Self>) {
         self.git.repo = RepoState::Unknown;
+        self.git.author = None;
         self.git_tasks.status = None;
+        self.git.collapsed.clear();
+        self.git_tasks.watcher = None;
+        self.rebuild_git_rows();
         let (Some(git), Some(workspace)) =
             (self.git.availability.git(), self.state.workspace.as_ref())
         else {
@@ -88,7 +106,37 @@ impl AppView {
                         RepoState::Error(error.to_string())
                     }
                 };
+                view.watch_git(cx);
                 view.refresh_git_status(cx);
+                view.load_git_author(cx);
+                cx.notify();
+            });
+        }));
+    }
+
+    /// Reads the commit author from git config for the Settings pane, on the background executor.
+    fn load_git_author(&mut self, cx: &mut Context<Self>) {
+        let Some(repo) = self.git.repo().cloned() else {
+            return;
+        };
+        self.git_tasks.author = Some(cx.spawn(async move |this, cx| {
+            let reading = repo.clone();
+            let result = cx.background_spawn(async move { reading.author() }).await;
+            let _ = this.update(cx, |view, cx| {
+                let same_repo = view
+                    .git
+                    .repo()
+                    .is_some_and(|current| current.root() == repo.root());
+                if !same_repo {
+                    return;
+                }
+                view.git.author = match result {
+                    Ok(author) => author,
+                    Err(error) => {
+                        log::warn!("reading the git author failed: {error}");
+                        None
+                    }
+                };
                 cx.notify();
             });
         }));
@@ -120,12 +168,14 @@ impl AppView {
                             && current.as_deref() != Some(&status)
                         {
                             *current = Some(Arc::new(status));
+                            view.rebuild_git_rows();
                             cx.notify();
                         }
                     }
                     Err(error) => {
                         log::warn!("git status failed: {error}");
                         view.git.repo = RepoState::Error(error.to_string());
+                        view.rebuild_git_rows();
                         cx.notify();
                     }
                 }

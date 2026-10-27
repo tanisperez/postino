@@ -4870,6 +4870,7 @@ name = "postino-app"
 version = "0.5.0-dev"
 dependencies = [
  "anyhow",
+ "async-channel",
  "chrono",
  "dirs 7.0.0",
  "dunce",
@@ -4877,6 +4878,7 @@ dependencies = [
  "gpui-kit",
  "log",
  "lsp-types",
+ "notify",
  "postino-cli",
  "postino-core",
  "postino-format",

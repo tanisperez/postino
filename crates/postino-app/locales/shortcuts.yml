@@ -90,6 +90,11 @@ _version: 2
   es: "Mostrar u ocultar Colecciones"
   gl: "Amosar ou agochar Coleccións"
   it: "Mostra o nascondi Raccolte"
+"shortcuts.action.toggle_source_control":
+  en: "Show or hide Source Control"
+  es: "Mostrar u ocultar Control de código fuente"
+  gl: "Amosar ou agochar Control de código fonte"
+  it: "Mostra o nascondi Controllo del codice sorgente"
 "shortcuts.action.toggle_environments":
   en: "Show or hide Environments"
   es: "Mostrar u ocultar Entornos"

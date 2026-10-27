@@ -1,0 +1,127 @@
+# Git integration: Source Control panel, diffs, commit, branches and log. Glossary and rules: docs/i18n.md
+_version: 2
+"git.panel.title":
+  en: "Source Control"
+  es: "Control de código fuente"
+  gl: "Control de código fonte"
+  it: "Controllo del codice sorgente"
+"git.panel.refresh":
+  en: "Refresh"
+  es: "Actualizar"
+  gl: "Actualizar"
+  it: "Aggiorna"
+"git.panel.changes":
+  en: "Changes"
+  es: "Cambios"
+  gl: "Cambios"
+  it: "Modifiche"
+"git.panel.unversioned":
+  en: "Unversioned Files"
+  es: "Archivos sin versionar"
+  gl: "Ficheiros sen versionar"
+  it: "File non versionati"
+"git.panel.discard":
+  en: "Discard changes"
+  es: "Descartar cambios"
+  gl: "Descartar cambios"
+  it: "Annulla modifiche"
+"git.panel.all_changes":
+  en: "all the changes"
+  es: "todos los cambios"
+  gl: "todos os cambios"
+  it: "tutte le modifiche"
+"git.panel.staged_outside.one":
+  en: "%{count} file staged outside this workspace will be included in the commit."
+  es: "%{count} archivo preparado fuera de este espacio de trabajo entrará en el commit."
+  gl: "%{count} ficheiro preparado fóra deste espazo de traballo entrará no commit."
+  it: "%{count} file preparato fuori da questo spazio di lavoro sarà incluso nel commit."
+"git.panel.staged_outside.other":
+  en: "%{count} files staged outside this workspace will be included in the commit."
+  es: "%{count} archivos preparados fuera de este espacio de trabajo entrarán en el commit."
+  gl: "%{count} ficheiros preparados fóra deste espazo de traballo entrarán no commit."
+  it: "%{count} file preparati fuori da questo spazio di lavoro saranno inclusi nel commit."
+"git.panel.unstage_them":
+  en: "Unstage them"
+  es: "Quitarlos del commit"
+  gl: "Quitalos do commit"
+  it: "Rimuovili dal commit"
+"git.discard.title":
+  en: "Discard changes?"
+  es: "¿Descartar los cambios?"
+  gl: "Descartar os cambios?"
+  it: "Annullare le modifiche?"
+"git.discard.text":
+  en: "The changes to %{name} will be lost. Discarded changes can't be recovered."
+  es: "Se perderán los cambios de %{name}. Los cambios descartados no se pueden recuperar."
+  gl: "Perderanse os cambios de %{name}. Os cambios descartados non se poden recuperar."
+  it: "Le modifiche a %{name} andranno perse. Le modifiche annullate non si possono recuperare."
+"git.discard.confirm":
+  en: "Discard"
+  es: "Descartar"
+  gl: "Descartar"
+  it: "Annulla modifiche"
+"git.empty.no_workspace":
+  en: "Open a workspace to see its changes."
+  es: "Abre un espacio de trabajo para ver sus cambios."
+  gl: "Abre un espazo de traballo para ver os seus cambios."
+  it: "Apri uno spazio di lavoro per vederne le modifiche."
+"git.empty.missing":
+  en: "Git isn't available"
+  es: "Git no está disponible"
+  gl: "Git non está dispoñible"
+  it: "Git non è disponibile"
+"git.empty.missing_text":
+  en: "Postino uses the git installed on this machine. Install it or set its path in Settings."
+  es: "Postino usa el git instalado en este equipo. Instálalo o indica su ruta en Ajustes."
+  gl: "Postino usa o git instalado neste equipo. Instálao ou indica a súa ruta en Axustes."
+  it: "Postino usa il git installato su questo computer. Installalo o indica il suo percorso nelle Impostazioni."
+"git.empty.open_settings":
+  en: "Open Git settings"
+  es: "Abrir ajustes de Git"
+  gl: "Abrir axustes de Git"
+  it: "Apri le impostazioni di Git"
+"git.empty.install":
+  en: "How to install Git"
+  es: "Cómo instalar Git"
+  gl: "Como instalar Git"
+  it: "Come installare Git"
+"git.empty.not_a_repo":
+  en: "Not a Git repository"
+  es: "No es un repositorio Git"
+  gl: "Non é un repositorio Git"
+  it: "Non è un repository Git"
+"git.empty.not_a_repo_text":
+  en: "Initialize one in this workspace. Postino adds a .gitignore with *.local.env."
+  es: "Inicializa uno en este espacio de trabajo. Postino añade un .gitignore con *.local.env."
+  gl: "Inicializa un neste espazo de traballo. Postino engade un .gitignore con *.local.env."
+  it: "Inizializzane uno in questo spazio di lavoro. Postino aggiunge un .gitignore con *.local.env."
+"git.empty.init":
+  en: "Initialize repository"
+  es: "Inicializar repositorio"
+  gl: "Inicializar repositorio"
+  it: "Inizializza repository"
+"git.empty.error":
+  en: "Git failed"
+  es: "Git ha fallado"
+  gl: "Git fallou"
+  it: "Git non è riuscito"
+"git.empty.no_changes":
+  en: "No changes"
+  es: "Sin cambios"
+  gl: "Sen cambios"
+  it: "Nessuna modifica"
+"git.empty.clean":
+  en: "Everything is committed."
+  es: "Todo está en un commit."
+  gl: "Todo está nun commit."
+  it: "Tutto è nei commit."
+"git.empty.ahead.one":
+  en: "%{count} commit not pushed yet."
+  es: "%{count} commit sin enviar todavía."
+  gl: "%{count} commit sen enviar aínda."
+  it: "%{count} commit non ancora inviato."
+"git.empty.ahead.other":
+  en: "%{count} commits not pushed yet."
+  es: "%{count} commits sin enviar todavía."
+  gl: "%{count} commits sen enviar aínda."
+  it: "%{count} commit non ancora inviati."

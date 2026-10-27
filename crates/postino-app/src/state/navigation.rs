@@ -7,6 +7,8 @@ pub enum NavSection {
     /// The request tree (the original sidebar).
     #[default]
     Collections,
+    /// The workspace's git changes (milestone 0.5.0).
+    SourceControl,
     /// The workspace's environments.
     Environments,
     /// The load test targets and the load tests open in this session.
@@ -15,8 +17,9 @@ pub enum NavSection {
 
 impl NavSection {
     /// Every section, in the order the rail lists them.
-    pub const ALL: [NavSection; 3] = [
+    pub const ALL: [NavSection; 4] = [
         NavSection::Collections,
+        NavSection::SourceControl,
         NavSection::Environments,
         NavSection::LoadTests,
     ];

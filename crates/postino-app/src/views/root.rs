@@ -29,6 +29,7 @@ use crate::actions::{
     SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
     SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
     SelectNoEnvironment, SendActiveTab, ToggleCollections, ToggleEnvironments, ToggleLoadTests,
+    ToggleSourceControl,
 };
 use crate::state::about::AboutInfo;
 use crate::state::debug_open::{self, DebugOpenTarget};
@@ -703,6 +704,10 @@ impl AppView {
             self.sidebar_selection
                 .retain_existing(|id| existing.contains(id));
         }
+        // The tree changes after Postino writes a file (or a rescan), which also changes git's
+        // status; the method badges of the Source Control rows come from the tree.
+        self.rebuild_git_rows();
+        self.refresh_git_status(cx);
     }
 
     /// Called on every edit to [`Self::sidebar_filter_input`]. Narrows the tree while the filter is
@@ -1352,6 +1357,16 @@ impl AppView {
     }
 
     /// Handles the `Alt 2` / `Ctrl 2` (macOS) key binding.
+    fn on_toggle_source_control(
+        &mut self,
+        _: &ToggleSourceControl,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.toggle_rail_section(state::navigation::NavSection::SourceControl, cx);
+    }
+
+    /// Handles the `Alt 3` / `Ctrl 3` (macOS) key binding.
     fn on_toggle_environments(
         &mut self,
         _: &ToggleEnvironments,
@@ -1361,7 +1376,7 @@ impl AppView {
         self.toggle_rail_section(state::navigation::NavSection::Environments, cx);
     }
 
-    /// Handles the `Alt 3` / `Ctrl 3` (macOS) key binding.
+    /// Handles the `Alt 4` / `Ctrl 4` (macOS) key binding.
     fn on_toggle_load_tests(
         &mut self,
         _: &ToggleLoadTests,
@@ -1655,6 +1670,7 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_select_environment_9))
             .on_action(cx.listener(Self::on_select_no_environment))
             .on_action(cx.listener(Self::on_toggle_collections))
+            .on_action(cx.listener(Self::on_toggle_source_control))
             .on_action(cx.listener(Self::on_toggle_environments))
             .on_action(cx.listener(Self::on_toggle_load_tests))
             .on_action(cx.listener(Self::on_show_completion))

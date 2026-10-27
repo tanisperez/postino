@@ -61,8 +61,42 @@ shop/
 <h2>Merge conflicts</h2>
 <p>Conflicts in a <code>.postino</code> or <code>.env</code> file are resolved like in any text file. Keep the conflict markers out of the result: a file that still contains <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> does not parse and shows up as <strong>(broken)</strong> in the sidebar until you fix it. Postino reads files as they are on disk, so after a pull, reopen the workspace to see the changes.</p>
 
+<h2 id="source-control">Source Control</h2>
+<p>The <strong>Source Control</strong> button of the activity rail (<kbd>Alt</kbd> <kbd>2</kbd>, <kbd>Ctrl</kbd> <kbd>2</kbd> on macOS) lists the files of the workspace that changed since the last commit. Postino runs the <code>git</code> installed on your computer for this: it does not bundle its own git and never stores credentials. If git is missing, the panel says so, with a link to <a href="#installing-git">Installing Git</a> and a button to the Git settings (see <a href="settings.html">Settings</a>).</p>
+<ul>
+    <li><strong>Changes</strong> groups the files git already tracks, by folder; <strong>Unversioned Files</strong> the new ones git does not track yet. Requests show their method, like in Collections. The letter at the end is the kind of change: <strong>M</strong> modified, <strong>A</strong> added, <strong>D</strong> deleted, <strong>R</strong> renamed, <strong>U</strong> untracked, <strong>!</strong> a merge conflict.</li>
+    <li>The checkbox of a file, folder or group chooses what goes into the next commit. It is git's own staging area (the index), so it agrees with <code>git status</code> in a terminal. A box with a dash means only part of the changes is staged.</li>
+    <li>Hovering a row shows <strong>Discard changes</strong>, which puts the file back as it was in the last commit, or deletes it when it is new. With <strong>Confirm before discarding changes</strong> on (the default), Postino asks first. Discarded changes cannot be recovered.</li>
+    <li>When the workspace is a folder inside a bigger repository, the panel only lists the workspace's files. If files outside it are staged, a notice warns that they will go into the commit too, with a button to unstage them.</li>
+    <li>When the workspace is not in a repository yet, <strong>Initialize repository</strong> runs <code>git init</code> in it and adds the <code>.gitignore</code> above when there is none. <strong>New workspace</strong> does the same with its <strong>Initialize a Git repository</strong> checkbox, on by default when git is available and hidden when the new folder is already inside a repository.</li>
+</ul>
+<p>The list refreshes on its own when files change on disk, when the window gets the focus back and after Postino saves a file, so a commit or a checkout made in a terminal shows up right away.</p>
+
 <h2>The status bar</h2>
-<p>When the workspace is inside a git repository, the status bar shows the current branch, or the short commit hash on a detached <code>HEAD</code>. Postino only reads <code>.git/HEAD</code> to find it, when the workspace opens and when its window gets the focus back, so a branch you switch in a terminal shows as soon as you come back. It never runs git, and never commits, pulls or pushes for you. Worktrees are supported.</p>
+<p>When the workspace is inside a git repository, the status bar shows the current branch, or the short commit hash on a detached <code>HEAD</code>. With git installed Postino asks git; without it, it reads <code>.git/HEAD</code> when the workspace opens and when its window gets the focus back. Worktrees are supported.</p>
+
+<h2 id="installing-git">Installing Git</h2>
+<p>Postino needs git 2.30 or later. Check the version you have in a terminal:</p>
+```text title="Terminal"
+git --version
+```
+<h3>Linux</h3>
+<p>Install it with your distribution's package manager:</p>
+```text title="Terminal"
+sudo apt install git        # Debian, Ubuntu, Linux Mint
+sudo dnf install git        # Fedora
+sudo pacman -S git          # Arch, Manjaro
+sudo zypper install git     # openSUSE
+```
+<h3>macOS</h3>
+<p>Install the Xcode Command Line Tools with <code>xcode-select --install</code> in a terminal, which includes git. With <a href="https://brew.sh">Homebrew</a>, <code>brew install git</code> gives you a more recent version. Until one of them is installed, <code>/usr/bin/git</code> only opens Apple's installer, so Postino reports that the Command Line Tools are missing instead of running it.</p>
+<h3>Windows</h3>
+<p>Download <a href="https://git-scm.com/downloads/win">Git for Windows</a> and run the installer with its default options, or use winget:</p>
+```text title="PowerShell"
+winget install --id Git.Git -e
+```
+<h3>After installing</h3>
+<p>Open <strong>Settings</strong>, <strong>Git</strong> and click <strong>Detect again</strong>, or restart Postino. If git is installed somewhere outside your <code>PATH</code>, pick the executable with <strong>Browse…</strong> in the same section.</p>
 
 <h2>Line endings</h2>
 <p>Postino reads both <code>\n</code> and <code>\r\n</code> and always writes <code>\n</code>. If your repository converts line endings on Windows (<code>core.autocrlf</code>), add this to <code>.gitattributes</code> so files stay identical on every system:</p>
