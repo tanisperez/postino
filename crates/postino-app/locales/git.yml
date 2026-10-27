@@ -225,3 +225,113 @@ _version: 2
   es: "El bloque vuelve a como estaba en el último commit. Los cambios revertidos no se pueden recuperar."
   gl: "O bloque volve a como estaba no último commit. Os cambios revertidos non se poden recuperar."
   it: "Il blocco torna com'era nell'ultimo commit. Le modifiche ripristinate non si possono recuperare."
+"git.diff.request":
+  en: "Request"
+  es: "Petición"
+  gl: "Petición"
+  it: "Richiesta"
+"git.request.request":
+  en: "Method and URL"
+  es: "Método y URL"
+  gl: "Método e URL"
+  it: "Metodo e URL"
+"git.request.headers":
+  en: "Headers"
+  es: "Cabeceras"
+  gl: "Cabeceiras"
+  it: "Intestazioni"
+"git.request.query":
+  en: "Query"
+  es: "Query"
+  gl: "Query"
+  it: "Query"
+"git.request.auth":
+  en: "Auth"
+  es: "Autenticación"
+  gl: "Autenticación"
+  it: "Autenticazione"
+"git.request.body":
+  en: "Body"
+  es: "Cuerpo"
+  gl: "Corpo"
+  it: "Corpo"
+"git.request.pre_script":
+  en: "Pre-request script"
+  es: "Script previo"
+  gl: "Script previo"
+  it: "Script pre"
+"git.request.post_script":
+  en: "Post-response script"
+  es: "Script posterior"
+  gl: "Script posterior"
+  it: "Script post"
+"git.request.docs":
+  en: "Docs"
+  es: "Documentación"
+  gl: "Documentación"
+  it: "Documentazione"
+"git.request.new_header":
+  en: "new header"
+  es: "cabecera nueva"
+  gl: "cabeceira nova"
+  it: "nuova intestazione"
+"git.request.removed_header":
+  en: "removed header"
+  es: "cabecera quitada"
+  gl: "cabeceira quitada"
+  it: "intestazione rimossa"
+"git.request.changed_header":
+  en: "changed header"
+  es: "cabecera cambiada"
+  gl: "cabeceira cambiada"
+  it: "intestazione modificata"
+"git.request.new_field":
+  en: "new field"
+  es: "campo nuevo"
+  gl: "campo novo"
+  it: "nuovo campo"
+"git.request.removed_field":
+  en: "removed field"
+  es: "campo quitado"
+  gl: "campo quitado"
+  it: "campo rimosso"
+"git.request.changed_field":
+  en: "changed field"
+  es: "campo cambiado"
+  gl: "campo cambiado"
+  it: "campo modificato"
+"git.request.changed.one":
+  en: "%{count} changed"
+  es: "%{count} cambiado"
+  gl: "%{count} cambiado"
+  it: "%{count} modificato"
+"git.request.changed.other":
+  en: "%{count} changed"
+  es: "%{count} cambiados"
+  gl: "%{count} cambiados"
+  it: "%{count} modificati"
+"git.request.added.one":
+  en: "%{count} added"
+  es: "%{count} añadido"
+  gl: "%{count} engadido"
+  it: "%{count} aggiunto"
+"git.request.added.other":
+  en: "%{count} added"
+  es: "%{count} añadidos"
+  gl: "%{count} engadidos"
+  it: "%{count} aggiunti"
+"git.request.removed.one":
+  en: "%{count} removed"
+  es: "%{count} quitado"
+  gl: "%{count} quitado"
+  it: "%{count} rimosso"
+"git.request.removed.other":
+  en: "%{count} removed"
+  es: "%{count} quitados"
+  gl: "%{count} quitados"
+  it: "%{count} rimossi"
+"git.request.unchanged":
+  en: "Unchanged: %{parts}"
+  es: "Sin cambios: %{parts}"
+  gl: "Sen cambios: %{parts}"
+  it: "Invariati: %{parts}"

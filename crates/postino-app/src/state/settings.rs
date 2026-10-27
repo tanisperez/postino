@@ -243,7 +243,7 @@ impl GitCommitAction {
 }
 
 /// How the diff tab lays out the two versions of a file, switched from its toolbar and
-/// remembered. Stored as `git_diff_mode = "split" | "unified"`.
+/// remembered. Stored as `git_diff_mode = "split" | "unified" | "request"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum GitDiffMode {
@@ -252,6 +252,9 @@ pub enum GitDiffMode {
     Split,
     /// One column, removed lines before added ones.
     Unified,
+    /// For a `.postino` file, the changes grouped by part of the request (design 2c). Other
+    /// files show side by side.
+    Request,
 }
 
 impl GitDiffMode {
@@ -259,6 +262,7 @@ impl GitDiffMode {
         match text.to_ascii_lowercase().as_str() {
             "split" => Some(GitDiffMode::Split),
             "unified" => Some(GitDiffMode::Unified),
+            "request" => Some(GitDiffMode::Request),
             _ => None,
         }
     }

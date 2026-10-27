@@ -495,7 +495,7 @@ pub fn serialize(request: &Request) -> String {
 /// `Body::None`, or an empty `pre_script`/`post_script`/`docs` string. A body whose type is set
 /// but whose text happens to be empty (`Body::Json(String::new())`) is still written, with a
 /// heading and no content lines, so it round-trips back to the same `Body` variant.
-fn build_sections(request: &Request) -> Vec<(String, Vec<String>)> {
+pub(crate) fn build_sections(request: &Request) -> Vec<(String, Vec<String>)> {
     let mut sections = Vec::new();
 
     if !request.query.is_empty() {
@@ -579,7 +579,7 @@ fn auth_lines(fields: &[(&str, &str)]) -> Vec<String> {
 }
 
 /// Formats a `query`/`form` entry as a `key = value` line, with a `# ` prefix when disabled.
-fn format_query_or_form_line(entry: &KeyValue) -> String {
+pub(crate) fn format_query_or_form_line(entry: &KeyValue) -> String {
     let prefix = if entry.enabled { "" } else { "# " };
     format!("{prefix}{} = {}", entry.key, entry.value)
 }
