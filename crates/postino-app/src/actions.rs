@@ -37,10 +37,13 @@ actions!(
         /// Opens or closes the Collections panel, like its rail button (`Alt 1`, `Ctrl 1` on
         /// macOS).
         ToggleCollections,
-        /// Opens or closes the Environments panel, like its rail button (`Alt 2`, `Ctrl 2` on
+        /// Opens or closes the Source Control panel, like its rail button (`Alt 2`, `Ctrl 2` on
+        /// macOS).
+        ToggleSourceControl,
+        /// Opens or closes the Environments panel, like its rail button (`Alt 3`, `Ctrl 3` on
         /// macOS).
         ToggleEnvironments,
-        /// Opens or closes the Load tests panel, like its rail button (`Alt 3`, `Ctrl 3` on
+        /// Opens or closes the Load tests panel, like its rail button (`Alt 4`, `Ctrl 4` on
         /// macOS).
         ToggleLoadTests,
         /// Opens the Settings modal (`Ctrl ,` / `Cmd ,`).

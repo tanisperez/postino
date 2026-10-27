@@ -20,7 +20,9 @@ mod scan;
 mod tree;
 mod workspace;
 
-pub use create::{EXAMPLE_ENVIRONMENT, EXAMPLE_REQUEST_ID, NewWorkspaceContent, create_workspace};
+pub use create::{
+    EXAMPLE_ENVIRONMENT, EXAMPLE_REQUEST_ID, GITIGNORE, NewWorkspaceContent, create_workspace,
+};
 pub use env_edit::{EnvChange, EnvLayer, EnvLayers};
 pub use error::WorkspaceError;
 pub use git::git_branch;

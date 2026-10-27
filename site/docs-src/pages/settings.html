@@ -1,5 +1,5 @@
 title: Settings
-description: Every Postino setting: language, theme, fonts, the welcome tab, JSON indentation, invalid TLS certificates, maximum response size, log level and updates, and the settings.toml file.
+description: Every Postino setting: language, theme, fonts, the welcome tab, JSON indentation, invalid TLS certificates, maximum response size, Git, log level and updates, and the settings.toml file.
 ---
 <h1>Settings</h1>
 <p class="lead">Open Settings with the gear in the title bar or <kbd>Ctrl</kbd> <kbd>,</kbd> (<kbd>⌘</kbd> <kbd>,</kbd> on macOS). Changes apply immediately and are saved as you make them; there is no Save button.</p>
@@ -9,7 +9,7 @@ description: Every Postino setting: language, theme, fonts, the welcome tab, JSO
     <img class="dark" src="../img/settings-dark.webp" width="2220" height="1356" loading="lazy" alt="The Settings window with appearance options.">
 </div>
 
-<p>Settings are grouped in four categories. <strong>Reset to defaults</strong> brings every setting back to its default value.</p>
+<p>Settings are grouped in five categories. <strong>Reset to defaults</strong> brings every setting back to its default value.</p>
 
 <h2>Appearance</h2>
 <div class="table"><table>
@@ -43,6 +43,22 @@ description: Every Postino setting: language, theme, fonts, the welcome tab, JSO
 
 <h3 id="responses">Responses</h3>
 <p><strong>Maximum size</strong> is the biggest response body Postino reads: 10, 20 (default), 50, 100 or 200 MB, where 1 MB is 1,000,000 bytes. A bigger response fails with an error that names the limit. A big response uses about 30 times its size in memory while it is shown, so raise the limit only as much as you need. In <code>settings.toml</code> you can set any value from 1 to 1000.</p>
+
+<h2 id="git">Git</h2>
+<p>The settings of the <a href="git.html">Git integration</a>.</p>
+<h3>Git executable</h3>
+<p>Leave it on <strong>Auto-detect</strong> (default) to use the <code>git</code> found in your <code>PATH</code>, or pick a binary with <strong>Browse…</strong>; choosing <strong>Auto-detect</strong> in the list goes back to searching. <strong>Detect again</strong> looks for git again, for example after installing it. Below, Postino shows what it found, such as <em>git version 2.47.1 · Postino needs 2.30 or later</em>, or why git cannot be used: not found, the Xcode Command Line Tools are missing (macOS), the version is older than 2.30, or git failed to run. When git is not available, a <strong>How to install Git</strong> link opens <a href="git.html#installing-git">Installing Git</a>.</p>
+<div class="table"><table>
+    <thead><tr><th>Setting</th><th>Default</th><th>Options</th></tr></thead>
+    <tbody>
+        <tr><td>Fetch automatically</td><td>On</td><td>Keeps the ahead and behind counts current when you come back to the window. It fetches when the window regains focus, at most once every 5 minutes, with no timer, and never merges.</td></tr>
+        <tr><td>Pull strategy (section <strong>Pull</strong>)</td><td>Follow git config</td><td>Follow git config uses <code>pull.rebase</code> and <code>pull.ff</code>, and merges when they are not set. Merge. Rebase.</td></tr>
+        <tr><td>Default commit action</td><td>Commit</td><td>What <kbd>Ctrl</kbd> <kbd>Enter</kbd> does in the commit message: Commit, or Commit and Push.</td></tr>
+        <tr><td>Block commits with secrets (section <strong>Safety</strong>)</td><td>On</td><td>Stops the commit when a <code>.local.env</code> file is included.</td></tr>
+        <tr><td>Confirm before discarding changes (section <strong>Safety</strong>)</td><td>On</td><td>Discarded changes can't be recovered.</td></tr>
+    </tbody>
+</table></div>
+<p><strong>Commit author</strong> is read only. It shows the <code>user.name</code> and <code>user.email</code> that git config gives the open workspace's repository, or <em>Not configured</em> when there is no repository or no author. Change it with <code>git config</code>.</p>
 
 <h2>Advanced</h2>
 <h3>Logging</h3>
@@ -88,4 +104,11 @@ max_response_mb = 20                  # 1 to 1000
 log_level = "info"                    # off, error, warn, info, debug, trace
 check_updates = true                  # only used by builds with an updater
 show_welcome = true                   # show the welcome tab next to the last workspace
+# git_executable = "/usr/bin/git"     # absent: auto-detect from PATH
+git_fetch_automatically = true        # fetch when the window regains focus, every 5 minutes at most
+git_pull = "follow_config"            # follow_config, merge, rebase
+git_commit_action = "commit"          # commit, commit_and_push
+git_block_secrets = true              # block commits that include a .local.env file
+git_confirm_discard = true            # ask before discarding changes
+git_diff_mode = "split"              # diff tab layout: split, unified or request, set from its toolbar
 ```

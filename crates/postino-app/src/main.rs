@@ -26,7 +26,7 @@ use actions::{
     SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
     SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
     SelectEnvironment9, SelectNoEnvironment, SendActiveTab, ShowCompletion, ToggleCollections,
-    ToggleEnvironments, ToggleLoadTests, UndoRequestEdit,
+    ToggleEnvironments, ToggleLoadTests, ToggleSourceControl, UndoRequestEdit,
 };
 use state::settings::ThemeChoice;
 use views::AppView;
@@ -208,8 +208,9 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-shift-c", CopyLoadTestSummary, None),
         // Ctrl, not Option: Option + a digit types `|`, `@` or `#` on many layouts.
         KeyBinding::new("ctrl-1", ToggleCollections, None),
-        KeyBinding::new("ctrl-2", ToggleEnvironments, None),
-        KeyBinding::new("ctrl-3", ToggleLoadTests, None),
+        KeyBinding::new("ctrl-2", ToggleSourceControl, None),
+        KeyBinding::new("ctrl-3", ToggleEnvironments, None),
+        KeyBinding::new("ctrl-4", ToggleLoadTests, None),
     ]);
     #[cfg(not(target_os = "macos"))]
     cx.bind_keys([
@@ -231,8 +232,9 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-w", CloseActiveTab, None),
         KeyBinding::new("ctrl-shift-c", CopyLoadTestSummary, None),
         KeyBinding::new("alt-1", ToggleCollections, None),
-        KeyBinding::new("alt-2", ToggleEnvironments, None),
-        KeyBinding::new("alt-3", ToggleLoadTests, None),
+        KeyBinding::new("alt-2", ToggleSourceControl, None),
+        KeyBinding::new("alt-3", ToggleEnvironments, None),
+        KeyBinding::new("alt-4", ToggleLoadTests, None),
     ]);
     // `F1`, or `Cmd+Shift+/` on macOS, where `F1` is the brightness key unless `Fn` is held.
     cx.bind_keys([KeyBinding::new(

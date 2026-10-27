@@ -86,6 +86,8 @@ pub enum SettingsCategory {
     Appearance,
     /// How requests are sent (TLS certificates).
     Requests,
+    /// The git executable, syncing, pulling and the safety checks.
+    Git,
     /// Diagnostics: the log level and the log file.
     Advanced,
     /// The version, the release links and the updater.
@@ -94,9 +96,10 @@ pub enum SettingsCategory {
 
 impl SettingsCategory {
     /// Every category, in the order the nav lists them.
-    pub const ALL: [SettingsCategory; 4] = [
+    pub const ALL: [SettingsCategory; 5] = [
         SettingsCategory::Appearance,
         SettingsCategory::Requests,
+        SettingsCategory::Git,
         SettingsCategory::Advanced,
         SettingsCategory::About,
     ];
@@ -106,6 +109,7 @@ impl SettingsCategory {
         match self {
             SettingsCategory::Appearance => t!("settings.category.appearance"),
             SettingsCategory::Requests => t!("common.requests"),
+            SettingsCategory::Git => t!("settings.category.git"),
             SettingsCategory::Advanced => t!("settings.category.advanced"),
             SettingsCategory::About => t!("settings.category.about"),
         }
@@ -166,6 +170,104 @@ impl InvalidTlsCertificates {
     }
 }
 
+/// How "Pull" integrates the remote changes, chosen in Settings, "Git". Stored in `settings.toml`
+/// as `git_pull = "follow_config" | "merge" | "rebase"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GitPull {
+    /// Respect `pull.rebase` and `pull.ff` from git config, merge when unset.
+    #[default]
+    FollowConfig,
+    /// Always merge.
+    Merge,
+    /// Always rebase.
+    Rebase,
+}
+
+impl GitPull {
+    /// Every choice, in the order the Settings view lists them.
+    pub const ALL: [GitPull; 3] = [GitPull::FollowConfig, GitPull::Merge, GitPull::Rebase];
+
+    fn parse(text: &str) -> Option<Self> {
+        match text.to_ascii_lowercase().as_str() {
+            "follow_config" => Some(GitPull::FollowConfig),
+            "merge" => Some(GitPull::Merge),
+            "rebase" => Some(GitPull::Rebase),
+            _ => None,
+        }
+    }
+
+    /// The label shown in the Settings view.
+    pub fn label(self) -> String {
+        match self {
+            GitPull::FollowConfig => t!("settings.git.pull_follow"),
+            GitPull::Merge => t!("settings.git.pull_merge"),
+            GitPull::Rebase => t!("settings.git.pull_rebase"),
+        }
+        .into_owned()
+    }
+}
+
+/// What Ctrl+Enter does in the commit message, chosen in Settings, "Git". Stored in
+/// `settings.toml` as `git_commit_action = "commit" | "commit_and_push"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GitCommitAction {
+    /// Commit only.
+    #[default]
+    Commit,
+    /// Commit, then push.
+    CommitAndPush,
+}
+
+impl GitCommitAction {
+    /// Every choice, in the order the Settings view lists them.
+    pub const ALL: [GitCommitAction; 2] = [GitCommitAction::Commit, GitCommitAction::CommitAndPush];
+
+    fn parse(text: &str) -> Option<Self> {
+        match text.to_ascii_lowercase().as_str() {
+            "commit" => Some(GitCommitAction::Commit),
+            "commit_and_push" => Some(GitCommitAction::CommitAndPush),
+            _ => None,
+        }
+    }
+
+    /// The label shown in the Settings view.
+    pub fn label(self) -> String {
+        match self {
+            GitCommitAction::Commit => t!("settings.git.action_commit"),
+            GitCommitAction::CommitAndPush => t!("settings.git.action_commit_and_push"),
+        }
+        .into_owned()
+    }
+}
+
+/// How the diff tab lays out the two versions of a file, switched from its toolbar and
+/// remembered. Stored as `git_diff_mode = "split" | "unified" | "request"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GitDiffMode {
+    /// The two versions side by side (design 7a).
+    #[default]
+    Split,
+    /// One column, removed lines before added ones.
+    Unified,
+    /// For a `.postino` file, the changes grouped by part of the request (design 2c). Other
+    /// files show side by side.
+    Request,
+}
+
+impl GitDiffMode {
+    fn parse(text: &str) -> Option<Self> {
+        match text.to_ascii_lowercase().as_str() {
+            "split" => Some(GitDiffMode::Split),
+            "unified" => Some(GitDiffMode::Unified),
+            "request" => Some(GitDiffMode::Request),
+            _ => None,
+        }
+    }
+}
+
 /// User-configurable settings: the UI language, the theme mode, the two fonts (UI and editor) with their sizes,
 /// the JSON indentation, which certificates requests trust and what they do with invalid ones, the log level, the update
 /// check and the welcome tab.
@@ -203,6 +305,22 @@ pub struct Settings {
     /// Whether the welcome tab opens at startup next to the reopened workspace. Without a
     /// workspace to open it always does (`state::welcome::show_at_startup`).
     pub show_welcome: bool,
+    /// The git executable to use, `None` to search the `PATH`. Stored as `git_executable`, absent
+    /// when auto-detecting.
+    #[serde(rename = "git_executable", skip_serializing_if = "Option::is_none")]
+    pub git_executable: Option<PathBuf>,
+    /// Whether to fetch when the window regains focus (at most every 5 minutes).
+    pub git_fetch_automatically: bool,
+    /// How Pull integrates the remote changes.
+    pub git_pull: GitPull,
+    /// What Ctrl+Enter does in the commit message.
+    pub git_commit_action: GitCommitAction,
+    /// Whether a commit that includes a `.local.env` file is blocked.
+    pub git_block_secrets: bool,
+    /// Whether discarding changes asks for confirmation first.
+    pub git_confirm_discard: bool,
+    /// The diff tab's layout, remembered from its toolbar.
+    pub git_diff_mode: GitDiffMode,
 }
 
 impl Default for Settings {
@@ -221,6 +339,13 @@ impl Default for Settings {
             log_level: LogLevel::default(),
             check_updates: true,
             show_welcome: true,
+            git_executable: None,
+            git_fetch_automatically: true,
+            git_pull: GitPull::default(),
+            git_commit_action: GitCommitAction::default(),
+            git_block_secrets: true,
+            git_confirm_discard: true,
+            git_diff_mode: GitDiffMode::default(),
         }
     }
 }
@@ -362,6 +487,38 @@ fn parse_settings(content: &str) -> Settings {
         .and_then(|table| table.get("show_welcome"))
         .and_then(toml::Value::as_bool)
         .unwrap_or(defaults.show_welcome);
+    let git_executable = table
+        .and_then(|table| table.get("git_executable"))
+        .and_then(toml::Value::as_str)
+        .filter(|path| !path.trim().is_empty())
+        .map(PathBuf::from);
+    let git_fetch_automatically = table
+        .and_then(|table| table.get("git_fetch_automatically"))
+        .and_then(toml::Value::as_bool)
+        .unwrap_or(defaults.git_fetch_automatically);
+    let git_pull = table
+        .and_then(|table| table.get("git_pull"))
+        .and_then(toml::Value::as_str)
+        .and_then(GitPull::parse)
+        .unwrap_or(defaults.git_pull);
+    let git_commit_action = table
+        .and_then(|table| table.get("git_commit_action"))
+        .and_then(toml::Value::as_str)
+        .and_then(GitCommitAction::parse)
+        .unwrap_or(defaults.git_commit_action);
+    let git_block_secrets = table
+        .and_then(|table| table.get("git_block_secrets"))
+        .and_then(toml::Value::as_bool)
+        .unwrap_or(defaults.git_block_secrets);
+    let git_confirm_discard = table
+        .and_then(|table| table.get("git_confirm_discard"))
+        .and_then(toml::Value::as_bool)
+        .unwrap_or(defaults.git_confirm_discard);
+    let git_diff_mode = table
+        .and_then(|table| table.get("git_diff_mode"))
+        .and_then(toml::Value::as_str)
+        .and_then(GitDiffMode::parse)
+        .unwrap_or(defaults.git_diff_mode);
 
     Settings {
         language,
@@ -377,6 +534,13 @@ fn parse_settings(content: &str) -> Settings {
         log_level,
         check_updates,
         show_welcome,
+        git_executable,
+        git_fetch_automatically,
+        git_pull,
+        git_commit_action,
+        git_block_secrets,
+        git_confirm_discard,
+        git_diff_mode,
     }
 }
 
@@ -436,6 +600,43 @@ mod tests {
         assert_eq!(settings.log_level, LogLevel::Info);
         assert!(settings.check_updates);
         assert!(settings.show_welcome);
+        assert_eq!(settings.git_executable, None);
+        assert!(settings.git_fetch_automatically);
+        assert_eq!(settings.git_pull, GitPull::FollowConfig);
+        assert_eq!(settings.git_commit_action, GitCommitAction::Commit);
+        assert!(settings.git_block_secrets);
+        assert!(settings.git_confirm_discard);
+    }
+
+    #[test]
+    fn git_settings_parse_and_fall_back_one_by_one() {
+        let settings = parse_settings(
+            "git_executable = \"/opt/git/bin/git\"\ngit_fetch_automatically = false\n\
+             git_pull = \"REBASE\"\ngit_commit_action = \"commit_and_push\"\n\
+             git_block_secrets = false\ngit_confirm_discard = false\n",
+        );
+        assert_eq!(
+            settings.git_executable,
+            Some(PathBuf::from("/opt/git/bin/git"))
+        );
+        assert!(!settings.git_fetch_automatically);
+        assert_eq!(settings.git_pull, GitPull::Rebase);
+        assert_eq!(settings.git_commit_action, GitCommitAction::CommitAndPush);
+        assert!(!settings.git_block_secrets);
+        assert!(!settings.git_confirm_discard);
+
+        let settings = parse_settings(
+            "git_executable = \"\"\ngit_pull = \"squash\"\ngit_commit_action = 3\n\
+             git_block_secrets = \"no\"\n",
+        );
+        assert_eq!(settings, Settings::default());
+    }
+
+    #[test]
+    fn auto_detected_git_is_not_written_to_the_file() {
+        let text = toml::to_string_pretty(&Settings::default()).expect("serialize");
+        assert!(!text.contains("git_executable"));
+        assert!(text.contains("git_pull = \"follow_config\""));
     }
 
     #[test]
@@ -461,6 +662,13 @@ mod tests {
             log_level: LogLevel::Trace,
             check_updates: false,
             show_welcome: true,
+            git_executable: Some(PathBuf::from("/usr/local/bin/git")),
+            git_fetch_automatically: false,
+            git_pull: GitPull::Rebase,
+            git_commit_action: GitCommitAction::CommitAndPush,
+            git_block_secrets: false,
+            git_confirm_discard: false,
+            git_diff_mode: GitDiffMode::Unified,
         };
 
         write_settings(dir.path(), &settings);

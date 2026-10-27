@@ -295,3 +295,178 @@ _version: 2
   es: "Junto al último espacio de trabajo. Sin espacio de trabajo que abrir, se muestra siempre."
   gl: "Xunto ao último espazo de traballo. Sen espazo de traballo que abrir, amósase sempre."
   it: "Accanto all'ultimo spazio di lavoro. Senza uno spazio di lavoro da aprire, appare sempre."
+"settings.category.git":
+  en: "Git"
+  es: "Git"
+  gl: "Git"
+  it: "Git"
+"settings.git.executable":
+  en: "Git executable"
+  es: "Ejecutable de Git"
+  gl: "Executable de Git"
+  it: "Eseguibile di Git"
+"settings.git.executable_description":
+  en: "Leave it on Auto-detect to use git from PATH, or pick a binary."
+  es: "Déjalo en Detección automática para usar git del PATH, o elige un binario."
+  gl: "Déixao en Detección automática para usar git do PATH, ou escolle un binario."
+  it: "Lascia il rilevamento automatico per usare git dal PATH, oppure scegli un binario."
+"settings.git.auto":
+  en: "Auto-detect"
+  es: "Detección automática"
+  gl: "Detección automática"
+  it: "Rilevamento automatico"
+"settings.git.browse":
+  en: "Browse…"
+  es: "Examinar…"
+  gl: "Examinar…"
+  it: "Sfoglia…"
+"settings.git.detect_again":
+  en: "Detect again"
+  es: "Detectar de nuevo"
+  gl: "Detectar de novo"
+  it: "Rileva di nuovo"
+"settings.git.detecting":
+  en: "Looking for git…"
+  es: "Buscando git…"
+  gl: "Buscando git…"
+  it: "Ricerca di git…"
+"settings.git.found":
+  en: "git version %{version}"
+  es: "git versión %{version}"
+  gl: "git versión %{version}"
+  it: "git versione %{version}"
+"settings.git.needs":
+  en: "Postino needs %{min} or later"
+  es: "Postino necesita %{min} o posterior"
+  gl: "Postino precisa %{min} ou posterior"
+  it: "Postino richiede la %{min} o successiva"
+"settings.git.not_found":
+  en: "Git was not found. Install it or pick the executable."
+  es: "No se encontró Git. Instálalo o elige el ejecutable."
+  gl: "Non se atopou Git. Instálao ou escolle o executable."
+  it: "Git non trovato. Installalo o scegli l'eseguibile."
+"settings.git.xcode_missing":
+  en: "Git needs the Xcode Command Line Tools, which are not installed."
+  es: "Git necesita las Xcode Command Line Tools, que no están instaladas."
+  gl: "Git precisa das Xcode Command Line Tools, que non están instaladas."
+  it: "Git richiede gli Xcode Command Line Tools, che non sono installati."
+"settings.git.too_old":
+  en: "git version %{version} is too old. Postino needs %{min} or later."
+  es: "git versión %{version} es demasiado antigua. Postino necesita %{min} o posterior."
+  gl: "git versión %{version} é demasiado antiga. Postino precisa %{min} ou posterior."
+  it: "git versione %{version} è troppo vecchia. Postino richiede la %{min} o successiva."
+"settings.git.failed":
+  en: "Could not run git: %{error}"
+  es: "No se pudo ejecutar git: %{error}"
+  gl: "Non se puido executar git: %{error}"
+  it: "Impossibile eseguire git: %{error}"
+"settings.git.install_help":
+  en: "How to install Git"
+  es: "Cómo instalar Git"
+  gl: "Como instalar Git"
+  it: "Come installare Git"
+"settings.git.sync_title":
+  en: "Sync"
+  es: "Sincronización"
+  gl: "Sincronización"
+  it: "Sincronizzazione"
+"settings.git.fetch":
+  en: "Fetch automatically"
+  es: "Obtener automáticamente"
+  gl: "Obter automaticamente"
+  it: "Recupera automaticamente"
+"settings.git.fetch_description":
+  en: "Keeps the ahead and behind counts current when you come back to the window. Never merges."
+  es: "Mantiene al día los contadores de commits por delante y por detrás cuando vuelves a la ventana. Nunca fusiona."
+  gl: "Mantén ao día os contadores de commits por diante e por detrás cando volves á xanela. Nunca fusiona."
+  it: "Mantiene aggiornati i contatori dei commit avanti e indietro quando torni alla finestra. Non esegue mai merge."
+"settings.git.pull_title":
+  en: "Pull"
+  es: "Pull"
+  gl: "Pull"
+  it: "Pull"
+"settings.git.pull_label":
+  en: "Pull strategy"
+  es: "Estrategia de pull"
+  gl: "Estratexia de pull"
+  it: "Strategia di pull"
+"settings.git.pull_description":
+  en: "Follow git config uses pull.rebase and pull.ff, and merges when they are not set."
+  es: "Seguir la configuración de git usa pull.rebase y pull.ff, y fusiona si no están definidos."
+  gl: "Seguir a configuración de git usa pull.rebase e pull.ff, e fusiona se non están definidos."
+  it: "Segui la configurazione di git usa pull.rebase e pull.ff, e fa il merge se non sono impostati."
+"settings.git.pull_follow":
+  en: "Follow git config"
+  es: "Seguir config de git"
+  gl: "Seguir config de git"
+  it: "Segui config di git"
+"settings.git.pull_merge":
+  en: "Merge"
+  es: "Fusionar"
+  gl: "Fusionar"
+  it: "Merge"
+"settings.git.pull_rebase":
+  en: "Rebase"
+  es: "Rebase"
+  gl: "Rebase"
+  it: "Rebase"
+"settings.git.commit_action":
+  en: "Default commit action"
+  es: "Acción de commit predeterminada"
+  gl: "Acción de commit predeterminada"
+  it: "Azione di commit predefinita"
+"settings.git.commit_action_description":
+  en: "What Ctrl+Enter does in the commit message."
+  es: "Lo que hace Ctrl+Enter en el mensaje de commit."
+  gl: "O que fai Ctrl+Enter na mensaxe de commit."
+  it: "Cosa fa Ctrl+Invio nel messaggio di commit."
+"settings.git.action_commit":
+  en: "Commit"
+  es: "Commit"
+  gl: "Commit"
+  it: "Commit"
+"settings.git.action_commit_and_push":
+  en: "Commit and Push"
+  es: "Commit y Push"
+  gl: "Commit e Push"
+  it: "Commit e Push"
+"settings.git.safety_title":
+  en: "Safety"
+  es: "Seguridad"
+  gl: "Seguridade"
+  it: "Sicurezza"
+"settings.git.block_secrets":
+  en: "Block commits with secrets"
+  es: "Bloquear commits con secretos"
+  gl: "Bloquear commits con segredos"
+  it: "Blocca i commit con segreti"
+"settings.git.block_secrets_description":
+  en: "Stops the commit when a .local.env file is included."
+  es: "Detiene el commit cuando se incluye un archivo .local.env."
+  gl: "Detén o commit cando se inclúe un ficheiro .local.env."
+  it: "Ferma il commit quando è incluso un file .local.env."
+"settings.git.confirm_discard":
+  en: "Confirm before discarding changes"
+  es: "Confirmar antes de descartar cambios"
+  gl: "Confirmar antes de descartar cambios"
+  it: "Conferma prima di scartare le modifiche"
+"settings.git.confirm_discard_description":
+  en: "Discarded changes can't be recovered."
+  es: "Los cambios descartados no se pueden recuperar."
+  gl: "Os cambios descartados non se poden recuperar."
+  it: "Le modifiche scartate non possono essere recuperate."
+"settings.git.author":
+  en: "Commit author"
+  es: "Autor del commit"
+  gl: "Autor do commit"
+  it: "Autore del commit"
+"settings.git.author_description":
+  en: "Read from git config. Change it there."
+  es: "Se lee de la configuración de git. Cámbialo ahí."
+  gl: "Léese da configuración de git. Cámbiao aí."
+  it: "Letto dalla configurazione di git. Modificalo lì."
+"settings.git.author_not_configured":
+  en: "Not configured"
+  es: "Sin configurar"
+  gl: "Sen configurar"
+  it: "Non configurato"

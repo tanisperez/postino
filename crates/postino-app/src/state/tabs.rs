@@ -9,6 +9,7 @@ use postino_core::Request;
 use super::auth_edit::{self, AuthKind, AuthStash};
 use super::edit_history::{EditHistory, Snapshot};
 use super::env_edit::{self, EnvEditTab};
+use super::git_diff::{self, DiffTab};
 use super::load_test::LoadTestTab;
 use super::request_edit::{self, BodyKind, BodyStash};
 use super::welcome::{self, WelcomeTab};
@@ -29,6 +30,8 @@ pub enum TabKind {
     LoadTest(Box<LoadTestTab>),
     /// The welcome tab (`state::welcome`). Nothing to save, like a load test.
     Welcome(WelcomeTab),
+    /// The git diff of one file (`state::git_diff`). Read only, nothing to save.
+    Diff(Box<DiffTab>),
 }
 
 /// One open tab.
@@ -61,7 +64,10 @@ impl OpenTab {
     pub fn request(&self) -> Option<&Request> {
         match &self.kind {
             TabKind::Request(request) => Some(request.as_ref()),
-            TabKind::Environment(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) => None,
+            TabKind::Environment(_)
+            | TabKind::LoadTest(_)
+            | TabKind::Welcome(_)
+            | TabKind::Diff(_) => None,
         }
     }
 
@@ -69,7 +75,10 @@ impl OpenTab {
     pub fn request_mut(&mut self) -> Option<&mut Request> {
         match &mut self.kind {
             TabKind::Request(request) => Some(request.as_mut()),
-            TabKind::Environment(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) => None,
+            TabKind::Environment(_)
+            | TabKind::LoadTest(_)
+            | TabKind::Welcome(_)
+            | TabKind::Diff(_) => None,
         }
     }
 
@@ -148,7 +157,9 @@ impl OpenTab {
     pub fn environment(&self) -> Option<&EnvEditTab> {
         match &self.kind {
             TabKind::Environment(edit) => Some(edit.as_ref()),
-            TabKind::Request(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) => None,
+            TabKind::Request(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) | TabKind::Diff(_) => {
+                None
+            }
         }
     }
 
@@ -156,7 +167,9 @@ impl OpenTab {
     pub fn environment_mut(&mut self) -> Option<&mut EnvEditTab> {
         match &mut self.kind {
             TabKind::Environment(edit) => Some(edit.as_mut()),
-            TabKind::Request(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) => None,
+            TabKind::Request(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) | TabKind::Diff(_) => {
+                None
+            }
         }
     }
 
@@ -164,7 +177,10 @@ impl OpenTab {
     pub fn load_test(&self) -> Option<&LoadTestTab> {
         match &self.kind {
             TabKind::LoadTest(load_test) => Some(load_test.as_ref()),
-            TabKind::Request(_) | TabKind::Environment(_) | TabKind::Welcome(_) => None,
+            TabKind::Request(_)
+            | TabKind::Environment(_)
+            | TabKind::Welcome(_)
+            | TabKind::Diff(_) => None,
         }
     }
 
@@ -172,7 +188,26 @@ impl OpenTab {
     pub fn welcome(&self) -> Option<&WelcomeTab> {
         match &self.kind {
             TabKind::Welcome(welcome) => Some(welcome),
-            TabKind::Request(_) | TabKind::Environment(_) | TabKind::LoadTest(_) => None,
+            TabKind::Request(_)
+            | TabKind::Environment(_)
+            | TabKind::LoadTest(_)
+            | TabKind::Diff(_) => None,
+        }
+    }
+
+    /// This tab's diff, if it is the [`TabKind::Diff`] tab.
+    pub fn diff(&self) -> Option<&DiffTab> {
+        match &self.kind {
+            TabKind::Diff(diff) => Some(diff.as_ref()),
+            _ => None,
+        }
+    }
+
+    /// This tab's diff, mutably, if it is the [`TabKind::Diff`] tab.
+    pub fn diff_mut(&mut self) -> Option<&mut DiffTab> {
+        match &mut self.kind {
+            TabKind::Diff(diff) => Some(diff.as_mut()),
+            _ => None,
         }
     }
 
@@ -180,7 +215,10 @@ impl OpenTab {
     pub fn load_test_mut(&mut self) -> Option<&mut LoadTestTab> {
         match &mut self.kind {
             TabKind::LoadTest(load_test) => Some(load_test.as_mut()),
-            TabKind::Request(_) | TabKind::Environment(_) | TabKind::Welcome(_) => None,
+            TabKind::Request(_)
+            | TabKind::Environment(_)
+            | TabKind::Welcome(_)
+            | TabKind::Diff(_) => None,
         }
     }
 }
@@ -287,6 +325,19 @@ impl TabsState {
         self.push_and_activate(welcome::TAB_ID.to_string(), TabKind::Welcome(welcome))
     }
 
+    /// Shows `diff` in the diff tab, opening it when it is not open yet, and makes it active.
+    /// There is only one diff tab: a new file replaces the one it showed, keeping its place.
+    pub fn open_diff(&mut self, diff: DiffTab) -> usize {
+        if let Some(index) = self.index_of(git_diff::TAB_ID) {
+            if let Some(tab) = self.open.get_mut(index) {
+                tab.kind = TabKind::Diff(Box::new(diff));
+            }
+            self.active = Some(index);
+            return index;
+        }
+        self.push_and_activate(git_diff::TAB_ID.to_string(), TabKind::Diff(Box::new(diff)))
+    }
+
     /// Opens a new load test tab and makes it active. Always a fresh tab, never deduplicated:
     /// unlike a request, several load test tabs can target the same request or collection at once.
     /// Returns the tab's id and index.
@@ -306,7 +357,10 @@ impl TabsState {
                 body_stash: BodyStash::default(),
                 auth_stash: AuthStash::default(),
             })),
-            TabKind::Environment(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) => None,
+            TabKind::Environment(_)
+            | TabKind::LoadTest(_)
+            | TabKind::Welcome(_)
+            | TabKind::Diff(_) => None,
         };
         self.open.push(OpenTab {
             id,

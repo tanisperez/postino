@@ -29,6 +29,7 @@ use crate::actions::{
     SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
     SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
     SelectNoEnvironment, SendActiveTab, ToggleCollections, ToggleEnvironments, ToggleLoadTests,
+    ToggleSourceControl,
 };
 use crate::state::about::AboutInfo;
 use crate::state::debug_open::{self, DebugOpenTarget};
@@ -195,6 +196,10 @@ pub struct AppView {
     /// when the window gets the focus back ([`Self::refresh_git_branch`]), so render never reads
     /// `.git/HEAD`.
     pub(crate) git_branch: Option<String>,
+    /// The Git integration's state: availability, repository and status (`views/git`).
+    pub(crate) git: state::git::GitState,
+    /// The git commands running in the background (`views/git`).
+    pub(crate) git_tasks: crate::views::git::GitTasks,
     /// The `gpui` entities behind every open environment editor tab, keyed by tab id, created
     /// when the tab is first shown. See `views/env_editor.rs`.
     pub(crate) env_editors: HashMap<String, crate::views::env_editor::EnvEditorEntities>,
@@ -283,6 +288,7 @@ impl AppView {
             if window.is_window_active() {
                 view.refresh_environments();
                 view.refresh_git_branch();
+                view.refresh_git_status(cx);
                 cx.notify();
             }
         })
@@ -337,6 +343,8 @@ impl AppView {
             nav: state::navigation::NavState::default(),
             env_rows: Vec::new(),
             git_branch: None,
+            git: Default::default(),
+            git_tasks: Default::default(),
             env_editors: HashMap::new(),
             new_env_input: None,
             load_targets: state::load_panel::TargetTree::default(),
@@ -345,6 +353,8 @@ impl AppView {
             opening: None,
             render_count: 0,
         };
+        // Once per launch: `git --version`, then the workspace's repository once it opens.
+        view.detect_git(cx);
         if let Some(root) = initial_workspace {
             view.open_workspace_at(&root, window, cx);
             // A file given on the command line: open its request in a tab, without sending.
@@ -583,6 +593,7 @@ impl AppView {
                 self.restore_last_environment(&absolute);
                 self.refresh_environments();
                 self.refresh_git_branch();
+                self.discover_git_repo(cx);
             }
             Err(error) => {
                 log_workspace_error(&format!("open workspace {}", root.display()), &error);
@@ -693,6 +704,10 @@ impl AppView {
             self.sidebar_selection
                 .retain_existing(|id| existing.contains(id));
         }
+        // The tree changes after Postino writes a file (or a rescan), which also changes git's
+        // status; the method badges of the Source Control rows come from the tree.
+        self.rebuild_git_rows();
+        self.refresh_git_status(cx);
     }
 
     /// Called on every edit to [`Self::sidebar_filter_input`]. Narrows the tree while the filter is
@@ -1342,6 +1357,16 @@ impl AppView {
     }
 
     /// Handles the `Alt 2` / `Ctrl 2` (macOS) key binding.
+    fn on_toggle_source_control(
+        &mut self,
+        _: &ToggleSourceControl,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.toggle_rail_section(state::navigation::NavSection::SourceControl, cx);
+    }
+
+    /// Handles the `Alt 3` / `Ctrl 3` (macOS) key binding.
     fn on_toggle_environments(
         &mut self,
         _: &ToggleEnvironments,
@@ -1351,7 +1376,7 @@ impl AppView {
         self.toggle_rail_section(state::navigation::NavSection::Environments, cx);
     }
 
-    /// Handles the `Alt 3` / `Ctrl 3` (macOS) key binding.
+    /// Handles the `Alt 4` / `Ctrl 4` (macOS) key binding.
     fn on_toggle_load_tests(
         &mut self,
         _: &ToggleLoadTests,
@@ -1443,6 +1468,11 @@ impl AppView {
             .tabs
             .active()
             .is_some_and(|tab| tab.environment().is_some());
+        let is_diff = self
+            .state
+            .tabs
+            .active()
+            .is_some_and(|tab| tab.diff().is_some());
 
         let content = if let Some(welcome) = welcome {
             self.render_welcome(&welcome, cx)
@@ -1450,6 +1480,8 @@ impl AppView {
             self.render_load_test_tab(window, cx)
         } else if is_environment {
             self.render_env_tab(window, cx)
+        } else if is_diff {
+            self.render_diff_tab(window, cx)
         } else {
             v_resizable("postino-main")
                 .child(
@@ -1507,6 +1539,7 @@ impl AppView {
             let full_id = match &tab.kind {
                 state::TabKind::Environment(edit) => state::env_edit::status_path(&edit.name),
                 state::TabKind::Welcome(_) => t!("welcome.tab").into_owned(),
+                state::TabKind::Diff(diff) => diff.path.clone(),
                 state::TabKind::Request(_) | state::TabKind::LoadTest(_) => tab.id.clone(),
             };
             let mut doc_tab = match &tab.kind {
@@ -1523,6 +1556,11 @@ impl AppView {
                     DocumentTab::new(crate::views::load_test::tab_label(load_test))
                         .icon(gpui_kit::assets::IconName::Gauge)
                 }
+                state::TabKind::Diff(diff) => DocumentTab::new(diff.label().to_string())
+                    .icon(gpui_kit::assets::IconName::GitCompare)
+                    .detail(match diff.target {
+                        state::git_diff::DiffTarget::WorkTree => t!("git.diff.working_tree"),
+                    }),
                 state::TabKind::Welcome(_) => DocumentTab::new(t!("welcome.tab"))
                     .icon(gpui_kit::assets::IconName::House)
                     .icon_color(cx.palette().accent_text),
@@ -1645,6 +1683,7 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_select_environment_9))
             .on_action(cx.listener(Self::on_select_no_environment))
             .on_action(cx.listener(Self::on_toggle_collections))
+            .on_action(cx.listener(Self::on_toggle_source_control))
             .on_action(cx.listener(Self::on_toggle_environments))
             .on_action(cx.listener(Self::on_toggle_load_tests))
             .on_action(cx.listener(Self::on_show_completion))

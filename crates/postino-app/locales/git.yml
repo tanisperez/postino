@@ -1,0 +1,377 @@
+# Git integration: Source Control panel, diffs, commit, branches and log. Glossary and rules: docs/i18n.md
+_version: 2
+"git.panel.title":
+  en: "Commit"
+  es: "Commit"
+  gl: "Commit"
+  it: "Commit"
+"git.panel.refresh":
+  en: "Refresh"
+  es: "Actualizar"
+  gl: "Actualizar"
+  it: "Aggiorna"
+"git.panel.changes":
+  en: "Changes"
+  es: "Cambios"
+  gl: "Cambios"
+  it: "Modifiche"
+"git.panel.unversioned":
+  en: "Unversioned Files"
+  es: "Archivos sin versionar"
+  gl: "Ficheiros sen versionar"
+  it: "File non versionati"
+"git.panel.discard":
+  en: "Discard changes"
+  es: "Descartar cambios"
+  gl: "Descartar cambios"
+  it: "Annulla modifiche"
+"git.panel.all_changes":
+  en: "all the changes"
+  es: "todos los cambios"
+  gl: "todos os cambios"
+  it: "tutte le modifiche"
+"git.panel.staged_outside.one":
+  en: "%{count} file staged outside this workspace will be included in the commit."
+  es: "%{count} archivo preparado fuera de este espacio de trabajo entrará en el commit."
+  gl: "%{count} ficheiro preparado fóra deste espazo de traballo entrará no commit."
+  it: "%{count} file preparato fuori da questo spazio di lavoro sarà incluso nel commit."
+"git.panel.staged_outside.other":
+  en: "%{count} files staged outside this workspace will be included in the commit."
+  es: "%{count} archivos preparados fuera de este espacio de trabajo entrarán en el commit."
+  gl: "%{count} ficheiros preparados fóra deste espazo de traballo entrarán no commit."
+  it: "%{count} file preparati fuori da questo spazio di lavoro saranno inclusi nel commit."
+"git.panel.unstage_them":
+  en: "Unstage them"
+  es: "Quitarlos del commit"
+  gl: "Quitalos do commit"
+  it: "Rimuovili dal commit"
+"git.discard.title":
+  en: "Discard changes?"
+  es: "¿Descartar los cambios?"
+  gl: "Descartar os cambios?"
+  it: "Annullare le modifiche?"
+"git.discard.text":
+  en: "The changes to %{name} will be lost. Discarded changes can't be recovered."
+  es: "Se perderán los cambios de %{name}. Los cambios descartados no se pueden recuperar."
+  gl: "Perderanse os cambios de %{name}. Os cambios descartados non se poden recuperar."
+  it: "Le modifiche a %{name} andranno perse. Le modifiche annullate non si possono recuperare."
+"git.discard.confirm":
+  en: "Discard"
+  es: "Descartar"
+  gl: "Descartar"
+  it: "Annulla modifiche"
+"git.empty.no_workspace":
+  en: "Open a workspace to see its changes."
+  es: "Abre un espacio de trabajo para ver sus cambios."
+  gl: "Abre un espazo de traballo para ver os seus cambios."
+  it: "Apri uno spazio di lavoro per vederne le modifiche."
+"git.empty.missing":
+  en: "Git isn't available"
+  es: "Git no está disponible"
+  gl: "Git non está dispoñible"
+  it: "Git non è disponibile"
+"git.empty.missing_text":
+  en: "Postino uses the git installed on this machine. Install it or set its path in Settings."
+  es: "Postino usa el git instalado en este equipo. Instálalo o indica su ruta en Ajustes."
+  gl: "Postino usa o git instalado neste equipo. Instálao ou indica a súa ruta en Axustes."
+  it: "Postino usa il git installato su questo computer. Installalo o indica il suo percorso nelle Impostazioni."
+"git.empty.open_settings":
+  en: "Open Git settings"
+  es: "Abrir ajustes de Git"
+  gl: "Abrir axustes de Git"
+  it: "Apri le impostazioni di Git"
+"git.empty.install":
+  en: "How to install Git"
+  es: "Cómo instalar Git"
+  gl: "Como instalar Git"
+  it: "Come installare Git"
+"git.empty.not_a_repo":
+  en: "Not a Git repository"
+  es: "No es un repositorio Git"
+  gl: "Non é un repositorio Git"
+  it: "Non è un repository Git"
+"git.empty.not_a_repo_text":
+  en: "Initialize one in this workspace. Postino adds a .gitignore with *.local.env."
+  es: "Inicializa uno en este espacio de trabajo. Postino añade un .gitignore con *.local.env."
+  gl: "Inicializa un neste espazo de traballo. Postino engade un .gitignore con *.local.env."
+  it: "Inizializzane uno in questo spazio di lavoro. Postino aggiunge un .gitignore con *.local.env."
+"git.empty.init":
+  en: "Initialize repository"
+  es: "Inicializar repositorio"
+  gl: "Inicializar repositorio"
+  it: "Inizializza repository"
+"git.empty.error":
+  en: "Git failed"
+  es: "Git ha fallado"
+  gl: "Git fallou"
+  it: "Git non è riuscito"
+"git.empty.no_changes":
+  en: "No changes"
+  es: "Sin cambios"
+  gl: "Sen cambios"
+  it: "Nessuna modifica"
+"git.empty.clean":
+  en: "Everything is committed."
+  es: "Todo está en un commit."
+  gl: "Todo está nun commit."
+  it: "Tutto è nei commit."
+"git.empty.ahead.one":
+  en: "%{count} commit not pushed yet."
+  es: "%{count} commit sin enviar todavía."
+  gl: "%{count} commit sen enviar aínda."
+  it: "%{count} commit non ancora inviato."
+"git.empty.ahead.other":
+  en: "%{count} commits not pushed yet."
+  es: "%{count} commits sin enviar todavía."
+  gl: "%{count} commits sen enviar aínda."
+  it: "%{count} commit non ancora inviati."
+"git.diff.failed":
+  en: "Could not read the changes"
+  es: "No se pudieron leer los cambios"
+  gl: "Non se puideron ler os cambios"
+  it: "Impossibile leggere le modifiche"
+"git.diff.no_changes":
+  en: "No differences"
+  es: "Sin diferencias"
+  gl: "Sen diferenzas"
+  it: "Nessuna differenza"
+"git.diff.no_changes_text":
+  en: "The file is the same as in the last commit."
+  es: "El archivo es igual que en el último commit."
+  gl: "O ficheiro é igual que no último commit."
+  it: "Il file è uguale all'ultimo commit."
+"git.diff.previous":
+  en: "Previous change"
+  es: "Cambio anterior"
+  gl: "Cambio anterior"
+  it: "Modifica precedente"
+"git.diff.next":
+  en: "Next change"
+  es: "Cambio siguiente"
+  gl: "Cambio seguinte"
+  it: "Modifica successiva"
+"git.diff.position":
+  en: "%{current} of %{total}"
+  es: "%{current} de %{total}"
+  gl: "%{current} de %{total}"
+  it: "%{current} di %{total}"
+"git.diff.split":
+  en: "Side by side"
+  es: "Lado a lado"
+  gl: "Lado a lado"
+  it: "Affiancato"
+"git.diff.unified":
+  en: "Unified"
+  es: "Unificado"
+  gl: "Unificado"
+  it: "Unificato"
+"git.diff.open_request":
+  en: "Open request"
+  es: "Abrir petición"
+  gl: "Abrir petición"
+  it: "Apri richiesta"
+"git.diff.status_modified":
+  en: "Modified"
+  es: "Modificado"
+  gl: "Modificado"
+  it: "Modificato"
+"git.diff.status_added":
+  en: "Added"
+  es: "Añadido"
+  gl: "Engadido"
+  it: "Aggiunto"
+"git.diff.status_deleted":
+  en: "Deleted"
+  es: "Borrado"
+  gl: "Borrado"
+  it: "Eliminato"
+"git.diff.status_renamed":
+  en: "Renamed"
+  es: "Renombrado"
+  gl: "Renomeado"
+  it: "Rinominato"
+"git.diff.status_untracked":
+  en: "Untracked"
+  es: "Sin versionar"
+  gl: "Sen versionar"
+  it: "Non versionato"
+"git.diff.status_conflict":
+  en: "Conflict"
+  es: "Conflicto"
+  gl: "Conflito"
+  it: "Conflitto"
+"git.diff.stage_hunk":
+  en: "Stage"
+  es: "Preparar"
+  gl: "Preparar"
+  it: "Prepara"
+"git.diff.unstage_hunk":
+  en: "Unstage"
+  es: "Quitar del commit"
+  gl: "Quitar do commit"
+  it: "Rimuovi dal commit"
+"git.diff.revert_hunk":
+  en: "Revert"
+  es: "Revertir"
+  gl: "Reverter"
+  it: "Ripristina"
+"git.diff.revert_title":
+  en: "Revert this change?"
+  es: "¿Revertir este cambio?"
+  gl: "Reverter este cambio?"
+  it: "Ripristinare questa modifica?"
+"git.diff.revert_text":
+  en: "The block goes back to how it was in the last commit. Reverted changes can't be recovered."
+  es: "El bloque vuelve a como estaba en el último commit. Los cambios revertidos no se pueden recuperar."
+  gl: "O bloque volve a como estaba no último commit. Os cambios revertidos non se poden recuperar."
+  it: "Il blocco torna com'era nell'ultimo commit. Le modifiche ripristinate non si possono recuperare."
+"git.diff.request":
+  en: "Request"
+  es: "Petición"
+  gl: "Petición"
+  it: "Richiesta"
+"git.request.request":
+  en: "Method and URL"
+  es: "Método y URL"
+  gl: "Método e URL"
+  it: "Metodo e URL"
+"git.request.headers":
+  en: "Headers"
+  es: "Cabeceras"
+  gl: "Cabeceiras"
+  it: "Intestazioni"
+"git.request.query":
+  en: "Query"
+  es: "Query"
+  gl: "Query"
+  it: "Query"
+"git.request.auth":
+  en: "Auth"
+  es: "Autenticación"
+  gl: "Autenticación"
+  it: "Autenticazione"
+"git.request.body":
+  en: "Body"
+  es: "Cuerpo"
+  gl: "Corpo"
+  it: "Corpo"
+"git.request.pre_script":
+  en: "Pre-request script"
+  es: "Script previo"
+  gl: "Script previo"
+  it: "Script pre"
+"git.request.post_script":
+  en: "Post-response script"
+  es: "Script posterior"
+  gl: "Script posterior"
+  it: "Script post"
+"git.request.docs":
+  en: "Docs"
+  es: "Documentación"
+  gl: "Documentación"
+  it: "Documentazione"
+"git.request.new_header":
+  en: "new header"
+  es: "cabecera nueva"
+  gl: "cabeceira nova"
+  it: "nuova intestazione"
+"git.request.removed_header":
+  en: "removed header"
+  es: "cabecera quitada"
+  gl: "cabeceira quitada"
+  it: "intestazione rimossa"
+"git.request.changed_header":
+  en: "changed header"
+  es: "cabecera cambiada"
+  gl: "cabeceira cambiada"
+  it: "intestazione modificata"
+"git.request.new_field":
+  en: "new field"
+  es: "campo nuevo"
+  gl: "campo novo"
+  it: "nuovo campo"
+"git.request.removed_field":
+  en: "removed field"
+  es: "campo quitado"
+  gl: "campo quitado"
+  it: "campo rimosso"
+"git.request.changed_field":
+  en: "changed field"
+  es: "campo cambiado"
+  gl: "campo cambiado"
+  it: "campo modificato"
+"git.request.changed.one":
+  en: "%{count} changed"
+  es: "%{count} cambiado"
+  gl: "%{count} cambiado"
+  it: "%{count} modificato"
+"git.request.changed.other":
+  en: "%{count} changed"
+  es: "%{count} cambiados"
+  gl: "%{count} cambiados"
+  it: "%{count} modificati"
+"git.request.added.one":
+  en: "%{count} added"
+  es: "%{count} añadido"
+  gl: "%{count} engadido"
+  it: "%{count} aggiunto"
+"git.request.added.other":
+  en: "%{count} added"
+  es: "%{count} añadidos"
+  gl: "%{count} engadidos"
+  it: "%{count} aggiunti"
+"git.request.removed.one":
+  en: "%{count} removed"
+  es: "%{count} quitado"
+  gl: "%{count} quitado"
+  it: "%{count} rimosso"
+"git.request.removed.other":
+  en: "%{count} removed"
+  es: "%{count} quitados"
+  gl: "%{count} quitados"
+  it: "%{count} rimossi"
+"git.request.unchanged":
+  en: "Unchanged: %{parts}"
+  es: "Sin cambios: %{parts}"
+  gl: "Sen cambios: %{parts}"
+  it: "Invariati: %{parts}"
+"git.panel.discard_all":
+  en: "Discard all changes"
+  es: "Descartar todos los cambios"
+  gl: "Descartar todos os cambios"
+  it: "Annulla tutte le modifiche"
+"git.panel.group_by_folder":
+  en: "Group by folder"
+  es: "Agrupar por carpeta"
+  gl: "Agrupar por cartafol"
+  it: "Raggruppa per cartella"
+"git.panel.show_as_list":
+  en: "Show as a list"
+  es: "Mostrar como lista"
+  gl: "Amosar como lista"
+  it: "Mostra come elenco"
+"git.diff.working_tree":
+  en: "Working tree"
+  es: "Árbol de trabajo"
+  gl: "Árbore de traballo"
+  it: "Albero di lavoro"
+"git.diff.binary":
+  en: "Binary file"
+  es: "Archivo binario"
+  gl: "Ficheiro binario"
+  it: "File binario"
+"git.diff.binary_text":
+  en: "Git can't show the changes of a binary file line by line."
+  es: "Git no puede mostrar línea a línea los cambios de un archivo binario."
+  gl: "Git non pode amosar liña a liña os cambios dun ficheiro binario."
+  it: "Git non può mostrare riga per riga le modifiche di un file binario."
+"git.panel.log":
+  en: "Log"
+  es: "Historial"
+  gl: "Historial"
+  it: "Cronologia"
+"git.panel.more":
+  en: "More actions"
+  es: "Más acciones"
+  gl: "Máis accións"
+  it: "Altre azioni"

@@ -67,7 +67,7 @@ These are to be settled in a dedicated planning session. Do not pick one silentl
 
 ## Architecture
 
-A Cargo workspace of nine small crates, UI kept thin, on top of telaio's crates. The reasons and conventions are in
+A Cargo workspace of ten small crates, UI kept thin, on top of telaio's crates. The reasons and conventions are in
 `docs/architecture.md`; notes on `gpui-kit` pitfalls are in `docs/gpui-notes.md`. Dependency
 direction (arrows mean "depends on"), no cycles, no crate depends on `postino-app`:
 
@@ -78,6 +78,7 @@ postino-app ──> postino-load ──> postino-runner ──> postino-script �
      ├──────> postino-runner
      ├──────> postino-script (the script editors' autocompletion reads `postino_script::api`)
      ├──────> postino-workspace ─> postino-format ─> postino-core
+     ├──────> postino-git (standalone, drives the `git` executable)
      ├──────> postino-format (the Code snippet dialog renders `render_snippet` directly)
      └──────> postino-cli (standalone, depends on no other postino crate)
 ```
@@ -89,6 +90,8 @@ From telaio: `postino-app` uses `telaio-ui` (design system and standard componen
   interpolation. No IO.
 - `postino-format`: `.postino` and `.env` parse/serialize, Postman import. No IO.
 - `postino-workspace`: filesystem access, scans a folder, loads/saves requests and environments.
+- `postino-git`: drives the installed `git` executable (detection, discovery, status, stage,
+  unstage, discard). Blocking, no `gpui`, depends on no other postino crate.
 - `postino-script`: the `ScriptEngine` trait and its QuickJS implementation.
 - `postino-http`: sends a resolved request with `ureq`, measures timing.
 - `postino-runner`: the pipeline, vars, pre script, interpolate, send, post script.

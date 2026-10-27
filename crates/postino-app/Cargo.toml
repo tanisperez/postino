@@ -22,6 +22,8 @@ gpui-kit = { workspace = true, features = ["tree-sitter-javascript", "tree-sitte
 chrono = { workspace = true }
 dirs = { workspace = true }
 dunce = { workspace = true }
+notify = { workspace = true }
+async-channel = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 toml = { workspace = true }
@@ -34,6 +36,7 @@ postino-workspace = { path = "../postino-workspace" }
 postino-runner = { path = "../postino-runner" }
 postino-script = { path = "../postino-script" }
 postino-load = { path = "../postino-load" }
+postino-git = { path = "../postino-git" }
 telaio-update = { workspace = true }
 telaio-app = { workspace = true }
 postino-cli = { path = "../postino-cli" }

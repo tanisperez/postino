@@ -52,7 +52,8 @@ impl AppView {
                     state::format::shorten_path(workspace.root(), dirs::home_dir().as_deref());
                 let root = workspace.root().to_path_buf();
                 let tooltip = SharedString::from(t!("shell.status_bar.open_folder"));
-                let branch = self.git_branch.clone();
+                // git's own answer when it runs, else what `.git/HEAD` says.
+                let branch = self.git.branch_label().or_else(|| self.git_branch.clone());
                 h_flex()
                     .items_center()
                     .gap(px(16.0))

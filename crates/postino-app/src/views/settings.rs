@@ -36,6 +36,7 @@ use super::components::{GhostButton, ThemeCard, switch_halo};
 use super::root::AppView;
 
 mod about;
+mod git;
 mod selects;
 
 pub(crate) use selects::SettingsSelects;
@@ -67,7 +68,7 @@ impl AppView {
     /// Applies `self.state.settings` to the live `Theme` (colors, fonts and sizes) and to the theme
     /// mode, refreshes `window`, and persists the file. Called after every control in the Settings
     /// view changes a value; there is no separate "Save" action.
-    fn apply_settings_live(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn apply_settings_live(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         theme::apply_settings(cx, &self.state.settings);
         telaio_ui::ThemeChoice::from(self.state.settings.theme).apply(Some(window), cx);
         // The next request, normal or load test, reads these options.
@@ -233,10 +234,14 @@ impl AppView {
     /// Restores `Settings::default()` ("Reset to
     /// defaults").
     fn reset_settings_to_defaults(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let git_executable = self.state.settings.git_executable.take();
         self.state.settings = Settings::default();
         logging::set_level(self.state.settings.log_level.to_filter());
         self.apply_language(window, cx);
         self.apply_settings_live(window, cx);
+        if git_executable.is_some() {
+            self.detect_git(cx);
+        }
     }
 }
 
@@ -254,6 +259,7 @@ fn render_settings_body(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
     let category = view.read(cx).settings_category;
     let about =
         (category == SettingsCategory::About).then(|| about::AboutPane::capture(view.read(cx)));
+    let git = (category == SettingsCategory::Git).then(|| git::GitPane::capture(view.read(cx)));
     let palette = cx.palette();
     let mono_font_family = cx.theme().mono_font_family.clone();
     let Some(selects) = view
@@ -272,6 +278,7 @@ fn render_settings_body(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
         let icon = match category {
             SettingsCategory::Appearance => gpui_kit::assets::IconName::Palette,
             SettingsCategory::Requests => gpui_kit::assets::IconName::Globe,
+            SettingsCategory::Git => gpui_kit::assets::IconName::GitBranch,
             SettingsCategory::Advanced => gpui_kit::assets::IconName::Wrench,
             SettingsCategory::About => gpui_kit::assets::IconName::Info,
         };
@@ -308,6 +315,7 @@ fn render_settings_body(weak: WeakEntity<AppView>, cx: &mut App) -> AnyElement {
             &selects,
             &mono_font_family,
             about.as_ref(),
+            git.as_ref(),
         ));
     let layout = if about.is_some() {
         layout.footer(about::footer_text(), div())
@@ -334,6 +342,7 @@ fn render_sections(
     selects: &SelectHandles,
     mono_font_family: &SharedString,
     about: Option<&about::AboutPane>,
+    git: Option<&git::GitPane>,
 ) -> Vec<AnyElement> {
     match category {
         SettingsCategory::Appearance => vec![
@@ -346,6 +355,18 @@ fn render_sections(
             render_tls_section(weak, palette, settings, &selects.tls),
             render_response_section(&selects.max_response),
         ],
+        SettingsCategory::Git => git
+            .map(|pane| {
+                git::render_git(
+                    weak,
+                    palette,
+                    settings,
+                    &selects.git_executable,
+                    mono_font_family,
+                    pane,
+                )
+            })
+            .unwrap_or_default(),
         SettingsCategory::Advanced => vec![render_logging_section(
             palette,
             &selects.log_level,

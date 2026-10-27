@@ -11,6 +11,7 @@ pub mod define_variable;
 pub mod env_editor;
 pub mod env_panel;
 pub mod env_picker;
+pub mod git;
 pub mod import_menu;
 pub mod load_panel;
 pub mod load_test;

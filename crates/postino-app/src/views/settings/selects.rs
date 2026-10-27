@@ -6,6 +6,8 @@
 //! ([`AppView::open_settings`]) and kept in [`AppView`]. Each option has a stable string id (the
 //! family name, the megabytes, the position in the enum's `ALL`) apart from its translated label.
 
+use std::path::Path;
+
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
@@ -22,7 +24,7 @@ use super::AppView;
 /// The entity behind one Settings select.
 pub(super) type SettingsSelect = SelectHandle;
 
-/// The seven selects, cheap to clone into the dialog's render.
+/// The eight selects, cheap to clone into the dialog's render.
 #[derive(Clone)]
 pub(super) struct SelectHandles {
     pub(super) language: SettingsSelect,
@@ -32,6 +34,7 @@ pub(super) struct SelectHandles {
     pub(super) tls: SettingsSelect,
     pub(super) max_response: SettingsSelect,
     pub(super) log_level: SettingsSelect,
+    pub(super) git_executable: SettingsSelect,
 }
 
 /// The selects plus the subscriptions that route their choices to [`AppView`].
@@ -85,6 +88,24 @@ fn tls_options() -> Vec<SelectOption> {
         .enumerate()
         .map(|(index, choice)| SelectOption::new(index_id(index), choice.label()))
         .collect()
+}
+
+/// "Auto-detect", plus the picked executable when there is one, so the box shows it.
+fn git_executable_options(path: Option<&Path>) -> Vec<SelectOption> {
+    let mut options = vec![SelectOption::new(GIT_AUTO_ID, t!("settings.git.auto"))];
+    if let Some(path) = path {
+        let text = path.to_string_lossy().into_owned();
+        options.push(SelectOption::new(text.clone(), text));
+    }
+    options
+}
+
+/// The option id of the executable choice: the path itself, or this for auto-detect.
+const GIT_AUTO_ID: &str = "";
+
+fn git_executable_id(path: Option<&Path>) -> String {
+    path.map(|path| path.to_string_lossy().into_owned())
+        .unwrap_or_else(|| GIT_AUTO_ID.to_string())
 }
 
 fn log_level_options() -> Vec<SelectOption> {
@@ -235,6 +256,21 @@ impl SettingsSelects {
             window,
             cx,
         );
+        let git_executable_path = settings.git_executable.as_deref();
+        let git_executable = create_select(
+            git_executable_options(git_executable_path),
+            &git_executable_id(git_executable_path),
+            false,
+            |view, id, window, cx| {
+                // Picking the path that is already set changes nothing, only "Auto-detect" does.
+                if id == GIT_AUTO_ID {
+                    view.set_git_executable(None, window, cx);
+                }
+            },
+            &mut subscriptions,
+            window,
+            cx,
+        );
         Self {
             handles: SelectHandles {
                 language,
@@ -244,6 +280,7 @@ impl SettingsSelects {
                 tls,
                 max_response,
                 log_level,
+                git_executable,
             },
             installed: installed.to_vec(),
             _subscriptions: subscriptions,
@@ -291,6 +328,20 @@ impl SettingsSelects {
             &handles.max_response,
             max_response_options(settings.max_response_mb),
             false,
+            window,
+            cx,
+        );
+        let git_path = settings.git_executable.as_deref();
+        set_options(
+            &handles.git_executable,
+            git_executable_options(git_path),
+            false,
+            window,
+            cx,
+        );
+        pick(
+            &handles.git_executable,
+            &git_executable_id(git_path),
             window,
             cx,
         );
