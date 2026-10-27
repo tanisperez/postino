@@ -62,6 +62,8 @@ pub struct GitState {
     pub repo: RepoState,
     /// The panel's collapsed groups and folders, by [`ChangeRow::key`].
     pub collapsed: HashSet<String>,
+    /// Whether the panel lists files without their folders (its "Group by folder" button off).
+    pub flat: bool,
     /// The panel's rows, rebuilt when the status, the tree or a folding changes, never in render.
     pub rows: Arc<Vec<ChangeRow>>,
     /// [`staged_outside`] of the last status.
@@ -186,8 +188,13 @@ pub struct ChangeRow {
 
 /// The rows of the panel for the entries of `status` inside `prefix` (the workspace's place in
 /// the repository, see [`Repo::prefix`]). Groups and folders in `collapsed` are listed without
-/// their children.
-pub fn change_rows(status: &Status, prefix: &str, collapsed: &HashSet<String>) -> Vec<ChangeRow> {
+/// their children. `flat` lists the files of each group without their folders.
+pub fn change_rows(
+    status: &Status,
+    prefix: &str,
+    collapsed: &HashSet<String>,
+    flat: bool,
+) -> Vec<ChangeRow> {
     let (entries, _) = status.split_by_prefix(prefix);
     let mut rows = Vec::new();
     for group in [ChangeGroup::Changes, ChangeGroup::Unversioned] {
@@ -216,7 +223,11 @@ pub fn change_rows(status: &Status, prefix: &str, collapsed: &HashSet<String>) -
         if expanded {
             let mut tree = FolderNode::default();
             for file in files {
-                tree.insert(file);
+                if flat {
+                    tree.files.push(file);
+                } else {
+                    tree.insert(file);
+                }
             }
             tree.push_rows(&key, "", 1, collapsed, &mut rows);
         }
@@ -449,6 +460,7 @@ mod tests {
     fn status(entries: Vec<Entry>) -> Status {
         Status {
             head: Head::Branch("main".to_string()),
+            head_oid: Some("a41c9e2".to_string()),
             upstream: None,
             ahead: 0,
             behind: 0,
@@ -484,7 +496,7 @@ mod tests {
             entry("health.postino", Change::Unmodified, Change::Deleted),
             untracked("users/delete.postino"),
         ]);
-        let rows = change_rows(&status, "", &HashSet::new());
+        let rows = change_rows(&status, "", &HashSet::new(), false);
         assert_eq!(
             summary(&rows),
             vec![
@@ -511,7 +523,7 @@ mod tests {
     #[test]
     fn a_file_with_staged_and_unstaged_changes_is_partial() {
         let status = status(vec![entry("a.postino", Change::Modified, Change::Modified)]);
-        let rows = change_rows(&status, "", &HashSet::new());
+        let rows = change_rows(&status, "", &HashSet::new(), false);
         assert_eq!(rows[1].check, Check::Partial);
     }
 
@@ -526,7 +538,7 @@ mod tests {
             entry("src/main.rs", Change::Modified, Change::Unmodified),
             entry("README.md", Change::Unmodified, Change::Modified),
         ]);
-        let rows = change_rows(&status, "api", &HashSet::new());
+        let rows = change_rows(&status, "api", &HashSet::new(), false);
         assert_eq!(
             summary(&rows),
             vec!["[x] changes(1)", "  [x] auth/ (1)", "    [x] login M"]
@@ -546,7 +558,7 @@ mod tests {
         let collapsed: HashSet<String> = ["changes:auth".to_string(), "unversioned".to_string()]
             .into_iter()
             .collect();
-        let rows = change_rows(&status, "", &collapsed);
+        let rows = change_rows(&status, "", &collapsed, false);
         assert_eq!(
             summary(&rows),
             vec!["[x] changes(1)", "  [x] auth/ (1)", "[ ] unversioned(1)"]
@@ -555,12 +567,25 @@ mod tests {
     }
 
     #[test]
+    fn flat_lists_files_without_folders() {
+        let status = status(vec![
+            entry("b/x.postino", Change::Modified, Change::Unmodified),
+            entry("a/y.postino", Change::Unmodified, Change::Modified),
+        ]);
+        let rows = change_rows(&status, "", &HashSet::new(), true);
+        assert_eq!(
+            summary(&rows),
+            vec!["[-] changes(2)", "  [ ] y M", "  [x] x M"]
+        );
+    }
+
+    #[test]
     fn conflicts_are_marked() {
         let status = status(vec![Entry {
             conflicted: true,
             ..entry("a.postino", Change::Modified, Change::Modified)
         }]);
-        let rows = change_rows(&status, "", &HashSet::new());
+        let rows = change_rows(&status, "", &HashSet::new(), false);
         assert!(matches!(
             rows[1].kind,
             ChangeRowKind::File { letter: '!', .. }
@@ -573,7 +598,7 @@ mod tests {
             entry("v10/a.postino", Change::Unmodified, Change::Modified),
             entry("v2/a.postino", Change::Unmodified, Change::Modified),
         ]);
-        let rows = change_rows(&status, "", &HashSet::new());
+        let rows = change_rows(&status, "", &HashSet::new(), false);
         assert_eq!(rows[1].label, "v2");
         assert_eq!(rows[3].label, "v10");
     }

@@ -1,10 +1,10 @@
 # Git integration: Source Control panel, diffs, commit, branches and log. Glossary and rules: docs/i18n.md
 _version: 2
 "git.panel.title":
-  en: "Source Control"
-  es: "Control de código fuente"
-  gl: "Control de código fonte"
-  it: "Controllo del codice sorgente"
+  en: "Commit"
+  es: "Commit"
+  gl: "Commit"
+  it: "Commit"
 "git.panel.refresh":
   en: "Refresh"
   es: "Actualizar"
@@ -335,3 +335,43 @@ _version: 2
   es: "Sin cambios: %{parts}"
   gl: "Sen cambios: %{parts}"
   it: "Invariati: %{parts}"
+"git.panel.discard_all":
+  en: "Discard all changes"
+  es: "Descartar todos los cambios"
+  gl: "Descartar todos os cambios"
+  it: "Annulla tutte le modifiche"
+"git.panel.group_by_folder":
+  en: "Group by folder"
+  es: "Agrupar por carpeta"
+  gl: "Agrupar por cartafol"
+  it: "Raggruppa per cartella"
+"git.panel.show_as_list":
+  en: "Show as a list"
+  es: "Mostrar como lista"
+  gl: "Amosar como lista"
+  it: "Mostra come elenco"
+"git.diff.working_tree":
+  en: "Working tree"
+  es: "Árbol de trabajo"
+  gl: "Árbore de traballo"
+  it: "Albero di lavoro"
+"git.diff.binary":
+  en: "Binary file"
+  es: "Archivo binario"
+  gl: "Ficheiro binario"
+  it: "File binario"
+"git.diff.binary_text":
+  en: "Git can't show the changes of a binary file line by line."
+  es: "Git no puede mostrar línea a línea los cambios de un archivo binario."
+  gl: "Git non pode amosar liña a liña os cambios dun ficheiro binario."
+  it: "Git non può mostrare riga per riga le modifiche di un file binario."
+"git.panel.log":
+  en: "Log"
+  es: "Historial"
+  gl: "Historial"
+  it: "Cronologia"
+"git.panel.more":
+  en: "More actions"
+  es: "Más acciones"
+  gl: "Máis accións"
+  it: "Altre azioni"

@@ -62,13 +62,29 @@ impl Repo {
     /// `/dev/null` for [`DiffSource::HeadToWorkTree`] and [`DiffSource::IndexToWorkTree`]. On a
     /// repository without commits `HEAD` is the empty tree.
     pub fn diff(&self, path: &str, source: &DiffSource) -> Result<String, GitError> {
+        self.diff_with_context(path, source, "-U3")
+    }
+
+    /// Like [`Repo::diff`] but with every line of the file as context (`--unified=1000000`), so
+    /// the patch holds the whole file. Its hunks are what [`crate::parse_file_diff`] turns into
+    /// rows.
+    pub fn diff_full(&self, path: &str, source: &DiffSource) -> Result<String, GitError> {
+        self.diff_with_context(path, source, "--unified=1000000")
+    }
+
+    fn diff_with_context(
+        &self,
+        path: &str,
+        source: &DiffSource,
+        context: &str,
+    ) -> Result<String, GitError> {
         if self.is_untracked(path, source)? {
             let args = [
                 "diff",
                 "--no-index",
                 "--no-color",
                 "--no-ext-diff",
-                "-U3",
+                context,
                 "--src-prefix=a/",
                 "--dst-prefix=b/",
                 "--",
@@ -79,7 +95,13 @@ impl Repo {
             return text(self.run_with(&args, None, &[1])?);
         }
         let revs = self.revisions(source)?;
-        let mut args = vec!["diff", "--no-color", "--no-ext-diff", "-U3", "--histogram"];
+        let mut args = vec![
+            "diff",
+            "--no-color",
+            "--no-ext-diff",
+            context,
+            "--histogram",
+        ];
         args.extend(revs.iter().map(String::as_str));
         args.push("--");
         args.push(path);

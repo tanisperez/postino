@@ -1,6 +1,8 @@
 //! The diff tab of the Git integration (designs 2a, 2b, 7a): which file it shows and what is
 //! known about its changes. The patch itself is read by `views/git/diff_tab.rs` on the
-//! background executor and handed to gpui-component's diff viewer; this is only plain data.
+//! background executor and turned into rows by `state/diff_view.rs`; this is only plain data.
+
+use postino_git::{FileDiff, LineKind};
 
 /// The id of the diff tab. There is one: clicking another changed file reuses it, like a
 /// preview.
@@ -37,8 +39,8 @@ pub struct DiffSummary {
     pub additions: usize,
     /// Removed lines.
     pub deletions: usize,
-    /// How many hunks (blocks of changes) the patch has.
-    pub hunks: usize,
+    /// How many blocks of changes (runs of removed and added lines) the file has.
+    pub blocks: usize,
     /// Why the patch could not be read, shown instead of the diff.
     pub error: Option<String>,
 }
@@ -77,34 +79,15 @@ impl DiffTab {
     }
 }
 
-/// Counts the additions, deletions and hunks of a single file patch (`git diff` output).
-pub fn summarize(patch: &str) -> DiffSummary {
-    let mut summary = DiffSummary::default();
-    let mut in_hunk = false;
-    for line in patch.lines() {
-        if line.starts_with("@@") {
-            summary.hunks += 1;
-            in_hunk = true;
-        } else if !in_hunk {
-            continue;
-        } else if line.starts_with('+') {
-            summary.additions += 1;
-        } else if line.starts_with('-') {
-            summary.deletions += 1;
-        }
+/// Counts the added and removed lines and the change blocks of a parsed file diff.
+pub fn summarize(diff: &FileDiff) -> DiffSummary {
+    let count = |kind: LineKind| diff.lines.iter().filter(|line| line.kind == kind).count();
+    DiffSummary {
+        additions: count(LineKind::Added),
+        deletions: count(LineKind::Removed),
+        blocks: diff.blocks.len(),
+        error: None,
     }
-    summary
-}
-
-/// Where a hunk's Stage and Revert buttons go: under the last line of the hunk, so they follow
-/// the block they act on. On the new side, or on the old side when the hunk leaves no line on the
-/// new one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct HunkAnchor {
-    /// Whether `line` is on the new (modified) side.
-    pub modified_side: bool,
-    /// The 1 based line number.
-    pub line: usize,
 }
 
 /// Whether a hunk of the work tree diff is in the index already.
@@ -118,53 +101,22 @@ pub enum HunkStage {
     Mixed,
 }
 
-/// The anchor of every hunk of a single file patch, in order.
-pub fn hunk_anchors(patch: &str) -> Vec<HunkAnchor> {
-    patch
-        .lines()
-        .filter(|line| line.starts_with("@@ "))
-        .filter_map(|header| {
-            let mut ranges = header.split(' ').skip(1);
-            let old = parse_range(ranges.next()?.strip_prefix('-')?)?;
-            let new = parse_range(ranges.next()?.strip_prefix('+')?)?;
-            Some(if new.1 > 0 {
-                HunkAnchor {
-                    modified_side: true,
-                    line: (new.0 + new.1 - 1).max(1),
-                }
-            } else {
-                HunkAnchor {
-                    modified_side: false,
-                    line: (old.0 + old.1 - 1).max(1),
-                }
-            })
-        })
-        .collect()
-}
-
-/// Parses `start,count` (or `start`, a count of 1) of a hunk header.
-fn parse_range(range: &str) -> Option<(usize, usize)> {
-    match range.split_once(',') {
-        Some((start, count)) => Some((start.parse().ok()?, count.parse().ok()?)),
-        None => Some((range.parse().ok()?, 1)),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn counts_hunks_and_lines_but_not_the_file_header() {
-        let patch = "diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -1,2 +1,2 @@\n a\n-b\n+c\n\
+    fn counts_lines_and_blocks_but_not_the_file_header() {
+        // Two hunks of git, but three blocks: a context line splits the first hunk.
+        let patch = "diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -1,3 +1,2 @@\n-a\n+A\n b\n-c\n\
                      @@ -9 +9,2 @@\n z\n+y\n";
         assert_eq!(
-            summarize(patch),
+            summarize(&postino_git::parse_file_diff(patch)),
             DiffSummary {
                 additions: 2,
-                deletions: 1,
-                hunks: 2,
+                deletions: 2,
+                blocks: 3,
                 error: None,
             }
         );
@@ -189,27 +141,5 @@ mod tests {
         );
         assert_eq!(root.folder(), "");
         assert_eq!(root.request_id(), None);
-    }
-
-    #[test]
-    fn anchors_go_on_the_last_new_line_unless_the_hunk_only_removes() {
-        let patch = "@@ -1,3 +1,4 @@ ctx\n a\n@@ -10 +11,0 @@\n-x\n@@ -0,0 +1 @@\n+y\n";
-        assert_eq!(
-            hunk_anchors(patch),
-            vec![
-                HunkAnchor {
-                    modified_side: true,
-                    line: 4
-                },
-                HunkAnchor {
-                    modified_side: false,
-                    line: 10
-                },
-                HunkAnchor {
-                    modified_side: true,
-                    line: 1
-                },
-            ]
-        );
     }
 }

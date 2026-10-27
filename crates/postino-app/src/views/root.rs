@@ -1557,7 +1557,7 @@ impl AppView {
                         .icon(gpui_kit::assets::IconName::Gauge)
                 }
                 state::TabKind::Diff(diff) => DocumentTab::new(diff.label().to_string())
-                    .icon(gpui_kit::assets::IconName::FileDiff),
+                    .icon(gpui_kit::assets::IconName::GitCompare),
                 state::TabKind::Welcome(_) => DocumentTab::new(t!("welcome.tab"))
                     .icon(gpui_kit::assets::IconName::House)
                     .icon_color(cx.palette().accent_text),

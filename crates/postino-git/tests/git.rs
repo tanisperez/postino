@@ -7,7 +7,8 @@ use std::path::Path;
 use std::process::Command;
 
 use postino_git::{
-    ApplyTarget, Change, DiffSource, Executable, FileVersion, Git, Head, Repo, detect, hunk_patch,
+    ApplyTarget, Change, DiffSource, Executable, FileVersion, Git, Head, Repo, block_patch, detect,
+    hunk_patch, parse_file_diff,
 };
 use tempfile::TempDir;
 
@@ -626,6 +627,113 @@ fn apply_handles_a_large_patch_on_stdin() {
         .expect("apply");
     assert_eq!(
         repo.diff("big.txt", &DiffSource::IndexToWorkTree)
+            .expect("diff"),
+        ""
+    );
+}
+
+/// 30 lines `l1` to `l30`, with the lines in `changes` (1-based) replaced and, when `drop_12`,
+/// line 12 turned into two lines.
+fn thirty_lines(changed: &[usize], split_12: bool) -> String {
+    (1..=30)
+        .map(|n| {
+            if split_12 && n == 12 {
+                "x12a\nx12b\n".to_string()
+            } else if changed.contains(&n) {
+                format!("x{n}\n")
+            } else {
+                format!("l{n}\n")
+            }
+        })
+        .collect()
+}
+
+#[test]
+fn single_blocks_of_a_full_context_patch_stage_unstage_and_revert() {
+    let Some(git) = git() else { return };
+    let (dir, repo) = new_repo(&git);
+    let base = thirty_lines(&[], false);
+    write(&dir, "f.txt", &base);
+    commit_all(&git, &dir);
+    write(&dir, "f.txt", &thirty_lines(&[2, 25], true));
+
+    let source = DiffSource::HeadToWorkTree;
+    let patch = repo.diff_full("f.txt", &source).expect("diff");
+    let diff = parse_file_diff(&patch);
+    assert_eq!(diff.blocks.len(), 3);
+    assert_eq!(diff.lines.len(), 30 + 1 + 3);
+    let blocks: Vec<String> = (0..3)
+        .map(|n| block_patch(&patch, &diff, n).expect("block"))
+        .collect();
+
+    // Stage block 1 only.
+    assert!(
+        repo.can_apply(&blocks[0], ApplyTarget::Index, false)
+            .expect("check")
+    );
+    repo.apply(&blocks[0], ApplyTarget::Index, false)
+        .expect("stage");
+    let staged = repo.diff("f.txt", &DiffSource::HeadToIndex).expect("diff");
+    let changes: Vec<&str> = staged
+        .lines()
+        .filter(|l| (l.starts_with('+') || l.starts_with('-')) && !l.starts_with("+++"))
+        .filter(|l| !l.starts_with("---"))
+        .collect();
+    assert_eq!(changes, vec!["-l2", "+x2"], "{staged}");
+
+    // A staged block cannot be staged again, only unstaged; the others the other way round.
+    assert!(
+        !repo
+            .can_apply(&blocks[0], ApplyTarget::Index, false)
+            .expect("check")
+    );
+    assert!(
+        repo.can_apply(&blocks[0], ApplyTarget::Index, true)
+            .expect("check")
+    );
+    assert!(
+        repo.can_apply(&blocks[1], ApplyTarget::Index, false)
+            .expect("check")
+    );
+    assert!(
+        !repo
+            .can_apply(&blocks[1], ApplyTarget::Index, true)
+            .expect("check")
+    );
+
+    // Unstage it again.
+    repo.apply(&blocks[0], ApplyTarget::Index, true)
+        .expect("unstage");
+    assert_eq!(
+        repo.diff("f.txt", &DiffSource::HeadToIndex).expect("diff"),
+        ""
+    );
+
+    // Revert block 2 in the work tree: only that change is undone.
+    repo.apply(&blocks[1], ApplyTarget::WorkTree, true)
+        .expect("revert");
+    let content = fs::read_to_string(dir.path().join("f.txt")).expect("read");
+    let expected = base.replace("l2\n", "x2\n").replace("l25\n", "x25\n");
+    assert_eq!(content, expected);
+}
+
+#[test]
+fn a_block_at_the_end_without_newline_applies() {
+    let Some(git) = git() else { return };
+    let (dir, repo) = new_repo(&git);
+    write(&dir, "f.txt", "a\nb\nc\n");
+    commit_all(&git, &dir);
+    write(&dir, "f.txt", "a\nb\nz");
+    let patch = repo
+        .diff_full("f.txt", &DiffSource::IndexToWorkTree)
+        .expect("diff");
+    let diff = parse_file_diff(&patch);
+    let block = block_patch(&patch, &diff, 0).expect("block");
+    assert!(block.contains("\\ No newline at end of file\n"), "{block}");
+    repo.apply(&block, ApplyTarget::Index, false)
+        .expect("stage");
+    assert_eq!(
+        repo.diff("f.txt", &DiffSource::IndexToWorkTree)
             .expect("diff"),
         ""
     );

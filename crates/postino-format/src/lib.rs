@@ -12,12 +12,15 @@
 //!
 //! The `semantic_diff` module compares two versions of a `.postino` file part by part (method and
 //! URL, headers, query, auth, body, scripts, docs) for the diff tab's "Request" mode.
+//! The `highlight` module colors `.postino`, `.env`, JSON and JavaScript text a line at a time for
+//! the diff tab.
 #![warn(missing_docs)]
 
 mod format;
 mod semantic_diff;
 
 pub mod env;
+pub mod highlight;
 pub mod postman;
 pub mod snippet;
 

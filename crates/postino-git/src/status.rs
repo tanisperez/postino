@@ -76,6 +76,8 @@ pub struct Entry {
 pub struct Status {
     /// What `HEAD` points at.
     pub head: Head,
+    /// The 7 character short id of the `HEAD` commit, `None` on a branch with no commit yet.
+    pub head_oid: Option<String>,
     /// The upstream branch, for example `origin/main`, when one is set.
     pub upstream: Option<String>,
     /// Commits the branch has that the upstream does not.
@@ -229,8 +231,10 @@ pub(crate) fn parse_status(output: &[u8]) -> Result<Status, GitError> {
     } else {
         Head::Branch(head_name)
     };
+    let head_oid = (oid != "(initial)" && !oid.is_empty()).then(|| oid.chars().take(7).collect());
     Ok(Status {
         head,
+        head_oid,
         upstream,
         ahead,
         behind,
@@ -357,6 +361,7 @@ mod tests {
     fn splits_entries_by_prefix() {
         let status = Status {
             head: Head::Branch("main".into()),
+            head_oid: None,
             upstream: None,
             ahead: 0,
             behind: 0,

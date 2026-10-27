@@ -10,6 +10,7 @@
 mod detect;
 mod diff;
 mod error;
+mod file_diff;
 mod repo;
 mod run;
 mod status;
@@ -17,5 +18,8 @@ mod status;
 pub use detect::{Executable, MIN_VERSION, Version, detect};
 pub use diff::{ApplyTarget, DiffSource, FileVersion, NumStat, hunk_patch};
 pub use error::{DetectError, GitError};
+pub use file_diff::{
+    ChangeBlock, DiffLine, FileDiff, LineKind, SplitRow, block_patch, parse_file_diff,
+};
 pub use repo::{Author, Git, Repo};
 pub use status::{Change, Entry, Head, Status};

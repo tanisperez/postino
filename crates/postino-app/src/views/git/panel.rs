@@ -7,6 +7,8 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::Button;
+use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -25,8 +27,8 @@ use crate::theme::{Palette, PaletteExt};
 use telaio_ui::components::{CheckState, TriCheckbox};
 
 use crate::views::components::{
-    ConfirmDialog, EmptyState, IconButton, MethodBadge, PrimaryButton, SecondaryButton,
-    SectionLabel, TreeRow, open_confirm_dialog,
+    ConfirmDialog, EmptyState, IconButton, MethodBadge, NeutralButtonExt, PrimaryButton,
+    SecondaryButton, SectionLabel, TreeRow, open_confirm_dialog,
 };
 
 use super::super::root::AppView;
@@ -47,7 +49,8 @@ impl AppView {
     pub(crate) fn rebuild_git_rows(&mut self) {
         let (rows, outside) = match self.git.status() {
             Some((repo, status)) => {
-                let mut rows = change_rows(status, repo.prefix(), &self.git.collapsed);
+                let mut rows =
+                    change_rows(status, repo.prefix(), &self.git.collapsed, self.git.flat);
                 if let Some(workspace) = self.state.workspace.as_ref() {
                     fill_methods(&mut rows, workspace.tree());
                 }
@@ -129,6 +132,85 @@ impl AppView {
         self.open_settings(window, cx);
     }
 
+    /// The panel header's buttons (design 7a): refresh, discard every change, the folder
+    /// grouping, the log (#174, disabled until it exists) and the menu of the rest.
+    fn render_git_toolbar(&self, weak: WeakEntity<Self>, cx: &App) -> AnyElement {
+        let palette = cx.palette();
+        let refresh = {
+            let weak = weak.clone();
+            IconButton::new("git-refresh", IconName::RefreshCw)
+                .box_size(ICON_BUTTON_HEADER)
+                .tooltip(t!("git.panel.refresh"))
+                .on_click(move |_, _, cx| {
+                    let _ = weak.update(cx, |view, cx| view.refresh_git_status(cx));
+                })
+        };
+        let all_paths: Vec<String> = self
+            .git
+            .rows
+            .iter()
+            .filter(|row| matches!(row.kind, ChangeRowKind::Group(_)))
+            .flat_map(|row| row.repo_paths.iter().cloned())
+            .collect();
+        let discard = {
+            let weak = weak.clone();
+            IconButton::new("git-discard-all", IconName::Undo2)
+                .box_size(ICON_BUTTON_HEADER)
+                .tooltip(t!("git.panel.discard_all"))
+                .disabled(all_paths.is_empty())
+                .on_click(move |_, window, cx| {
+                    let paths = all_paths.clone();
+                    let label = t!("git.panel.all_changes").into_owned();
+                    let _ =
+                        weak.update(cx, |view, cx| view.discard_paths(label, paths, window, cx));
+                })
+        };
+        let (icon, tooltip) = if self.git.flat {
+            (IconName::List, t!("git.panel.group_by_folder"))
+        } else {
+            (IconName::ListTree, t!("git.panel.show_as_list"))
+        };
+        let grouping = {
+            let weak = weak.clone();
+            IconButton::new("git-grouping", icon)
+                .box_size(ICON_BUTTON_HEADER)
+                .tooltip(tooltip)
+                .on_click(move |_, _, cx| {
+                    let _ = weak.update(cx, |view, cx| {
+                        view.git.flat = !view.git.flat;
+                        view.rebuild_git_rows();
+                        cx.notify();
+                    });
+                })
+        };
+        let log = IconButton::new("git-log", IconName::GitGraph)
+            .box_size(ICON_BUTTON_HEADER)
+            .tooltip(t!("git.panel.log"))
+            .disabled(true);
+        let more = Button::new("git-more")
+            .neutral_ghost(cx, palette.fg_muted)
+            .icon(Icon::new(IconName::Ellipsis))
+            .w(px(ICON_BUTTON_HEADER))
+            .h(px(ICON_BUTTON_HEADER))
+            .tooltip(t!("git.panel.more"))
+            .dropdown_menu(move |menu, _, _| {
+                let weak = weak.clone();
+                menu.item(PopupMenuItem::new(t!("git.empty.open_settings")).on_click(
+                    move |_, window, cx| {
+                        let _ = weak.update(cx, |view, cx| view.open_git_settings(window, cx));
+                    },
+                ))
+            });
+        h_flex()
+            .gap(px(2.0))
+            .child(refresh)
+            .child(discard)
+            .child(grouping)
+            .child(log)
+            .child(more)
+            .into_any_element()
+    }
+
     /// Renders the Source Control panel.
     pub(crate) fn render_git_panel(&mut self, cx: &mut Context<Self>) -> AnyElement {
         let palette = cx.palette();
@@ -142,15 +224,11 @@ impl AppView {
             .pb(px(6.0))
             .pl(px(14.0))
             .child(SectionLabel::new(t!("git.panel.title")))
-            .children(self.git.repo().map(|_| {
-                let weak = weak.clone();
-                IconButton::new("git-refresh", IconName::RefreshCw)
-                    .box_size(ICON_BUTTON_HEADER)
-                    .tooltip(t!("git.panel.refresh"))
-                    .on_click(move |_, _, cx| {
-                        let _ = weak.update(cx, |view, cx| view.refresh_git_status(cx));
-                    })
-            }));
+            .children(
+                self.git
+                    .repo()
+                    .map(|_| self.render_git_toolbar(weak.clone(), cx)),
+            );
 
         v_flex()
             .size_full()
