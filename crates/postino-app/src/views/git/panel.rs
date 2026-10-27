@@ -524,8 +524,17 @@ fn render_change_row(
             let repo_path = row.repo_paths.first().cloned().unwrap_or_default();
             let path = row.path.clone();
             let (letter, deleted) = (*letter, *deleted);
+            // A flat list (depth 1) names the folder each file is in.
+            let folder = (row.depth == 1)
+                .then(|| {
+                    row.path
+                        .rsplit_once('/')
+                        .map(|(folder, _)| folder.to_string())
+                })
+                .flatten();
             TreeRow::new(("git-row", index), row.label.clone())
                 .depth(row.depth)
+                .when_some(folder, |row, folder| row.detail(folder))
                 .strikethrough(deleted)
                 .leading(leading)
                 .trailing(discard)
