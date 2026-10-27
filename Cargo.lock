@@ -4880,6 +4880,7 @@ dependencies = [
  "postino-cli",
  "postino-core",
  "postino-format",
+ "postino-git",
  "postino-load",
  "postino-runner",
  "postino-script",
@@ -4921,6 +4922,17 @@ dependencies = [
  "pretty_assertions",
  "serde",
  "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "postino-git"
+version = "0.5.0-dev"
+dependencies = [
+ "dunce",
+ "log",
+ "pretty_assertions",
+ "tempfile",
  "thiserror 2.0.21",
 ]
 

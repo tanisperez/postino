@@ -34,6 +34,7 @@ postino-workspace = { path = "../postino-workspace" }
 postino-runner = { path = "../postino-runner" }
 postino-script = { path = "../postino-script" }
 postino-load = { path = "../postino-load" }
+postino-git = { path = "../postino-git" }
 telaio-update = { workspace = true }
 telaio-app = { workspace = true }
 postino-cli = { path = "../postino-cli" }
