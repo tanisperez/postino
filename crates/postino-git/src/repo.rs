@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::run::run;
+use crate::run::{run, run_with};
 use crate::status::{Change, Entry, Status, parse_status};
 use crate::{GitError, Version};
 
@@ -91,8 +91,18 @@ impl Repo {
         &self.prefix
     }
 
-    fn run(&self, args: &[&str]) -> Result<Vec<u8>, GitError> {
+    pub(crate) fn run(&self, args: &[&str]) -> Result<Vec<u8>, GitError> {
         run(&self.git.path, Some(&self.root), args)
+    }
+
+    /// Runs git with `stdin` as its input and `ok_codes` accepted as success.
+    pub(crate) fn run_with(
+        &self,
+        args: &[&str],
+        stdin: Option<&[u8]>,
+        ok_codes: &[i32],
+    ) -> Result<Vec<u8>, GitError> {
+        run_with(&self.git.path, Some(&self.root), args, stdin, ok_codes)
     }
 
     /// Runs `git <command...> -- <paths>`.
@@ -104,7 +114,7 @@ impl Repo {
     }
 
     /// Whether `HEAD` points at a commit (false on a repository without commits).
-    fn has_head(&self) -> Result<bool, GitError> {
+    pub(crate) fn has_head(&self) -> Result<bool, GitError> {
         match self.run(&["rev-parse", "--verify", "--quiet", "HEAD"]) {
             Ok(_) => Ok(true),
             Err(GitError::Failed { .. }) => Ok(false),

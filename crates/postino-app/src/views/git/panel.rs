@@ -16,6 +16,7 @@ use crate::state::git::{
     ChangeGroup, ChangeRow, ChangeRowKind, Check, GitAvailability, RepoState, change_rows,
     fill_methods, staged_outside,
 };
+use crate::state::git_diff::DiffTarget;
 use crate::state::locale::plural;
 use crate::state::number::format_integer;
 use crate::state::settings::SettingsCategory;
@@ -325,7 +326,7 @@ fn panel_empty(state: EmptyState) -> AnyElement {
 
 /// The status letter's color: modified amber, added and untracked green, deleted red, renamed
 /// blue, conflicts red.
-fn letter_color(letter: char, palette: &Palette) -> Hsla {
+pub(super) fn letter_color(letter: char, palette: &Palette) -> Hsla {
     match letter {
         'A' | 'U' => palette.success,
         'D' | '!' => palette.danger,
@@ -442,8 +443,9 @@ fn render_change_row(
                 .items_center()
                 .child(checkbox)
                 .children(row.method.clone().map(MethodBadge::inline));
-            let request_id = row.path.ends_with(".postino").then(|| row.path.clone());
-            let deleted = *deleted;
+            let repo_path = row.repo_paths.first().cloned().unwrap_or_default();
+            let path = row.path.clone();
+            let (letter, deleted) = (*letter, *deleted);
             TreeRow::new(("git-row", index), row.label.clone())
                 .depth(row.depth)
                 .strikethrough(deleted)
@@ -451,10 +453,10 @@ fn render_change_row(
                 .trailing(discard)
                 .suffix(letter_element)
                 .on_click(move |_, _, cx| {
-                    // Until the diff tab (#168): a click opens the request.
-                    if let (Some(id), false) = (request_id.clone(), deleted) {
-                        let _ = weak.update(cx, |view, cx| view.open_request(id, cx));
-                    }
+                    let (repo_path, path) = (repo_path.clone(), path.clone());
+                    let _ = weak.update(cx, |view, cx| {
+                        view.open_git_diff(repo_path, path, DiffTarget::WorkTree, letter, cx);
+                    });
                 })
                 .into_any_element()
         }

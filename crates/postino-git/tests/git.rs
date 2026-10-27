@@ -6,7 +6,9 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use postino_git::{Change, Executable, Git, Head, Repo, detect};
+use postino_git::{
+    ApplyTarget, Change, DiffSource, Executable, FileVersion, Git, Head, Repo, detect, hunk_patch,
+};
 use tempfile::TempDir;
 
 /// A git, or `None` (and a note) when this machine has none.
@@ -286,4 +288,345 @@ fn author_reads_the_local_config() {
     let author = repo.author().expect("author").expect("some author");
     assert_eq!(author.name, "Test User");
     assert_eq!(author.email, "test@example.com");
+}
+
+const BASE: &str =
+    "l1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nl20\n";
+
+/// `BASE` with lines 2 and 19 changed, two hunks far apart.
+fn two_hunks() -> String {
+    BASE.replace("l2\n", "L2\n").replace("l19\n", "L19\n")
+}
+
+#[test]
+fn diff_of_a_modified_file_per_source() {
+    let Some(git) = git() else { return };
+    let (dir, repo) = new_repo(&git);
+    write(&dir, "a b/f.txt", BASE);
+    commit_all(&git, &dir);
+    write(&dir, "a b/f.txt", &BASE.replace("l2\n", "L2\n"));
+    raw(&git, dir.path(), &["add", "a b/f.txt"]);
+    write(&dir, "a b/f.txt", &two_hunks());
+
+    let path = "a b/f.txt";
+    let staged = repo.diff(path, &DiffSource::HeadToIndex).expect("diff");
+    assert!(
+        staged.contains("+L2\n") && !staged.contains("+L19\n"),
+        "{staged}"
+    );
+    let unstaged = repo.diff(path, &DiffSource::IndexToWorkTree).expect("diff");
+    assert!(
+        unstaged.contains("+L19\n") && !unstaged.contains("+L2\n"),
+        "{unstaged}"
+    );
+    let all = repo.diff(path, &DiffSource::HeadToWorkTree).expect("diff");
+    assert!(all.contains("+L2\n") && all.contains("+L19\n"));
+    assert!(all.contains("--- a/a b/f.txt"), "{all}");
+    assert_eq!(
+        repo.diff("missing.txt", &DiffSource::HeadToWorkTree)
+            .expect("diff"),
+        ""
+    );
+}
+
+#[test]
+fn diff_of_staged_new_untracked_and_deleted_files() {
+    let Some(git) = git() else { return };
+    let (dir, repo) = new_repo(&git);
+    write(&dir, "gone.txt", "bye\n");
+    write(&dir, "keep.txt", "k\n");
+    commit_all(&git, &dir);
+    write(&dir, "added.txt", "new\n");
+    raw(&git, dir.path(), &["add", "added.txt"]);
+    write(&dir, "sub/untracked.txt", "u1\nu2\n");
+    fs::remove_file(dir.path().join("gone.txt")).expect("rm");
+
+    let added = repo
+        .diff("added.txt", &DiffSource::HeadToIndex)
+        .expect("diff");
+    assert!(
+        added.contains("new file mode") && added.contains("+new\n"),
+        "{added}"
+    );
+    let added = repo
+        .diff("added.txt", &DiffSource::HeadToWorkTree)
+        .expect("diff");
+    assert!(added.contains("new file mode"), "{added}");
+
+    for source in [DiffSource::HeadToWorkTree, DiffSource::IndexToWorkTree] {
+        let patch = repo.diff("sub/untracked.txt", &source).expect("diff");
+        assert!(
+            patch.contains("diff --git a/sub/untracked.txt b/sub/untracked.txt"),
+            "{patch}"
+        );
+        assert!(patch.contains("new file mode"), "{patch}");
+        assert!(
+            patch.contains("--- /dev/null\n+++ b/sub/untracked.txt\n"),
+            "{patch}"
+        );
+        assert!(patch.contains("+u1\n+u2\n"), "{patch}");
+    }
+
+    let gone = repo
+        .diff("gone.txt", &DiffSource::HeadToWorkTree)
+        .expect("diff");
+    assert!(
+        gone.contains("deleted file mode") && gone.contains("-bye\n"),
+        "{gone}"
+    );
+}
+
+#[test]
+fn an_untracked_file_patch_applies_to_the_index() {
+    let Some(git) = git() else { return };
+    let (dir, repo) = new_repo(&git);
+    write(&dir, "keep.txt", "k\n");
+    commit_all(&git, &dir);
+    write(&dir, "sub/new.txt", "x\ny\n");
+    let patch = repo
+        .diff("sub/new.txt", &DiffSource::HeadToWorkTree)
+        .expect("diff");
+    assert!(
+        repo.can_apply(&patch, ApplyTarget::Index, false)
+            .expect("check")
+    );
+    repo.apply(&patch, ApplyTarget::Index, false)
+        .expect("apply");
+    let staged = repo
+        .diff("sub/new.txt", &DiffSource::HeadToIndex)
+        .expect("diff");
+    assert!(staged.contains("+x\n+y\n"), "{staged}");
+}
+
+#[test]
+fn diff_on_an_unborn_branch_uses_the_empty_tree() {
+    let Some(git) = git() else { return };
+    let (dir, repo) = new_repo(&git);
+    write(&dir, "first.txt", "one\n");
+    raw(&git, dir.path(), &["add", "first.txt"]);
+    write(&dir, "loose.txt", "two\n");
+    for source in [DiffSource::HeadToIndex, DiffSource::HeadToWorkTree] {
+        let patch = repo.diff("first.txt", &source).expect("diff");
+        assert!(
+            patch.contains("new file mode") && patch.contains("+one\n"),
+            "{patch}"
+        );
+    }
+    let loose = repo
+        .diff("loose.txt", &DiffSource::HeadToWorkTree)
+        .expect("diff");
+    assert!(loose.contains("+two\n"), "{loose}");
+    assert_eq!(
+        repo.file_at("first.txt", &FileVersion::Head).expect("at"),
+        None
+    );
+    let stats = repo.numstat(&DiffSource::HeadToIndex).expect("numstat");
+    assert_eq!(stats.len(), 1);
+    assert_eq!(stats[0].path, "first.txt");
+}
+
+#[test]
+fn diff_of_a_commit_and_of_a_root_commit() {
+    let Some(git) = git() else { return };
+    let (dir, repo) = new_repo(&git);
+    write(&dir, "f.txt", "one\n");
+    commit_all(&git, &dir);
+    write(&dir, "f.txt", "one\ntwo\n");
+    commit_all(&git, &dir);
+
+    let second = repo
+        .diff("f.txt", &DiffSource::Commit("HEAD".into()))
+        .expect("diff");
+    assert!(
+        second.contains("+two\n") && !second.contains("new file"),
+        "{second}"
+    );
+    let root = repo
+        .diff("f.txt", &DiffSource::Commit("HEAD~1".into()))
+        .expect("diff");
+    assert!(
+        root.contains("new file mode") && root.contains("+one\n"),
+        "{root}"
+    );
+    let stats = repo
+        .numstat(&DiffSource::Commit("HEAD~1".into()))
+        .expect("numstat");
+    assert_eq!((stats[0].additions, stats[0].deletions), (1, 0));
+    assert!(
+        repo.diff("f.txt", &DiffSource::Commit("--oops".into()))
+            .is_err()
+    );
+}
+
+#[test]
+fn diff_of_a_staged_rename_and_numstat() {
+    let Some(git) = git() else { return };
+    let (dir, repo) = new_repo(&git);
+    write(&dir, "old.txt", BASE);
+    write(&dir, "bin.dat", "x");
+    commit_all(&git, &dir);
+    raw(&git, dir.path(), &["mv", "old.txt", "new.txt"]);
+    write(&dir, "new.txt", &BASE.replace("l2\n", "L2\n"));
+    raw(&git, dir.path(), &["add", "new.txt"]);
+    fs::write(dir.path().join("bin.dat"), [0u8, 1, 2, 0, 255]).expect("write");
+
+    let patch = repo
+        .diff("new.txt", &DiffSource::HeadToIndex)
+        .expect("diff");
+    assert!(patch.contains("+++ b/new.txt"), "{patch}");
+    let stats = repo.numstat(&DiffSource::HeadToWorkTree).expect("numstat");
+    let new = stats
+        .iter()
+        .find(|s| s.path == "new.txt")
+        .expect("renamed entry");
+    assert_eq!((new.additions, new.deletions, new.binary), (1, 1, false));
+    let bin = stats
+        .iter()
+        .find(|s| s.path == "bin.dat")
+        .expect("binary entry");
+    assert!(bin.binary);
+}
+
+#[test]
+fn numstat_is_limited_to_the_workspace_folder() {
+    let Some(git) = git() else { return };
+    let (dir, _) = new_repo(&git);
+    write(&dir, "ws/a.txt", "a\n");
+    write(&dir, "other/b.txt", "b\n");
+    commit_all(&git, &dir);
+    write(&dir, "ws/a.txt", "a\nmore\n");
+    write(&dir, "other/b.txt", "b\nmore\n");
+    let ws = git
+        .discover(&dir.path().join("ws"))
+        .expect("discover")
+        .expect("a repo");
+    let stats = ws.numstat(&DiffSource::HeadToWorkTree).expect("numstat");
+    assert_eq!(
+        stats.iter().map(|s| s.path.as_str()).collect::<Vec<_>>(),
+        ["ws/a.txt"]
+    );
+}
+
+#[test]
+fn file_at_reads_head_index_and_commits() {
+    let Some(git) = git() else { return };
+    let (dir, repo) = new_repo(&git);
+    write(&dir, "d/f.txt", "v1\n");
+    commit_all(&git, &dir);
+    write(&dir, "d/f.txt", "v2\n");
+    raw(&git, dir.path(), &["add", "d/f.txt"]);
+    write(&dir, "d/f.txt", "v3\n");
+    let at = |v: FileVersion| repo.file_at("d/f.txt", &v).expect("file_at");
+    assert_eq!(at(FileVersion::Head).as_deref(), Some("v1\n"));
+    assert_eq!(at(FileVersion::Index).as_deref(), Some("v2\n"));
+    assert_eq!(
+        at(FileVersion::Commit("HEAD".into())).as_deref(),
+        Some("v1\n")
+    );
+    assert_eq!(
+        repo.file_at("nope.txt", &FileVersion::Head).expect("at"),
+        None
+    );
+    assert_eq!(
+        repo.file_at("nope.txt", &FileVersion::Index).expect("at"),
+        None
+    );
+}
+
+#[test]
+fn one_hunk_can_be_staged_alone() {
+    let Some(git) = git() else { return };
+    let (dir, repo) = new_repo(&git);
+    write(&dir, "f.txt", BASE);
+    commit_all(&git, &dir);
+    write(&dir, "f.txt", &two_hunks());
+
+    let patch = repo
+        .diff("f.txt", &DiffSource::HeadToWorkTree)
+        .expect("diff");
+    let second = hunk_patch(&patch, 1).expect("second hunk");
+    assert!(
+        repo.can_apply(&second, ApplyTarget::Index, false)
+            .expect("check")
+    );
+    repo.apply(&second, ApplyTarget::Index, false)
+        .expect("apply");
+
+    let staged = repo.diff("f.txt", &DiffSource::HeadToIndex).expect("diff");
+    assert!(
+        staged.contains("+L19\n") && !staged.contains("+L2\n"),
+        "{staged}"
+    );
+    let unstaged = repo
+        .diff("f.txt", &DiffSource::IndexToWorkTree)
+        .expect("diff");
+    assert!(
+        unstaged.contains("+L2\n") && !unstaged.contains("+L19\n"),
+        "{unstaged}"
+    );
+
+    // Staging it again is no longer possible, unstaging it is.
+    assert!(
+        !repo
+            .can_apply(&second, ApplyTarget::Index, false)
+            .expect("check")
+    );
+    assert!(
+        repo.can_apply(&second, ApplyTarget::Index, true)
+            .expect("check")
+    );
+    repo.apply(&second, ApplyTarget::Index, true)
+        .expect("unstage");
+    assert_eq!(
+        repo.diff("f.txt", &DiffSource::HeadToIndex).expect("diff"),
+        ""
+    );
+}
+
+#[test]
+fn one_hunk_can_be_reverted_in_the_work_tree() {
+    let Some(git) = git() else { return };
+    let (dir, repo) = new_repo(&git);
+    write(&dir, "f.txt", BASE);
+    commit_all(&git, &dir);
+    write(&dir, "f.txt", &two_hunks());
+
+    let patch = repo
+        .diff("f.txt", &DiffSource::HeadToWorkTree)
+        .expect("diff");
+    let first = hunk_patch(&patch, 0).expect("first hunk");
+    repo.apply(&first, ApplyTarget::WorkTree, true)
+        .expect("revert");
+    let content = fs::read_to_string(dir.path().join("f.txt")).expect("read");
+    assert_eq!(content, BASE.replace("l19\n", "L19\n"));
+    assert!(
+        repo.apply("not a patch", ApplyTarget::WorkTree, false)
+            .is_err()
+    );
+    assert!(
+        !repo
+            .can_apply("not a patch", ApplyTarget::Both, false)
+            .expect("check")
+    );
+}
+
+#[test]
+fn apply_handles_a_large_patch_on_stdin() {
+    let Some(git) = git() else { return };
+    let (dir, repo) = new_repo(&git);
+    let big: String = (0..200_000).map(|i| format!("line {i}\n")).collect();
+    write(&dir, "keep.txt", "k\n");
+    commit_all(&git, &dir);
+    write(&dir, "big.txt", &big);
+    let patch = repo
+        .diff("big.txt", &DiffSource::HeadToWorkTree)
+        .expect("diff");
+    assert!(patch.len() > 1_000_000);
+    repo.apply(&patch, ApplyTarget::Index, false)
+        .expect("apply");
+    assert_eq!(
+        repo.diff("big.txt", &DiffSource::IndexToWorkTree)
+            .expect("diff"),
+        ""
+    );
 }

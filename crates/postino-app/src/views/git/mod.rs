@@ -13,6 +13,7 @@ use crate::state::git::{GitAvailability, RepoState};
 
 use super::root::AppView;
 
+mod diff_tab;
 mod panel;
 mod watch;
 mod write;
@@ -32,6 +33,10 @@ pub(crate) struct GitTasks {
     write: Option<Task<()>>,
     /// The file watcher of the open repository (`watch.rs`).
     watcher: Option<watch::GitWatcher>,
+    /// The diff tab's viewer (`diff_tab.rs`), created with its first patch.
+    diff_view: Option<diff_tab::DiffView>,
+    /// The diff tab's patch being read.
+    diff_load: Option<Task<()>>,
 }
 
 impl AppView {
@@ -169,6 +174,7 @@ impl AppView {
                         {
                             *current = Some(Arc::new(status));
                             view.rebuild_git_rows();
+                            view.load_git_diff(cx);
                             cx.notify();
                         }
                     }

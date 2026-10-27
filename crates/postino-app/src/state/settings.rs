@@ -242,6 +242,28 @@ impl GitCommitAction {
     }
 }
 
+/// How the diff tab lays out the two versions of a file, switched from its toolbar and
+/// remembered. Stored as `git_diff_mode = "split" | "unified"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GitDiffMode {
+    /// The two versions side by side (design 7a).
+    #[default]
+    Split,
+    /// One column, removed lines before added ones.
+    Unified,
+}
+
+impl GitDiffMode {
+    fn parse(text: &str) -> Option<Self> {
+        match text.to_ascii_lowercase().as_str() {
+            "split" => Some(GitDiffMode::Split),
+            "unified" => Some(GitDiffMode::Unified),
+            _ => None,
+        }
+    }
+}
+
 /// User-configurable settings: the UI language, the theme mode, the two fonts (UI and editor) with their sizes,
 /// the JSON indentation, which certificates requests trust and what they do with invalid ones, the log level, the update
 /// check and the welcome tab.
@@ -293,6 +315,8 @@ pub struct Settings {
     pub git_block_secrets: bool,
     /// Whether discarding changes asks for confirmation first.
     pub git_confirm_discard: bool,
+    /// The diff tab's layout, remembered from its toolbar.
+    pub git_diff_mode: GitDiffMode,
 }
 
 impl Default for Settings {
@@ -317,6 +341,7 @@ impl Default for Settings {
             git_commit_action: GitCommitAction::default(),
             git_block_secrets: true,
             git_confirm_discard: true,
+            git_diff_mode: GitDiffMode::default(),
         }
     }
 }
@@ -485,6 +510,11 @@ fn parse_settings(content: &str) -> Settings {
         .and_then(|table| table.get("git_confirm_discard"))
         .and_then(toml::Value::as_bool)
         .unwrap_or(defaults.git_confirm_discard);
+    let git_diff_mode = table
+        .and_then(|table| table.get("git_diff_mode"))
+        .and_then(toml::Value::as_str)
+        .and_then(GitDiffMode::parse)
+        .unwrap_or(defaults.git_diff_mode);
 
     Settings {
         language,
@@ -506,6 +536,7 @@ fn parse_settings(content: &str) -> Settings {
         git_commit_action,
         git_block_secrets,
         git_confirm_discard,
+        git_diff_mode,
     }
 }
 
@@ -633,6 +664,7 @@ mod tests {
             git_commit_action: GitCommitAction::CommitAndPush,
             git_block_secrets: false,
             git_confirm_discard: false,
+            git_diff_mode: GitDiffMode::Unified,
         };
 
         write_settings(dir.path(), &settings);

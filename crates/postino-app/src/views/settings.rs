@@ -68,7 +68,7 @@ impl AppView {
     /// Applies `self.state.settings` to the live `Theme` (colors, fonts and sizes) and to the theme
     /// mode, refreshes `window`, and persists the file. Called after every control in the Settings
     /// view changes a value; there is no separate "Save" action.
-    fn apply_settings_live(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn apply_settings_live(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         theme::apply_settings(cx, &self.state.settings);
         telaio_ui::ThemeChoice::from(self.state.settings.theme).apply(Some(window), cx);
         // The next request, normal or load test, reads these options.

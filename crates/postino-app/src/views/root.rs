@@ -1468,6 +1468,11 @@ impl AppView {
             .tabs
             .active()
             .is_some_and(|tab| tab.environment().is_some());
+        let is_diff = self
+            .state
+            .tabs
+            .active()
+            .is_some_and(|tab| tab.diff().is_some());
 
         let content = if let Some(welcome) = welcome {
             self.render_welcome(&welcome, cx)
@@ -1475,6 +1480,8 @@ impl AppView {
             self.render_load_test_tab(window, cx)
         } else if is_environment {
             self.render_env_tab(window, cx)
+        } else if is_diff {
+            self.render_diff_tab(window, cx)
         } else {
             v_resizable("postino-main")
                 .child(
@@ -1532,6 +1539,7 @@ impl AppView {
             let full_id = match &tab.kind {
                 state::TabKind::Environment(edit) => state::env_edit::status_path(&edit.name),
                 state::TabKind::Welcome(_) => t!("welcome.tab").into_owned(),
+                state::TabKind::Diff(diff) => diff.path.clone(),
                 state::TabKind::Request(_) | state::TabKind::LoadTest(_) => tab.id.clone(),
             };
             let mut doc_tab = match &tab.kind {
@@ -1548,6 +1556,8 @@ impl AppView {
                     DocumentTab::new(crate::views::load_test::tab_label(load_test))
                         .icon(gpui_kit::assets::IconName::Gauge)
                 }
+                state::TabKind::Diff(diff) => DocumentTab::new(diff.label().to_string())
+                    .icon(gpui_kit::assets::IconName::FileDiff),
                 state::TabKind::Welcome(_) => DocumentTab::new(t!("welcome.tab"))
                     .icon(gpui_kit::assets::IconName::House)
                     .icon_color(cx.palette().accent_text),

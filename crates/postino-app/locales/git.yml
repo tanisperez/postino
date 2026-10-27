@@ -125,3 +125,78 @@ _version: 2
   es: "%{count} commits sin enviar todavía."
   gl: "%{count} commits sen enviar aínda."
   it: "%{count} commit non ancora inviati."
+"git.diff.failed":
+  en: "Could not read the changes"
+  es: "No se pudieron leer los cambios"
+  gl: "Non se puideron ler os cambios"
+  it: "Impossibile leggere le modifiche"
+"git.diff.no_changes":
+  en: "No differences"
+  es: "Sin diferencias"
+  gl: "Sen diferenzas"
+  it: "Nessuna differenza"
+"git.diff.no_changes_text":
+  en: "The file is the same as in the last commit."
+  es: "El archivo es igual que en el último commit."
+  gl: "O ficheiro é igual que no último commit."
+  it: "Il file è uguale all'ultimo commit."
+"git.diff.previous":
+  en: "Previous change"
+  es: "Cambio anterior"
+  gl: "Cambio anterior"
+  it: "Modifica precedente"
+"git.diff.next":
+  en: "Next change"
+  es: "Cambio siguiente"
+  gl: "Cambio seguinte"
+  it: "Modifica successiva"
+"git.diff.position":
+  en: "%{current} of %{total}"
+  es: "%{current} de %{total}"
+  gl: "%{current} de %{total}"
+  it: "%{current} di %{total}"
+"git.diff.split":
+  en: "Side by side"
+  es: "Lado a lado"
+  gl: "Lado a lado"
+  it: "Affiancato"
+"git.diff.unified":
+  en: "Unified"
+  es: "Unificado"
+  gl: "Unificado"
+  it: "Unificato"
+"git.diff.open_request":
+  en: "Open request"
+  es: "Abrir petición"
+  gl: "Abrir petición"
+  it: "Apri richiesta"
+"git.diff.status_modified":
+  en: "Modified"
+  es: "Modificado"
+  gl: "Modificado"
+  it: "Modificato"
+"git.diff.status_added":
+  en: "Added"
+  es: "Añadido"
+  gl: "Engadido"
+  it: "Aggiunto"
+"git.diff.status_deleted":
+  en: "Deleted"
+  es: "Borrado"
+  gl: "Borrado"
+  it: "Eliminato"
+"git.diff.status_renamed":
+  en: "Renamed"
+  es: "Renombrado"
+  gl: "Renomeado"
+  it: "Rinominato"
+"git.diff.status_untracked":
+  en: "Untracked"
+  es: "Sin versionar"
+  gl: "Sen versionar"
+  it: "Non versionato"
+"git.diff.status_conflict":
+  en: "Conflict"
+  es: "Conflicto"
+  gl: "Conflito"
+  it: "Conflitto"
