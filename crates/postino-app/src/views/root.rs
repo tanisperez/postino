@@ -195,6 +195,10 @@ pub struct AppView {
     /// when the window gets the focus back ([`Self::refresh_git_branch`]), so render never reads
     /// `.git/HEAD`.
     pub(crate) git_branch: Option<String>,
+    /// The Git integration's state: availability, repository and status (`views/git`).
+    pub(crate) git: state::git::GitState,
+    /// The git commands running in the background (`views/git`).
+    pub(crate) git_tasks: crate::views::git::GitTasks,
     /// The `gpui` entities behind every open environment editor tab, keyed by tab id, created
     /// when the tab is first shown. See `views/env_editor.rs`.
     pub(crate) env_editors: HashMap<String, crate::views::env_editor::EnvEditorEntities>,
@@ -283,6 +287,7 @@ impl AppView {
             if window.is_window_active() {
                 view.refresh_environments();
                 view.refresh_git_branch();
+                view.refresh_git_status(cx);
                 cx.notify();
             }
         })
@@ -337,6 +342,8 @@ impl AppView {
             nav: state::navigation::NavState::default(),
             env_rows: Vec::new(),
             git_branch: None,
+            git: Default::default(),
+            git_tasks: Default::default(),
             env_editors: HashMap::new(),
             new_env_input: None,
             load_targets: state::load_panel::TargetTree::default(),
@@ -345,6 +352,8 @@ impl AppView {
             opening: None,
             render_count: 0,
         };
+        // Once per launch: `git --version`, then the workspace's repository once it opens.
+        view.detect_git(cx);
         if let Some(root) = initial_workspace {
             view.open_workspace_at(&root, window, cx);
             // A file given on the command line: open its request in a tab, without sending.
@@ -583,6 +592,7 @@ impl AppView {
                 self.restore_last_environment(&absolute);
                 self.refresh_environments();
                 self.refresh_git_branch();
+                self.discover_git_repo(cx);
             }
             Err(error) => {
                 log_workspace_error(&format!("open workspace {}", root.display()), &error);

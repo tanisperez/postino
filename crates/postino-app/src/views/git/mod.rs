@@ -1,0 +1,135 @@
+//! The Git integration's glue (milestone 0.5.0): detecting git, discovering the workspace's
+//! repository and reading its status, always on the background executor. The results land in
+//! [`AppView::git`] (`state::git`), which render reads. The Source Control panel is
+//! `views/git/panel.rs`.
+
+use std::sync::Arc;
+
+use gpui_kit::prelude::*;
+use gpui_kit::*;
+use postino_git::Executable;
+
+use crate::state::git::{GitAvailability, RepoState};
+
+use super::root::AppView;
+
+/// The git work in flight. Replacing a task drops the previous one, so only the latest result is
+/// applied.
+#[derive(Default)]
+pub(crate) struct GitTasks {
+    detect: Option<Task<()>>,
+    discover: Option<Task<()>>,
+    status: Option<Task<()>>,
+}
+
+impl AppView {
+    /// The executable the settings ask for.
+    fn git_executable(&self) -> Executable {
+        // TODO(#163): read the "Git executable" setting.
+        Executable::Auto
+    }
+
+    /// Detects git again (at startup and when its setting changes), then discovers the open
+    /// workspace's repository.
+    pub(crate) fn detect_git(&mut self, cx: &mut Context<Self>) {
+        let executable = self.git_executable();
+        self.git.availability = GitAvailability::Detecting;
+        self.git_tasks.detect = Some(cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_spawn(async move { postino_git::detect(&executable) })
+                .await;
+            let _ = this.update(cx, |view, cx| {
+                view.git.availability = match result {
+                    Ok(git) => {
+                        log::info!("git {} at {}", git.version(), git.path().display());
+                        GitAvailability::Ready(git)
+                    }
+                    Err(error) => {
+                        log::warn!("git is not available: {error}");
+                        GitAvailability::Missing(Arc::new(error))
+                    }
+                };
+                view.discover_git_repo(cx);
+                cx.notify();
+            });
+        }));
+    }
+
+    /// Finds the repository of the open workspace, then reads its status. Call when the
+    /// workspace opens and after git is detected again.
+    pub(crate) fn discover_git_repo(&mut self, cx: &mut Context<Self>) {
+        self.git.repo = RepoState::Unknown;
+        self.git_tasks.status = None;
+        let (Some(git), Some(workspace)) =
+            (self.git.availability.git(), self.state.workspace.as_ref())
+        else {
+            self.git_tasks.discover = None;
+            return;
+        };
+        let git = git.clone();
+        let root = workspace.root().to_path_buf();
+        self.git_tasks.discover = Some(cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_spawn(async move { git.discover(&root) })
+                .await;
+            let _ = this.update(cx, |view, cx| {
+                view.git.repo = match result {
+                    Ok(Some(repo)) => {
+                        log::debug!(
+                            "git repository at {}, workspace prefix {:?}",
+                            repo.root().display(),
+                            repo.prefix()
+                        );
+                        RepoState::Repo { repo, status: None }
+                    }
+                    Ok(None) => RepoState::NotARepo,
+                    Err(error) => {
+                        log::warn!("git repository discovery failed: {error}");
+                        RepoState::Error(error.to_string())
+                    }
+                };
+                view.refresh_git_status(cx);
+                cx.notify();
+            });
+        }));
+    }
+
+    /// Reads `git status` again. The view is notified only when the status changed, so calling
+    /// this on every focus or file change costs no frame while nothing changes.
+    pub(crate) fn refresh_git_status(&mut self, cx: &mut Context<Self>) {
+        let Some(repo) = self.git.repo().cloned() else {
+            return;
+        };
+        self.git_tasks.status = Some(cx.spawn(async move |this, cx| {
+            let reading = repo.clone();
+            let result = cx.background_spawn(async move { reading.status() }).await;
+            let _ = this.update(cx, |view, cx| {
+                // The workspace may have changed while git ran.
+                let same_repo = view
+                    .git
+                    .repo()
+                    .is_some_and(|current| current.root() == repo.root());
+                if !same_repo {
+                    return;
+                }
+                match result {
+                    Ok(status) => {
+                        if let RepoState::Repo {
+                            status: current, ..
+                        } = &mut view.git.repo
+                            && current.as_deref() != Some(&status)
+                        {
+                            *current = Some(Arc::new(status));
+                            cx.notify();
+                        }
+                    }
+                    Err(error) => {
+                        log::warn!("git status failed: {error}");
+                        view.git.repo = RepoState::Error(error.to_string());
+                        cx.notify();
+                    }
+                }
+            });
+        }));
+    }
+}
