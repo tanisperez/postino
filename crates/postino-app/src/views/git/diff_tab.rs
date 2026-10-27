@@ -4,22 +4,29 @@
 //! a file or the git status changes, never in render.
 
 use gpui_kit::assets::IconName;
+use std::rc::Rc;
+use std::sync::Arc;
+
 use gpui_kit::component::diff::{
-    Diff, DiffFile, DiffHoverHighlight, DiffHunkSeparator, DiffMode, DiffState,
+    Diff, DiffAnnotation, DiffFile, DiffHoverHighlight, DiffHunkSeparator, DiffLinePosition,
+    DiffMode, DiffSide, DiffState,
 };
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
-use postino_git::DiffSource;
+use postino_git::{ApplyTarget, DiffSource, Repo, hunk_patch};
 use rust_i18n::t;
 
-use crate::state::git_diff::{DiffSummary, DiffTab, DiffTarget, summarize};
+use crate::state::git_diff::{
+    DiffSummary, DiffTab, DiffTarget, HunkAnchor, HunkStage, hunk_anchors, summarize,
+};
 use crate::state::number::format_integer;
 use crate::state::settings::GitDiffMode;
 use crate::theme::metrics::{RAIL_WIDTH, SIDEBAR_WIDTH};
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{
-    EmptyState, IconButton, SecondaryButton, SegmentedControl, SegmentedItem,
+    ConfirmDialog, EmptyState, GhostButton, IconButton, SecondaryButton, SegmentedControl,
+    SegmentedItem, open_confirm_dialog,
 };
 
 use super::super::root::AppView;
@@ -27,6 +34,78 @@ use super::super::root::AppView;
 /// Below this width of the main area the diff is unified, whatever the setting says: two columns
 /// of code would be too narrow to read (design 7a).
 const SPLIT_MIN_WIDTH: f32 = 720.0;
+
+/// Above this many hunks the per hunk buttons are not offered: finding whether each one is
+/// staged runs git twice per hunk.
+const MAX_HUNK_ACTIONS: usize = 100;
+
+/// One hunk of the shown patch, with what its buttons do.
+#[derive(Clone)]
+struct HunkInfo {
+    anchor: HunkAnchor,
+    /// `None` for a patch that is not the work tree's (no buttons).
+    stage: Option<HunkStage>,
+}
+
+/// A patch read in the background, ready for the viewer.
+struct LoadedDiff {
+    summary: DiffSummary,
+    files: Vec<DiffFile>,
+    patch: Arc<str>,
+    hunks: Vec<HunkInfo>,
+}
+
+impl LoadedDiff {
+    /// Reads `repo_path`'s patch from `source`, parses it, and for a work tree diff finds out
+    /// whether each hunk is staged.
+    fn read(
+        repo: &Repo,
+        repo_path: &str,
+        source: &DiffSource,
+    ) -> Result<Self, postino_git::GitError> {
+        let patch = repo.diff(repo_path, source)?;
+        let summary = summarize(&patch);
+        let files = DiffFile::parse(&patch).unwrap_or_default();
+        let anchors = hunk_anchors(&patch);
+        let with_actions =
+            matches!(source, DiffSource::HeadToWorkTree) && anchors.len() <= MAX_HUNK_ACTIONS;
+        let hunks = anchors
+            .into_iter()
+            .enumerate()
+            .map(|(index, anchor)| {
+                let stage = with_actions
+                    .then(|| hunk_patch(&patch, index))
+                    .flatten()
+                    .map(|hunk| hunk_stage(repo, &hunk));
+                HunkInfo { anchor, stage }
+            })
+            .collect();
+        Ok(LoadedDiff {
+            summary,
+            files,
+            patch: patch.into(),
+            hunks,
+        })
+    }
+}
+
+/// Whether `hunk` (from HEAD to the work tree) is in the index: it applies to the index forward
+/// when it is not, backward when it is.
+fn hunk_stage(repo: &Repo, hunk: &str) -> HunkStage {
+    if repo
+        .can_apply(hunk, ApplyTarget::Index, false)
+        .unwrap_or(false)
+    {
+        HunkStage::Unstaged
+    } else if repo
+        .can_apply(hunk, ApplyTarget::Index, true)
+        .unwrap_or(false)
+    {
+        HunkStage::Staged
+    } else {
+        HunkStage::Mixed
+    }
+}
 
 /// The live viewer of the diff tab.
 pub(crate) struct DiffView {
@@ -36,6 +115,13 @@ pub(crate) struct DiffView {
     generation: u64,
     /// The change the header counts from, 0 based.
     current: usize,
+    /// The patch shown, to skip reloading the viewer (and losing its scroll) when nothing
+    /// changed.
+    patch: Arc<str>,
+    /// The file's path as the viewer knows it, for the hunk annotations.
+    file_path: SharedString,
+    /// The hunks, for their buttons.
+    hunks: Rc<Vec<HunkInfo>>,
 }
 
 impl AppView {
@@ -82,12 +168,7 @@ impl AppView {
         };
         self.git_tasks.diff_load = Some(cx.spawn(async move |this, cx| {
             let result = cx
-                .background_spawn(async move {
-                    let patch = repo.diff(&repo_path, &source)?;
-                    let summary = summarize(&patch);
-                    let files = DiffFile::parse(&patch).unwrap_or_default();
-                    Ok::<_, postino_git::GitError>((summary, files))
-                })
+                .background_spawn(async move { LoadedDiff::read(&repo, &repo_path, &source) })
                 .await;
             let _ = this.update(cx, |view, cx| {
                 view.finish_loading_diff(generation, result, cx);
@@ -99,7 +180,7 @@ impl AppView {
     fn finish_loading_diff(
         &mut self,
         generation: u64,
-        result: Result<(DiffSummary, Vec<DiffFile>), postino_git::GitError>,
+        result: Result<LoadedDiff, postino_git::GitError>,
         cx: &mut Context<Self>,
     ) {
         let Some(index) = self.state.tabs.index_of(crate::state::git_diff::TAB_ID) else {
@@ -116,34 +197,50 @@ impl AppView {
         if tab.generation != generation {
             return;
         }
-        let files = match result {
-            Ok((summary, files)) => {
-                tab.summary = Some(summary);
-                files
-            }
+        let loaded = match result {
+            Ok(loaded) => loaded,
             Err(error) => {
                 log::warn!("git diff failed: {error}");
-                tab.summary = Some(DiffSummary {
-                    error: Some(error.to_string()),
-                    ..DiffSummary::default()
-                });
-                Vec::new()
+                LoadedDiff {
+                    summary: DiffSummary {
+                        error: Some(error.to_string()),
+                        ..DiffSummary::default()
+                    },
+                    files: Vec::new(),
+                    patch: Arc::from(""),
+                    hunks: Vec::new(),
+                }
             }
         };
+        tab.summary = Some(loaded.summary);
+        let file_path = loaded
+            .files
+            .first()
+            .map(|file| file.path().clone())
+            .unwrap_or_default();
+        let hunks = Rc::new(loaded.hunks);
         let mode = to_diff_mode(self.state.settings.git_diff_mode);
         match &mut self.git_tasks.diff_view {
             Some(view) => {
-                view.state
-                    .update(cx, |state, cx| state.set_files(files, cx));
+                if view.patch != loaded.patch {
+                    view.state
+                        .update(cx, |state, cx| state.set_files(loaded.files, cx));
+                    view.current = 0;
+                }
                 view.generation = generation;
-                view.current = 0;
+                view.patch = loaded.patch;
+                view.file_path = file_path;
+                view.hunks = hunks;
             }
             None => {
-                let state = cx.new(|cx| DiffState::new(files, cx).with_mode(mode));
+                let state = cx.new(|cx| DiffState::new(loaded.files, cx).with_mode(mode));
                 self.git_tasks.diff_view = Some(DiffView {
                     state,
                     generation,
                     current: 0,
+                    patch: loaded.patch,
+                    file_path,
+                    hunks,
                 });
             }
         }
@@ -194,6 +291,57 @@ impl AppView {
         cx.notify();
     }
 
+    /// The patch of hunk `index` of the diff tab, with the repository it applies to.
+    fn git_hunk(&self, index: usize) -> Option<(Repo, String, Option<HunkStage>)> {
+        let repo = self.git.repo()?.clone();
+        let view = self.git_tasks.diff_view.as_ref()?;
+        let stage = view.hunks.get(index)?.stage;
+        Some((repo, hunk_patch(&view.patch, index)?, stage))
+    }
+
+    /// Stages hunk `index` of the diff tab, or unstages it when `reverse`.
+    fn stage_git_hunk(&mut self, index: usize, reverse: bool, cx: &mut Context<Self>) {
+        let Some((repo, hunk, _)) = self.git_hunk(index) else {
+            return;
+        };
+        self.run_git_write(cx, move || repo.apply(&hunk, ApplyTarget::Index, reverse));
+    }
+
+    /// Puts hunk `index` of the diff tab back as it was in the last commit, in the work tree and,
+    /// when it is staged, in the index too. Asks first when the setting says so.
+    fn revert_git_hunk(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let Some((repo, hunk, stage)) = self.git_hunk(index) else {
+            return;
+        };
+        let target = if stage == Some(HunkStage::Staged) {
+            ApplyTarget::Both
+        } else {
+            ApplyTarget::WorkTree
+        };
+        if !self.state.settings.git_confirm_discard {
+            self.run_git_write(cx, move || repo.apply(&hunk, target, true));
+            return;
+        }
+        let weak = cx.weak_entity();
+        open_confirm_dialog(
+            window,
+            cx,
+            ConfirmDialog {
+                title: t!("git.diff.revert_title").into(),
+                text: t!("git.diff.revert_text").into(),
+                confirm_label: t!("git.diff.revert_hunk").into(),
+                destructive: true,
+                show_cancel: true,
+                on_confirm: Rc::new(move |_, cx| {
+                    let (repo, hunk) = (repo.clone(), hunk.clone());
+                    let _ = weak.update(cx, |view, cx| {
+                        view.run_git_write(cx, move || repo.apply(&hunk, target, true));
+                    });
+                }),
+            },
+        );
+    }
+
     /// Renders the active diff tab.
     pub(crate) fn render_diff_tab(
         &mut self,
@@ -233,6 +381,12 @@ impl AppView {
                 .description(t!("git.diff.no_changes_text"))
                 .into_any_element(),
             (Some(_), Some(view)) => Diff::new(&view.state)
+                .annotations(hunk_annotations(view))
+                .render_annotation({
+                    let hunks = view.hunks.clone();
+                    let weak = cx.weak_entity();
+                    move |annotation, _, cx| render_hunk_actions(annotation, &hunks, &weak, cx)
+                })
                 .header_visible(false)
                 .hover_highlight(DiffHoverHighlight::Line)
                 .hunk_separator(DiffHunkSeparator::Simple)
@@ -386,6 +540,81 @@ impl AppView {
             .children(open_request)
             .into_any_element()
     }
+}
+
+/// One annotation per hunk that has buttons, at its anchor line.
+fn hunk_annotations(view: &DiffView) -> Vec<DiffAnnotation> {
+    view.hunks
+        .iter()
+        .enumerate()
+        .filter(|(_, hunk)| hunk.stage.is_some())
+        .map(|(index, hunk)| {
+            DiffAnnotation::line(
+                ("git-hunk", index),
+                DiffLinePosition::new(
+                    view.file_path.clone(),
+                    side_of(hunk.anchor),
+                    hunk.anchor.line,
+                ),
+            )
+        })
+        .collect()
+}
+
+fn side_of(anchor: HunkAnchor) -> DiffSide {
+    if anchor.modified_side {
+        DiffSide::Modified
+    } else {
+        DiffSide::Original
+    }
+}
+
+/// The Stage (or Unstage) and Revert buttons of the hunk an annotation stands for.
+fn render_hunk_actions(
+    annotation: &DiffAnnotation,
+    hunks: &Rc<Vec<HunkInfo>>,
+    weak: &WeakEntity<AppView>,
+    cx: &App,
+) -> AnyElement {
+    let palette = cx.palette();
+    let Some(position) = annotation.position() else {
+        return div().into_any_element();
+    };
+    let Some((index, hunk)) = hunks.iter().enumerate().find(|(_, hunk)| {
+        hunk.anchor.line == position.line() && side_of(hunk.anchor) == position.side()
+    }) else {
+        return div().into_any_element();
+    };
+    let stage = hunk.stage;
+    let mut row = h_flex()
+        .py(px(4.0))
+        .px(px(8.0))
+        .gap(px(6.0))
+        .bg(palette.surface);
+    let stage_label = match stage {
+        Some(HunkStage::Unstaged) => Some((t!("git.diff.stage_hunk"), false)),
+        Some(HunkStage::Staged) => Some((t!("git.diff.unstage_hunk"), true)),
+        _ => None,
+    };
+    if let Some((label, reverse)) = stage_label {
+        let weak = weak.clone();
+        row = row.child(
+            GhostButton::new(("git-hunk-stage", index), label)
+                .height(24.0)
+                .on_click(move |_, _, cx| {
+                    let _ = weak.update(cx, |view, cx| view.stage_git_hunk(index, reverse, cx));
+                }),
+        );
+    }
+    let weak = weak.clone();
+    row = row.child(
+        GhostButton::new(("git-hunk-revert", index), t!("git.diff.revert_hunk"))
+            .height(24.0)
+            .on_click(move |_, window, cx| {
+                let _ = weak.update(cx, |view, cx| view.revert_git_hunk(index, window, cx));
+            }),
+    );
+    row.into_any_element()
 }
 
 /// The viewer layout of a [`GitDiffMode`].

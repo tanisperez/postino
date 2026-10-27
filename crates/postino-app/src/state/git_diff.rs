@@ -96,6 +96,60 @@ pub fn summarize(patch: &str) -> DiffSummary {
     summary
 }
 
+/// Where a hunk's Stage and Revert buttons go: under the last line of the hunk, so they follow
+/// the block they act on. On the new side, or on the old side when the hunk leaves no line on the
+/// new one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HunkAnchor {
+    /// Whether `line` is on the new (modified) side.
+    pub modified_side: bool,
+    /// The 1 based line number.
+    pub line: usize,
+}
+
+/// Whether a hunk of the work tree diff is in the index already.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HunkStage {
+    /// Not staged: "Stage" applies it to the index.
+    Unstaged,
+    /// Staged: "Unstage" takes it back out.
+    Staged,
+    /// Partly staged: only Revert is offered.
+    Mixed,
+}
+
+/// The anchor of every hunk of a single file patch, in order.
+pub fn hunk_anchors(patch: &str) -> Vec<HunkAnchor> {
+    patch
+        .lines()
+        .filter(|line| line.starts_with("@@ "))
+        .filter_map(|header| {
+            let mut ranges = header.split(' ').skip(1);
+            let old = parse_range(ranges.next()?.strip_prefix('-')?)?;
+            let new = parse_range(ranges.next()?.strip_prefix('+')?)?;
+            Some(if new.1 > 0 {
+                HunkAnchor {
+                    modified_side: true,
+                    line: (new.0 + new.1 - 1).max(1),
+                }
+            } else {
+                HunkAnchor {
+                    modified_side: false,
+                    line: (old.0 + old.1 - 1).max(1),
+                }
+            })
+        })
+        .collect()
+}
+
+/// Parses `start,count` (or `start`, a count of 1) of a hunk header.
+fn parse_range(range: &str) -> Option<(usize, usize)> {
+    match range.split_once(',') {
+        Some((start, count)) => Some((start.parse().ok()?, count.parse().ok()?)),
+        None => Some((range.parse().ok()?, 1)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -135,5 +189,27 @@ mod tests {
         );
         assert_eq!(root.folder(), "");
         assert_eq!(root.request_id(), None);
+    }
+
+    #[test]
+    fn anchors_go_on_the_last_new_line_unless_the_hunk_only_removes() {
+        let patch = "@@ -1,3 +1,4 @@ ctx\n a\n@@ -10 +11,0 @@\n-x\n@@ -0,0 +1 @@\n+y\n";
+        assert_eq!(
+            hunk_anchors(patch),
+            vec![
+                HunkAnchor {
+                    modified_side: true,
+                    line: 4
+                },
+                HunkAnchor {
+                    modified_side: false,
+                    line: 10
+                },
+                HunkAnchor {
+                    modified_side: true,
+                    line: 1
+                },
+            ]
+        );
     }
 }

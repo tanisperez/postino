@@ -200,3 +200,28 @@ _version: 2
   es: "Conflicto"
   gl: "Conflito"
   it: "Conflitto"
+"git.diff.stage_hunk":
+  en: "Stage"
+  es: "Preparar"
+  gl: "Preparar"
+  it: "Prepara"
+"git.diff.unstage_hunk":
+  en: "Unstage"
+  es: "Quitar del commit"
+  gl: "Quitar do commit"
+  it: "Rimuovi dal commit"
+"git.diff.revert_hunk":
+  en: "Revert"
+  es: "Revertir"
+  gl: "Reverter"
+  it: "Ripristina"
+"git.diff.revert_title":
+  en: "Revert this change?"
+  es: "¿Revertir este cambio?"
+  gl: "Reverter este cambio?"
+  it: "Ripristinare questa modifica?"
+"git.diff.revert_text":
+  en: "The block goes back to how it was in the last commit. Reverted changes can't be recovered."
+  es: "El bloque vuelve a como estaba en el último commit. Los cambios revertidos no se pueden recuperar."
+  gl: "O bloque volve a como estaba no último commit. Os cambios revertidos non se poden recuperar."
+  it: "Il blocco torna com'era nell'ultimo commit. Le modifiche ripristinate non si possono recuperare."
