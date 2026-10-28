@@ -151,10 +151,16 @@ pub fn staged_secrets(status: &Status) -> Vec<String> {
         .collect()
 }
 
+/// Whether the commit message can be written: something is staged, or Amend is ticked (which may
+/// only reword). With nothing to commit the message box stays disabled.
+pub fn can_write_message(stats: CommitStats, amend: bool) -> bool {
+    amend || stats.files > 0
+}
+
 /// Whether the commit buttons can run: a message (unless amending, which keeps the old one), and
 /// something staged (unless amending, which may only reword), with nothing else running.
 pub fn can_commit(message: &str, stats: CommitStats, amend: bool, running: bool) -> bool {
-    !running && !message.trim().is_empty() && (amend || stats.files > 0)
+    !running && !message.trim().is_empty() && can_write_message(stats, amend)
 }
 
 /// Whether coming back to the window should fetch: the setting is on, the branch tracks a
@@ -252,6 +258,17 @@ mod tests {
         assert!(!can_commit("Fix", empty, false, false));
         assert!(can_commit("Reword", empty, true, false));
         assert!(!can_commit("Fix", staged, false, true));
+    }
+
+    #[test]
+    fn the_message_needs_something_staged_unless_amending() {
+        let staged = CommitStats {
+            files: 2,
+            ..CommitStats::default()
+        };
+        assert!(can_write_message(staged, false));
+        assert!(!can_write_message(CommitStats::default(), false));
+        assert!(can_write_message(CommitStats::default(), true));
     }
 
     #[test]

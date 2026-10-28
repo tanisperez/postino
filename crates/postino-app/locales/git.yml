@@ -112,9 +112,9 @@ _version: 2
   it: "Nessuna modifica"
 "git.empty.clean":
   en: "Everything is committed."
-  es: "Todo está en un commit."
-  gl: "Todo está nun commit."
-  it: "Tutto è nei commit."
+  es: "No hay nada pendiente de commit."
+  gl: "Non hai nada pendente de commit."
+  it: "Non c'è nulla di cui eseguire il commit."
 "git.empty.ahead.one":
   en: "%{count} commit not pushed yet."
   es: "%{count} commit sin enviar todavía."

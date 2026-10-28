@@ -13,7 +13,9 @@ use gpui_kit::*;
 use postino_git::{FailureKind, GitError, PullMode, PushTarget};
 use rust_i18n::t;
 
-use crate::state::git_sync::{GitFailure, GitOp, auto_fetch_due, can_commit, staged_secrets};
+use crate::state::git_sync::{
+    GitFailure, GitOp, auto_fetch_due, can_commit, can_write_message, staged_secrets,
+};
 use crate::state::locale::plural;
 use crate::state::settings::GitPull;
 use crate::state::workspace_log::log_workspace_error;
@@ -143,8 +145,11 @@ impl AppView {
         if !self.nav.is_active(section) {
             self.nav.click(section);
         }
-        self.commit_input
-            .update(cx, |input, cx| input.focus(window, cx));
+        // With nothing staged the message box is disabled, so there is nothing to focus.
+        if can_write_message(self.git.commit.stats, self.git.commit.amend) {
+            self.commit_input
+                .update(cx, |input, cx| input.focus(window, cx));
+        }
         cx.notify();
     }
 

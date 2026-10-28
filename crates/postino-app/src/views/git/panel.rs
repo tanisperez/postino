@@ -21,7 +21,7 @@ use crate::state::git::{
     fill_methods, staged_outside,
 };
 use crate::state::git_diff::DiffTarget;
-use crate::state::git_sync::{can_commit, staged_secrets};
+use crate::state::git_sync::{can_commit, can_write_message, staged_secrets};
 use crate::state::locale::plural;
 use crate::state::number::format_integer;
 use crate::state::settings::{GitCommitAction, SettingsCategory};
@@ -442,7 +442,7 @@ impl AppView {
                         view.commit_from_box(push, window, cx);
                     });
                 })
-                .child(TextArea::new(&self.commit_input))
+                .child(TextArea::new(&self.commit_input).disabled(!can_write_message(stats, amend)))
         };
         let amend_box = {
             let weak = weak.clone();

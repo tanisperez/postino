@@ -78,7 +78,7 @@ shop/
 <p>The list refreshes on its own when files change on disk, when the window gets the focus back and after Postino saves a file, so a commit or a checkout made in a terminal shows up right away.</p>
 
 <h2 id="committing">Committing</h2>
-<p>The bottom of the Source Control panel holds the commit message, with the summary of the commit at the start and, after a blank line, its description. The commit includes what is staged, the files with a checked box, and the line under the message counts them with the lines they add and remove, such as <em>4 files · +31 −9</em>.</p>
+<p>The bottom of the Source Control panel holds the commit message, with the summary of the commit at the start and, after a blank line, its description. The commit includes what is staged, the files with a checked box, and the line under the message counts them with the lines they add and remove, such as <em>4 files · +31 −9</em>. The message box stays disabled while nothing is staged, unless <strong>Amend</strong> is ticked, since there would be nothing to commit.</p>
 <ul>
     <li><strong>Commit</strong> commits the staged changes with the message and clears it.</li>
     <li><strong>Commit and Push…</strong> commits, then lists the commits that will be sent and where, and pushes them when you confirm. If you cancel, the commit stays and you can push later.</li>
@@ -155,7 +155,7 @@ shop/
 <div class="table"><table>
     <thead><tr><th>Action</th><th>What it does</th></tr></thead>
     <tbody>
-        <tr><td>Git: Commit</td><td>Commits the staged changes when the commit message is not empty. Otherwise it shows Source Control with the cursor in the message.</td></tr>
+        <tr><td>Git: Commit</td><td>Commits the staged changes when the commit message is not empty. Otherwise it shows Source Control, with the cursor in the message when something is staged.</td></tr>
         <tr><td>Git: Commit and Push</td><td>The same, then asks to push as <strong>Commit and Push…</strong> does.</td></tr>
         <tr><td>Git: Push</td><td>Pushes the current branch.</td></tr>
         <tr><td>Git: Pull</td><td>Pulls with the <strong>Pull strategy</strong> setting.</td></tr>
