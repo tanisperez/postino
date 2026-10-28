@@ -115,3 +115,8 @@ _version: 2
   es: "Nuevo espacio de trabajo..."
   gl: "Novo espazo de traballo..."
   it: "Nuovo spazio di lavoro..."
+"common.close":
+  en: "Close"
+  es: "Cerrar"
+  gl: "Pechar"
+  it: "Chiudi"

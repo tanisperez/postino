@@ -14,6 +14,9 @@ actions!(
         SaveActiveTab,
         /// Sends the active tab's request (`Ctrl+Enter` / `Cmd+Enter`).
         SendActiveTab,
+        /// Runs the default commit action of Settings from the commit message (`Ctrl+Enter` /
+        /// `Cmd+Enter` while it has the focus).
+        CommitFromMessage,
         /// Selects the workspace's 1st environment (`Ctrl 1` / `Cmd 1`).
         SelectEnvironment1,
         /// Selects the workspace's 2nd environment (`Ctrl 2` / `Cmd 2`).

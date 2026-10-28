@@ -375,3 +375,228 @@ _version: 2
   es: "Más acciones"
   gl: "Máis accións"
   it: "Altre azioni"
+"git.commit.placeholder":
+  en: "Commit message"
+  es: "Mensaje del commit"
+  gl: "Mensaxe do commit"
+  it: "Messaggio del commit"
+"git.commit.amend":
+  en: "Amend"
+  es: "Modificar el último"
+  gl: "Modificar o último"
+  it: "Modifica l'ultimo"
+"git.commit.files.one":
+  en: "%{count} file"
+  es: "%{count} archivo"
+  gl: "%{count} ficheiro"
+  it: "%{count} file"
+"git.commit.files.other":
+  en: "%{count} files"
+  es: "%{count} archivos"
+  gl: "%{count} ficheiros"
+  it: "%{count} file"
+"git.commit.commit":
+  en: "Commit"
+  es: "Hacer commit"
+  gl: "Facer commit"
+  it: "Esegui il commit"
+"git.commit.commit_and_push":
+  en: "Commit and Push…"
+  es: "Commit y Push…"
+  gl: "Commit e Push…"
+  it: "Commit e Push…"
+"git.secrets.text.one":
+  en: "%{files} holds secrets and is about to be committed."
+  es: "%{files} contiene secretos y va a entrar en el commit."
+  gl: "%{files} contén segredos e vai entrar no commit."
+  it: "%{files} contiene segreti e sta per entrare nel commit."
+"git.secrets.text.other":
+  en: "%{files} hold secrets and are about to be committed."
+  es: "%{files} contienen secretos y van a entrar en el commit."
+  gl: "%{files} conteñen segredos e van entrar no commit."
+  it: "%{files} contengono segreti e stanno per entrare nel commit."
+"git.secrets.unstage":
+  en: "Unstage"
+  es: "Quitar del commit"
+  gl: "Quitar do commit"
+  it: "Rimuovi dal commit"
+"git.secrets.ignore":
+  en: "Add to .gitignore"
+  es: "Añadir a .gitignore"
+  gl: "Engadir a .gitignore"
+  it: "Aggiungi a .gitignore"
+"git.empty.push.one":
+  en: "Push %{count} commit"
+  es: "Push de %{count} commit"
+  gl: "Push de %{count} commit"
+  it: "Push di %{count} commit"
+"git.empty.push.other":
+  en: "Push %{count} commits"
+  es: "Push de %{count} commits"
+  gl: "Push de %{count} commits"
+  it: "Push di %{count} commit"
+"git.menu.pull":
+  en: "Pull"
+  es: "Pull"
+  gl: "Pull"
+  it: "Pull"
+"git.menu.push":
+  en: "Push"
+  es: "Push"
+  gl: "Push"
+  it: "Push"
+"git.menu.fetch":
+  en: "Fetch"
+  es: "Fetch"
+  gl: "Fetch"
+  it: "Fetch"
+"git.sync.committing":
+  en: "Committing…"
+  es: "Haciendo commit…"
+  gl: "Facendo commit…"
+  it: "Commit in corso…"
+"git.sync.pushing":
+  en: "Pushing…"
+  es: "Haciendo push…"
+  gl: "Facendo push…"
+  it: "Push in corso…"
+"git.sync.pulling":
+  en: "Pulling…"
+  es: "Haciendo pull…"
+  gl: "Facendo pull…"
+  it: "Pull in corso…"
+"git.sync.fetching":
+  en: "Fetching…"
+  es: "Haciendo fetch…"
+  gl: "Facendo fetch…"
+  it: "Fetch in corso…"
+"git.sync.no_remote":
+  en: "This branch has no remote to push to. Add one with git remote add."
+  es: "Esta rama no tiene un remoto al que hacer push. Añade uno con git remote add."
+  gl: "Esta rama non ten un remoto ao que facer push. Engade un con git remote add."
+  it: "Questo branch non ha un remoto su cui fare push. Aggiungine uno con git remote add."
+"git.sync.pushed":
+  en: "Pushed to %{target}."
+  es: "Push a %{target} hecho."
+  gl: "Push a %{target} feito."
+  it: "Push su %{target} completato."
+"git.push.title":
+  en: "Push commits?"
+  es: "¿Hacer push de los commits?"
+  gl: "Facer push dos commits?"
+  it: "Fare push dei commit?"
+"git.push.text.one":
+  en: "%{count} commit will be pushed to %{target}:"
+  es: "Se enviará %{count} commit a %{target}:"
+  gl: "Enviarase %{count} commit a %{target}:"
+  it: "%{count} commit sarà inviato a %{target}:"
+"git.push.text.other":
+  en: "%{count} commits will be pushed to %{target}:"
+  es: "Se enviarán %{count} commits a %{target}:"
+  gl: "Enviaranse %{count} commits a %{target}:"
+  it: "%{count} commit saranno inviati a %{target}:"
+"git.push.more.one":
+  en: "and %{count} more"
+  es: "y %{count} más"
+  gl: "e %{count} máis"
+  it: "e altri %{count}"
+"git.push.more.other":
+  en: "and %{count} more"
+  es: "y %{count} más"
+  gl: "e %{count} máis"
+  it: "e altri %{count}"
+"git.push.confirm":
+  en: "Push"
+  es: "Push"
+  gl: "Push"
+  it: "Push"
+"git.failure.push_rejected":
+  en: "Push rejected"
+  es: "Push rechazado"
+  gl: "Push rexeitado"
+  it: "Push rifiutato"
+"git.failure.commit":
+  en: "Commit failed"
+  es: "El commit falló"
+  gl: "O commit fallou"
+  it: "Il commit non è riuscito"
+"git.failure.push":
+  en: "Push failed"
+  es: "El push falló"
+  gl: "O push fallou"
+  it: "Il push non è riuscito"
+"git.failure.pull_conflicts":
+  en: "Pull left conflicts"
+  es: "El pull dejó conflictos"
+  gl: "O pull deixou conflitos"
+  it: "Il pull ha lasciato conflitti"
+"git.failure.pull":
+  en: "Pull failed"
+  es: "El pull falló"
+  gl: "O pull fallou"
+  it: "Il pull non è riuscito"
+"git.failure.fetch":
+  en: "Fetch failed"
+  es: "El fetch falló"
+  gl: "O fetch fallou"
+  it: "Il fetch non è riuscito"
+"git.failure.rejected_text":
+  en: "%{upstream} has commits you don't have. Pull them first, then push again."
+  es: "%{upstream} tiene commits que no tienes. Haz pull primero y luego vuelve a hacer push."
+  gl: "%{upstream} ten commits que non tes. Fai pull primeiro e despois volve facer push."
+  it: "%{upstream} ha commit che non hai. Fai prima il pull, poi ripeti il push."
+"git.failure.rejected_text_plain":
+  en: "The remote has commits you don't have. Pull them first, then push again."
+  es: "El remoto tiene commits que no tienes. Haz pull primero y luego vuelve a hacer push."
+  gl: "O remoto ten commits que non tes. Fai pull primeiro e despois volve facer push."
+  it: "Il remoto ha commit che non hai. Fai prima il pull, poi ripeti il push."
+"git.failure.auth_text":
+  en: "The remote refused the credentials. Postino uses git's credential helper or SSH agent: check that they work in a terminal."
+  es: "El remoto rechazó las credenciales. Postino usa el gestor de credenciales de git o el agente SSH: comprueba que funcionan en un terminal."
+  gl: "O remoto rexeitou as credenciais. Postino usa o xestor de credenciais de git ou o axente SSH: comproba que funcionan nun terminal."
+  it: "Il remoto ha rifiutato le credenziali. Postino usa il gestore di credenziali di git o l'agente SSH: verifica che funzionino in un terminale."
+"git.failure.no_author_text":
+  en: "Git doesn't know who you are. Set user.name and user.email with git config."
+  es: "Git no sabe quién eres. Configura user.name y user.email con git config."
+  gl: "Git non sabe quen es. Configura user.name e user.email con git config."
+  it: "Git non sa chi sei. Imposta user.name e user.email con git config."
+"git.failure.nothing_text":
+  en: "There is nothing staged to commit."
+  es: "No hay nada preparado para el commit."
+  gl: "Non hai nada preparado para o commit."
+  it: "Non c'è nulla di preparato per il commit."
+"git.failure.conflicts_text":
+  en: "Some files have conflicts. Resolve them in an external tool, then commit."
+  es: "Algunos archivos tienen conflictos. Resuélvelos con una herramienta externa y luego haz commit."
+  gl: "Algúns ficheiros teñen conflitos. Resólveos cunha ferramenta externa e despois fai commit."
+  it: "Alcuni file hanno conflitti. Risolvili con uno strumento esterno, poi esegui il commit."
+"git.failure.network_text":
+  en: "The remote could not be reached. Check the connection and try again."
+  es: "No se pudo conectar con el remoto. Comprueba la conexión y vuelve a intentarlo."
+  gl: "Non se puido conectar co remoto. Comproba a conexión e volve intentalo."
+  it: "Impossibile raggiungere il remoto. Controlla la connessione e riprova."
+"git.failure.hook_text":
+  en: "A git hook stopped the operation. Its output says why."
+  es: "Un hook de git detuvo la operación. Su salida explica el motivo."
+  gl: "Un hook de git detivo a operación. A súa saída explica o motivo."
+  it: "Un hook di git ha fermato l'operazione. Il suo output spiega il motivo."
+"git.failure.other_text":
+  en: "Git reported an error. Its output says why."
+  es: "Git informó de un error. Su salida explica el motivo."
+  gl: "Git informou dun erro. A súa saída explica o motivo."
+  it: "Git ha segnalato un errore. Il suo output spiega il motivo."
+"git.failure.show_output":
+  en: "Show git output"
+  es: "Ver la salida de git"
+  gl: "Ver a saída de git"
+  it: "Mostra l'output di git"
+"git.failure.pull_and_push":
+  en: "Pull and push"
+  es: "Pull y push"
+  gl: "Pull e push"
+  it: "Pull e push"
+"git.failure.output_title":
+  en: "Git output"
+  es: "Salida de git"
+  gl: "Saída de git"
+  it: "Output di git"

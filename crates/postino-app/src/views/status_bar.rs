@@ -1,6 +1,7 @@
 //! The status bar at the bottom of the main window: the workspace path with a `hard-drive` icon
 //! (a click opens the folder in the file manager) and, inside a git repository, the branch with a
-//! `git-branch` icon in the accent color, a spacer, "Unsaved changes" when the active tab is
+//! `git-branch` icon in the accent color and its ahead and behind counts, the git command running
+//! ("Pushing…"), a spacer, "Unsaved changes" when the active tab is
 //! dirty, and "UTF-8".
 
 use gpui_kit::component::tooltip::Tooltip;
@@ -72,12 +73,34 @@ impl AppView {
                             .on_click(move |_, _, cx| cx.open_with_system(&root)),
                     )
                     .children(branch.map(|branch| {
+                        let (ahead, behind) = self
+                            .git
+                            .status()
+                            .map_or((0, 0), |(_, status)| (status.ahead, status.behind));
+                        let count = |icon, count: u32| {
+                            (count > 0).then(|| {
+                                h_flex()
+                                    .items_center()
+                                    .gap(px(2.0))
+                                    .child(Icon::new(icon).xsmall())
+                                    .child(state::number::format_integer(u64::from(count)))
+                            })
+                        };
                         h_flex()
                             .items_center()
                             .gap(px(6.0))
                             .text_color(palette.accent_text)
                             .child(Icon::new(gpui_kit::assets::IconName::GitBranch).small())
                             .child(branch)
+                            .children(count(gpui_kit::assets::IconName::ArrowUp, ahead))
+                            .children(count(gpui_kit::assets::IconName::ArrowDown, behind))
+                    }))
+                    .children(self.git.sync.running.map(|op| {
+                        h_flex()
+                            .items_center()
+                            .gap(px(6.0))
+                            .child(Icon::new(gpui_kit::assets::IconName::LoaderCircle).small())
+                            .child(op.progress_label())
                     }))
             }))
             .child(div().flex_1())

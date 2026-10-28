@@ -17,6 +17,7 @@ pub mod env_panel;
 pub mod format;
 pub mod git;
 pub mod git_diff;
+pub mod git_sync;
 pub mod header_completion;
 pub mod import;
 pub mod json_pretty;

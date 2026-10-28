@@ -7,14 +7,16 @@ use std::sync::Arc;
 
 use gpui_kit::prelude::*;
 use gpui_kit::*;
-use postino_git::Executable;
+use postino_git::{DiffSource, Executable};
 
 use crate::state::git::{GitAvailability, RepoState};
+use crate::state::git_sync::CommitStats;
 
 use super::root::AppView;
 
 mod diff_tab;
 mod panel;
+mod sync;
 mod watch;
 mod write;
 
@@ -37,6 +39,8 @@ pub(crate) struct GitTasks {
     diff_view: Option<diff_tab::DiffView>,
     /// The diff tab's patch being read.
     diff_load: Option<Task<()>>,
+    /// The commit box's summary line being read.
+    commit_stats: Option<Task<()>>,
 }
 
 impl AppView {
@@ -175,6 +179,7 @@ impl AppView {
                             *current = Some(Arc::new(status));
                             view.rebuild_git_rows();
                             view.load_git_diff(cx);
+                            view.load_commit_stats(cx);
                             cx.notify();
                         }
                     }
@@ -185,6 +190,28 @@ impl AppView {
                         cx.notify();
                     }
                 }
+            });
+        }));
+    }
+
+    /// Reads what the next commit would include, for the commit box's summary line.
+    fn load_commit_stats(&mut self, cx: &mut Context<Self>) {
+        let Some(repo) = self.git.repo().cloned() else {
+            return;
+        };
+        self.git_tasks.commit_stats = Some(cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_spawn(async move { repo.numstat(&DiffSource::HeadToIndex) })
+                .await;
+            let _ = this.update(cx, |view, cx| match result {
+                Ok(numstat) => {
+                    let stats = CommitStats::from_numstat(&numstat);
+                    if view.git.commit.stats != stats {
+                        view.git.commit.stats = stats;
+                        cx.notify();
+                    }
+                }
+                Err(error) => log::warn!("reading the staged changes failed: {error}"),
             });
         }));
     }

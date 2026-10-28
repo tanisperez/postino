@@ -3,6 +3,7 @@
 //! repository, 6c no changes). The rows come from `state::git::change_rows`, rebuilt by
 //! [`AppView::rebuild_git_rows`] when the status changes, never in render.
 
+use std::borrow::Cow;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -14,24 +15,27 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
+use crate::actions::CommitFromMessage;
 use crate::state::git::{
     ChangeGroup, ChangeRow, ChangeRowKind, Check, GitAvailability, RepoState, change_rows,
     fill_methods, staged_outside,
 };
 use crate::state::git_diff::DiffTarget;
+use crate::state::git_sync::{can_commit, staged_secrets};
 use crate::state::locale::plural;
 use crate::state::number::format_integer;
-use crate::state::settings::SettingsCategory;
+use crate::state::settings::{GitCommitAction, SettingsCategory};
 use crate::theme::metrics::ICON_BUTTON_HEADER;
 use crate::theme::{Palette, PaletteExt};
-use telaio_ui::components::{CheckState, TriCheckbox};
+use telaio_ui::components::{CheckState, TextArea, TriCheckbox};
 
 use crate::views::components::{
-    ConfirmDialog, EmptyState, IconButton, MethodBadge, NeutralButtonExt, PrimaryButton,
-    SecondaryButton, SectionLabel, TreeRow, open_confirm_dialog,
+    ConfirmDialog, EmptyState, GhostButton, IconButton, MethodBadge, NeutralButtonExt,
+    PrimaryButton, SecondaryButton, SectionLabel, TreeRow, open_confirm_dialog,
 };
 
 use super::super::root::AppView;
+use super::sync::open_git_output;
 
 /// Where the "How to install Git" link points.
 pub(crate) const INSTALL_GIT_URL: &str = "https://postino.tanis.codes/docs/git.html#installing-git";
@@ -47,19 +51,24 @@ impl AppView {
     /// Rebuilds [`crate::state::git::GitState::rows`] from the last status, the folded folders
     /// and the collection tree (for the method badges). Call when any of them changes.
     pub(crate) fn rebuild_git_rows(&mut self) {
-        let (rows, outside) = match self.git.status() {
+        let (rows, outside, secrets) = match self.git.status() {
             Some((repo, status)) => {
                 let mut rows =
                     change_rows(status, repo.prefix(), &self.git.collapsed, self.git.flat);
                 if let Some(workspace) = self.state.workspace.as_ref() {
                     fill_methods(&mut rows, workspace.tree());
                 }
-                (rows, staged_outside(status, repo.prefix()))
+                (
+                    rows,
+                    staged_outside(status, repo.prefix()),
+                    staged_secrets(status),
+                )
             }
-            None => (Vec::new(), Vec::new()),
+            None => (Vec::new(), Vec::new(), Vec::new()),
         };
         self.git.rows = Arc::new(rows);
         self.git.staged_outside = Arc::new(outside);
+        self.git.secrets = Arc::new(secrets);
     }
 
     /// Folds or unfolds a group or folder of the panel.
@@ -187,6 +196,13 @@ impl AppView {
             .box_size(ICON_BUTTON_HEADER)
             .tooltip(t!("git.panel.log"))
             .disabled(true);
+        let running = self.git.sync.running.is_some();
+        let failure_output: Option<SharedString> = self
+            .git
+            .sync
+            .failure
+            .as_ref()
+            .map(|failure| failure.output.clone().into());
         let more = Button::new("git-more")
             .neutral_ghost(cx, palette.fg_muted)
             .icon(Icon::new(IconName::Ellipsis))
@@ -194,12 +210,32 @@ impl AppView {
             .h(px(ICON_BUTTON_HEADER))
             .tooltip(t!("git.panel.more"))
             .dropdown_menu(move |menu, _, _| {
-                let weak = weak.clone();
-                menu.item(PopupMenuItem::new(t!("git.empty.open_settings")).on_click(
-                    move |_, window, cx| {
+                let item = |label: Cow<'static, str>, action: fn(&mut AppView, &mut Window, &mut Context<AppView>)| {
+                    let weak = weak.clone();
+                    PopupMenuItem::new(label)
+                        .disabled(running)
+                        .on_click(move |_, window, cx| {
+                            let _ = weak.update(cx, |view, cx| action(view, window, cx));
+                        })
+                };
+                let settings = {
+                    let weak = weak.clone();
+                    PopupMenuItem::new(t!("git.empty.open_settings")).on_click(move |_, window, cx| {
                         let _ = weak.update(cx, |view, cx| view.open_git_settings(window, cx));
-                    },
-                ))
+                    })
+                };
+                menu.item(item(t!("git.menu.pull"), |view, window, cx| view.pull(false, window, cx)))
+                    .item(item(t!("git.menu.push"), |view, window, cx| {
+                        view.start_push(false, window, cx)
+                    }))
+                    .item(item(t!("git.menu.fetch"), |view, window, cx| view.fetch(false, window, cx)))
+                    .separator()
+                    .when_some(failure_output.clone(), |menu, output| {
+                        menu.item(PopupMenuItem::new(t!("git.failure.show_output")).on_click(
+                            move |_, window, cx| open_git_output(output.clone(), window, cx),
+                        ))
+                    })
+                    .item(settings)
             });
         h_flex()
             .gap(px(2.0))
@@ -236,7 +272,8 @@ impl AppView {
             .border_r_1()
             .border_color(palette.border)
             .child(header)
-            .child(self.render_git_body(weak, &palette, cx))
+            .child(self.render_git_body(weak.clone(), &palette, cx))
+            .children(self.render_commit_box(weak, &palette, cx))
             .into_any_element()
     }
 
@@ -272,6 +309,17 @@ impl AppView {
                     } else {
                         t!("git.empty.clean").into_owned()
                     };
+                    let ahead = status.ahead as usize;
+                    let push = (ahead > 0).then(|| {
+                        let weak = weak.clone();
+                        PrimaryButton::new("git-push-ahead", plural("git.empty.push", ahead))
+                            .icon(Icon::new(IconName::ArrowUp))
+                            .disabled(self.git.sync.running.is_some())
+                            .on_click(move |_, window, cx| {
+                                let _ =
+                                    weak.update(cx, |view, cx| view.start_push(false, window, cx));
+                            })
+                    });
                     return v_flex()
                         .flex_1()
                         .min_h_0()
@@ -279,7 +327,8 @@ impl AppView {
                         .child(panel_empty(
                             EmptyState::new(t!("git.empty.no_changes"))
                                 .icon(Icon::new(IconName::CircleCheck))
-                                .description(description),
+                                .description(description)
+                                .when_some(push, |state, push| state.action(push)),
                         ))
                         .into_any_element();
                 }
@@ -357,6 +406,186 @@ impl AppView {
                 )
                 .into_any_element(),
         )
+    }
+}
+
+impl AppView {
+    /// The commit box under the rows (design 7a): the message, Amend, the summary line and the
+    /// two commit buttons, with the secrets banner (6d) over them when it applies.
+    fn render_commit_box(
+        &self,
+        weak: WeakEntity<Self>,
+        palette: &Palette,
+        cx: &Context<Self>,
+    ) -> Option<AnyElement> {
+        self.git.status()?;
+        let running = self.git.sync.running.is_some();
+        let stats = self.git.commit.stats;
+        let amend = self.git.commit.amend;
+        let message = self.commit_input.read(cx).value();
+        let blocked = self.state.settings.git_block_secrets && !self.git.secrets.is_empty();
+        let enabled = can_commit(&message, stats, amend, running) && !blocked;
+
+        let message_box = {
+            let weak = weak.clone();
+            div()
+                .key_context("CommitMessage")
+                .on_action(move |_: &CommitFromMessage, window, cx| {
+                    let _ = weak.update(cx, |view, cx| {
+                        let push =
+                            view.state.settings.git_commit_action == GitCommitAction::CommitAndPush;
+                        view.commit_from_box(push, window, cx);
+                    });
+                })
+                .child(TextArea::new(&self.commit_input))
+        };
+        let amend_box = {
+            let weak = weak.clone();
+            let state = if amend {
+                CheckState::Checked
+            } else {
+                CheckState::Unchecked
+            };
+            TriCheckbox::new("git-amend", state)
+                .label(t!("git.commit.amend"))
+                .disabled(running)
+                .on_click(move |_, window, cx| {
+                    let _ = weak.update(cx, |view, cx| view.toggle_amend(window, cx));
+                })
+        };
+        let mono = cx.theme().mono_font_family.clone();
+        let summary = h_flex()
+            .gap(px(4.0))
+            .font_family(mono)
+            .text_size(px(11.5))
+            .text_color(palette.fg_subtle)
+            .child(format!(
+                "{} \u{b7}",
+                plural("git.commit.files", stats.files)
+            ))
+            .child(
+                div()
+                    .text_color(palette.success)
+                    .child(format!("+{}", format_integer(stats.additions))),
+            )
+            .child(
+                div()
+                    .text_color(palette.danger)
+                    .child(format!("\u{2212}{}", format_integer(stats.deletions))),
+            );
+        let commit = {
+            let weak = weak.clone();
+            PrimaryButton::new("git-commit", t!("git.commit.commit"))
+                .full_width()
+                .disabled(!enabled)
+                .on_click(move |_, window, cx| {
+                    let _ = weak.update(cx, |view, cx| view.commit_from_box(false, window, cx));
+                })
+        };
+        let commit_and_push = {
+            let weak = weak.clone();
+            SecondaryButton::new("git-commit-push", t!("git.commit.commit_and_push"))
+                .disabled(!enabled)
+                .on_click(move |_, window, cx| {
+                    let _ = weak.update(cx, |view, cx| view.commit_from_box(true, window, cx));
+                })
+        };
+        Some(
+            v_flex()
+                .flex_none()
+                .gap(px(8.0))
+                .p(px(10.0))
+                .border_t_1()
+                .border_color(palette.border)
+                .child(message_box)
+                .when(blocked, |column| {
+                    column.child(self.render_secrets_banner(weak.clone(), palette))
+                })
+                .child(
+                    h_flex()
+                        .items_center()
+                        .gap(px(14.0))
+                        .text_size(px(12.0))
+                        .text_color(palette.fg_muted)
+                        .child(amend_box)
+                        .child(div().flex_1())
+                        .child(summary),
+                )
+                .child(
+                    h_flex()
+                        .gap(px(6.0))
+                        .child(div().flex_1().child(commit))
+                        .child(commit_and_push),
+                )
+                .into_any_element(),
+        )
+    }
+
+    /// 6d: staged files hold secrets, so the commit is blocked until they are unstaged or
+    /// ignored.
+    fn render_secrets_banner(&self, weak: WeakEntity<Self>, palette: &Palette) -> AnyElement {
+        let secrets = self.git.secrets.clone();
+        let names = secrets
+            .iter()
+            .map(|path| path.rsplit('/').next().unwrap_or(path))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let unstage = {
+            let weak = weak.clone();
+            let paths = secrets.to_vec();
+            SecondaryButton::new("git-secrets-unstage", t!("git.secrets.unstage")).on_click(
+                move |_, _, cx| {
+                    let paths = paths.clone();
+                    let _ = weak.update(cx, |view, cx| {
+                        view.change_index(IndexAction::Unstage, paths, cx);
+                    });
+                },
+            )
+        };
+        let ignore = {
+            let paths = secrets.to_vec();
+            GhostButton::new("git-secrets-ignore", t!("git.secrets.ignore")).on_click(
+                move |_, _, cx| {
+                    let paths = paths.clone();
+                    let _ = weak.update(cx, |view, cx| view.ignore_secrets(paths, cx));
+                },
+            )
+        };
+        v_flex()
+            .p(px(10.0))
+            .gap(px(8.0))
+            .rounded(px(8.0))
+            .bg(palette.danger.opacity(0.10))
+            .border_1()
+            .border_color(palette.danger.opacity(0.35))
+            .child(
+                h_flex()
+                    .items_start()
+                    .gap(px(8.0))
+                    .child(
+                        Icon::new(IconName::ShieldAlert)
+                            .small()
+                            .text_color(palette.danger),
+                    )
+                    .child(div().flex_1().text_size(px(12.5)).child(
+                        plural("git.secrets.text", secrets.len()).replace("%{files}", &names),
+                    )),
+            )
+            .child(h_flex().gap(px(6.0)).child(unstage).child(ignore))
+            .into_any_element()
+    }
+
+    /// "Add to .gitignore": ignores each secret file and takes it out of the index.
+    fn ignore_secrets(&mut self, paths: Vec<String>, cx: &mut Context<Self>) {
+        let Some(repo) = self.git.repo().cloned() else {
+            return;
+        };
+        self.run_git_write(cx, move || {
+            for path in &paths {
+                repo.add_to_gitignore(path)?;
+            }
+            repo.unstage(&paths)
+        });
     }
 }
 
