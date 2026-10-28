@@ -1097,6 +1097,7 @@ impl AppView {
     }
 
     /// Handles the `Ctrl+Enter` / `Cmd+Enter` key binding (see `main.rs`'s `bind_keys`).
+        self.relocalize_git_log(window, cx);
     fn on_send_action(&mut self, _: &SendActiveTab, _window: &mut Window, cx: &mut Context<Self>) {
         self.send_active_tab(cx);
     }
@@ -1505,6 +1506,12 @@ impl AppView {
         } else if is_diff {
             self.render_diff_tab(window, cx)
         } else {
+        let is_log = self
+            .state
+            .tabs
+            .active()
+            .is_some_and(|tab| tab.log().is_some());
+
             v_resizable("postino-main")
                 .child(
                     resizable_panel()
@@ -1513,6 +1520,8 @@ impl AppView {
                         .child(self.render_request_editor(window, cx)),
                 )
                 .child(
+        } else if is_log {
+            self.render_log_tab(window, cx)
                     resizable_panel()
                         .size(px(420.0))
                         .child(self.render_response_view(window, cx)),
@@ -1571,6 +1580,7 @@ impl AppView {
                         .prefix(move || MethodBadge::inline(method.clone()))
                 }
                 state::TabKind::Environment(edit) => {
+                state::TabKind::Log(_) => t!("git_log.tab").into_owned(),
                     DocumentTab::new(state::env_edit::tab_label(&edit.name))
                         .icon(gpui_kit::assets::IconName::Variable)
                 }
@@ -1590,6 +1600,14 @@ impl AppView {
                 .selected(active_index == Some(index))
                 .tooltip(full_id)
                 .on_click(move |_, cx| {
+                state::TabKind::Log(log) => {
+                    let log_tab =
+                        DocumentTab::new(t!("git_log.tab")).icon(gpui_kit::assets::IconName::GitGraph);
+                    match log.filter.branch.clone() {
+                        Some(branch) => log_tab.detail(branch),
+                        None => log_tab,
+                    }
+                }
                     let _ = select_weak.update(cx, |view, cx| {
                         view.state.tabs.set_active(index);
                         cx.notify();

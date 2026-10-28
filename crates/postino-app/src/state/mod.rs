@@ -18,6 +18,7 @@ pub mod format;
 pub mod git;
 pub mod git_branches;
 pub mod git_diff;
+pub mod git_log;
 pub mod git_sync;
 pub mod header_completion;
 pub mod import;

@@ -10,6 +10,7 @@ use super::auth_edit::{self, AuthKind, AuthStash};
 use super::edit_history::{EditHistory, Snapshot};
 use super::env_edit::{self, EnvEditTab};
 use super::git_diff::{self, DiffTab};
+use super::git_log::{self, LogFilter, LogTab};
 use super::load_test::LoadTestTab;
 use super::request_edit::{self, BodyKind, BodyStash};
 use super::welcome::{self, WelcomeTab};
@@ -32,6 +33,8 @@ pub enum TabKind {
     Welcome(WelcomeTab),
     /// The git diff of one file (`state::git_diff`). Read only, nothing to save.
     Diff(Box<DiffTab>),
+    /// The git log (`state::git_log`). Read only, nothing to save.
+    Log(Box<LogTab>),
 }
 
 /// One open tab.
@@ -67,7 +70,8 @@ impl OpenTab {
             TabKind::Environment(_)
             | TabKind::LoadTest(_)
             | TabKind::Welcome(_)
-            | TabKind::Diff(_) => None,
+            | TabKind::Diff(_)
+            | TabKind::Log(_) => None,
         }
     }
 
@@ -78,7 +82,8 @@ impl OpenTab {
             TabKind::Environment(_)
             | TabKind::LoadTest(_)
             | TabKind::Welcome(_)
-            | TabKind::Diff(_) => None,
+            | TabKind::Diff(_)
+            | TabKind::Log(_) => None,
         }
     }
 
@@ -157,7 +162,7 @@ impl OpenTab {
     pub fn environment(&self) -> Option<&EnvEditTab> {
         match &self.kind {
             TabKind::Environment(edit) => Some(edit.as_ref()),
-            TabKind::Request(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) | TabKind::Diff(_) => {
+            TabKind::Request(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) | TabKind::Diff(_) | TabKind::Log(_) => {
                 None
             }
         }
@@ -167,7 +172,7 @@ impl OpenTab {
     pub fn environment_mut(&mut self) -> Option<&mut EnvEditTab> {
         match &mut self.kind {
             TabKind::Environment(edit) => Some(edit.as_mut()),
-            TabKind::Request(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) | TabKind::Diff(_) => {
+            TabKind::Request(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) | TabKind::Diff(_) | TabKind::Log(_) => {
                 None
             }
         }
@@ -180,7 +185,8 @@ impl OpenTab {
             TabKind::Request(_)
             | TabKind::Environment(_)
             | TabKind::Welcome(_)
-            | TabKind::Diff(_) => None,
+            | TabKind::Diff(_)
+            | TabKind::Log(_) => None,
         }
     }
 
@@ -191,7 +197,8 @@ impl OpenTab {
             TabKind::Request(_)
             | TabKind::Environment(_)
             | TabKind::LoadTest(_)
-            | TabKind::Diff(_) => None,
+            | TabKind::Diff(_)
+            | TabKind::Log(_) => None,
         }
     }
 
@@ -211,6 +218,22 @@ impl OpenTab {
         }
     }
 
+    /// This tab's log, if it is the [`TabKind::Log`] tab.
+    pub fn log(&self) -> Option<&LogTab> {
+        match &self.kind {
+            TabKind::Log(log) => Some(log.as_ref()),
+            _ => None,
+        }
+    }
+
+    /// This tab's log, mutably, if it is the [`TabKind::Log`] tab.
+    pub fn log_mut(&mut self) -> Option<&mut LogTab> {
+        match &mut self.kind {
+            TabKind::Log(log) => Some(log.as_mut()),
+            _ => None,
+        }
+    }
+
     /// This tab's load test state, mutably, if it is a [`TabKind::LoadTest`].
     pub fn load_test_mut(&mut self) -> Option<&mut LoadTestTab> {
         match &mut self.kind {
@@ -218,7 +241,8 @@ impl OpenTab {
             TabKind::Request(_)
             | TabKind::Environment(_)
             | TabKind::Welcome(_)
-            | TabKind::Diff(_) => None,
+            | TabKind::Diff(_)
+            | TabKind::Log(_) => None,
         }
     }
 }
@@ -338,6 +362,20 @@ impl TabsState {
         self.push_and_activate(git_diff::TAB_ID.to_string(), TabKind::Diff(Box::new(diff)))
     }
 
+    /// Opens the log tab for `filter` and makes it active, or just makes it active when it is
+    /// open. Returns whether it was open, and its index.
+    pub fn open_log(&mut self, filter: LogFilter) -> (bool, usize) {
+        if let Some(index) = self.index_of(git_log::TAB_ID) {
+            self.active = Some(index);
+            return (true, index);
+        }
+        let index = self.push_and_activate(
+            git_log::TAB_ID.to_string(),
+            TabKind::Log(Box::new(LogTab::new(filter))),
+        );
+        (false, index)
+    }
+
     /// Opens a new load test tab and makes it active. Always a fresh tab, never deduplicated:
     /// unlike a request, several load test tabs can target the same request or collection at once.
     /// Returns the tab's id and index.
@@ -360,7 +398,8 @@ impl TabsState {
             TabKind::Environment(_)
             | TabKind::LoadTest(_)
             | TabKind::Welcome(_)
-            | TabKind::Diff(_) => None,
+            | TabKind::Diff(_)
+            | TabKind::Log(_) => None,
         };
         self.open.push(OpenTab {
             id,

@@ -17,6 +17,7 @@ use super::root::AppView;
 mod branches;
 mod diff_tab;
 mod panel;
+mod log_tab;
 mod sync;
 mod watch;
 mod write;
@@ -47,6 +48,12 @@ pub(crate) struct GitTasks {
     branches: Option<Task<()>>,
 }
 
+    /// The log tab's inputs and scroll positions (`log_tab.rs`), created when it opens.
+    log_view: Option<log_tab::LogView>,
+    /// The log page being read.
+    log_load: Option<Task<()>>,
+    /// The selected commit's detail being read.
+    log_detail: Option<Task<()>>,
 impl AppView {
     /// The executable the settings ask for.
     fn git_executable(&self) -> Executable {
@@ -186,6 +193,7 @@ impl AppView {
                             view.load_git_diff(cx);
                             view.load_commit_stats(cx);
                             cx.notify();
+                            view.refresh_git_log_if_stale(cx);
                         }
                     }
                     Err(error) => {
