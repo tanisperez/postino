@@ -58,9 +58,13 @@ jobs:
       matrix:
         include:
           # 22.04 (glibc 2.35) so the binary also runs on Debian 12 and older Ubuntu LTS.
+          # The updater only announces new versions on Linux, and only in manual installs
+          # (tarball, install script, AppImage): the binary stays silent under /usr (deb, rpm,
+          # Arch) and in a Flatpak, so one build serves every package.
           - name: linux-x86_64
             os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+            updater: github
           - name: windows-x86_64
             os: windows-latest
             target: x86_64-pc-windows-msvc
@@ -94,7 +98,6 @@ jobs:
 
       # No Cargo cache: release builds are rare, and the Build workflow's Linux cache comes from a
       # newer Ubuntu whose glibc the build scripts restored here could need.
-      # POSTINO_UPDATER is empty on Linux, which has no in-app updater.
       - name: Build
         env:
           POSTINO_UPDATER: ${{ matrix.updater }}
@@ -204,8 +207,10 @@ jobs:
           base="https://github.com/$GH_REPO/releases/download/$TAG"
           mac=$(ls Postino-*-macos-arm64.app.tar.gz 2>/dev/null | head -n 1)
           win=$(ls Postino-*-windows-x86_64-setup.exe 2>/dev/null | head -n 1)
-          if [ -z "$mac" ] || [ -z "$win" ]; then
-            echo "::error::Missing the macOS app archive or the Windows installer in dist"
+          # Linux only announces new versions; the tarball is listed so the entry exists.
+          linux=$(ls postino-*-linux-x86_64.tar.gz 2>/dev/null | head -n 1)
+          if [ -z "$mac" ] || [ -z "$win" ] || [ -z "$linux" ]; then
+            echo "::error::Missing the macOS app archive, the Windows installer or the Linux tarball in dist"
             exit 1
           fi
           jq -n \
@@ -213,12 +218,14 @@ jobs:
             --arg notes_url "https://github.com/$GH_REPO/releases/tag/$TAG" \
             --arg mac_url "$base/$mac" --arg mac_sha "$(sha256sum "$mac" | cut -d' ' -f1)" \
             --arg win_url "$base/$win" --arg win_sha "$(sha256sum "$win" | cut -d' ' -f1)" \
+            --arg linux_url "$base/$linux" --arg linux_sha "$(sha256sum "$linux" | cut -d' ' -f1)" \
             '{
               version: $version,
               notes_url: $notes_url,
               platforms: {
                 "macos-aarch64": { url: $mac_url, sha256: $mac_sha },
-                "windows-x86_64": { url: $win_url, sha256: $win_sha }
+                "windows-x86_64": { url: $win_url, sha256: $win_sha },
+                "linux-x86_64": { url: $linux_url, sha256: $linux_sha }
               }
             }' > latest.json
           cat latest.json

@@ -75,7 +75,8 @@ description: Every Postino setting: language, theme, fonts, the welcome tab, JSO
 <ul>
     <li><strong>macOS and Windows builds from the official installers</strong> have the in-app updater. <strong>Check for updates automatically</strong> (on by default) checks once, a few seconds after launch, and never polls in the background. <strong>Check now</strong> checks immediately. When an update has been downloaded and verified, <strong>Restart to update</strong> installs it. Restarting keeps your open tabs; if a tab has unsaved changes, Postino asks first.</li>
     <li><strong>The Windows portable zip</strong> checks too, but downloads nothing and does not show the download folder. When a newer version exists, a banner says so and its <strong>Download</strong> button opens the release page, where the new zip is. See <a href="installation.html#portable">Installation</a>.</li>
-    <li><strong>Linux packages</strong> say that updates come from your package manager.</li>
+    <li><strong>Linux copies installed without a package manager</strong> (the install script, the tarball, the AppImage) check too, but download nothing. When a newer version exists, a banner says so. For the install script its <strong>Copy command</strong> button copies the install command, which updates Postino when you run it again; for the tarball and the AppImage, <strong>Download</strong> opens the release page. See <a href="installation.html#updates">Installation</a>.</li>
+    <li><strong>Linux packages</strong> (apt, dnf, zypper, pacman) say that updates come from your package manager.</li>
     <li><strong>Other builds</strong>, such as one you compiled yourself, say that updates are not available in that build.</li>
 </ul>
 <p>The privacy line states what Postino connects to on its own: nothing at all, or, in builds with the updater, only GitHub to check for updates. That check sends no identifiers.</p>

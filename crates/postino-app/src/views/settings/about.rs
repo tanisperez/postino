@@ -11,7 +11,7 @@ use postino_cli::display_identity;
 use rust_i18n::t;
 
 use crate::state::about::{self, AboutInfo};
-use crate::state::update::{CheckStatus, ReadyUpdate, updater_enabled};
+use crate::state::update::{CheckStatus, ManualUpdate, ReadyUpdate, updater_enabled};
 use crate::theme::Palette;
 use crate::theme::metrics::{CONTROL_HEIGHT, RADIUS_LG};
 use crate::views::components::{PrimaryButton, SecondaryButton, switch_halo};
@@ -24,6 +24,7 @@ pub(super) struct AboutPane {
     enabled: bool,
     check_updates: bool,
     ready: Option<ReadyUpdate>,
+    manual: ManualUpdate,
     status: CheckStatus,
 }
 
@@ -35,6 +36,7 @@ impl AboutPane {
             enabled: updater_enabled(),
             check_updates: view.state.settings.check_updates,
             ready: view.state.update.ready().cloned(),
+            manual: view.manual_update(),
             status: view.state.update.status(),
         }
     }
@@ -97,7 +99,12 @@ fn render_managed_updates(
 ) -> Vec<AnyElement> {
     let mut rows = Vec::new();
     if let Some(ready) = &pane.ready {
-        rows.push(render_ready_banner(weak.clone(), palette, ready));
+        rows.push(render_ready_banner(
+            weak.clone(),
+            palette,
+            ready,
+            pane.manual,
+        ));
     } else if let Some(row) = render_status_row(palette, pane.status, pane.info.version) {
         rows.push(row);
     }
@@ -168,12 +175,18 @@ fn render_ready_banner(
     weak: WeakEntity<AppView>,
     palette: &Palette,
     ready: &ReadyUpdate,
+    manual: ManualUpdate,
 ) -> AnyElement {
     let version = ready.version.as_str();
     let (title, text) = if ready.is_manual_download() {
+        let text = match manual {
+            ManualUpdate::PortableZip => t!("settings.about.available.text"),
+            ManualUpdate::Download => t!("settings.about.available.text_linux"),
+            ManualUpdate::InstallScript => t!("settings.about.available.text_script"),
+        };
         (
             t!("settings.about.available.title", version = version),
-            t!("settings.about.available.text"),
+            text,
         )
     } else {
         (
@@ -181,7 +194,13 @@ fn render_ready_banner(
             t!("settings.about.ready.text"),
         )
     };
-    let button = if ready.is_manual_download() {
+    let button = if ready.is_manual_download() && manual == ManualUpdate::InstallScript {
+        PrimaryButton::new("about-copy-command", t!("settings.about.available.copy")).on_click(
+            move |_, window, cx| {
+                let _ = weak.update(cx, |view, cx| view.copy_update_command(window, cx));
+            },
+        )
+    } else if ready.is_manual_download() {
         let notes_url = ready.notes_url.clone();
         PrimaryButton::new("about-download", t!("settings.about.available.download"))
             .on_click(move |_, _, cx| cx.open_url(&notes_url))

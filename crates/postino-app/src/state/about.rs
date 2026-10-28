@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use telaio_update::Platform;
 
-use super::update::{CURRENT_VERSION, download_dir, is_portable};
+use super::update::{CURRENT_VERSION, download_dir, installed_by_script, is_portable};
 
 /// The install page of the website, with the apt, dnf and AUR instructions.
 pub const INSTALL_URL: &str = "https://postino.tanis.codes/install.html";
@@ -34,9 +34,11 @@ pub struct AboutInfo {
     /// Where updates are downloaded, `None` when the cache directory is unknown or this is a
     /// portable copy, which downloads nothing.
     pub download_dir: Option<PathBuf>,
-    /// Whether this is a portable Windows copy ([`is_portable`]), told by the files next to the
-    /// exe, so read here once and never in `render`.
+    /// Whether this copy only announces updates ([`is_portable`]): a portable Windows copy, told
+    /// by the files next to the exe, or any Linux copy. Read here once and never in `render`.
     pub portable: bool,
+    /// Whether the Linux install script installed this copy ([`installed_by_script`]).
+    pub install_script: bool,
 }
 
 impl AboutInfo {
@@ -45,13 +47,17 @@ impl AboutInfo {
         let exe = std::env::current_exe()
             .ok()
             .map(|exe| dunce::canonicalize(&exe).unwrap_or(exe));
-        let portable = is_portable(Platform::current(), exe.as_deref());
+        let platform = Platform::current();
+        let portable = is_portable(platform, exe.as_deref());
+        let install_script = platform == Some(Platform::LinuxX86_64)
+            && exe.as_deref().is_some_and(installed_by_script);
         Self {
             version: CURRENT_VERSION,
             platform: platform_label(std::env::consts::OS, std::env::consts::ARCH),
             exe,
             download_dir: download_dir().filter(|_| !portable),
             portable,
+            install_script,
         }
     }
 }

@@ -5,11 +5,14 @@
 //! result.
 //!
 //! The feature exists only in builds made with `POSTINO_UPDATER=github` (the release CI sets it
-//! for macOS and Windows) on a platform `telaio-update` knows. Everything compiles everywhere;
-//! [`updater_enabled`] is the one switch the setting row, the palette command and the startup
-//! check consult.
+//! for macOS, Windows and Linux) on a platform `telaio-update` knows. On Linux it only announces
+//! new versions, and only in a manual install (the tarball, the install script, the AppImage):
+//! a package managed copy (deb, rpm, Arch, Flatpak) shows nothing. Everything compiles
+//! everywhere; [`updater_enabled`] is the one switch the setting row, the palette command and the
+//! startup check consult.
 
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use telaio_update::{Platform, UpdateError, UpdaterConfig, flow};
 
@@ -33,10 +36,50 @@ pub const UPDATER: UpdaterConfig = UpdaterConfig {
 /// The running version, what a manifest is compared against.
 pub const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Whether this build has an updater: built with `POSTINO_UPDATER=github` and running on a
-/// platform with an installable asset.
+/// The command that installs Postino on Linux and, run again, updates it. The same as on the
+/// website.
+pub const INSTALL_COMMAND: &str = "curl -fsSL https://postino.tanis.codes/install.sh | bash";
+
+/// Whether this build has an updater: built with `POSTINO_UPDATER=github`, running on a platform
+/// `telaio-update` knows, and not a Linux copy owned by a package manager. Read once (the
+/// executable path is a syscall), so it is cheap in `render`.
 pub fn updater_enabled() -> bool {
-    flow::updater_enabled(option_env!("POSTINO_UPDATER"))
+    static ENABLED: OnceLock<bool> = OnceLock::new();
+    *ENABLED.get_or_init(|| {
+        let exe = std::env::current_exe().ok();
+        flow::updater_enabled(option_env!("POSTINO_UPDATER"))
+            && !flow::is_package_managed(Platform::current(), exe.as_deref(), flow::is_sandboxed())
+    })
+}
+
+/// How a copy that downloads nothing ([`ReadyUpdate::is_manual_download`]) gets a new version.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ManualUpdate {
+    /// A portable Windows copy: the new zip from the release page.
+    PortableZip,
+    /// A Linux tarball or AppImage: the new one from the release page.
+    Download,
+    /// Installed by the install script: run [`INSTALL_COMMAND`] again.
+    InstallScript,
+}
+
+/// The [`ManualUpdate`] of this copy. `install_script` is [`installed_by_script`].
+pub fn manual_update(platform: Option<Platform>, install_script: bool) -> ManualUpdate {
+    match platform {
+        Some(Platform::LinuxX86_64) if install_script => ManualUpdate::InstallScript,
+        Some(Platform::LinuxX86_64) => ManualUpdate::Download,
+        _ => ManualUpdate::PortableZip,
+    }
+}
+
+/// Whether the install script installed this executable: it writes the list of its files to
+/// `<prefix>/share/postino/installed-files`, and the binary is `<prefix>/bin/postino`. Reads the
+/// filesystem, so call it once.
+pub fn installed_by_script(exe: &Path) -> bool {
+    exe.parent()
+        .filter(|bin| bin.ends_with("bin"))
+        .and_then(Path::parent)
+        .is_some_and(|prefix| prefix.join("share/postino/installed-files").is_file())
 }
 
 /// Where updates are downloaded: `postino/updates` under the OS cache folder.
@@ -64,6 +107,7 @@ pub fn start_install(platform: Platform, ready: &ReadyUpdate, exe: &Path) -> Ins
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -75,6 +119,30 @@ mod tests {
         assert!(!needs_restart_confirmation(&tabs));
         tabs.set_dirty(0, true);
         assert!(needs_restart_confirmation(&tabs));
+    }
+
+    #[test]
+    fn linux_copies_update_by_hand_or_with_the_script() {
+        let linux = Some(Platform::LinuxX86_64);
+        assert_eq!(manual_update(linux, true), ManualUpdate::InstallScript);
+        assert_eq!(manual_update(linux, false), ManualUpdate::Download);
+        let windows = Some(Platform::WindowsX86_64);
+        assert_eq!(manual_update(windows, false), ManualUpdate::PortableZip);
+    }
+
+    #[test]
+    fn the_script_install_is_told_by_its_manifest() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let bin = dir.path().join("bin");
+        std::fs::create_dir_all(&bin).expect("bin dir");
+        let exe = bin.join("postino");
+        std::fs::write(&exe, "").expect("binary");
+        assert!(!installed_by_script(&exe));
+        let share = dir.path().join("share/postino");
+        std::fs::create_dir_all(&share).expect("share dir");
+        std::fs::write(share.join("installed-files"), "# Postino 0.5.0\n").expect("manifest");
+        assert!(installed_by_script(&exe));
+        assert!(!installed_by_script(&dir.path().join("postino")));
     }
 
     #[test]

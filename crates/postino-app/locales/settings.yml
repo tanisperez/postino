@@ -225,6 +225,21 @@ _version: 2
   es: "Esta copia portable no se actualiza sola. Descarga el nuevo zip, cierra Postino y reemplaza postino.exe."
   gl: "Esta copia portable non se actualiza soa. Descarga o novo zip, pecha Postino e substitúe postino.exe."
   it: "Questa copia portatile non si aggiorna da sola. Scarica il nuovo zip, chiudi Postino e sostituisci postino.exe."
+"settings.about.available.text_linux":
+  en: "This copy doesn't update itself. Download the new version from the release page and replace this one."
+  es: "Esta copia no se actualiza sola. Descarga la nueva versión desde la página de la versión y reemplaza esta."
+  gl: "Esta copia non se actualiza soa. Descarga a nova versión desde a páxina da versión e substitúe esta."
+  it: "Questa copia non si aggiorna da sola. Scarica la nuova versione dalla pagina della release e sostituisci questa."
+"settings.about.available.text_script":
+  en: "Installed with the install script. To update, close Postino and run the install command again in a terminal."
+  es: "Instalado con el script de instalación. Para actualizar, cierra Postino y vuelve a ejecutar el comando de instalación en una terminal."
+  gl: "Instalado co script de instalación. Para actualizar, pecha Postino e volve executar o comando de instalación nun terminal."
+  it: "Installato con lo script di installazione. Per aggiornare, chiudi Postino ed esegui di nuovo il comando di installazione in un terminale."
+"settings.about.available.copy":
+  en: "Copy command"
+  es: "Copiar comando"
+  gl: "Copiar comando"
+  it: "Copia comando"
 "settings.about.available.download":
   en: "Download"
   es: "Descargar"

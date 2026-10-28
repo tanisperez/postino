@@ -255,13 +255,25 @@ and DNF repos, served by GitHub Pages.
 ## In-app updater
 
 telaio's `telaio-update` crate (no UI, tested against a local `tiny_http` server, configured by
-`state::update::UPDATER`) plus the glue in `state/update.rs` and `views/update.rs`. Package managers own updates on Linux, so the updater
-exists only on macOS and Windows.
+`state::update::UPDATER`) plus the glue in `state/update.rs` and `views/update.rs`. It installs updates on macOS and
+Windows. On Linux it only announces them, and only in a manual install, since package managers
+own updates there (see "Linux notices" below).
 
-- **Compiled in only with `POSTINO_UPDATER=github`** at build time (`option_env!`), set only on
-  the macOS `.app`, the Windows installer and the Windows portable zip (the same `postino.exe`).
-  Otherwise the whole feature, its setting and its menu entries are absent (deb, rpm, Arch, AUR and
-  local builds).
+- **Compiled in only with `POSTINO_UPDATER=github`** at build time (`option_env!`), set on the
+  macOS `.app`, the Windows installer and portable zip (the same `postino.exe`) and the one Linux
+  binary shared by every Linux asset. Otherwise the whole feature, its setting and its menu entries
+  are absent (local builds, distro builds from source).
+- **Linux notices:** `Platform::LinuxX86_64` in `telaio-update` never downloads (it counts as
+  portable). `state::update::updater_enabled` also turns the feature off, at runtime and once,
+  when `telaio_update::flow::is_package_managed` says a package manager owns the copy: an
+  executable under `/usr` (not `/usr/local`), `/bin`, `/sbin`, `/app` or `/snap`, an unknown
+  executable path, or a Flatpak or Snap sandbox. So the deb, rpm, Arch and AUR packages announce
+  nothing, while the tarball, the install script and the AppImage show "Update X available". A
+  copy installed by the install script (`<prefix>/share/postino/installed-files` next to
+  `<prefix>/bin/postino`, `state::update::installed_by_script`, read once in
+  `AboutInfo::detect`) offers to copy the install command instead of opening the release page.
+  `latest.json` has a `linux-x86_64` entry (the tarball) only so the check finds the platform;
+  nothing downloads it.
 - **Setting and command:** Settings, Advanced, "Check for updates automatically" (on by
   default), and a command palette entry "Check for updates".
 - **Check:** once, 10 s after startup, on the background executor. No timer and no polling, so

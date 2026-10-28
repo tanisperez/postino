@@ -13,13 +13,39 @@ use rust_i18n::t;
 use telaio_update::Platform;
 
 use crate::state::update::{
-    self, CheckOutcome, InstallOutcome, ReadyUpdate, STARTUP_DELAY, updater_enabled,
+    self, CheckOutcome, INSTALL_COMMAND, InstallOutcome, ManualUpdate, ReadyUpdate, STARTUP_DELAY,
+    updater_enabled,
 };
 
 use super::components::{ConfirmDialog, open_confirm_dialog};
 use super::root::AppView;
 
+/// The notification text for a newer version that this copy has to get by hand.
+fn available_text(manual: ManualUpdate, version: &str) -> String {
+    match manual {
+        ManualUpdate::PortableZip => t!("update.available_manual", version = version),
+        ManualUpdate::Download => t!("update.available_linux", version = version),
+        ManualUpdate::InstallScript => t!("update.available_script", version = version),
+    }
+    .into_owned()
+}
+
 impl AppView {
+    /// How this copy gets a new version when it downloads nothing.
+    pub(crate) fn manual_update(&self) -> ManualUpdate {
+        update::manual_update(Platform::current(), self.about_info.install_script)
+    }
+
+    /// Copies [`INSTALL_COMMAND`] for a copy installed by the install script, which updates by
+    /// running it again.
+    pub(crate) fn copy_update_command(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        cx.write_to_clipboard(ClipboardItem::new_string(INSTALL_COMMAND.to_string()));
+        window.push_notification(
+            Notification::info(t!("update.command_copied", command = INSTALL_COMMAND).into_owned()),
+            cx,
+        );
+    }
+
     /// Schedules the one automatic check, [`STARTUP_DELAY`] after startup. A no-op unless the
     /// build has an updater and the setting is on. Failures are only logged.
     pub(crate) fn schedule_startup_update_check(&mut self, cx: &mut Context<Self>) {
@@ -78,11 +104,11 @@ impl AppView {
         if let Some(ready) = self.state.update.ready() {
             let version = ready.version.as_str();
             let text = if ready.is_manual_download() {
-                t!("update.available_manual", version = version)
+                available_text(self.manual_update(), version)
             } else {
-                t!("update.already_ready", version = version)
+                t!("update.already_ready", version = version).into_owned()
             };
-            window.push_notification(Notification::info(text.into_owned()), cx);
+            window.push_notification(Notification::info(text), cx);
             return;
         }
         if !self.state.update.begin_check() {
@@ -91,6 +117,7 @@ impl AppView {
         window.push_notification(Notification::info(t!("update.checking").into_owned()), cx);
         cx.notify();
         let portable = self.about_info.portable;
+        let manual = self.manual_update();
         cx.spawn_in(window, async move |this, cx| {
             let result = cx
                 .background_spawn(async move { update::check_and_download(platform, portable) })
@@ -107,11 +134,11 @@ impl AppView {
                             CheckOutcome::Ready(ready) => {
                                 let version = ready.version.as_str();
                                 let text = if ready.is_manual_download() {
-                                    t!("update.available_manual", version = version)
+                                    available_text(manual, version)
                                 } else {
-                                    t!("update.found", version = version)
+                                    t!("update.found", version = version).into_owned()
                                 };
-                                Notification::info(text.into_owned())
+                                Notification::info(text)
                             }
                         }
                     }

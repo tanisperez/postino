@@ -121,9 +121,9 @@ $ xattr -dr com.apple.quarantine /Applications/Postino.app
     <tbody>
         <tr><td>apt, dnf, zypper</td><td>With your system updates. Postino never updates itself on Linux.</td></tr>
         <tr><td>Arch package</td><td>Install the package of the new release with <code>sudo pacman -U</code>.</td></tr>
-        <tr><td>AppImage</td><td>Download the new AppImage and replace the old file.</td></tr>
-        <tr><td>Install script</td><td>Run the install command again.</td></tr>
-        <tr><td>Tarball</td><td>Download the new version from the releases page.</td></tr>
+        <tr><td>Install script</td><td>The status bar tells you when a new version exists and copies the install command. Close Postino and run it again.</td></tr>
+        <tr><td>AppImage</td><td>The status bar tells you when a new version exists and opens the release page. Download the new AppImage and replace the old file.</td></tr>
+        <tr><td>Tarball</td><td>The status bar tells you when a new version exists and opens the release page. Download the new tarball and replace the old files.</td></tr>
         <tr><td>Windows installer, winget</td><td>In-app updater, or <code>winget upgrade</code>.</td></tr>
         <tr><td>Windows portable zip</td><td>The status bar tells you when a new version exists and opens the release page. Download the new zip and replace <code>postino.exe</code>.</td></tr>
         <tr><td>macOS disk image, Homebrew</td><td>In-app updater.</td></tr>
@@ -132,6 +132,7 @@ $ xattr -dr com.apple.quarantine /Applications/Postino.app
 </table></div>
 <p>The in-app updater checks once, a few seconds after launch, and never polls in the background. When a new version exists it downloads it, verifies its checksum and shows <strong>Update ready, restart</strong> in the status bar. Nothing is installed until you click it. You can turn the automatic check off in <a href="settings.html#about">Settings, About</a>, and check by hand from the command palette with <strong>Check for updates</strong>.</p>
 <p>The updater trusts the same certificates as your system, like your browser does. On a company network that inspects secure connections, it works as long as the company certificate is installed in the system, which is usually done for you.</p>
+<p>On Linux, Postino never replaces itself. A copy installed without a package manager (the install script, the tarball, the AppImage) checks the same way but downloads nothing: when a newer version exists, the status bar shows <strong>Update … available</strong>. For the install script the item reads <strong>copy the update command</strong>: a click copies <code>curl -fsSL https://postino.tanis.codes/install.sh | bash</code>, which updates Postino when you close it and run the command in a terminal. For the tarball and the AppImage it reads <strong>download</strong> and opens the release page. A copy installed by a package manager (in <code>/usr</code>, or in a Flatpak or Snap) never checks: your package manager brings the updates.</p>
 <p>A portable Windows copy checks the same way but downloads nothing, because running the installer from it would add a second copy of Postino. Postino tells it apart from an installed one by the uninstaller (<code>unins000.exe</code>) that the installer leaves next to <code>postino.exe</code>. When a newer version exists, the status bar shows <strong>Update … available, download</strong>. Clicking it opens the release page, where the new zip is. Close Postino, unzip the new <code>postino.exe</code> over the old one and start it again. Nothing is restarted for you.</p>
 
 <h2>Uninstall</h2>

@@ -14,7 +14,7 @@ use rust_i18n::t;
 use telaio_ui::components::{SearchableMenu, open_tooltip};
 
 use crate::state;
-use crate::state::update::ReadyUpdate;
+use crate::state::update::{ManualUpdate, ReadyUpdate};
 use crate::theme::metrics::{STATUS_BAR_BUTTON, STATUS_BAR_HEIGHT};
 use crate::theme::{Palette, PaletteExt};
 
@@ -126,7 +126,8 @@ impl AppView {
             .child(div().flex_1())
             .children(self.state.update.ready().map(|ready| {
                 if ready.is_manual_download() {
-                    render_update_download(ready, &palette).into_any_element()
+                    render_update_download(weak.clone(), ready, self.manual_update(), &palette)
+                        .into_any_element()
                 } else {
                     render_update_ready(weak.clone(), ready, &palette).into_any_element()
                 }
@@ -186,8 +187,19 @@ fn render_update_ready(
 
 /// The portable copy's "update available" item: nothing was downloaded, so a click opens the
 /// release page where the new zip is.
-fn render_update_download(ready: &ReadyUpdate, palette: &Palette) -> impl IntoElement {
+fn render_update_download(
+    weak: WeakEntity<AppView>,
+    ready: &ReadyUpdate,
+    manual: ManualUpdate,
+    palette: &Palette,
+) -> impl IntoElement {
     let notes_url = ready.notes_url.clone();
+    let version = ready.version.as_str();
+    let label = if manual == ManualUpdate::InstallScript {
+        t!("update.status.available_script", version = version)
+    } else {
+        t!("update.status.available", version = version)
+    };
     h_flex()
         .id("status-bar-update-download")
         .items_center()
@@ -196,9 +208,12 @@ fn render_update_download(ready: &ReadyUpdate, palette: &Palette) -> impl IntoEl
         .text_color(palette.accent_text)
         .hover(|style| style.underline())
         .child(Icon::new(gpui_kit::assets::IconName::Download).small())
-        .child(t!(
-            "update.status.available",
-            version = ready.version.as_str()
-        ))
-        .on_click(move |_, _, cx| cx.open_url(&notes_url))
+        .child(label)
+        .on_click(move |_, window, cx| {
+            if manual == ManualUpdate::InstallScript {
+                let _ = weak.update(cx, |view, cx| view.copy_update_command(window, cx));
+            } else {
+                cx.open_url(&notes_url);
+            }
+        })
 }

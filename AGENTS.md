@@ -275,7 +275,7 @@ small logger behind the `log` facade, so gpui, wgpu, ureq and rustls messages re
 
 ## Updater
 
-In-app updater for macOS and Windows (#45). The library is telaio's `telaio-update` (no gpui,
+In-app updater for macOS and Windows (#45), and new version notices on Linux (#184). The library is telaio's `telaio-update` (no gpui,
 its `flow` module holds the gate, ready state and install decisions, unit tested); the app glue
 is `state/update.rs` (Postino's `UPDATER` configuration, the build gate, the restart
 confirmation) and `views/update.rs`. The feature exists only when built with `POSTINO_UPDATER=github`
@@ -283,7 +283,10 @@ and `Platform::current()` is `Some` (`state::update::updater_enabled`); nothing 
 OS, so it all compiles on Linux. One delayed check 10 s after startup, no timers or polling.
 Strings live in `locales/update.yml`. A portable Windows copy (the zip, no `unins000.exe` next to
 the exe, `state::update::is_portable`, read once in `AboutInfo::detect`) never downloads or runs
-the installer: its `ReadyUpdate` has no `path` and the UI opens the release page instead.
+the installer: its `ReadyUpdate` has no `path` and the UI opens the release page instead. Linux
+is always like that, and announces nothing at all when a package manager owns the copy
+(`telaio_update::flow::is_package_managed`, checked once in `updater_enabled`); a copy installed
+by the install script copies the install command instead.
 
 ## Releases
 
