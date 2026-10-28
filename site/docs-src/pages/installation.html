@@ -1,5 +1,5 @@
 title: Installation
-description: Install Postino on Linux, Windows or macOS from an installer, the install script, a package repository, Homebrew, winget or from source.
+description: Install Postino on Linux, Windows or macOS from an installer, the install script, a package repository or from source.
 ---
 <h1>Installation</h1>
 <p class="lead">Postino is a single desktop application with no account and no sign in. Download it for your system, or install it with your package manager to get updates with the rest of your software.</p>
@@ -9,8 +9,8 @@ description: Install Postino on Linux, Windows or macOS from an installer, the i
     <thead><tr><th>System</th><th>Supported</th><th>Packages</th></tr></thead>
     <tbody>
         <tr><td>Linux</td><td>x86_64, Wayland or X11, a GPU driver with Vulkan</td><td><code>.deb</code>, <code>.rpm</code>, <code>.pkg.tar.zst</code>, <code>.AppImage</code>, <code>.tar.gz</code>, install script, APT and DNF repositories</td></tr>
-        <tr><td>Windows</td><td>Windows 10 and 11, 64 bit</td><td>Installer (<code>-setup.exe</code>), portable zip (<code>-portable.zip</code>), winget</td></tr>
-        <tr><td>macOS</td><td>Apple silicon (M1 and later)</td><td>Disk image (<code>.dmg</code>), Homebrew cask</td></tr>
+        <tr><td>Windows</td><td>Windows 10 and 11, 64 bit</td><td>Installer (<code>-setup.exe</code>), portable zip (<code>-portable.zip</code>)</td></tr>
+        <tr><td>macOS</td><td>Apple silicon (M1 and later)</td><td>Disk image (<code>.dmg</code>)</td></tr>
     </tbody>
 </table></div>
 <p>Every file is published on the <a href="https://github.com/tanisperez/postino/releases/latest">latest release</a> page on GitHub. The <a href="../install.html">download page</a> links to the right one for each system.</p>
@@ -87,21 +87,14 @@ $ ./Postino-0.5.0-x86_64.AppImage
 
 <h2>Windows</h2>
 <p>Download <code>Postino-…-windows-x86_64-setup.exe</code> and run it. The installer is per user: it installs into <code>%LOCALAPPDATA%\Programs\Postino</code>, needs no administrator rights, adds a Start menu shortcut (and an optional desktop shortcut) and associates <code>.postino</code> files with Postino.</p>
-<p>With winget, from a terminal:</p>
-```shell
-> winget install Postino
-```
-<p>Postino on Windows updates itself. <code>winget upgrade</code> also picks up new versions.</p>
+<p>Postino on Windows updates itself.</p>
 
 <h3 id="portable">Portable zip</h3>
 <p>On a machine where running an installer is not allowed, download <code>Postino-…-windows-x86_64-portable.zip</code> instead. It holds <code>postino.exe</code>, the license and the notice. Unzip it anywhere you can run programs from, a folder in your profile or a USB drive, and double click <code>postino.exe</code>. There is nothing to install: no Start menu shortcut, no <code>.postino</code> file association and no entry in Apps. To remove it, delete the folder.</p>
 <p>A portable copy still keeps its <a href="settings.html">settings</a> and <a href="files-and-folders.html">logs</a> in your user folders, like the installed one, so it is portable in the sense of not needing an installer, not of leaving no trace. It does not replace itself either: see <a href="#updates">Updates</a>.</p>
 
 <h2>macOS</h2>
-<p>Download <code>Postino-…-macos-arm64.dmg</code>, open it and drag Postino to Applications. Or use Homebrew:</p>
-```shell
-$ brew install --cask tanisperez/postino/postino
-```
+<p>Download <code>Postino-…-macos-arm64.dmg</code>, open it and drag Postino to Applications.</p>
 <p>Postino on macOS updates itself after the first install.</p>
 
 <h2 id="first-launch">First launch of an unsigned build</h2>
@@ -124,15 +117,15 @@ $ xattr -dr com.apple.quarantine /Applications/Postino.app
         <tr><td>Install script</td><td>The status bar tells you when a new version exists and copies the install command. Close Postino and run it again.</td></tr>
         <tr><td>AppImage</td><td>The status bar tells you when a new version exists and opens the release page. Download the new AppImage and replace the old file.</td></tr>
         <tr><td>Tarball</td><td>The status bar tells you when a new version exists and opens the release page. Download the new tarball and replace the old files.</td></tr>
-        <tr><td>Windows installer, winget</td><td>In-app updater, or <code>winget upgrade</code>.</td></tr>
+        <tr><td>Windows installer</td><td>In-app updater.</td></tr>
         <tr><td>Windows portable zip</td><td>The status bar tells you when a new version exists and opens the release page. Download the new zip and replace <code>postino.exe</code>.</td></tr>
-        <tr><td>macOS disk image, Homebrew</td><td>In-app updater.</td></tr>
+        <tr><td>macOS disk image</td><td>In-app updater.</td></tr>
         <tr><td>Built from source</td><td>Pull and build again. Local builds have no updater.</td></tr>
     </tbody>
 </table></div>
 <p>The in-app updater checks once, a few seconds after launch, and never polls in the background. When a new version exists it downloads it, verifies its checksum and shows <strong>Update ready, restart</strong> in the status bar. Nothing is installed until you click it. You can turn the automatic check off in <a href="settings.html#about">Settings, About</a>, and check by hand from the command palette with <strong>Check for updates</strong>.</p>
 <p>The updater trusts the same certificates as your system, like your browser does. On a company network that inspects secure connections, it works as long as the company certificate is installed in the system, which is usually done for you.</p>
-<p>On Linux, Postino never replaces itself. A copy installed without a package manager (the install script, the tarball, the AppImage) checks the same way but downloads nothing: when a newer version exists, the status bar shows <strong>Update … available</strong>. For the install script the item reads <strong>copy the update command</strong>: a click copies <code>curl -fsSL https://postino.tanis.codes/install.sh | bash</code>, which updates Postino when you close it and run the command in a terminal. For the tarball and the AppImage it reads <strong>download</strong> and opens the release page. A copy installed by a package manager (in <code>/usr</code>, or in a Flatpak or Snap) never checks: your package manager brings the updates.</p>
+<p>On Linux, Postino never replaces itself. A copy installed without a package manager (the install script, the tarball, the AppImage) checks the same way but downloads nothing: when a newer version exists, the status bar shows <strong>Update … available</strong>. For the install script the item reads <strong>copy the update command</strong>: a click copies <code>curl -fsSL https://postino.tanis.codes/install.sh | bash</code>, which updates Postino when you close it and run the command in a terminal. For the tarball and the AppImage it reads <strong>download</strong> and opens the release page. A copy installed by a package manager (in <code>/usr</code>) never checks: your package manager brings the updates.</p>
 <p>A portable Windows copy checks the same way but downloads nothing, because running the installer from it would add a second copy of Postino. Postino tells it apart from an installed one by the uninstaller (<code>unins000.exe</code>) that the installer leaves next to <code>postino.exe</code>. When a newer version exists, the status bar shows <strong>Update … available, download</strong>. Clicking it opens the release page, where the new zip is. Close Postino, unzip the new <code>postino.exe</code> over the old one and start it again. Nothing is restarted for you.</p>
 
 <h2>Uninstall</h2>
@@ -143,7 +136,7 @@ $ xattr -dr com.apple.quarantine /Applications/Postino.app
     <li><strong>AppImage:</strong> delete the file.</li>
     <li><strong>Install script:</strong> <code>curl -fsSL https://postino.tanis.codes/install.sh | bash -s -- --uninstall</code>, adding <code>--purge</code> to also delete your settings and logs.</li>
     <li><strong>Windows:</strong> Settings, Apps, Postino, Uninstall. A portable copy is not listed there: delete its folder.</li>
-    <li><strong>macOS:</strong> drag Postino from Applications to the Trash, or <code>brew uninstall --cask postino</code>.</li>
+    <li><strong>macOS:</strong> drag Postino from Applications to the Trash.</li>
 </ul>
 <p>Uninstalling never touches your workspaces. To remove your settings and logs as well, delete the folders listed in <a href="files-and-folders.html">Files and folders</a>.</p>
 

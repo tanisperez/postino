@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Download Postino for Linux, Windows and macOS</title>
-    <meta name="description" content="Download Postino, the native open source HTTP client, or install it with apt, dnf, Homebrew or winget.">
+    <meta name="description" content="Download Postino, the native open source HTTP client, or install it with the install script, apt or dnf.">
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#fcfcfd" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#15161a" media="(prefers-color-scheme: dark)">
@@ -18,7 +18,7 @@
     <meta property="og:site_name" content="Postino">
     <meta property="og:locale" content="en_US">
     <meta property="og:title" content="Download Postino for Linux, Windows and macOS">
-    <meta property="og:description" content="The native open source HTTP client, as an installer or a package, or with apt, dnf, Homebrew or winget.">
+    <meta property="og:description" content="The native open source HTTP client, as an installer or a package, or with the install script, apt or dnf.">
     <meta property="og:url" content="https://postino.tanis.codes/install.html">
     <meta property="og:image" content="https://postino.tanis.codes/img/og.png">
     <meta property="og:image:type" content="image/png">
@@ -27,13 +27,14 @@
     <meta property="og:image:alt" content="Postino, the HTTP client that keeps your requests in plain files: the app with a request and its JSON response.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Download Postino for Linux, Windows and macOS">
-    <meta name="twitter:description" content="The native open source HTTP client, as an installer or a package, or with apt, dnf, Homebrew or winget.">
+    <meta name="twitter:description" content="The native open source HTTP client, as an installer or a package, or with the install script, apt or dnf.">
     <meta name="twitter:image" content="https://postino.tanis.codes/img/og.png">
     <meta name="twitter:image:alt" content="Postino, the HTTP client that keeps your requests in plain files: the app with a request and its JSON response.">
     <link rel="preload" href="fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="fonts/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="css/style.css">
     <script src="js/theme.js"></script>
+    <script src="js/copy.js" defer></script>
 </head>
 <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -134,22 +135,6 @@
 <span class="cm"># openSUSE</span>
 <span class="prompt">$ </span>sudo zypper addrepo https://postino.tanis.codes/rpm/postino.repo
 <span class="prompt">$ </span>sudo zypper install postino</pre>
-                        </div>
-                    </article>
-
-                    <article class="channel" id="homebrew">
-                        <h3>macOS <small>Homebrew</small></h3>
-                        <p>Postino updates itself after the first install.</p>
-                        <div class="code">
-<pre><span class="prompt">$ </span>brew install --cask tanisperez/postino/postino</pre>
-                        </div>
-                    </article>
-
-                    <article class="channel" id="winget">
-                        <h3>Windows <small>winget</small></h3>
-                        <p>From a terminal. <code>winget upgrade</code> picks up new versions too.</p>
-                        <div class="code">
-<pre><span class="prompt">&gt; </span>winget install Postino</pre>
                         </div>
                     </article>
                 </div>

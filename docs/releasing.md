@@ -245,7 +245,8 @@ and DNF repos, served by GitHub Pages.
   properties, light and dark through `prefers-color-scheme`, Geist and Geist Mono served from the
   site (SIL OFL 1.1).
 - Pages: the landing page (features, each with a screenshot) and the install page (one download
-  button per OS, then the `apt`, `dnf`, `yay`, `brew` and `winget` commands) and the user documentation under
+  button per OS, then the install script, `apt` and `dnf` commands, each with a copy button;
+  `yay`, `brew` and `winget` join them once those channels exist, #44) and the user documentation under
   `/docs/`, with a search built in the browser. The developer documents stay in `docs/` on GitHub.
 - Screenshots are generated, not taken by hand: a script opens the sample workspace, drives the
   app and saves each screen in light and dark, as WebP only, with fixed width and height to avoid

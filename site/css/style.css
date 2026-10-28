@@ -1082,13 +1082,38 @@ kbd {
 }
 
 .channel .code {
+    display: flex;
+    align-items: flex-start;
     margin-top: 16px;
     border-radius: var(--r-lg);
     box-shadow: none;
 }
 
 .channel .code pre {
+    /* min-width 0: long lines scroll inside the block instead of widening it. */
+    flex: 1;
+    min-width: 0;
     font-size: 13px;
+}
+
+/* Added by js/copy.js, in its own column so it never covers a scrolled line. Always visible:
+   there is no hover on a phone. */
+.copy-code {
+    flex: none;
+    margin: 12px 12px 0 0;
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    background: var(--raised);
+    color: var(--fg-muted);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.copy-code:hover,
+.copy-code:focus-visible {
+    color: var(--fg);
 }
 
 .channel .code pre .prompt {
