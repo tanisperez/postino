@@ -75,6 +75,10 @@ pub enum FailureKind {
     Network,
     /// A hook (pre-commit, commit-msg, pre-push...) refused the operation. Best effort.
     Hook,
+    /// A branch cannot be deleted with `-d` because it has commits no other branch has.
+    NotMerged,
+    /// A checkout was refused because uncommitted changes (or untracked files) would be lost.
+    LocalChanges,
     /// Anything else.
     Other,
 }
@@ -112,6 +116,16 @@ fn has(text: &str, needles: &[&str]) -> bool {
 fn classify(output: &str) -> FailureKind {
     let text = output.to_lowercase();
     if has(
+        &text,
+        &[
+            "would be overwritten by checkout",
+            "please commit your changes or stash them",
+        ],
+    ) {
+        FailureKind::LocalChanges
+    } else if text.contains("not fully merged") {
+        FailureKind::NotMerged
+    } else if has(
         &text,
         &["conflict", "automatic merge failed", "could not apply"],
     ) {
@@ -250,6 +264,18 @@ mod tests {
             (
                 "! [remote rejected] main -> main (pre-receive hook declined)",
                 FailureKind::Hook,
+            ),
+            (
+                "error: Your local changes to the following files would be overwritten by checkout:\n\ta.txt\nPlease commit your changes or stash them before you switch branches.\nAborting",
+                FailureKind::LocalChanges,
+            ),
+            (
+                "error: The following untracked working tree files would be overwritten by checkout:\n\tconflict.txt",
+                FailureKind::LocalChanges,
+            ),
+            (
+                "error: the branch 'topic' is not fully merged\nhint: If you are sure you want to delete it, run 'git branch -D topic'",
+                FailureKind::NotMerged,
             ),
             ("fatal: not a git repository", FailureKind::Other),
         ];
