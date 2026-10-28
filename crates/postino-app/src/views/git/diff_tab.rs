@@ -483,13 +483,15 @@ impl AppView {
         } else {
             view.model.diff.split.len()
         };
-        uniform_list("git-diff-lines", count, move |range, _, _| {
+        uniform_list("git-diff-lines", count, move |range, window, _| {
+            // The filler stripes are drawn in device pixels, see [`filler`].
+            let scale = window.scale_factor();
             range
                 .map(|index| {
                     if unified {
                         rows.unified_row(index)
                     } else {
-                        rows.split_row(index)
+                        rows.split_row(index, scale)
                     }
                 })
                 .collect::<Vec<_>>()
@@ -732,7 +734,7 @@ struct RowContext {
 
 impl RowContext {
     /// Row `index` of the side by side layout: the old line (or a filler) and the new one.
-    fn split_row(&self, index: usize) -> AnyElement {
+    fn split_row(&self, index: usize, scale: f32) -> AnyElement {
         let row = self.model.diff.split[index];
         let block = self.block_starting_at(index, false);
         h_flex()
@@ -740,8 +742,8 @@ impl RowContext {
             .group(ROW_GROUP)
             .h(px(LINE_HEIGHT))
             .w_full()
-            .child(self.side(row.left, false, None))
-            .child(self.side(row.right, true, block))
+            .child(self.side(index, scale, row.left, false, None))
+            .child(self.side(index, scale, row.right, true, block))
             .into_any_element()
     }
 
@@ -762,14 +764,22 @@ impl RowContext {
             .into_any_element()
     }
 
-    /// One half of a side by side row: the line number and the text of `line` (`new` picks the
-    /// number of the new file), or an empty filler.
-    fn side(&self, line: Option<usize>, new: bool, block: Option<usize>) -> AnyElement {
+    /// One half of side by side row `row`: the line number and the text of `line` (`new` picks
+    /// the number of the new file), or an empty filler. `scale` is the window's, for the filler.
+    fn side(
+        &self,
+        row: usize,
+        scale: f32,
+        line: Option<usize>,
+        new: bool,
+        block: Option<usize>,
+    ) -> AnyElement {
         let palette = &self.palette;
         let diff_line = line.map(|index| &self.model.diff.lines[index]);
         let tone = match diff_line {
             Some(diff_line) => Tone::of(diff_line.kind, palette),
-            None => Tone::filler(palette),
+            // A filler's gutter is plain; its text area is the striped [`filler`].
+            None => Tone::of(LineKind::Context, palette),
         };
         let number = diff_line.and_then(|diff_line| {
             if new {
@@ -784,7 +794,10 @@ impl RowContext {
             .h_full()
             .when(new, |this| this.border_l_1().border_color(palette.border))
             .child(gutter(number, &tone, palette))
-            .child(self.content(line, &tone, block))
+            .child(match line {
+                Some(_) => self.content(line, &tone, block),
+                None => filler(row, scale, palette),
+            })
             .into_any_element()
     }
 
@@ -938,14 +951,45 @@ impl Tone {
             },
         }
     }
+}
 
-    /// The empty side of a row whose line exists only on the other side: diagonal stripes.
-    fn filler(palette: &Palette) -> Tone {
-        Tone {
-            background: pattern_slash(palette.fg.opacity(0.04), 5.0, 5.0),
-            ..Tone::of(LineKind::Context, palette)
-        }
-    }
+/// The distance between two filler stripes, across them, and the width of a stripe: the design's
+/// `repeating-linear-gradient(135deg, transparent 0 5px, ... 5px 10px)`.
+const FILLER_PERIOD: f32 = 10.0;
+/// gpui's `pattern_slash` takes the stripe and the gap measured along the vertical and draws them
+/// at 45 degrees, so both are the across width divided by sin 45.
+const FILLER_PATTERN: f32 = FILLER_PERIOD / 2.0 / std::f32::consts::FRAC_1_SQRT_2;
+/// How far apart the stripes are down a column: the across period divided by sin 45.
+const FILLER_VERTICAL_PERIOD: f32 = FILLER_PERIOD / std::f32::consts::FRAC_1_SQRT_2;
+
+/// The text area of the empty side of side by side row `row`: diagonal stripes. Two things of
+/// gpui's shader shape it. It measures the pattern in device pixels, so its sizes are multiplied
+/// by the window's `scale` to keep the design's 10 px at any display scale. And it starts the
+/// pattern at each element's origin, so the stripes are painted on a layer pulled up by how far
+/// the row is into the pattern, which lines consecutive filler rows up into one pattern instead
+/// of restarting at every row.
+fn filler(row: usize, scale: f32, palette: &Palette) -> AnyElement {
+    let offset = (row as f32 * LINE_HEIGHT) % FILLER_VERTICAL_PERIOD;
+    div()
+        .relative()
+        .flex_1()
+        .min_w_0()
+        .h_full()
+        .overflow_hidden()
+        .child(
+            div()
+                .absolute()
+                .left_0()
+                .right_0()
+                .top(px(-offset))
+                .h(px(LINE_HEIGHT + offset))
+                .bg(pattern_slash(
+                    palette.fg.opacity(0.04),
+                    FILLER_PATTERN * scale,
+                    FILLER_PATTERN * scale,
+                )),
+        )
+        .into_any_element()
 }
 
 /// A line number column.
