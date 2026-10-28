@@ -84,6 +84,7 @@ pub(crate) fn run_with(
             command,
             code: output.status.code(),
             stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            stdout: String::from_utf8_lossy(&output.stdout).trim().to_string(),
         })
     }
 }
