@@ -39,7 +39,7 @@ pub enum GitError {
     Spawn(#[from] io::Error),
 
     /// The command ran and exited with a failure status.
-    #[error("{command} failed{}: {stderr}", code.map(|c| format!(" with code {c}")).unwrap_or_default())]
+    #[error("{command} failed{}: {}", code.map(|c| format!(" with code {c}")).unwrap_or_default(), if stderr.is_empty() { stdout } else { stderr })]
     Failed {
         /// The command line, for example `git add -A -- a.txt`.
         command: String,
@@ -47,9 +47,227 @@ pub enum GitError {
         code: Option<i32>,
         /// What git printed on its standard error, trimmed.
         stderr: String,
+        /// What git printed on its standard output, trimmed. Some failures are only explained
+        /// there (`push --porcelain` rejections, `commit` with nothing to commit).
+        stdout: String,
     },
 
     /// The output of git could not be understood.
     #[error("unexpected git output: {0}")]
     Parse(String),
+}
+
+/// Why a git command failed, in terms the UI can explain in plain language. See
+/// [`GitError::kind`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FailureKind {
+    /// The remote has commits the branch lacks (non fast forward, fetch first).
+    Rejected,
+    /// The remote refused the credentials, or there are none and git cannot ask.
+    Auth,
+    /// There is no `user.name` or `user.email` to commit with.
+    NoAuthor,
+    /// A commit was asked for but nothing is staged.
+    NothingToCommit,
+    /// A merge or rebase stopped with conflicts to resolve.
+    Conflicts,
+    /// The remote could not be reached.
+    Network,
+    /// A hook (pre-commit, commit-msg, pre-push...) refused the operation. Best effort.
+    Hook,
+    /// Anything else.
+    Other,
+}
+
+impl GitError {
+    /// Classifies a failed command by what git printed. Anything that is not a
+    /// [`GitError::Failed`] is [`FailureKind::Other`].
+    pub fn kind(&self) -> FailureKind {
+        match self {
+            GitError::Failed { stderr, stdout, .. } => classify(&format!("{stderr}\n{stdout}")),
+            _ => FailureKind::Other,
+        }
+    }
+
+    /// The raw output of the failed command (standard error, then standard output), for a
+    /// "show git output" dialog. Empty for errors that are not [`GitError::Failed`].
+    pub fn output(&self) -> String {
+        match self {
+            GitError::Failed { stderr, stdout, .. } => [stderr.as_str(), stdout.as_str()]
+                .iter()
+                .filter(|part| !part.is_empty())
+                .copied()
+                .collect::<Vec<_>>()
+                .join("\n"),
+            other => other.to_string(),
+        }
+    }
+}
+
+/// Whether `text` contains any of `needles`.
+fn has(text: &str, needles: &[&str]) -> bool {
+    needles.iter().any(|n| text.contains(n))
+}
+
+fn classify(output: &str) -> FailureKind {
+    let text = output.to_lowercase();
+    if has(
+        &text,
+        &["conflict", "automatic merge failed", "could not apply"],
+    ) {
+        FailureKind::Conflicts
+    } else if has(&text, &["hook declined", "hook exited", "hook failed"])
+        || (text.contains("hook") && text.contains("failed"))
+    {
+        FailureKind::Hook
+    } else if has(
+        &text,
+        &[
+            "non-fast-forward",
+            "fetch first",
+            "[rejected]",
+            "updates were rejected",
+        ],
+    ) {
+        FailureKind::Rejected
+    } else if has(
+        &text,
+        &[
+            "authentication failed",
+            "permission denied",
+            "could not read username",
+            "could not read password",
+            "host key verification failed",
+            "terminal prompts disabled",
+            "returned error: 403",
+            "returned error: 401",
+            "access denied",
+        ],
+    ) {
+        FailureKind::Auth
+    } else if has(&text, &["please tell me who you are", "empty ident"]) {
+        FailureKind::NoAuthor
+    } else if has(
+        &text,
+        &[
+            "nothing to commit",
+            "nothing added to commit",
+            "no changes added to commit",
+        ],
+    ) {
+        FailureKind::NothingToCommit
+    } else if has(
+        &text,
+        &[
+            "could not resolve host",
+            "connection refused",
+            "timed out",
+            "network is unreachable",
+            "unable to access",
+        ],
+    ) {
+        FailureKind::Network
+    } else if text.contains("hook") {
+        FailureKind::Hook
+    } else {
+        FailureKind::Other
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn failed(stderr: &str, stdout: &str) -> GitError {
+        GitError::Failed {
+            command: "git x".into(),
+            code: Some(1),
+            stderr: stderr.into(),
+            stdout: stdout.into(),
+        }
+    }
+
+    #[test]
+    fn classifies_real_git_messages() {
+        let cases = [
+            (
+                "To /tmp/origin\n!\trefs/heads/main:refs/heads/main\t[rejected] (fetch first)\nDone",
+                FailureKind::Rejected,
+            ),
+            (
+                "hint: Updates were rejected because the tip of your current branch is behind",
+                FailureKind::Rejected,
+            ),
+            (
+                "remote: Invalid username or password.\nfatal: Authentication failed for 'https://github.com/a/b.git/'",
+                FailureKind::Auth,
+            ),
+            (
+                "fatal: could not read Username for 'https://github.com': terminal prompts disabled",
+                FailureKind::Auth,
+            ),
+            (
+                "git@github.com: Permission denied (publickey).\nfatal: Could not read from remote repository.",
+                FailureKind::Auth,
+            ),
+            ("Host key verification failed.", FailureKind::Auth),
+            (
+                "Author identity unknown\n\n*** Please tell me who you are.",
+                FailureKind::NoAuthor,
+            ),
+            (
+                "fatal: empty ident name (for <a@b>) not allowed",
+                FailureKind::NoAuthor,
+            ),
+            (
+                "On branch main\nnothing to commit, working tree clean",
+                FailureKind::NothingToCommit,
+            ),
+            (
+                "no changes added to commit (use \"git add\")",
+                FailureKind::NothingToCommit,
+            ),
+            (
+                "CONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts",
+                FailureKind::Conflicts,
+            ),
+            (
+                "error: could not apply 1a2b3c4... change",
+                FailureKind::Conflicts,
+            ),
+            (
+                "fatal: unable to access 'https://x/y.git/': Could not resolve host: x",
+                FailureKind::Network,
+            ),
+            (
+                "ssh: connect to host x port 22: Connection refused",
+                FailureKind::Network,
+            ),
+            (
+                "error: cannot run .git/hooks/pre-commit: No such file",
+                FailureKind::Hook,
+            ),
+            (
+                "! [remote rejected] main -> main (pre-receive hook declined)",
+                FailureKind::Hook,
+            ),
+            ("fatal: not a git repository", FailureKind::Other),
+        ];
+        for (text, expected) in cases {
+            assert_eq!(failed(text, "").kind(), expected, "{text}");
+            assert_eq!(failed("", text).kind(), expected, "stdout: {text}");
+        }
+    }
+
+    #[test]
+    fn output_joins_stderr_and_stdout() {
+        assert_eq!(failed("a", "b").output(), "a\nb");
+        assert_eq!(failed("", "b").output(), "b");
+        assert_eq!(GitError::Parse("x".into()).kind(), FailureKind::Other);
+    }
+
+    #[test]
+    fn display_falls_back_to_stdout() {
+        assert!(failed("", "only out").to_string().ends_with(": only out"));
+    }
 }

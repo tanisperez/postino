@@ -205,7 +205,7 @@ impl Repo {
         Ok(name.zip(email).map(|(name, email)| Author { name, email }))
     }
 
-    fn config(&self, key: &str) -> Result<Option<String>, GitError> {
+    pub(crate) fn config(&self, key: &str) -> Result<Option<String>, GitError> {
         match self.run(&["config", "--get", key]) {
             Ok(output) => {
                 let value = String::from_utf8_lossy(&output).trim().to_string();

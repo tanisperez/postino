@@ -20,13 +20,13 @@ use postino_cli::IDENTITY;
 use telaio_app::{logging, window};
 
 use actions::{
-    CloseActiveTab, ConfirmCompletion, CopyLoadTestSummary, DeleteLine, DeleteSelectedEntry,
-    DismissCompletion, NextCompletion, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts,
-    OpenWorkspace, PreviousCompletion, PreviousTab, RedoRequestEdit, RenameSelectedEntry,
-    SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
-    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
-    SelectEnvironment9, SelectNoEnvironment, SendActiveTab, ShowCompletion, ToggleCollections,
-    ToggleEnvironments, ToggleLoadTests, ToggleSourceControl, UndoRequestEdit,
+    CloseActiveTab, CommitFromMessage, ConfirmCompletion, CopyLoadTestSummary, DeleteLine,
+    DeleteSelectedEntry, DismissCompletion, NextCompletion, NextTab, OpenCommandPalette,
+    OpenSettings, OpenShortcuts, OpenWorkspace, PreviousCompletion, PreviousTab, RedoRequestEdit,
+    RenameSelectedEntry, SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3,
+    SelectEnvironment4, SelectEnvironment5, SelectEnvironment6, SelectEnvironment7,
+    SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab, ShowCompletion,
+    ToggleCollections, ToggleEnvironments, ToggleLoadTests, ToggleSourceControl, UndoRequestEdit,
 };
 use state::settings::ThemeChoice;
 use views::AppView;
@@ -248,6 +248,13 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-tab", NextTab, None),
         KeyBinding::new("ctrl-shift-tab", PreviousTab, None),
     ]);
+    // The commit message's Ctrl+Enter / Cmd+Enter, bound after the input's own `secondary-enter`
+    // (a new line) so it runs first, and only inside the Source Control panel's message.
+    cx.bind_keys([KeyBinding::new(
+        "secondary-enter",
+        CommitFromMessage,
+        Some("CommitMessage > Input"),
+    )]);
     // Autocompletion (variables, header names and values), in any text input. These are bound after gpui-kit's own input
     // bindings, so they run first; the handlers (`views/completion.rs`) act only on a
     // request editor field with the menu open and otherwise let the input's binding run. Ctrl

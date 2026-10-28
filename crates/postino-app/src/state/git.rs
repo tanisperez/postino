@@ -68,9 +68,15 @@ pub struct GitState {
     pub rows: Arc<Vec<ChangeRow>>,
     /// [`staged_outside`] of the last status.
     pub staged_outside: Arc<Vec<String>>,
+    /// [`crate::state::git_sync::staged_secrets`] of the last status.
+    pub secrets: Arc<Vec<String>>,
     /// The commit author from git config (`user.name` and `user.email`), read when the
     /// repository is discovered. `None` without a repository or without an author configured.
     pub author: Option<postino_git::Author>,
+    /// The commit box: Amend and what the next commit includes.
+    pub commit: crate::state::git_sync::CommitBox,
+    /// The command running against the history or the remote, and the last failure.
+    pub sync: crate::state::git_sync::SyncState,
 }
 
 impl GitState {

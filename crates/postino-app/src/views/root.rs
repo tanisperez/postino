@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use gpui_kit::component::input::{InputEvent, InputState};
+use gpui_kit::component::input::{InputEvent, InputState, TextareaState};
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::tree::TreeState;
 use gpui_kit::component::*;
@@ -159,6 +159,8 @@ pub struct AppView {
     /// The sidebar filter's live text input. Subscribed once in [`Self::new`]; edits call
     /// [`Self::on_sidebar_filter_changed`].
     pub(crate) sidebar_filter_input: Entity<InputState>,
+    /// The Source Control panel's commit message (`views/git/sync.rs`).
+    pub(crate) commit_input: Entity<TextareaState>,
     /// The sidebar tree's per-folder expand state, captured right before the filter went from
     /// empty to non-empty, so clearing the filter can restore it instead of resetting every
     /// folder to expanded. `None` while the filter is empty.
@@ -244,6 +246,18 @@ impl AppView {
         let tree_state = cx.new(|cx| TreeState::new(cx));
         let sidebar_filter_input =
             cx.new(|cx| InputState::new(window, cx).placeholder(t!("shell.sidebar.filter")));
+        let commit_input = cx.new(|cx| {
+            TextareaState::new(window, cx)
+                .placeholder(t!("git.commit.placeholder"))
+                .auto_grow(4, 10)
+        });
+        // The commit buttons are enabled by the message, so its edits repaint the panel.
+        cx.subscribe(&commit_input, |_, _, event: &InputEvent, cx| {
+            if matches!(event, InputEvent::Change) {
+                cx.notify();
+            }
+        })
+        .detach();
         cx.subscribe(
             &sidebar_filter_input,
             |view, _entity, event: &InputEvent, cx| {
@@ -289,6 +303,7 @@ impl AppView {
                 view.refresh_environments();
                 view.refresh_git_branch();
                 view.refresh_git_status(cx);
+                view.maybe_auto_fetch(window, cx);
                 cx.notify();
             }
         })
@@ -332,6 +347,7 @@ impl AppView {
             debug_open: None,
             gallery_url_input: None,
             sidebar_filter_input,
+            commit_input,
             sidebar_filter_pre_expansion: None,
             snippet_language: SnippetLanguage::Curl,
             load_test_entities: crate::views::load_test::LoadTestEntities::default(),
@@ -1069,6 +1085,9 @@ impl AppView {
         self.relocalize_sidebar(window, cx);
         self.relocalize_request_editor(window, cx);
         self.relocalize_env_editors(window, cx);
+        self.commit_input.update(cx, |state, cx| {
+            state.set_placeholder(t!("git.commit.placeholder"), window, cx);
+        });
         // The command palette, the response view and the load test tab cache no translated text:
         // the palette rebuilds its items on every repaint, the other two have no input
         // placeholder.
