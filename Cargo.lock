@@ -6604,8 +6604,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-app"
-version = "0.7.1"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.7.1#eaaadaddf27f266fdf76931f0c03acafa6f08394"
+version = "0.8.0"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.8.0#615709283ba719a2dad355acb08e9bb940bec3b6"
 dependencies = [
  "chrono",
  "dirs 7.0.0",
@@ -6622,8 +6622,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-ui"
-version = "0.7.1"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.7.1#eaaadaddf27f266fdf76931f0c03acafa6f08394"
+version = "0.8.0"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.8.0#615709283ba719a2dad355acb08e9bb940bec3b6"
 dependencies = [
  "gpui-kit",
  "rust-i18n",
@@ -6632,8 +6632,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-update"
-version = "0.7.1"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.7.1#eaaadaddf27f266fdf76931f0c03acafa6f08394"
+version = "0.8.0"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.8.0#615709283ba719a2dad355acb08e9bb940bec3b6"
 dependencies = [
  "dirs 7.0.0",
  "log",
