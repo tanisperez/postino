@@ -202,6 +202,8 @@ pub struct AppView {
     pub(crate) git: state::git::GitState,
     /// The git commands running in the background (`views/git`).
     pub(crate) git_tasks: crate::views::git::GitTasks,
+    /// The choice of the "Check out with changes" dialog (design 6f).
+    pub(crate) checkout_choice: crate::views::git::CheckoutChoice,
     /// The `gpui` entities behind every open environment editor tab, keyed by tab id, created
     /// when the tab is first shown. See `views/env_editor.rs`.
     pub(crate) env_editors: HashMap<String, crate::views::env_editor::EnvEditorEntities>,
@@ -361,6 +363,7 @@ impl AppView {
             git_branch: None,
             git: Default::default(),
             git_tasks: Default::default(),
+            checkout_choice: Default::default(),
             env_editors: HashMap::new(),
             new_env_input: None,
             load_targets: state::load_panel::TargetTree::default(),
@@ -1577,9 +1580,7 @@ impl AppView {
                 }
                 state::TabKind::Diff(diff) => DocumentTab::new(diff.label().to_string())
                     .icon(gpui_kit::assets::IconName::GitCompare)
-                    .detail(match diff.target {
-                        state::git_diff::DiffTarget::WorkTree => t!("git.diff.working_tree"),
-                    }),
+                    .detail(diff.target.detail()),
                 state::TabKind::Welcome(_) => DocumentTab::new(t!("welcome.tab"))
                     .icon(gpui_kit::assets::IconName::House)
                     .icon_color(cx.palette().accent_text),

@@ -321,6 +321,10 @@ pub struct Settings {
     pub git_confirm_discard: bool,
     /// The diff tab's layout, remembered from its toolbar.
     pub git_diff_mode: GitDiffMode,
+    /// The branches starred in the branch menu, pinned first in their group. Names as the menu
+    /// shows them (`main`, `origin/main`), shared by every repository. Absent when empty.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub git_favorite_branches: Vec<String>,
 }
 
 impl Default for Settings {
@@ -346,6 +350,7 @@ impl Default for Settings {
             git_block_secrets: true,
             git_confirm_discard: true,
             git_diff_mode: GitDiffMode::default(),
+            git_favorite_branches: Vec::new(),
         }
     }
 }
@@ -519,6 +524,18 @@ fn parse_settings(content: &str) -> Settings {
         .and_then(toml::Value::as_str)
         .and_then(GitDiffMode::parse)
         .unwrap_or(defaults.git_diff_mode);
+    let git_favorite_branches = table
+        .and_then(|table| table.get("git_favorite_branches"))
+        .and_then(toml::Value::as_array)
+        .map(|names| {
+            names
+                .iter()
+                .filter_map(toml::Value::as_str)
+                .filter(|name| !name.trim().is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default();
 
     Settings {
         language,
@@ -541,6 +558,7 @@ fn parse_settings(content: &str) -> Settings {
         git_block_secrets,
         git_confirm_discard,
         git_diff_mode,
+        git_favorite_branches,
     }
 }
 
@@ -669,6 +687,7 @@ mod tests {
             git_block_secrets: false,
             git_confirm_discard: false,
             git_diff_mode: GitDiffMode::Unified,
+            git_favorite_branches: vec!["main".to_string(), "origin/release/0.4".to_string()],
         };
 
         write_settings(dir.path(), &settings);

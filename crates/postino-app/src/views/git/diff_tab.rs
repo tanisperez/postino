@@ -81,7 +81,7 @@ impl LoadedDiff {
             .collect();
         let semantic = repo_path
             .ends_with(".postino")
-            .then(|| semantic_diff(repo, repo_path));
+            .then(|| semantic_diff(repo, repo_path, source));
         Ok(LoadedDiff {
             summary,
             model,
@@ -92,13 +92,28 @@ impl LoadedDiff {
     }
 }
 
-/// The request diff of `repo_path` between `HEAD` and the file on disk, or why it cannot be
-/// made (a side that does not parse: the text modes still work).
-fn semantic_diff(repo: &Repo, repo_path: &str) -> Result<RequestDiff, String> {
-    let old = repo
-        .file_at(repo_path, &FileVersion::Head)
-        .map_err(|error| error.to_string())?;
-    let new = std::fs::read_to_string(repo.root().join(repo_path)).ok();
+/// The request diff of `repo_path` between `HEAD` and the file on disk, or between a commit's
+/// parent and the commit, or why it cannot be made (a side that does not parse: the text modes
+/// still work).
+fn semantic_diff(repo: &Repo, repo_path: &str, source: &DiffSource) -> Result<RequestDiff, String> {
+    let (old, new) = match source {
+        DiffSource::Commit(oid) => {
+            // A root commit has no parent: the file is new.
+            let old = repo
+                .file_at(repo_path, &FileVersion::Commit(format!("{oid}^")))
+                .unwrap_or(None);
+            let new = repo
+                .file_at(repo_path, &FileVersion::Commit(oid.clone()))
+                .map_err(|error| error.to_string())?;
+            (old, new)
+        }
+        _ => {
+            let old = repo
+                .file_at(repo_path, &FileVersion::Head)
+                .map_err(|error| error.to_string())?;
+            (old, std::fs::read_to_string(repo.root().join(repo_path)).ok())
+        }
+    };
     diff_requests(old.as_deref(), new.as_deref()).map_err(|error| error.to_string())
 }
 
@@ -191,6 +206,7 @@ impl AppView {
         let repo_path = tab.repo_path.clone();
         let source = match &tab.target {
             DiffTarget::WorkTree => DiffSource::HeadToWorkTree,
+            DiffTarget::Commit { oid, .. } => DiffSource::Commit(oid.clone()),
         };
         self.git_tasks.diff_load = Some(cx.spawn(async move |this, cx| {
             let result = cx
@@ -411,14 +427,18 @@ impl AppView {
                 _ => div().into_any_element(),
             },
             (Some(_), Some(view)) => {
-                let head = self
-                    .git
-                    .status()
-                    .and_then(|(_, status)| status.head_oid.clone());
+                let titles = match &tab.target {
+                    DiffTarget::WorkTree => ColumnTitles::WorkTree(
+                        self.git
+                            .status()
+                            .and_then(|(_, status)| status.head_oid.clone()),
+                    ),
+                    DiffTarget::Commit { short, .. } => ColumnTitles::Commit(short.clone()),
+                };
                 v_flex()
                     .size_full()
                     .child(render_column_titles(
-                        head,
+                        titles,
                         shows == GitDiffMode::Unified,
                         &palette,
                         cx,
@@ -620,22 +640,44 @@ impl AppView {
     }
 }
 
+/// What the two columns compare.
+enum ColumnTitles {
+    /// `HEAD` (with its short id when known) against the working tree.
+    WorkTree(Option<String>),
+    /// A commit, by short id, against its parent.
+    Commit(String),
+}
+
 /// The titles over the lines: `HEAD` and its short commit id on the old side, the working tree on
-/// the new one. Unified, both on one line.
+/// the new one; for a commit, its parent and the commit. Unified, both on one line.
 fn render_column_titles(
-    head: Option<String>,
+    titles: ColumnTitles,
     unified: bool,
     palette: &Palette,
     cx: &App,
 ) -> AnyElement {
     let mono = cx.theme().mono_font_family.clone();
-    let old = h_flex()
-        .gap(px(6.0))
-        .child(div().text_color(palette.fg_muted).child("HEAD"))
-        .children(head.map(|oid| div().font_family(mono).child(oid)));
-    let new = div()
-        .text_color(palette.fg_muted)
-        .child(t!("git.diff.working_tree"));
+    let (old, new) = match titles {
+        ColumnTitles::WorkTree(head) => (
+            h_flex()
+                .gap(px(6.0))
+                .child(div().text_color(palette.fg_muted).child("HEAD"))
+                .children(head.map(|oid| div().font_family(mono.clone()).child(oid))),
+            h_flex()
+                .text_color(palette.fg_muted)
+                .child(t!("git.diff.working_tree")),
+        ),
+        ColumnTitles::Commit(short) => (
+            h_flex()
+                .gap(px(6.0))
+                .child(div().text_color(palette.fg_muted).child(t!("git.diff.parent")))
+                .child(div().font_family(mono.clone()).child(format!("{short}^"))),
+            h_flex()
+                .gap(px(6.0))
+                .child(div().text_color(palette.fg_muted).child(t!("git.diff.commit")))
+                .child(div().font_family(mono).child(short)),
+        ),
+    };
     let bar = h_flex()
         .flex_none()
         .h(px(28.0))
@@ -1083,6 +1125,6 @@ fn status_label(letter: char, target: &DiffTarget) -> String {
         _ => "git.diff.status_modified",
     };
     match target {
-        DiffTarget::WorkTree => t!(key).into_owned(),
+        DiffTarget::WorkTree | DiffTarget::Commit { .. } => t!(key).into_owned(),
     }
 }

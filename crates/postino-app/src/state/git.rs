@@ -77,6 +77,18 @@ pub struct GitState {
     pub commit: crate::state::git_sync::CommitBox,
     /// The command running against the history or the remote, and the last failure.
     pub sync: crate::state::git_sync::SyncState,
+    /// The branches and recent checkouts, read when the repository opens and after every
+    /// checkout or branch change, for the branch menu.
+    pub branches: Option<Arc<BranchList>>,
+}
+
+/// What `git for-each-ref` and the reflog said about the branches.
+#[derive(Debug, Clone, Default)]
+pub struct BranchList {
+    /// Every local and remote branch and tag.
+    pub branches: Vec<postino_git::BranchInfo>,
+    /// The local branches checked out last, most recent first.
+    pub recent: Vec<String>,
 }
 
 impl GitState {

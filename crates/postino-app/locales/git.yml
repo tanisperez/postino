@@ -600,3 +600,163 @@ _version: 2
   es: "Salida de git"
   gl: "Saída de git"
   it: "Output di git"
+"git.time.just_now":
+  en: "just now"
+  es: "ahora mismo"
+  gl: "agora mesmo"
+  it: "proprio ora"
+"git.time.minutes_ago":
+  en: "%{count} min ago"
+  es: "hace %{count} min"
+  gl: "hai %{count} min"
+  it: "%{count} min fa"
+"git.time.hours_ago":
+  en: "%{count} h ago"
+  es: "hace %{count} h"
+  gl: "hai %{count} h"
+  it: "%{count} h fa"
+"git.branches.recent":
+  en: "Recent"
+  es: "Recientes"
+  gl: "Recentes"
+  it: "Recenti"
+"git.branches.local":
+  en: "Local"
+  es: "Locales"
+  gl: "Locais"
+  it: "Locali"
+"git.branches.remote":
+  en: "Remote"
+  es: "Remotas"
+  gl: "Remotas"
+  it: "Remoti"
+"git.diff.parent":
+  en: "Parent"
+  es: "Padre"
+  gl: "Pai"
+  it: "Genitore"
+"git.diff.commit":
+  en: "Commit"
+  es: "Commit"
+  gl: "Commit"
+  it: "Commit"
+"git.sync.checking_out":
+  en: "Checking out…"
+  es: "Cambiando de rama…"
+  gl: "Cambiando de rama…"
+  it: "Cambio di branch…"
+"git.sync.branching":
+  en: "Updating branches…"
+  es: "Actualizando ramas…"
+  gl: "Actualizando ramas…"
+  it: "Aggiornamento dei branch…"
+"git.failure.checkout":
+  en: "Checkout failed"
+  es: "No se pudo cambiar de rama"
+  gl: "Non se puido cambiar de rama"
+  it: "Impossibile cambiare branch"
+"git.failure.branch":
+  en: "Branch operation failed"
+  es: "La operación con la rama falló"
+  gl: "A operación coa rama fallou"
+  it: "L'operazione sul branch non è riuscita"
+"git.failure.not_merged_text":
+  en: "The branch has commits that are not merged anywhere else."
+  es: "La rama tiene commits que no están fusionados en ninguna otra."
+  gl: "A rama ten commits que non están fusionados en ningunha outra."
+  it: "Il branch ha commit che non sono stati uniti altrove."
+"git.failure.local_changes_text":
+  en: "Your uncommitted changes would be overwritten. Commit them or stash and check out."
+  es: "Se sobrescribirían tus cambios sin commit. Haz commit o guárdalos con stash y cambia de rama."
+  gl: "Sobrescribiríanse os teus cambios sen commit. Fai commit ou gárdaos con stash e cambia de rama."
+  it: "Le modifiche senza commit verrebbero sovrascritte. Esegui il commit o salvale con stash e cambia branch."
+"git.checkout.title":
+  en: "Check out %{name}?"
+  es: "¿Cambiar a %{name}?"
+  gl: "Cambiar a %{name}?"
+  it: "Passare a %{name}?"
+"git.checkout.text.one":
+  en: "You have %{count} uncommitted change on %{branch}."
+  es: "Tienes %{count} cambio sin commit en %{branch}."
+  gl: "Tes %{count} cambio sen commit en %{branch}."
+  it: "Hai %{count} modifica senza commit su %{branch}."
+"git.checkout.text.other":
+  en: "You have %{count} uncommitted changes on %{branch}."
+  es: "Tienes %{count} cambios sin commit en %{branch}."
+  gl: "Tes %{count} cambios sen commit en %{branch}."
+  it: "Hai %{count} modifiche senza commit su %{branch}."
+"git.checkout.stash":
+  en: "Stash and check out"
+  es: "Guardar con stash y cambiar"
+  gl: "Gardar con stash e cambiar"
+  it: "Salva con stash e cambia"
+"git.checkout.stash_text":
+  en: "Restored when you come back to %{branch}."
+  es: "Se restauran al volver a %{branch}."
+  gl: "Restáuranse ao volver a %{branch}."
+  it: "Ripristinate quando torni su %{branch}."
+"git.checkout.bring":
+  en: "Bring changes"
+  es: "Llevar los cambios"
+  gl: "Levar os cambios"
+  it: "Porta le modifiche"
+"git.checkout.bring_text":
+  en: "Only works if they don't conflict with %{name}."
+  es: "Solo funciona si no chocan con %{name}."
+  gl: "Só funciona se non chocan con %{name}."
+  it: "Funziona solo se non sono in conflitto con %{name}."
+"git.checkout.confirm":
+  en: "Check out"
+  es: "Cambiar"
+  gl: "Cambiar"
+  it: "Cambia"
+"git.checkout.restored":
+  en: "Restored the changes stashed on %{name}."
+  es: "Se restauraron los cambios guardados en %{name}."
+  gl: "Restauráronse os cambios gardados en %{name}."
+  it: "Ripristinate le modifiche salvate su %{name}."
+"git.branch.name_placeholder":
+  en: "Branch name"
+  es: "Nombre de la rama"
+  gl: "Nome da rama"
+  it: "Nome del branch"
+"git.branch.new":
+  en: "New branch"
+  es: "Nueva rama"
+  gl: "Nova rama"
+  it: "Nuovo branch"
+"git.branch.new_from":
+  en: "New branch from %{name}"
+  es: "Nueva rama desde %{name}"
+  gl: "Nova rama desde %{name}"
+  it: "Nuovo branch da %{name}"
+"git.branch.rename":
+  en: "Rename branch"
+  es: "Renombrar rama"
+  gl: "Renomear rama"
+  it: "Rinomina branch"
+"git.branch.delete_title":
+  en: "Delete branch?"
+  es: "¿Borrar la rama?"
+  gl: "Borrar a rama?"
+  it: "Eliminare il branch?"
+"git.branch.delete_text":
+  en: "The branch %{name} will be deleted. Its commits stay where they are merged."
+  es: "Se borrará la rama %{name}. Sus commits siguen donde estén fusionados."
+  gl: "Borrarase a rama %{name}. Os seus commits seguen onde estean fusionados."
+  it: "Il branch %{name} sarà eliminato. I suoi commit restano dove sono stati uniti."
+"git.branch.force_title":
+  en: "Delete an unmerged branch?"
+  es: "¿Borrar una rama sin fusionar?"
+  gl: "Borrar unha rama sen fusionar?"
+  it: "Eliminare un branch non unito?"
+"git.branch.force_text":
+  en: "%{name} has commits that are not merged anywhere else. Deleting it loses them."
+  es: "%{name} tiene commits que no están fusionados en ninguna otra rama. Si la borras, se pierden."
+  gl: "%{name} ten commits que non están fusionados en ningunha outra rama. Se a borras, pérdense."
+  it: "%{name} ha commit che non sono stati uniti altrove. Eliminandolo si perdono."
+"git.branch.force_confirm":
+  en: "Delete anyway"
+  es: "Borrar de todos modos"
+  gl: "Borrar de todos xeitos"
+  it: "Elimina comunque"

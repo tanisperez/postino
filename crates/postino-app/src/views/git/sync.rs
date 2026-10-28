@@ -32,7 +32,7 @@ impl AppView {
     /// Runs `work` as `op` after the write in flight, with the op in the status bar, then reads
     /// the status again. `done` gets the result on success; a failure goes to
     /// [`Self::show_git_failure`] unless `quiet` (an automatic fetch never nags).
-    fn run_git_op<T: Send + 'static>(
+    pub(super) fn run_git_op<T: Send + 'static>(
         &mut self,
         op: GitOp,
         quiet: bool,
@@ -326,7 +326,7 @@ impl AppView {
 
     /// 6e: a notification with the failure in plain language, "Pull and push" for a rejected
     /// push, and "Show git output".
-    fn show_git_failure(
+    pub(super) fn show_git_failure(
         &mut self,
         failure: GitFailure,
         window: &mut Window,

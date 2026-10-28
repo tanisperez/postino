@@ -13,6 +13,23 @@ pub const TAB_ID: &str = "git:diff";
 pub enum DiffTarget {
     /// The last commit against the files on disk: everything the next commit could include.
     WorkTree,
+    /// What a commit changed, against its first parent (opened from the log tab).
+    Commit {
+        /// The commit, full id.
+        oid: String,
+        /// Its short id, for the titles.
+        short: String,
+    },
+}
+
+impl DiffTarget {
+    /// The tab's detail after the file name: "Working Tree" or the short commit id.
+    pub fn detail(&self) -> String {
+        match self {
+            DiffTarget::WorkTree => rust_i18n::t!("git.diff.working_tree").into_owned(),
+            DiffTarget::Commit { short, .. } => short.clone(),
+        }
+    }
 }
 
 /// What a diff tab shows.

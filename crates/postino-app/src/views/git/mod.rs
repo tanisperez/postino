@@ -14,12 +14,14 @@ use crate::state::git_sync::CommitStats;
 
 use super::root::AppView;
 
+mod branches;
 mod diff_tab;
 mod panel;
 mod sync;
 mod watch;
 mod write;
 
+pub(crate) use branches::{CheckoutChoice, CheckoutTarget};
 pub(crate) use panel::INSTALL_GIT_URL;
 pub(crate) use write::init_with_gitignore;
 
@@ -41,6 +43,8 @@ pub(crate) struct GitTasks {
     diff_load: Option<Task<()>>,
     /// The commit box's summary line being read.
     commit_stats: Option<Task<()>>,
+    /// The branches being read for the menu (`branches.rs`).
+    branches: Option<Task<()>>,
 }
 
 impl AppView {
@@ -117,6 +121,7 @@ impl AppView {
                 };
                 view.watch_git(cx);
                 view.refresh_git_status(cx);
+                view.load_branches(cx);
                 view.load_git_author(cx);
                 cx.notify();
             });
