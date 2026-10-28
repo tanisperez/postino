@@ -397,9 +397,9 @@ _version: 2
   it: "%{count} file"
 "git.commit.commit":
   en: "Commit"
-  es: "Hacer commit"
-  gl: "Facer commit"
-  it: "Esegui il commit"
+  es: "Commit"
+  gl: "Commit"
+  it: "Commit"
 "git.commit.commit_and_push":
   en: "Commit and Push…"
   es: "Commit y Push…"

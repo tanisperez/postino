@@ -16,6 +16,7 @@ use rust_i18n::t;
 use crate::state::git_sync::{GitFailure, GitOp, auto_fetch_due, can_commit, staged_secrets};
 use crate::state::locale::plural;
 use crate::state::settings::GitPull;
+use crate::state::workspace_log::log_workspace_error;
 use crate::theme::PaletteExt;
 use crate::views::components::{
     ConfirmDialog, ModalPlacement, NeutralButtonExt, PrimaryButton, framed_dialog, modal_body,
@@ -272,6 +273,14 @@ impl AppView {
             move || repo.pull(mode),
             move |view, (), window, cx| {
                 log::info!("pulled");
+                // The pull may have added, changed or removed requests and environments.
+                if let Some(workspace) = view.state.workspace.as_mut()
+                    && let Err(error) = workspace.rescan()
+                {
+                    log_workspace_error("rescanning the workspace after a pull", &error);
+                }
+                view.refresh_tree(cx);
+                view.refresh_environments();
                 if then_push {
                     view.start_push(false, window, cx);
                 }

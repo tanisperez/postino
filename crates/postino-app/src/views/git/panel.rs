@@ -503,19 +503,20 @@ impl AppView {
                 })
                 .child(
                     h_flex()
+                        .flex_wrap()
                         .items_center()
-                        .gap(px(14.0))
+                        .gap_x(px(14.0))
+                        .gap_y(px(4.0))
                         .text_size(px(12.0))
                         .text_color(palette.fg_muted)
-                        .child(amend_box)
-                        .child(div().flex_1())
+                        .child(div().flex_1().child(amend_box))
                         .child(summary),
                 )
                 .child(
                     h_flex()
                         .gap(px(6.0))
-                        .child(div().flex_1().child(commit))
-                        .child(commit_and_push),
+                        .child(div().flex_1().min_w_0().child(commit))
+                        .child(div().flex_none().child(commit_and_push)),
                 )
                 .into_any_element(),
         )
@@ -567,11 +568,17 @@ impl AppView {
                             .small()
                             .text_color(palette.danger),
                     )
-                    .child(div().flex_1().text_size(px(12.5)).child(
+                    .child(div().flex_1().min_w_0().text_size(px(12.5)).child(
                         plural("git.secrets.text", secrets.len()).replace("%{files}", &names),
                     )),
             )
-            .child(h_flex().gap(px(6.0)).child(unstage).child(ignore))
+            .child(
+                h_flex()
+                    .flex_wrap()
+                    .gap(px(6.0))
+                    .child(unstage)
+                    .child(ignore),
+            )
             .into_any_element()
     }
 
