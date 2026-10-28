@@ -1,7 +1,8 @@
 #!/bin/bash
 # Regenerates the website screenshots into site/img/ (WebP, light and dark).
 # Usage: capture.sh [STEP...], every step when none is given. Steps: hero (also scripts), palette,
-# snippet, settings, environments, loadtest (also loadtest-latency, loadtest-export and report).
+# snippet, settings, environments, git, loadtest (also loadtest-latency, loadtest-export and
+# report).
 # THEMES="dark" limits the themes. See site/screenshots/README.md for the requirements.
 set -u
 
@@ -63,6 +64,7 @@ launch() {
     mkdir -p "$HOME_DIR/.config/postino" "$HOME_DIR/.local/state"
     printf 'theme = "%s"\nlanguage = "en"\n' "$theme" > "$HOME_DIR/.config/postino/settings.toml"
     fresh_workspace
+    [ -n "${DIRTY:-}" ] && dirty_workspace
     env WAYLAND_DISPLAY= HOME="$HOME_DIR" XDG_CONFIG_HOME="$HOME_DIR/.config" \
         XDG_STATE_HOME="$HOME_DIR/.local/state" \
         GPUI_X11_SCALE_FACTOR=$SCALE POSTINO_ENV=local "$@" \
@@ -172,6 +174,39 @@ step_environments() {
     quit_app
 }
 
+# Uncommitted changes for the Source Control panel: an edited request, a new one and an edited
+# environment, on top of the "Demo workspace" commit.
+dirty_workspace() {
+    sed -i -e 's/^limit = 8$/limit = 20/' -e 's/^# genre = fiction$/genre = fiction/' \
+        -e 's/expect(body.data.length).toBe(8);/expect(body.data.length).toBe(20);/' \
+        -e 's/^test("lists eight books"/test("lists twenty books"/' \
+        "$WORKSPACE/books/list.postino"
+    cat > "$WORKSPACE/books/search.postino" <<'EOF'
+GET {{baseUrl}}/books/search
+Accept: application/json
+
+::: query
+q = dune
+
+::: post
+test("finds the book", () => {
+  expect(res.status).toBe(200);
+});
+EOF
+    sed -i 's/^bookId=1$/bookId=3/' "$WORKSPACE/environments/local.env"
+}
+
+step_git() {
+    # the Source Control panel, with the diff of the edited request in the center
+    DIRTY=1 launch "$1"
+    ensure_active; xdotool key alt+2; sleep 1
+    click 204 243     # stages books/list.postino (its checkbox)
+    type_into 293 1110 "Show twenty fiction books per page"     # the commit message
+    click 270 243     # books/list.postino in the changes tree, its diff opens in the center
+    shot git "$1"
+    quit_app
+}
+
 # run_load_test VUS DURATION RAMP_UP: fills the form of the open load test tab, starts it and
 # waits for it to end.
 run_load_test() {
@@ -219,7 +254,7 @@ step_loadtest() {
 }
 
 STEPS=("$@")
-[ ${#STEPS[@]} -gt 0 ] || STEPS=(hero palette snippet settings environments loadtest)
+[ ${#STEPS[@]} -gt 0 ] || STEPS=(hero palette snippet settings environments git loadtest)
 for step in "${STEPS[@]}"; do
     declare -F "step_$step" >/dev/null || die "unknown step: $step"
 done

@@ -33,6 +33,14 @@ Environments with their variables, secrets kept apart in a gitignored `.local.en
   <img src="site/img/environments-light.webp" alt="The environment editor: the staging variables, two of them stored in the gitignored local file and masked.">
 </picture>
 
+Git built in: review what changed in each request, stage it, commit, push and pull without
+leaving the window:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/img/git-dark.webp">
+  <img src="site/img/git-light.webp" alt="The Source Control panel: the changed requests and environments, one of them staged with a commit message, and the side by side diff of books/list.postino.">
+</picture>
+
 ## Load testing
 
 Point a load test at a request or a whole folder, with the same environments and scripts. Watch

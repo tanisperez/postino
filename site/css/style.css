@@ -599,25 +599,6 @@ kbd {
     }
 }
 
-/* Files section: text next to two code panels */
-
-.files {
-    display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    gap: 56px;
-    align-items: center;
-}
-
-.files .copy h2 {
-    font-size: clamp(30px, 4.2vw, 44px);
-}
-
-.files .copy p {
-    margin-top: 20px;
-    color: var(--fg-muted);
-    font-size: 18px;
-}
-
 .checks {
     display: grid;
     gap: 12px;
@@ -654,11 +635,6 @@ kbd {
         center / 20px no-repeat;
 }
 
-.code-stack {
-    display: grid;
-    gap: 16px;
-}
-
 .code {
     border: 1px solid var(--border);
     border-radius: var(--r-xl);
@@ -667,29 +643,6 @@ kbd {
         0 1px 2px rgba(16, 18, 40, 0.04),
         0 12px 32px -12px rgba(16, 18, 40, 0.14);
     overflow: hidden;
-}
-
-.code-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--fg-muted);
-    font-family: var(--mono);
-    font-size: 13px;
-}
-
-.code-title .dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--border-strong);
-    box-shadow:
-        16px 0 0 var(--border-strong),
-        32px 0 0 var(--border-strong);
-    margin-right: 36px;
 }
 
 .code pre {
@@ -702,62 +655,8 @@ kbd {
     tab-size: 2;
 }
 
-.code .m-get {
-    color: var(--success);
-    font-weight: 600;
-}
-
-.code .var {
-    color: var(--accent-text);
-    background: var(--accent-subtle);
-    border-radius: 3px;
-}
-
-.code .hd {
-    color: var(--syn-key);
-}
-
-.code .sec {
-    color: var(--m-patch);
-    font-weight: 500;
-}
-
-.code .str {
-    color: var(--syn-str);
-}
-
-.code .num {
-    color: var(--syn-num);
-}
-
 .code .cm {
     color: var(--fg-subtle);
-}
-
-.code .fn {
-    color: var(--info);
-}
-
-.diff .add,
-.diff .del,
-.diff .ctx {
-    display: block;
-    margin: 0 -20px;
-    padding: 0 20px;
-}
-
-.diff .add {
-    background: var(--success-subtle);
-    color: var(--success);
-}
-
-.diff .del {
-    background: var(--danger-subtle);
-    color: var(--danger);
-}
-
-.diff .ctx {
-    color: var(--fg-muted);
 }
 
 /* Feature rows */
@@ -825,41 +724,6 @@ kbd {
     border-radius: 6px;
     background: #fff;
     box-shadow: 0 24px 64px -24px rgba(0, 0, 0, 0.35);
-}
-
-/* Light and dark side by side: the dark screenshot sits on top of the light one, cut on a
-   diagonal, whatever theme the page uses. */
-.themes {
-    position: relative;
-    display: grid;
-    margin: 0 -1.4%;
-}
-
-.themes img {
-    grid-area: 1 / 1;
-    width: 100%;
-}
-
-.themes .dark {
-    clip-path: polygon(58% 0, 100% 0, 100% 100%, 42% 100%);
-}
-
-.themes-labels {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 20px;
-    color: var(--fg-muted);
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-}
-
-.themes-note {
-    margin-top: 32px;
-    color: var(--fg-muted);
-    text-align: center;
 }
 
 /* Grid of small capabilities */
@@ -1138,7 +1002,6 @@ kbd {
 /* Responsive */
 
 @media (max-width: 980px) {
-    .files,
     .feature {
         grid-template-columns: minmax(0, 1fr);
         gap: 32px;
@@ -1227,13 +1090,6 @@ kbd {
     .code pre {
         font-size: 12.5px;
         padding: 14px 16px;
-    }
-
-    .diff .add,
-    .diff .del,
-    .diff .ctx {
-        margin: 0 -16px;
-        padding: 0 16px;
     }
 
     .cta-box {

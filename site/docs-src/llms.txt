@@ -9,6 +9,7 @@ Key facts:
 - Environments and variables: `{{name}}` variables, one `.env` file per environment for shared values and a gitignored `.local.env` file for secrets, which overrides it. Template functions such as `{{uuid()}}` generate values inline without a script.
 - Scripts and tests: JavaScript before (`::: pre`) and after (`::: post`) each request, in a sandboxed QuickJS engine, with `test()` and `expect()` assertions.
 - Load testing built in: virtual users, duration and ramp up, with live requests per second, p50, p95 and p99 latency and error rate, and a saved run history.
+- Git built in: a Source Control panel with the changed requests, side by side, unified or per request diffs, staging of files or single blocks, commit, push, pull, branches and a log with its commit graph. It uses the git installed on the computer.
 - Imports Postman collections (v2.1) and environment exports. Exports any request as a curl command, a JavaScript fetch call or a Python requests call.
 - Keyboard first: Ctrl+K opens the command palette, Ctrl+Enter sends, Ctrl+1 to 9 switch environments (Cmd on macOS).
 - Light and dark themes. The interface speaks English, Spanish, Galician and Italian.

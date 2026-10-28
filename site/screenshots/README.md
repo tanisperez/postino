@@ -2,11 +2,11 @@
 
 `capture.sh` regenerates every screenshot of the website into `site/img/` as WebP, one light and
 one dark version of each: `hero`, `scripts`, `palette`, `snippet`, `settings`, `environments`,
-`loadtest`, `loadtest-latency` and `loadtest-export` (a crop around the Export menu), plus
+`git`, `loadtest`, `loadtest-latency` and `loadtest-export` (a crop around the Export menu), plus
 `report.webp`, the top of the first page of a PDF report (light only, like the report). Run it
 from anywhere, or with `make screenshots`. Give step names to run only those, for example
 `capture.sh loadtest` (steps: `hero`, which also takes `scripts`, `palette`, `snippet`,
-`settings`, `environments`, `loadtest`), and `THEMES=dark` to take one theme.
+`settings`, `environments`, `git`, `loadtest`), and `THEMES=dark` to take one theme.
 
 ## What it does
 
@@ -19,6 +19,9 @@ from anywhere, or with `make screenshots`. Give step names to run only those, fo
 - Drives the app with the `POSTINO_*` debug hooks where they exist, and with `xdotool` clicks for
   the rest (the Post-response and Tests tabs, the load test form and results), then captures the
   window with `spectacle` and converts it with ImageMagick.
+- The `git` step leaves three uncommitted changes in the workspace (an edited `books/list.postino`,
+  a new `books/search.postino` and an edited `local.env`), opens Source Control with `Alt+2`,
+  stages the edited request, types a commit message and opens its diff.
 - The load test step runs the books folder twice (10, then 25 virtual users with a p95 goal) with
   the sidebar collapsed, for a wider view of the results. `POSTINO_EXPORT_DIR`, a hidden debug
   hook, makes the Export menu save there under the suggested name instead of opening the native
