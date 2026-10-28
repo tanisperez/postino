@@ -16,9 +16,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui_kit::assets::IconName;
-use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
-use gpui_kit::component::menu::{ContextMenuExt, DropdownMenu as _, PopupMenuItem};
+use gpui_kit::component::menu::{ContextMenuExt, PopupMenuItem};
 use gpui_kit::component::scroll::{Scrollbar, ScrollbarHandle};
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
@@ -27,6 +26,9 @@ use gpui_kit::*;
 use postino_core::Method;
 use postino_git::{GraphRow, LinePart, Repo};
 use rust_i18n::t;
+use telaio_ui::components::{
+    SearchableSelect, SelectHandle, SelectOption, on_pick, pick, select_state, set_options,
+};
 
 use crate::state::format::relative_time;
 use crate::state::git_diff::DiffTarget;
@@ -40,8 +42,7 @@ use crate::state::number::format_integer;
 use crate::theme::metrics::{INPUT_PADDING_X, RADIUS_MD, RADIUS_SM, SIDEBAR_FILTER_HEIGHT};
 use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::{
-    EmptyState, IconButton, MethodBadge, NeutralButtonExt, SecondaryButton, SectionLabel, TreeRow,
-    edit_menu,
+    EmptyState, IconButton, MethodBadge, SecondaryButton, SectionLabel, TreeRow, edit_menu,
 };
 
 use super::super::root::AppView;
@@ -57,6 +58,11 @@ const FILE_ROW_HEIGHT: f32 = 26.0;
 const BRANCH_COLUMN_WIDTH: f32 = 250.0;
 const BRANCH_COLUMN_MIN: f32 = 180.0;
 const BRANCH_COLUMN_MAX: f32 = 440.0;
+/// The default height of the selected commit's message in the detail column, and how far the
+/// line under it can move. The changed files take the rest.
+const DETAIL_HEADER_HEIGHT: f32 = 280.0;
+const DETAIL_HEADER_MIN: f32 = 120.0;
+const DETAIL_HEADER_MAX: f32 = 900.0;
 /// The default width of the detail column, and how far it can be resized.
 const DETAIL_WIDTH: f32 = 340.0;
 const DETAIL_MIN: f32 = 260.0;
@@ -76,8 +82,10 @@ const COLUMN_GAP: f32 = 12.0;
 const SUBJECT_MIN_WIDTH: f32 = 140.0;
 /// The narrowest a filter input gets when the center column is tight.
 const PILL_MIN_WIDTH: f32 = 72.0;
-/// The tallest the Branch filter's menu gets before it scrolls.
-const BRANCH_MENU_MAX_HEIGHT: f32 = 360.0;
+/// The value of the Branch filter's "every branch" option; no ref name can hold a NUL.
+const ALL_BRANCHES: &str = "\u{0}all";
+/// The width of the Branch filter's select.
+const BRANCH_SELECT_WIDTH: f32 = 200.0;
 /// How long the filter bar waits after the last keystroke before it reads the log again.
 const FILTER_DEBOUNCE: Duration = Duration::from_millis(350);
 /// The next page is asked for when the visible rows get this close to the end of the list.
@@ -98,9 +106,20 @@ pub(crate) struct LogView {
     files_scroll: UniformListScrollHandle,
     /// The selected commit's subject, message and facts, which scroll when they are long.
     header_scroll: ScrollHandle,
+    /// Where the line between the message and the changed files sits. Kept here, not in the
+    /// group's element state, which is dropped while the next commit's detail loads.
+    detail_split: Entity<ResizableState>,
     /// The widths of the Author, Date and Commit columns, in that order. The subject takes the
     /// rest. Kept for the session.
     columns: [f32; 3],
+    /// The Branch filter: a select with a search box over every branch, remote branch and tag.
+    branch_select: SelectHandle,
+    _branch_pick: Subscription,
+    /// The branch list the select's options were built from (its `Arc` address), so they are
+    /// rebuilt only when the branches change, never on every render.
+    branch_options_key: Option<usize>,
+    /// The filter value the select last showed, so it follows a click in the branch column.
+    synced_branch: Option<String>,
     /// The wait after a keystroke in the filter bar; replacing it drops the previous wait.
     debounce: Option<Task<()>>,
     column: BranchColumn,
@@ -134,6 +153,11 @@ impl LogView {
             }
         })
         .detach();
+        let branch_select = select_state(Vec::new(), None, true, window, cx);
+        let branch_pick = on_pick(&branch_select, window, cx, |view, value, _, cx| {
+            let branch = (value != ALL_BRANCHES).then(|| value.to_string());
+            view.set_log_branch(branch, cx);
+        });
         LogView {
             search,
             author,
@@ -143,7 +167,12 @@ impl LogView {
             branches_scroll: UniformListScrollHandle::new(),
             files_scroll: UniformListScrollHandle::new(),
             header_scroll: ScrollHandle::new(),
+            detail_split: cx.new(|_| ResizableState::default()),
             columns: [AUTHOR_WIDTH, DATE_WIDTH, HASH_WIDTH],
+            branch_select,
+            _branch_pick: branch_pick,
+            branch_options_key: None,
+            synced_branch: None,
             debounce: None,
             column: BranchColumn::default(),
         }
@@ -199,6 +228,10 @@ impl AppView {
 
     /// Sets the placeholders again after a language change.
     pub(crate) fn relocalize_git_log(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // The "All branches" label is translated: rebuild the options on the next render.
+        if let Some(view) = self.git_tasks.log_view.as_mut() {
+            view.branch_options_key = None;
+        }
         let Some(view) = self.git_tasks.log_view.as_ref() else {
             return;
         };
@@ -466,12 +499,55 @@ impl AppView {
         );
     }
 
+    /// Keeps the Branch select in step with the branches and the filter. Cheap on most renders:
+    /// the options are rebuilt only when the branch list changes (a new `Arc`), and the shown
+    /// choice only when the filter's branch differs from what the select last showed.
+    fn sync_branch_select(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let branches = self.git.branches.clone();
+        let current = self.log_tab().and_then(|tab| tab.filter.branch.clone());
+        let Some(view) = self.git_tasks.log_view.as_mut() else {
+            return;
+        };
+        let key = branches
+            .as_ref()
+            .map_or(0, |list| Arc::as_ptr(list) as usize);
+        if view.branch_options_key != Some(key) {
+            let mut options = vec![SelectOption::new(
+                ALL_BRANCHES,
+                t!("git_log.filter.clear_branch").into_owned(),
+            )];
+            if let Some(list) = &branches {
+                // Local branches, then remote ones, then tags, like the branch column.
+                let rank = |kind: &postino_git::RefKind| match kind {
+                    postino_git::RefKind::Local => 0,
+                    postino_git::RefKind::Remote { .. } => 1,
+                    postino_git::RefKind::Tag => 2,
+                };
+                let mut refs: Vec<_> = list.branches.iter().collect();
+                refs.sort_by_key(|branch| rank(&branch.kind));
+                options.extend(
+                    refs.into_iter()
+                        .map(|branch| SelectOption::new(branch.name.clone(), branch.name.clone())),
+                );
+            }
+            set_options(&view.branch_select, options, true, window, cx);
+            view.branch_options_key = Some(key);
+            view.synced_branch = None;
+        }
+        let shown = current.unwrap_or_else(|| ALL_BRANCHES.to_string());
+        if view.synced_branch.as_deref() != Some(shown.as_str()) {
+            pick(&view.branch_select, &shown, window, cx);
+            view.synced_branch = Some(shown);
+        }
+    }
+
     /// Renders the log tab.
     pub(crate) fn render_log_tab(
         &mut self,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
+        self.sync_branch_select(window, cx);
         let palette = cx.palette();
         if self.git.repo().is_none() {
             return div()
@@ -729,105 +805,32 @@ impl AppView {
             .size_full()
             .min_w_0()
             .overflow_hidden()
-            .child(self.render_log_filter_bar(view, snapshot, palette, weak, cx))
+            .child(self.render_log_filter_bar(view, palette, cx))
             .child(titles)
             .child(div().flex_1().min_h_0().child(body))
             .into_any_element()
     }
 
-    /// The search input, the Branch, Author and Path chips and the refresh button.
+    /// The search input, the Branch select, the Author and Path filters and the refresh button.
     fn render_log_filter_bar(
         &self,
         view: &LogView,
-        snapshot: &TabSnapshot,
         palette: &Palette,
-        weak: WeakEntity<AppView>,
         cx: &Context<Self>,
     ) -> AnyElement {
-        let branch_chip = {
-            let current = snapshot.filter.branch.clone();
-            // The refs grouped like the branch column: local branches, remote ones, tags.
-            let groups: Vec<(String, Vec<String>)> = self
-                .git
-                .branches
-                .as_ref()
-                .map(|list| {
-                    let names = |kind: fn(&postino_git::RefKind) -> bool| {
-                        list.branches
-                            .iter()
-                            .filter(|branch| kind(&branch.kind))
-                            .map(|branch| branch.name.clone())
-                            .collect::<Vec<_>>()
-                    };
-                    vec![
-                        (
-                            t!("git_log.section.local").into_owned(),
-                            names(|kind| *kind == postino_git::RefKind::Local),
-                        ),
-                        (
-                            t!("git_log.section.remote").into_owned(),
-                            names(|kind| matches!(kind, postino_git::RefKind::Remote { .. })),
-                        ),
-                        (
-                            t!("git_log.section.tags").into_owned(),
-                            names(|kind| *kind == postino_git::RefKind::Tag),
-                        ),
-                    ]
-                })
-                .unwrap_or_default();
-            let label = h_flex()
-                .gap(px(6.0))
-                .items_center()
-                .child(
-                    div()
-                        .text_color(palette.fg_muted)
-                        .child(t!("git_log.filter.branch")),
-                )
-                .child(
-                    div()
-                        .max_w(px(180.0))
-                        .truncate()
-                        .text_color(palette.fg)
-                        .child(
-                            current
-                                .clone()
-                                .unwrap_or_else(|| t!("git_log.filter.all").into_owned()),
-                        ),
-                );
-            Button::new("git-log-branch-chip")
-                .neutral_ghost(cx, palette.fg_muted)
-                .flex_none()
-                .h(px(SIDEBAR_FILTER_HEIGHT))
-                .px(px(9.0))
-                .rounded(px(RADIUS_MD - 1.0))
-                .border_1()
-                .border_color(palette.border)
-                .child(label)
-                .dropdown_caret(true)
-                .dropdown_menu(move |mut menu, _, _| {
-                    let item = |label: String, branch: Option<String>| {
-                        let weak = weak.clone();
-                        let checked = branch == current;
-                        PopupMenuItem::new(label)
-                            .checked(checked)
-                            .on_click(move |_, _, cx| {
-                                let branch = branch.clone();
-                                let _ = weak.update(cx, |view, cx| view.set_log_branch(branch, cx));
-                            })
-                    };
-                    menu = menu
-                        .scrollable(true)
-                        .max_h(px(BRANCH_MENU_MAX_HEIGHT))
-                        .item(item(t!("git_log.filter.clear_branch").into_owned(), None));
-                    for (title, names) in groups.iter().filter(|(_, names)| !names.is_empty()) {
-                        menu = menu.separator().label(title.clone());
-                        for name in names {
-                            menu = menu.item(item(name.clone(), Some(name.clone())));
-                        }
-                    }
-                    menu
-                })
-        };
+        let branch_chip = h_flex()
+            .flex_none()
+            .gap(px(6.0))
+            .items_center()
+            .child(
+                div()
+                    .text_color(palette.fg_muted)
+                    .child(t!("git_log.filter.branch")),
+            )
+            .child(
+                SearchableSelect::new("git-log-branch-select", &view.branch_select)
+                    .width(BRANCH_SELECT_WIDTH),
+            );
         let weak = cx.weak_entity();
         let refresh = {
             let weak = weak.clone();
@@ -962,10 +965,28 @@ impl AppView {
                 )
                 .into_any_element(),
             Detail::Ready(detail) => {
+                // The message and the changed files share the column; the line between them
+                // resizes the message, which keeps its height when the window changes.
                 let files = self.render_log_files(view, detail, palette, cx);
                 column
-                    .child(self.render_log_commit_header(view, detail, palette, cx))
-                    .child(files)
+                    .child(
+                        div().flex_1().min_h_0().w_full().child(
+                            v_resizable("git-log-detail")
+                                .with_state(&view.detail_split)
+                                .child(
+                                    resizable_panel()
+                                        .size(px(DETAIL_HEADER_HEIGHT))
+                                        .size_range(px(DETAIL_HEADER_MIN)..px(DETAIL_HEADER_MAX))
+                                        .fixed()
+                                        .child(
+                                            self.render_log_commit_header(
+                                                view, detail, palette, cx,
+                                            ),
+                                        ),
+                                )
+                                .child(resizable_panel().child(files)),
+                        ),
+                    )
                     .into_any_element()
             }
         }
@@ -1085,10 +1106,10 @@ impl AppView {
                 )
         };
 
-        // At most half the column; longer messages scroll inside it, with a scrollbar.
+        // A longer message than the panel scrolls inside it, with a scrollbar.
         let content = v_flex()
             .id("git-log-commit-header")
-            .min_h_0()
+            .size_full()
             .overflow_y_scroll()
             .track_scroll(&view.header_scroll)
             .p(px(16.0))
@@ -1112,10 +1133,7 @@ impl AppView {
             .child(buttons);
         v_flex()
             .relative()
-            .flex_none()
-            .max_h(relative(0.5))
-            .border_b_1()
-            .border_color(palette.border)
+            .size_full()
             .child(content)
             .child(
                 div()
@@ -1174,8 +1192,7 @@ impl AppView {
             plural("git_log.detail.files", count)
         };
         v_flex()
-            .flex_1()
-            .min_h_0()
+            .size_full()
             .px(px(10.0))
             .pt(px(12.0))
             .child(
