@@ -4,6 +4,8 @@ description: Keep Postino requests in git next to your code: recommended layout,
 <h1>Working with git</h1>
 <p class="lead">Postino was designed so that requests belong in version control. There is no export step and no sync service: commit the folder, and your team has the same requests, reviewed like any other change.</p>
 
+<p>Postino also has a Git client built in, for the everyday work: see what changed, <a href="#committing">commit</a>, <a href="#syncing">push, pull and fetch</a>, switch <a href="#branches">branches</a> and read the <a href="#log">log</a>. It runs the <code>git</code> installed on your computer, so your configuration, hooks and credentials apply as in a terminal, and it never stores a password. Everything else (see <a href="#limits">What Postino does not do</a>) is still a job for your terminal or your usual Git tool, and Postino picks up the result when its window gets the focus back.</p>
+
 <h2>Recommended layout</h2>
 <p>Keep the workspace inside the repository of the API it calls:</p>
 ```text title="shop/"
@@ -97,7 +99,83 @@ shop/
 
 <h2>The status bar</h2>
 <p>When the workspace is inside a git repository, the status bar shows the current branch, or the short commit hash on a detached <code>HEAD</code>. With git installed Postino asks git; without it, it reads <code>.git/HEAD</code> when the workspace opens and when its window gets the focus back. Worktrees are supported.</p>
-<p>Next to the branch, <kbd>↑</kbd> with a number counts the commits you have that its upstream does not (to push), and <kbd>↓</kbd> the commits the upstream has that you do not (to pull), as of the last fetch. While a commit, push, pull or fetch runs, the status bar says so, for example <em>Pushing…</em>.</p>
+<p>Next to the branch, <kbd>↑</kbd> with a number counts the commits you have that its upstream does not (to push), and <kbd>↓</kbd> the commits the upstream has that you do not (to pull), as of the last fetch. While a commit, push, pull, fetch or checkout runs, the status bar says so, for example <em>Pushing…</em>. When git is available, the branch is a button that opens the <a href="#branches">branch menu</a>.</p>
+
+<h2 id="branches">Branches</h2>
+<p>Click the branch in the status bar (tooltip <strong>Branches</strong>), or choose <strong>Git: Checkout branch</strong> in the <a href="#git-palette">command palette</a>. The menu has a search field, <strong>Search branches and actions</strong>, and lists the branches in groups:</p>
+<ul>
+    <li><strong>Recent</strong>: the local branches you checked out last, at most five, the current one first (marked with a check).</li>
+    <li><strong>Local</strong>: the other local branches.</li>
+    <li><strong>Remote · origin</strong> (one group per remote): the remote branches, such as <code>origin/main</code>.</li>
+</ul>
+<p>Tags are not listed here, you check them out from the <a href="#log">log</a>. Each row shows the subject of its last commit and when it was made, and <kbd>↑</kbd> and <kbd>↓</kbd> counts when the branch is ahead of or behind its upstream. The star at the end of a row makes the branch a favourite: favourites come first in their group. They are saved in the <code>git_favorite_branches</code> setting, shared by every repository (see <a href="settings.html#git">Settings</a>). The chevron at the end of a row opens a submenu with more actions for that branch. At the bottom of the menu there are four actions: <strong>New branch</strong>, <strong>Pull</strong>, <strong>Push</strong> (with the number of commits to send) and <strong>Log</strong>.</p>
+<p>With the keyboard, <kbd>↑</kbd> and <kbd>↓</kbd> move through the rows, <kbd>Enter</kbd> checks out the highlighted branch, <kbd>Ctrl</kbd> <kbd>Enter</kbd> (<kbd>⌘</kbd> <kbd>Enter</kbd> on macOS) creates a branch named like the text you typed, from the current branch, and <kbd>Esc</kbd> closes the menu. When the text is not the name of a local branch, a <strong>Create branch</strong> row offers the same with a click.</p>
+
+<h3>The branch submenu</h3>
+<ul>
+    <li><strong>Checkout</strong> switches to the branch. It is disabled for the current branch.</li>
+    <li><strong>New branch from '<em>name</em>'…</strong> asks for a name, creates the branch starting at that one and checks it out.</li>
+    <li><strong>Compare with '<em>current</em>'</strong> opens the <a href="#log">log</a> with the commits of that branch that the current one does not have. Disabled for the current branch.</li>
+    <li><strong>Show log</strong> opens the log filtered to that branch.</li>
+    <li><strong>Rename…</strong> asks for the new name.</li>
+    <li><strong>Delete</strong> asks first. If git says the branch is not merged anywhere else, Postino asks again (<strong>Delete anyway</strong>) before it forces the deletion, because its commits would be lost. Disabled for the current branch.</li>
+</ul>
+<p>Rename and Delete are disabled for remote branches: Postino never changes a remote. When a branch operation fails, the message of git appears in a banner.</p>
+
+<h3>Checking out with uncommitted changes</h3>
+<p>If you have uncommitted changes, Postino asks <strong>Check out <em>name</em>?</strong> first, with two choices:</p>
+<ul>
+    <li><strong>Stash and check out</strong> (the default) puts your changes aside, tagged with the branch they belong to, and checks out. When you come back to that branch Postino restores them by itself and tells you with a notification. Stashes you made yourself are not touched.</li>
+    <li><strong>Bring changes</strong> takes the changes along to the other branch. It only works if they do not conflict with it; if git refuses, nothing moves.</li>
+</ul>
+<p>Checking out a remote branch checks out its local tracking branch, and creates it when it does not exist yet. After a checkout Postino reads the workspace again, so the requests and environments of the other branch show up in the sidebar.</p>
+
+<h2 id="log">The log</h2>
+<p>The <strong>Git log</strong> tab shows the history of the repository with its commit graph. Open it with the <strong>Log</strong> button of the Source Control panel, with <strong>Log</strong> or <strong>Show log</strong> in the branch menu, or with <strong>Git: Show log</strong> in the command palette. There is one log tab: opening it again reuses it. It reads again by itself when <code>HEAD</code> moves, and the refresh button of the filter bar reads it on demand.</p>
+<p>The tab has three columns:</p>
+<ul>
+    <li><strong>Branches</strong>, on the left: <strong>All branches</strong>, then <strong>Local</strong>, <strong>Remote · <em>remote</em></strong> and <strong>Tags</strong>. The field at the top, <strong>Filter branches</strong>, narrows the names. A click on a row filters the log by it, a double click checks it out (a tag leaves <code>HEAD</code> detached), and a right click offers <strong>Checkout</strong>, <strong>New branch from…</strong> and <strong>Show log</strong>. The current branch comes first, then the favourites.</li>
+    <li>The <strong>commit list</strong>, in the middle, with the graph, <strong>Subject</strong> (with badges for <code>HEAD</code>, branches, remote branches and tags, three at most and a <em>+N</em> for the rest), <strong>Author</strong>, <strong>Date</strong> and <strong>Commit</strong> (the short hash). It loads 200 commits at a time while you scroll. A right click on a commit offers <strong>New branch from here…</strong>, <strong>Checkout revision</strong> (which leaves <code>HEAD</code> detached) and <strong>Copy commit id</strong>.</li>
+    <li>The <strong>detail</strong>, on the right, of the selected commit: its message, <strong>Author</strong>, <strong>Date</strong>, <strong>Commit</strong> (click it to copy the full id) and <strong>Parent</strong> (a click selects that commit). The buttons <strong>New branch…</strong> and <strong>Checkout revision</strong> act on this commit. Below, the <strong>Changed files</strong> with their change letter and added and removed lines. A click on a file opens its changes in the <a href="#source-control">diff tab</a>, with the parent commit on the left and the commit on the right.</li>
+</ul>
+<p>The filter bar over the list narrows what is shown:</p>
+<div class="table"><table>
+    <thead><tr><th>Filter</th><th>What it matches</th></tr></thead>
+    <tbody>
+        <tr><td>Message or hash (search box)</td><td>Commits whose message or hash contains the text.</td></tr>
+        <tr><td>Branch</td><td>The history of one branch, remote branch or tag. Click the chip to go back to all branches.</td></tr>
+        <tr><td>Author</td><td>Commits whose author name or email contains the text.</td></tr>
+        <tr><td>Path</td><td>Commits that touch a file or folder, written relative to the workspace.</td></tr>
+    </tbody>
+</table></div>
+<p>The filters apply after a short pause in your typing. While the author, path or text filter is active the graph is hidden, because a list with commits skipped would draw lines that lead nowhere. The branch filter keeps the graph.</p>
+
+<h2 id="git-palette">Git in the command palette</h2>
+<p>The <a href="interface.html#command-palette">command palette</a> (<kbd>Ctrl</kbd> <kbd>K</kbd>) has these actions when the workspace is inside a repository and git is available:</p>
+<div class="table"><table>
+    <thead><tr><th>Action</th><th>What it does</th></tr></thead>
+    <tbody>
+        <tr><td>Git: Commit</td><td>Commits the staged changes when the commit message is not empty. Otherwise it shows Source Control with the cursor in the message.</td></tr>
+        <tr><td>Git: Commit and Push</td><td>The same, then asks to push as <strong>Commit and Push…</strong> does.</td></tr>
+        <tr><td>Git: Push</td><td>Pushes the current branch.</td></tr>
+        <tr><td>Git: Pull</td><td>Pulls with the <strong>Pull strategy</strong> setting.</td></tr>
+        <tr><td>Git: Fetch</td><td>Fetches the remote.</td></tr>
+        <tr><td>Git: New branch</td><td>Asks for a name and creates the branch from the current one.</td></tr>
+        <tr><td>Git: Checkout branch</td><td>Opens the <a href="#branches">branch menu</a>.</td></tr>
+        <tr><td>Git: Show log</td><td>Opens the <a href="#log">log</a>.</td></tr>
+    </tbody>
+</table></div>
+<p>When the workspace is not in a repository yet, the only Git action is <strong>Git: Initialize repository</strong>. Without git, there are none.</p>
+
+<h2 id="limits">What Postino does not do</h2>
+<p>The Git integration covers the daily flow, not all of git. Use a terminal or another tool for:</p>
+<ul>
+    <li>Resolving merge conflicts. Postino lists the conflicted files with the <strong>!</strong> letter, but you edit and resolve them elsewhere, then commit.</li>
+    <li>Merging or rebasing a branch into another, cherry-picking and resetting. A pull merges or rebases as the <strong>Pull strategy</strong> says, nothing more.</li>
+    <li>Managing stashes. Postino only stashes by itself when you check out a branch with changes, and restores that stash when you come back.</li>
+    <li>Creating tags, blame, cloning a repository and adding or changing remotes.</li>
+    <li>Storing credentials: git asks its own credential helper or SSH agent.</li>
+</ul>
 
 <h2 id="installing-git">Installing Git</h2>
 <p>Postino needs git 2.30 or later. Check the version you have in a terminal:</p>

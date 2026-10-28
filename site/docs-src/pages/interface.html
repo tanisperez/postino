@@ -126,7 +126,7 @@ description: A tour of the Postino window: title bar, activity rail, sidebar, ta
 <p>Warnings, such as unknown variables or an invalid TLS certificate, appear as a strip above the body. See <a href="responses.html">Reading responses</a>.</p>
 
 <h2>Status bar</h2>
-<p>The thin bar at the bottom shows the workspace path, which opens the folder in your file manager when you click it, and, when the workspace is inside a git repository, the current branch (or the short commit hash on a detached <code>HEAD</code>). On the right, <strong>Unsaved changes</strong> appears while the active tab is dirty, and a keyboard button opens the shortcuts cheat sheet. When the updater has a new version ready, the status bar also shows <strong>Update ready, restart</strong> and a link to the release notes. A portable Windows copy shows <strong>Update … available, download</strong> instead, which opens the release page.</p>
+<p>The thin bar at the bottom shows the workspace path, which opens the folder in your file manager when you click it, and, when the workspace is inside a git repository, the current branch (or the short commit hash on a detached <code>HEAD</code>) with the commits to push and pull. When git is available, a click on the branch opens the <a href="git.html#branches">branch menu</a>. On the right, <strong>Unsaved changes</strong> appears while the active tab is dirty, and a keyboard button opens the shortcuts cheat sheet. When the updater has a new version ready, the status bar also shows <strong>Update ready, restart</strong> and a link to the release notes. A portable Windows copy shows <strong>Update … available, download</strong> instead, which opens the release page.</p>
 
 <h2>Command palette</h2>
 <p>Press <kbd>Ctrl</kbd> <kbd>K</kbd> (<kbd>⌘</kbd> <kbd>K</kbd> on macOS) or click the search box in the title bar. Type a few letters: the palette matches them in order, not necessarily together, so <code>aulo</code> finds <code>auth/login</code>. Matches at the start of words rank higher. Use the arrow keys and <kbd>Enter</kbd> to choose.</p>
@@ -143,7 +143,7 @@ description: A tour of the Postino window: title bar, activity rail, sidebar, ta
     <dt>Environments</dt>
     <dd><strong>No environment</strong> and every environment, with their shortcuts. Choosing one makes it active.</dd>
     <dt>Actions</dt>
-    <dd>Send request, Save, New request, New folder, Import Postman collection…, Import Postman environment…, Open Settings, Keyboard shortcuts, New workspace…, Open folder…, Show welcome, New load test, Toggle theme and, in builds with an updater, Check for updates.</dd>
+    <dd>Send request, Save, New request, New folder, Import Postman collection…, Import Postman environment…, Open Settings, Keyboard shortcuts, New workspace…, Open folder…, Show welcome, New load test, Toggle theme and, in builds with an updater, Check for updates. When the workspace is in a git repository it also lists the <a href="git.html#git-palette">Git actions</a>, such as <strong>Git: Commit</strong> and <strong>Git: Show log</strong>.</dd>
 </dl>
 
 <h2>Keyboard shortcuts cheat sheet</h2>
