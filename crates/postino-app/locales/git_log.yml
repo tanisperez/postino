@@ -90,6 +90,11 @@ _version: 2
   es: "Ruta"
   gl: "Ruta"
   it: "Percorso"
+"git_log.filter.path_placeholder":
+  en: "Any file or folder"
+  es: "Cualquier archivo o carpeta"
+  gl: "Calquera ficheiro ou cartafol"
+  it: "Qualsiasi file o cartella"
 "git_log.filter.any":
   en: "Any"
   es: "Cualquiera"
@@ -105,11 +110,6 @@ _version: 2
   es: "Mostrar todas las ramas"
   gl: "Mostrar todas as ramas"
   it: "Mostra tutti i branch"
-"git_log.filter.focus_branches":
-  en: "Pick a branch in the list on the left"
-  es: "Elige una rama en la lista de la izquierda"
-  gl: "Escolle unha rama na lista da esquerda"
-  it: "Scegli un branch nell'elenco a sinistra"
 "git_log.refresh":
   en: "Refresh"
   es: "Actualizar"

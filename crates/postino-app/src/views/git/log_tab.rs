@@ -16,8 +16,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
-use gpui_kit::component::menu::{ContextMenuExt, PopupMenuItem};
+use gpui_kit::component::menu::{ContextMenuExt, DropdownMenu as _, PopupMenuItem};
+use gpui_kit::component::scroll::{Scrollbar, ScrollbarHandle};
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -31,13 +33,15 @@ use crate::state::git_diff::DiffTarget;
 use crate::state::git_log::{
     BranchColumn, Detail, DetailFile, DetailView, GRAPH_COLORS, LogBranchRef, LogBranchRow,
     LogFilter, LogRow, LogSection, MAX_LANES, RefBadge, RefClass, TAB_ID, lane_x, request_methods,
+    resize_column,
 };
 use crate::state::locale::plural;
 use crate::state::number::format_integer;
 use crate::theme::metrics::{INPUT_PADDING_X, RADIUS_MD, RADIUS_SM, SIDEBAR_FILTER_HEIGHT};
 use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::{
-    EmptyState, IconButton, MethodBadge, SecondaryButton, SectionLabel, TreeRow, edit_menu,
+    EmptyState, IconButton, MethodBadge, NeutralButtonExt, SecondaryButton, SectionLabel, TreeRow,
+    edit_menu,
 };
 
 use super::super::root::AppView;
@@ -49,22 +53,31 @@ const ROW_HEIGHT: f32 = 30.0;
 const BRANCH_ROW_HEIGHT: f32 = 24.0;
 /// The height of a row of the changed files (design 4a).
 const FILE_ROW_HEIGHT: f32 = 26.0;
-/// The width of the branch column.
-const BRANCH_COLUMN_WIDTH: f32 = 200.0;
-/// The width of the detail column.
-const DETAIL_WIDTH: f32 = 300.0;
+/// The default width of the branch column, and how far it can be resized.
+const BRANCH_COLUMN_WIDTH: f32 = 250.0;
+const BRANCH_COLUMN_MIN: f32 = 180.0;
+const BRANCH_COLUMN_MAX: f32 = 440.0;
+/// The default width of the detail column, and how far it can be resized.
+const DETAIL_WIDTH: f32 = 340.0;
+const DETAIL_MIN: f32 = 260.0;
+const DETAIL_MAX: f32 = 620.0;
 /// The height of the filter bar and of the column titles.
 const FILTER_BAR_HEIGHT: f32 = 44.0;
 const TITLES_HEIGHT: f32 = 28.0;
 const SEARCH_WIDTH: f32 = 220.0;
+/// The default widths of the Author, Date and Commit columns, which the user can drag.
 const AUTHOR_WIDTH: f32 = 110.0;
 const DATE_WIDTH: f32 = 96.0;
 const HASH_WIDTH: f32 = 70.0;
+/// The width of the drag handle between two column titles, centered in their gap.
+const COLUMN_HANDLE_WIDTH: f32 = 8.0;
 const COLUMN_GAP: f32 = 12.0;
 /// The narrowest the subject column gets; author and date give way first.
 const SUBJECT_MIN_WIDTH: f32 = 140.0;
 /// The narrowest a filter input gets when the center column is tight.
 const PILL_MIN_WIDTH: f32 = 72.0;
+/// The tallest the Branch filter's menu gets before it scrolls.
+const BRANCH_MENU_MAX_HEIGHT: f32 = 360.0;
 /// How long the filter bar waits after the last keystroke before it reads the log again.
 const FILTER_DEBOUNCE: Duration = Duration::from_millis(350);
 /// The next page is asked for when the visible rows get this close to the end of the list.
@@ -83,6 +96,11 @@ pub(crate) struct LogView {
     rows_scroll: UniformListScrollHandle,
     branches_scroll: UniformListScrollHandle,
     files_scroll: UniformListScrollHandle,
+    /// The selected commit's subject, message and facts, which scroll when they are long.
+    header_scroll: ScrollHandle,
+    /// The widths of the Author, Date and Commit columns, in that order. The subject takes the
+    /// rest. Kept for the session.
+    columns: [f32; 3],
     /// The wait after a keystroke in the filter bar; replacing it drops the previous wait.
     debounce: Option<Task<()>>,
     column: BranchColumn,
@@ -95,7 +113,11 @@ impl LogView {
         };
         let search = input(window, cx, t!("git_log.search").into_owned());
         let author = input(window, cx, t!("git_log.filter.any").into_owned());
-        let path = input(window, cx, t!("git_log.filter.any").into_owned());
+        let path = input(
+            window,
+            cx,
+            t!("git_log.filter.path_placeholder").into_owned(),
+        );
         let branch_filter = input(window, cx, t!("git_log.filter_branches").into_owned());
         // Typing reads the log again once the user pauses; Enter reads it right away.
         for state in [&search, &author, &path] {
@@ -120,6 +142,8 @@ impl LogView {
             rows_scroll: UniformListScrollHandle::new(),
             branches_scroll: UniformListScrollHandle::new(),
             files_scroll: UniformListScrollHandle::new(),
+            header_scroll: ScrollHandle::new(),
+            columns: [AUTHOR_WIDTH, DATE_WIDTH, HASH_WIDTH],
             debounce: None,
             column: BranchColumn::default(),
         }
@@ -181,7 +205,7 @@ impl AppView {
         for (input, key) in [
             (&view.search, "git_log.search"),
             (&view.author, "git_log.filter.any"),
-            (&view.path, "git_log.filter.any"),
+            (&view.path, "git_log.filter.path_placeholder"),
             (&view.branch_filter, "git_log.filter_branches"),
         ] {
             input.update(cx, |state, cx| state.set_placeholder(t!(key), window, cx));
@@ -490,12 +514,35 @@ impl AppView {
             return div().into_any_element();
         };
 
-        h_flex()
+        // The branch and detail columns resize like the sidebar and keep their width when the
+        // window or the sidebar changes (`fixed`); the commits take the rest.
+        // `h_resizable` sizes itself with `size_full()`, so its parent must have a real size.
+        div()
             .size_full()
             .bg(palette.bg)
-            .child(self.render_log_branches(view, branch_rows, &palette, cx))
-            .child(self.render_log_center(view, &snapshot, &palette, cx))
-            .child(self.render_log_detail(view, &snapshot, &palette, cx))
+            .child(
+                h_resizable("git-log-layout")
+                    .child(
+                        resizable_panel()
+                            .size(px(BRANCH_COLUMN_WIDTH))
+                            .size_range(px(BRANCH_COLUMN_MIN)..px(BRANCH_COLUMN_MAX))
+                            .fixed()
+                            .flex_none()
+                            .child(self.render_log_branches(view, branch_rows, &palette, cx)),
+                    )
+                    .child(
+                        resizable_panel()
+                            .child(self.render_log_center(view, &snapshot, &palette, cx)),
+                    )
+                    .child(
+                        resizable_panel()
+                            .size(px(DETAIL_WIDTH))
+                            .size_range(px(DETAIL_MIN)..px(DETAIL_MAX))
+                            .fixed()
+                            .flex_none()
+                            .child(self.render_log_detail(view, &snapshot, &palette, cx)),
+                    ),
+            )
             .into_any_element()
     }
 
@@ -516,13 +563,13 @@ impl AppView {
                 .collect::<Vec<_>>()
         })
         .track_scroll(&view.branches_scroll)
-        .flex_1()
-        .min_h_0();
+        .size_full();
+        let list = with_scrollbar(list.into_any_element(), &view.branches_scroll)
+            .flex_1()
+            .min_h_0();
 
         v_flex()
-            .flex_none()
-            .w(px(BRANCH_COLUMN_WIDTH))
-            .h_full()
+            .size_full()
             .py(px(8.0))
             .px(px(6.0))
             .gap(px(1.0))
@@ -592,8 +639,44 @@ impl AppView {
         } else {
             COLUMN_GAP
         };
-        let title = |label: String| div().flex_none().truncate().child(label);
+        let [author_width, date_width, hash_width] = view.columns;
+        // A sized column's title, with a drag handle laid over the gap before it, so the handle
+        // takes no room and the titles stay aligned with the rows. Dragging it left widens the
+        // column.
+        let border_strong = palette.border_strong;
+        let sized_title = |column: usize, label: String, width: f32| {
+            div()
+                .relative()
+                .flex_none()
+                .h_full()
+                .flex()
+                .items_center()
+                .w(px(width))
+                .child(div().min_w_0().truncate().child(label))
+                .child(
+                    div()
+                        .id(("git-log-column-handle", column))
+                        .absolute()
+                        .top_0()
+                        .bottom_0()
+                        .left(px(-(COLUMN_GAP + COLUMN_HANDLE_WIDTH) / 2.0))
+                        .w(px(COLUMN_HANDLE_WIDTH))
+                        .flex()
+                        .justify_center()
+                        .cursor_col_resize()
+                        .child(
+                            div()
+                                .w(px(1.0))
+                                .h_full()
+                                .hover(move |style| style.bg(border_strong)),
+                        )
+                        .on_drag(ColumnDrag(column), |drag, _, _, cx| {
+                            cx.new(|_| drag.clone())
+                        }),
+                )
+        };
         let titles = h_flex()
+            .id("git-log-titles")
             .flex_none()
             .h(px(TITLES_HEIGHT))
             .pl(px(left))
@@ -605,6 +688,20 @@ impl AppView {
             .font_family(cx.theme().mono_font_family.clone())
             .text_size(px(11.5))
             .text_color(palette.fg_subtle)
+            .on_drag_move::<ColumnDrag>({
+                let weak = weak.clone();
+                move |event, _, cx| {
+                    let column = event.drag(cx).0;
+                    let right = f32::from(event.bounds.right()) - COLUMN_GAP;
+                    let x = f32::from(event.event.position.x);
+                    let _ = weak.update(cx, |view, cx| {
+                        if let Some(log) = view.git_tasks.log_view.as_mut() {
+                            log.columns = resize_column(log.columns, column, right, x, COLUMN_GAP);
+                            cx.notify();
+                        }
+                    });
+                }
+            })
             .child(
                 div()
                     .flex_1()
@@ -613,24 +710,25 @@ impl AppView {
                     .child(t!("git_log.col.subject")),
             )
             .child(
-                title(t!("git_log.col.author").into_owned())
+                sized_title(0, t!("git_log.col.author").into_owned(), author_width)
                     .flex_shrink(1.0)
-                    .min_w_0()
-                    .w(px(AUTHOR_WIDTH)),
+                    .min_w_0(),
             )
             .child(
-                title(t!("git_log.col.date").into_owned())
+                sized_title(1, t!("git_log.col.date").into_owned(), date_width)
                     .flex_shrink(1.0)
-                    .min_w_0()
-                    .w(px(DATE_WIDTH)),
+                    .min_w_0(),
             )
-            .child(title(t!("git_log.col.commit").into_owned()).w(px(HASH_WIDTH)));
+            .child(sized_title(
+                2,
+                t!("git_log.col.commit").into_owned(),
+                hash_width,
+            ));
 
         v_flex()
-            .flex_1()
+            .size_full()
             .min_w_0()
             .overflow_hidden()
-            .h_full()
             .child(self.render_log_filter_bar(view, snapshot, palette, weak, cx))
             .child(titles)
             .child(div().flex_1().min_h_0().child(body))
@@ -647,51 +745,90 @@ impl AppView {
         cx: &Context<Self>,
     ) -> AnyElement {
         let branch_chip = {
-            let branch = snapshot.filter.branch.clone();
-            let weak = weak.clone();
-            let clear = branch.is_some();
-            let chip = h_flex()
-                .id("git-log-branch-chip")
-                .flex_none()
-                .h(px(SIDEBAR_FILTER_HEIGHT))
+            let current = snapshot.filter.branch.clone();
+            // The refs grouped like the branch column: local branches, remote ones, tags.
+            let groups: Vec<(String, Vec<String>)> = self
+                .git
+                .branches
+                .as_ref()
+                .map(|list| {
+                    let names = |kind: fn(&postino_git::RefKind) -> bool| {
+                        list.branches
+                            .iter()
+                            .filter(|branch| kind(&branch.kind))
+                            .map(|branch| branch.name.clone())
+                            .collect::<Vec<_>>()
+                    };
+                    vec![
+                        (
+                            t!("git_log.section.local").into_owned(),
+                            names(|kind| *kind == postino_git::RefKind::Local),
+                        ),
+                        (
+                            t!("git_log.section.remote").into_owned(),
+                            names(|kind| matches!(kind, postino_git::RefKind::Remote { .. })),
+                        ),
+                        (
+                            t!("git_log.section.tags").into_owned(),
+                            names(|kind| *kind == postino_git::RefKind::Tag),
+                        ),
+                    ]
+                })
+                .unwrap_or_default();
+            let label = h_flex()
                 .gap(px(6.0))
-                .px(px(9.0))
                 .items_center()
-                .rounded(px(RADIUS_MD - 1.0))
-                .border_1()
-                .border_color(palette.border)
-                .text_color(palette.fg_muted)
-                .child(t!("git_log.filter.branch"))
+                .child(
+                    div()
+                        .text_color(palette.fg_muted)
+                        .child(t!("git_log.filter.branch")),
+                )
                 .child(
                     div()
                         .max_w(px(180.0))
                         .truncate()
                         .text_color(palette.fg)
-                        .child(branch.unwrap_or_else(|| t!("git_log.filter.all").into_owned())),
-                )
-                .child(
-                    Icon::new(if clear {
-                        IconName::X
-                    } else {
-                        IconName::ChevronDown
-                    })
-                    .size(px(12.0)),
-                )
-                .cursor_pointer()
-                .hover({
-                    let border_strong = palette.border_strong;
-                    move |style| style.border_color(border_strong)
-                });
-            let tip = SharedString::from(if clear {
-                t!("git_log.filter.clear_branch")
-            } else {
-                t!("git_log.filter.focus_branches")
-            });
-            chip.tooltip(move |window, cx| Tooltip::new(tip.clone()).build(window, cx))
-                .on_click(move |_, _, cx| {
-                    let _ = weak.update(cx, |view, cx| view.set_log_branch(None, cx));
+                        .child(
+                            current
+                                .clone()
+                                .unwrap_or_else(|| t!("git_log.filter.all").into_owned()),
+                        ),
+                );
+            Button::new("git-log-branch-chip")
+                .neutral_ghost(cx, palette.fg_muted)
+                .flex_none()
+                .h(px(SIDEBAR_FILTER_HEIGHT))
+                .px(px(9.0))
+                .rounded(px(RADIUS_MD - 1.0))
+                .border_1()
+                .border_color(palette.border)
+                .child(label)
+                .dropdown_caret(true)
+                .dropdown_menu(move |mut menu, _, _| {
+                    let item = |label: String, branch: Option<String>| {
+                        let weak = weak.clone();
+                        let checked = branch == current;
+                        PopupMenuItem::new(label)
+                            .checked(checked)
+                            .on_click(move |_, _, cx| {
+                                let branch = branch.clone();
+                                let _ = weak.update(cx, |view, cx| view.set_log_branch(branch, cx));
+                            })
+                    };
+                    menu = menu
+                        .scrollable(true)
+                        .max_h(px(BRANCH_MENU_MAX_HEIGHT))
+                        .item(item(t!("git_log.filter.clear_branch").into_owned(), None));
+                    for (title, names) in groups.iter().filter(|(_, names)| !names.is_empty()) {
+                        menu = menu.separator().label(title.clone());
+                        for name in names {
+                            menu = menu.item(item(name.clone(), Some(name.clone())));
+                        }
+                    }
+                    menu
                 })
         };
+        let weak = cx.weak_entity();
         let refresh = {
             let weak = weak.clone();
             IconButton::new("git-log-refresh", IconName::RefreshCw)
@@ -764,6 +901,7 @@ impl AppView {
             selected: snapshot.selected.clone(),
             show_graph: snapshot.show_graph,
             graph_width: snapshot.graph_width,
+            columns: view.columns,
             weak: cx.weak_entity(),
         };
         let has_more = snapshot.has_more;
@@ -784,7 +922,9 @@ impl AppView {
         })
         .track_scroll(&view.rows_scroll)
         .size_full();
-        list.into_any_element()
+        with_scrollbar(list.into_any_element(), &view.rows_scroll)
+            .size_full()
+            .into_any_element()
     }
 
     /// The selected commit's detail.
@@ -796,9 +936,7 @@ impl AppView {
         cx: &Context<Self>,
     ) -> AnyElement {
         let column = v_flex()
-            .flex_none()
-            .w(px(DETAIL_WIDTH))
-            .h_full()
+            .size_full()
             .border_l_1()
             .border_color(palette.border)
             .bg(palette.bg);
@@ -826,7 +964,7 @@ impl AppView {
             Detail::Ready(detail) => {
                 let files = self.render_log_files(view, detail, palette, cx);
                 column
-                    .child(self.render_log_commit_header(detail, palette, cx))
+                    .child(self.render_log_commit_header(view, detail, palette, cx))
                     .child(files)
                     .into_any_element()
             }
@@ -836,6 +974,7 @@ impl AppView {
     /// The subject, message, author, date, commit and parents, and the two buttons.
     fn render_log_commit_header(
         &self,
+        view: &LogView,
         detail: &Arc<DetailView>,
         palette: &Palette,
         cx: &Context<Self>,
@@ -946,15 +1085,14 @@ impl AppView {
                 )
         };
 
-        v_flex()
+        // At most half the column; longer messages scroll inside it, with a scrollbar.
+        let content = v_flex()
             .id("git-log-commit-header")
-            .flex_none()
-            .max_h(relative(0.5))
+            .min_h_0()
             .overflow_y_scroll()
+            .track_scroll(&view.header_scroll)
             .p(px(16.0))
             .gap(px(10.0))
-            .border_b_1()
-            .border_color(palette.border)
             .child(
                 div()
                     .text_size(px(15.0))
@@ -971,7 +1109,20 @@ impl AppView {
                 )
             })
             .child(facts)
-            .child(buttons)
+            .child(buttons);
+        v_flex()
+            .relative()
+            .flex_none()
+            .max_h(relative(0.5))
+            .border_b_1()
+            .border_color(palette.border)
+            .child(content)
+            .child(
+                div()
+                    .absolute()
+                    .inset_0()
+                    .child(Scrollbar::vertical(&view.header_scroll)),
+            )
             .into_any_element()
     }
 
@@ -1012,8 +1163,10 @@ impl AppView {
                 .collect::<Vec<_>>()
         })
         .track_scroll(&view.files_scroll)
-        .flex_1()
-        .min_h_0();
+        .size_full();
+        let list = with_scrollbar(list.into_any_element(), &view.files_scroll)
+            .flex_1()
+            .min_h_0();
 
         let title = if count == 0 {
             t!("git_log.detail.no_files").into_owned()
@@ -1083,6 +1236,28 @@ fn centered_text(text: String, palette: &Palette) -> AnyElement {
         .text_color(palette.fg_subtle)
         .child(text)
         .into_any_element()
+}
+
+/// The column a drag on a title handle resizes: 0 Author, 1 Date, 2 Commit.
+#[derive(Clone)]
+struct ColumnDrag(usize);
+
+impl Render for ColumnDrag {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        // The pointer and the column itself show the drag, there is no preview.
+        div()
+    }
+}
+
+/// `content` with a vertical scrollbar laid over it, which shows while scrolling or hovering
+/// like every scrollbar of the app.
+fn with_scrollbar<H: ScrollbarHandle + Clone>(content: AnyElement, handle: &H) -> Div {
+    div().relative().child(content).child(
+        div()
+            .absolute()
+            .inset_0()
+            .child(Scrollbar::vertical(handle)),
+    )
 }
 
 /// A bordered pill with a borderless input inside, like the sidebar's filter, with an optional
@@ -1281,6 +1456,8 @@ struct RowContext {
     selected: Option<String>,
     show_graph: bool,
     graph_width: f32,
+    /// The Author, Date and Commit widths of the column titles.
+    columns: [f32; 3],
     weak: WeakEntity<AppView>,
 }
 
@@ -1364,7 +1541,7 @@ impl RowContext {
                 div()
                     .flex_shrink(1.0)
                     .min_w_0()
-                    .w(px(AUTHOR_WIDTH))
+                    .w(px(self.columns[0]))
                     .truncate()
                     .text_color(palette.fg_muted)
                     .child(commit.author_name.clone()),
@@ -1373,7 +1550,7 @@ impl RowContext {
                 div()
                     .flex_shrink(1.0)
                     .min_w_0()
-                    .w(px(DATE_WIDTH))
+                    .w(px(self.columns[1]))
                     .truncate()
                     .text_color(palette.fg_muted)
                     .child(relative_time(commit.date, now)),
@@ -1381,7 +1558,7 @@ impl RowContext {
             .child(
                 div()
                     .flex_none()
-                    .w(px(HASH_WIDTH))
+                    .w(px(self.columns[2]))
                     .font_family(self.mono.clone())
                     .text_size(px(12.0))
                     .text_color(palette.fg_subtle)
@@ -1581,6 +1758,8 @@ fn file_row(
     let clicked = file.clone();
     h_flex()
         .id(("git-log-file", index))
+        // The list's width, so a long folder truncates instead of pushing the counts out.
+        .w_full()
         .h(px(FILE_ROW_HEIGHT))
         .px(px(6.0))
         .gap(px(6.0))

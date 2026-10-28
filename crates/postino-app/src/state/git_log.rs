@@ -691,9 +691,49 @@ impl BranchColumn {
     }
 }
 
+/// How narrow and wide a dragged column of the commit list can get.
+pub const COLUMN_MIN: f32 = 48.0;
+pub const COLUMN_MAX: f32 = 400.0;
+
+/// The Author, Date and Commit widths after dragging the handle of `column` (0, 1 or 2) to `x`.
+/// `right` is where the last column ends, and each column ends `gap` before the next one
+/// starts; the handle sits in the middle of that gap. Clamped, so a column never vanishes or
+/// eats the row.
+pub fn resize_column(
+    mut columns: [f32; 3],
+    column: usize,
+    right: f32,
+    x: f32,
+    gap: f32,
+) -> [f32; 3] {
+    let after: f32 = columns[column + 1..].iter().map(|width| width + gap).sum();
+    columns[column] = (right - after - x - gap / 2.0).clamp(COLUMN_MIN, COLUMN_MAX);
+    columns
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_dragged_column_ends_where_the_next_one_starts() {
+        // Commit ends at 1000, Date (96) ends 12 before Commit (70) starts, at 918.
+        let columns = [110.0, 96.0, 70.0];
+        assert_eq!(
+            resize_column(columns, 2, 1000.0, 900.0, 12.0),
+            [110.0, 96.0, 94.0]
+        );
+        assert_eq!(
+            resize_column(columns, 1, 1000.0, 700.0, 12.0),
+            [110.0, 212.0, 70.0]
+        );
+        // Clamped at both ends.
+        assert_eq!(
+            resize_column(columns, 0, 1000.0, 999.0, 12.0)[0],
+            COLUMN_MIN
+        );
+        assert_eq!(resize_column(columns, 0, 1000.0, 0.0, 12.0)[0], COLUMN_MAX);
+    }
     use postino_git::{BranchInfo, CommitFile};
     use pretty_assertions::assert_eq;
 

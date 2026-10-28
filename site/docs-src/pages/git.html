@@ -132,10 +132,10 @@ shop/
 
 <h2 id="log">The log</h2>
 <p>The <strong>Git log</strong> tab shows the history of the repository with its commit graph. Open it with the <strong>Log</strong> button of the Source Control panel, with <strong>Log</strong> or <strong>Show log</strong> in the branch menu, or with <strong>Git: Show log</strong> in the command palette. There is one log tab: opening it again reuses it. It reads again by itself when <code>HEAD</code> moves, and the refresh button of the filter bar reads it on demand.</p>
-<p>The tab has three columns:</p>
+<p>The tab has three columns. Drag the line between two of them to resize the branches or the detail; they keep their width when the window or the sidebar changes, and the commit list takes the rest. Every list and the commit message scroll on their own.</p>
 <ul>
     <li><strong>Branches</strong>, on the left: <strong>All branches</strong>, then <strong>Local</strong>, <strong>Remote · <em>remote</em></strong> and <strong>Tags</strong>. The field at the top, <strong>Filter branches</strong>, narrows the names. A click on a row filters the log by it, a double click checks it out (a tag leaves <code>HEAD</code> detached), and a right click offers <strong>Checkout</strong>, <strong>New branch from…</strong> and <strong>Show log</strong>. The current branch comes first, then the favourites.</li>
-    <li>The <strong>commit list</strong>, in the middle, with the graph, <strong>Subject</strong> (with badges for <code>HEAD</code>, branches, remote branches and tags, three at most and a <em>+N</em> for the rest), <strong>Author</strong>, <strong>Date</strong> and <strong>Commit</strong> (the short hash). It loads 200 commits at a time while you scroll. A right click on a commit offers <strong>New branch from here…</strong>, <strong>Checkout revision</strong> (which leaves <code>HEAD</code> detached) and <strong>Copy commit id</strong>.</li>
+    <li>The <strong>commit list</strong>, in the middle, with the graph, <strong>Subject</strong> (with badges for <code>HEAD</code>, branches, remote branches and tags, three at most and a <em>+N</em> for the rest), <strong>Author</strong>, <strong>Date</strong> and <strong>Commit</strong> (the short hash). Drag the left edge of the <strong>Author</strong>, <strong>Date</strong> or <strong>Commit</strong> title to resize that column, for as long as the tab is open. It loads 200 commits at a time while you scroll. A right click on a commit offers <strong>New branch from here…</strong>, <strong>Checkout revision</strong> (which leaves <code>HEAD</code> detached) and <strong>Copy commit id</strong>.</li>
     <li>The <strong>detail</strong>, on the right, of the selected commit: its message, <strong>Author</strong>, <strong>Date</strong>, <strong>Commit</strong> (click it to copy the full id) and <strong>Parent</strong> (a click selects that commit). The buttons <strong>New branch…</strong> and <strong>Checkout revision</strong> act on this commit. Below, the <strong>Changed files</strong> with their change letter and added and removed lines. A click on a file opens its changes in the <a href="#source-control">diff tab</a>, with the parent commit on the left and the commit on the right.</li>
 </ul>
 <p>The filter bar over the list narrows what is shown:</p>
@@ -143,9 +143,9 @@ shop/
     <thead><tr><th>Filter</th><th>What it matches</th></tr></thead>
     <tbody>
         <tr><td>Message or hash (search box)</td><td>Commits whose message or hash contains the text.</td></tr>
-        <tr><td>Branch</td><td>The history of one branch, remote branch or tag. Click the chip to go back to all branches.</td></tr>
+        <tr><td>Branch</td><td>The history of one branch, remote branch or tag, picked from its menu, grouped like the branch column. <strong>Show all branches</strong>, at the top of the menu, goes back to every branch.</td></tr>
         <tr><td>Author</td><td>Commits whose author name or email contains the text.</td></tr>
-        <tr><td>Path</td><td>Commits that touch a file or folder, written relative to the workspace.</td></tr>
+        <tr><td>Path</td><td>Commits that touch a file or folder, written relative to the workspace: <code>auth/login.postino</code> for one request, <code>environments</code> or <code>auth/</code> for everything in a folder.</td></tr>
     </tbody>
 </table></div>
 <p>The filters apply after a short pause in your typing. While the author, path or text filter is active the graph is hidden, because a list with commits skipped would draw lines that lead nowhere. The branch filter keeps the graph.</p>
