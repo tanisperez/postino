@@ -67,6 +67,7 @@ The release stays a draft until every asset is uploaded, so nobody sees a half-b
 | `postino-X.Y.Z-linux-x86_64.tar.gz` | Linux binary plus desktop entry, MIME type and icons in a `/usr`-like layout |
 | `postino_X.Y.Z_amd64.deb` | Debian and Ubuntu package |
 | `postino-X.Y.Z-1.x86_64.rpm` | Fedora and openSUSE package |
+| `postino-X.Y.Z-1-x86_64.pkg.tar.zst` | Arch Linux package, for `pacman -U` |
 | `Postino-X.Y.Z-macos-arm64.dmg` | macOS app, Apple silicon, ad-hoc signed |
 | `Postino-X.Y.Z-macos-arm64.app.tar.gz` | The same app, for the in-app updater |
 | `Postino-X.Y.Z-windows-x86_64-setup.exe` | Per-user Windows installer |
@@ -131,7 +132,7 @@ Inno Setup, see `packaging/windows/README.md`.
 - **git is optional.** The Git integration runs the `git` installed on the machine, and the rest
   of Postino works without it, so the packages only recommend it: `Recommends: git` in the deb
   and the rpm (apt and dnf install recommended packages by default) and
-  `optdepends=('git: Source Control view')` in the AUR package. Windows and macOS packages do not
+  `optdepends=('git: Source Control view')` in the Arch package and the AUR package. Windows and macOS packages do not
   bundle or require it; the Source Control view links to
   [Installing Git](https://postino.tanis.codes/docs/git.html#installing-git) when it is missing.
 
@@ -140,7 +141,7 @@ The workflow, in short:
 ```
 tag v0.3.0 pushed
   └─ check: tag == Cargo version, prerelease = tag contains "-"
-      ├─ build-linux   (ubuntu-22.04)   cargo build --release, tar.gz, nfpm deb + rpm
+      ├─ build-linux   (ubuntu-22.04)   cargo build --release, tar.gz, nfpm deb + rpm, Arch pkg
       ├─ build-macos   (macos-latest)   cargo build --release, .app bundle, ad-hoc codesign, dmg, app.tar.gz
       └─ build-windows (windows-latest) cargo build --release, Inno Setup installer, portable zip
           └─ publish: SHA256SUMS + latest.json, upload to the draft, mark it published
@@ -157,7 +158,7 @@ Installing registers the app and the `.postino` file type:
 
 | OS | What the package installs |
 | --- | --- |
-| Linux (deb, rpm, AUR) | `/usr/bin/postino`, `/usr/share/applications/codes.tanis.postino.desktop` (with `MimeType=application/x-postino;`), `/usr/share/mime/packages/codes.tanis.postino.xml` (glob `*.postino`), icons in `/usr/share/icons/hicolor/*/apps/`. The distro triggers refresh the MIME and desktop databases, nothing to script. |
+| Linux (deb, rpm, Arch, AUR) | `/usr/bin/postino`, `/usr/share/applications/codes.tanis.postino.desktop` (with `MimeType=application/x-postino;`), `/usr/share/mime/packages/codes.tanis.postino.xml` (glob `*.postino`), icons in `/usr/share/icons/hicolor/*/apps/`. The distro triggers refresh the MIME and desktop databases, nothing to script. |
 | macOS | `Postino.app` with `Info.plist`: `CFBundleIdentifier`, `CFBundleDocumentTypes` and `UTExportedTypeDeclarations` for the `postino` extension, and an `.icns` icon. LaunchServices registers it when the app lands in `/Applications`. |
 | Windows | Inno Setup, **per user** install (`%LOCALAPPDATA%\Programs\Postino`, no admin, so a self update never needs UAC). Start menu shortcut, optional desktop shortcut, `.postino` association under `HKCU\Software\Classes`, uninstaller in "Apps", and `CloseApplications=yes` so it can update a running Postino. The portable zip registers nothing: no shortcut, no file association, no uninstaller. |
 
@@ -179,7 +180,8 @@ In the app:
 
 | Channel | How |
 | --- | --- |
-| Arch (AUR) `postino-bin` | A `PKGBUILD` that downloads the release tarball and checks its sha256. `yay -Syu` updates. |
+| Arch (AUR) `postino-bin` | A `PKGBUILD` that downloads the release tarball and checks its sha256. `yay -Syu` updates. Not published yet (`packaging/aur/README.md`). |
+| Arch (direct) | The `.pkg.tar.zst` of each release, installed with `sudo pacman -U`. No repository, so it updates by installing the next one. |
 | Debian and Ubuntu | A signed APT repo on GitHub Pages (`apt-ftparchive` and GPG). Users add the key and one `.sources` file once, then `apt upgrade` updates. |
 | Fedora and openSUSE | A signed DNF repo on the same site (`createrepo_c` and GPG, `rpm --addsign`). One `.repo` file, then `dnf upgrade`. |
 | Any distribution | The install script, `curl -fsSL https://postino.tanis.codes/install.sh \| bash`: the tarball for the current user under `~/.local`, checked against `SHA256SUMS`, with a manifest of the installed files for updates and `--uninstall` (`--purge` also deletes settings and logs). Running it again updates. Its source is `site/install.sh`, so the website deploys it, and `make install-latest` runs it. Tested by `packaging/linux/test-install.sh` against fake releases on `file://` URLs. |
@@ -257,7 +259,7 @@ exists only on macOS and Windows.
 
 - **Compiled in only with `POSTINO_UPDATER=github`** at build time (`option_env!`), set only on
   the macOS `.app`, the Windows installer and the Windows portable zip (the same `postino.exe`).
-  Otherwise the whole feature, its setting and its menu entries are absent (deb, rpm, AUR and
+  Otherwise the whole feature, its setting and its menu entries are absent (deb, rpm, Arch, AUR and
   local builds).
 - **Setting and command:** Settings, Advanced, "Check for updates automatically" (on by
   default), and a command palette entry "Check for updates".

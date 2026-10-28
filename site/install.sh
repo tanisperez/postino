@@ -109,7 +109,7 @@ check_no_package() {
     fi
     die "Postino is already installed in $packaged, most likely by your package manager.
 It keeps that copy up to date. To use this script instead, remove it first
-(sudo apt remove postino, sudo dnf remove postino or sudo pacman -R postino-bin)."
+(sudo apt remove postino, sudo dnf remove postino or sudo pacman -R postino)."
 }
 
 install_release() {

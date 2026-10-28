@@ -17,7 +17,7 @@ Key facts:
 ## Website
 
 - [Home](https://postino.tanis.codes/): features, a demo video and screenshots.
-- [Download](https://postino.tanis.codes/install.html): installers for Windows, macOS and Linux (deb, rpm, tar.gz), the install script for any Linux distribution, the APT and DNF repositories, Homebrew and winget.
+- [Download](https://postino.tanis.codes/install.html): installers for Windows, macOS and Linux (deb, rpm, Arch package, tar.gz), the install script for any Linux distribution, the APT and DNF repositories, Homebrew and winget.
 
 ## Documentation
 

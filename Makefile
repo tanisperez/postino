@@ -38,7 +38,7 @@ release:
 # The workspace version from Cargo.toml, for the package names.
 VERSION := $(shell sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\(.*\)"/\1/p' Cargo.toml)
 
-# Linux needs nfpm on PATH, macOS the Xcode command line tools. On Windows, compile
+# Linux needs nfpm, bsdtar and zstd on PATH, macOS the Xcode command line tools. On Windows, compile
 # packaging/windows/postino.iss with Inno Setup (see its README).
 dist: release
 	@case "$$(uname -s)" in \

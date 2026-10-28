@@ -5,7 +5,7 @@
 | `codes.tanis.postino.desktop` | Desktop entry (`Exec=postino %f`, `MimeType=application/x-postino;`) |
 | `codes.tanis.postino.xml` | shared-mime-info definition of `*.postino` (`application/x-postino`) |
 | `nfpm.yaml` | nfpm config shared by the deb and the rpm |
-| `package.sh` | Builds the tarball, the deb and the rpm |
+| `package.sh` | Builds the tarball, the deb, the rpm and the Arch package |
 | `repo.sh` | Builds the signed APT and DNF repositories published on the website |
 | `test-repo.sh` | Tests `repo.sh` end to end with podman (Ubuntu and Fedora containers) |
 | `test-install.sh` | Tests the install script (`site/install.sh`) against fake releases, no network |
@@ -27,8 +27,16 @@ deb and rpm (nfpm semver handling). The optional arch defaults to `x86_64`; `aar
 - `postino_<version>_amd64.deb` and `postino-<version>-1.x86_64.rpm`. The file names keep the
   `-` of a pre-release (`0.1.0-rc.1`), only the version inside the packages uses `~`. GitHub
   renames `~` to `.` in uploaded assets, which would break `SHA256SUMS`.
+- `postino-<version>-1-<arch>.pkg.tar.zst`: the Arch package, for `pacman -U`. Written by
+  `package.sh` itself with `bsdtar` and `zstd` (a `.PKGINFO` and a `.MTREE` like makepkg's),
+  because nfpm's archlinux packager writes no `optdepend` and drops the pre-release from
+  `pkgver`. `pkgver` has no dash (`0.1.0rc.1`, which pacman sorts before `0.1.0`); the file name
+  keeps it. The dependencies match `packaging/aur/PKGBUILD`. Check a change by installing it in a
+  container: `podman run --rm -v "$PWD/dist:/dist:ro,Z" archlinux bash -c 'pacman -Sy --noconfirm
+  && pacman -U --noconfirm /dist/*.pkg.tar.zst && pacman -Qkk postino'`.
 
-`nfpm` must be on `PATH`. Tested with nfpm 2.47.0.
+`nfpm`, `bsdtar` (`libarchive-tools` on Debian) and `zstd` must be on `PATH`. Tested with nfpm
+2.47.0.
 
 ## Notes
 
