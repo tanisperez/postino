@@ -73,6 +73,61 @@ pub enum ActionId {
     ToggleTheme,
     /// Checks for a new version now (only listed when the build has an updater).
     CheckForUpdates,
+    /// Commits the staged changes with the commit message, or shows the message when empty.
+    GitCommit,
+    /// Commits, then pushes after listing the commits.
+    GitCommitAndPush,
+    /// Pushes the current branch.
+    GitPush,
+    /// Pulls into the current branch.
+    GitPull,
+    /// Fetches from the remote.
+    GitFetch,
+    /// Asks for a name and creates a branch from the current one.
+    GitNewBranch,
+    /// Opens the branch menu of the status bar.
+    GitCheckoutBranch,
+    /// Opens the Git log tab.
+    GitShowLog,
+    /// Runs `git init` in the workspace.
+    GitInit,
+}
+
+/// What the Git actions of the palette can do in the open workspace.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GitPalette {
+    /// No workspace, or no usable git: no Git action.
+    Unavailable,
+    /// The workspace is not in a repository: only "Initialize repository".
+    NotARepo,
+    /// The workspace is in a repository: every action but "Initialize repository".
+    Repo,
+}
+
+/// The Git actions for `git` (#175), after the other actions.
+pub fn git_action_items(git: GitPalette) -> Vec<PaletteItem> {
+    match git {
+        GitPalette::Unavailable => Vec::new(),
+        GitPalette::NotARepo => vec![action_item(ActionId::GitInit, t!("git.palette.init"), None)],
+        GitPalette::Repo => vec![
+            action_item(ActionId::GitCommit, t!("git.palette.commit"), None),
+            action_item(
+                ActionId::GitCommitAndPush,
+                t!("git.palette.commit_and_push"),
+                None,
+            ),
+            action_item(ActionId::GitPush, t!("git.palette.push"), None),
+            action_item(ActionId::GitPull, t!("git.palette.pull"), None),
+            action_item(ActionId::GitFetch, t!("git.palette.fetch"), None),
+            action_item(ActionId::GitNewBranch, t!("git.palette.new_branch"), None),
+            action_item(
+                ActionId::GitCheckoutBranch,
+                t!("git.palette.checkout"),
+                None,
+            ),
+            action_item(ActionId::GitShowLog, t!("git.palette.log"), None),
+        ],
+    }
 }
 
 /// Builds the "Requests" group's items from a workspace's collection tree, in tree order
@@ -210,6 +265,12 @@ fn action_item(
 }
 
 /// `"Ctrl+\u{21b5}"` (`"Cmd+\u{21b5}"` on macOS), matching `main.rs`'s `SendActiveTab` binding.
+/// The branch menu shows it for "Create branch" too.
+pub fn send_shortcut_label() -> String {
+    send_shortcut()
+}
+
+/// See [`send_shortcut_label`].
 fn send_shortcut() -> String {
     format!("{MODIFIER_KEY}+\u{21b5}")
 }
@@ -368,6 +429,21 @@ mod tests {
         // Index 0 is "No environment"; the 10th named environment is index 10.
         assert!(items[9].shortcut.is_some());
         assert!(items[10].shortcut.is_none());
+    }
+
+    #[test]
+    fn git_actions_follow_the_repository() {
+        assert!(git_action_items(GitPalette::Unavailable).is_empty());
+        let init = git_action_items(GitPalette::NotARepo);
+        assert_eq!(init.len(), 1);
+        assert_eq!(init[0].kind, PaletteItemKind::Action(ActionId::GitInit));
+        let repo = git_action_items(GitPalette::Repo);
+        assert_eq!(repo.len(), 8);
+        assert!(
+            !repo
+                .iter()
+                .any(|item| item.kind == PaletteItemKind::Action(ActionId::GitInit))
+        );
     }
 
     #[test]

@@ -105,9 +105,19 @@ fn relative_time_in(then_unix_seconds: i64, now_unix_seconds: i64, locale: &str)
     if elapsed < 60 {
         t!("git.time.just_now", locale = locale).into_owned()
     } else if elapsed < 60 * 60 {
-        t!("git.time.minutes_ago", locale = locale, count = elapsed / 60).into_owned()
+        t!(
+            "git.time.minutes_ago",
+            locale = locale,
+            count = elapsed / 60
+        )
+        .into_owned()
     } else if elapsed < SECONDS_PER_DAY {
-        t!("git.time.hours_ago", locale = locale, count = elapsed / 3600).into_owned()
+        t!(
+            "git.time.hours_ago",
+            locale = locale,
+            count = elapsed / 3600
+        )
+        .into_owned()
     } else if elapsed < 30 * SECONDS_PER_DAY {
         relative_day_in(then_unix_seconds, now_unix_seconds, locale)
     } else {

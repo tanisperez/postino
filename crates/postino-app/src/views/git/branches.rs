@@ -157,12 +157,10 @@ impl AppView {
                         .child(
                             modal_body()
                                 .child(
-                                    div()
-                                        .text_color(palette.fg_muted)
-                                        .child(
-                                            plural("git.checkout.text", changes)
-                                                .replace("%{branch}", &current),
-                                        ),
+                                    div().text_color(palette.fg_muted).child(
+                                        plural("git.checkout.text", changes)
+                                            .replace("%{branch}", &current),
+                                    ),
                                 )
                                 .child(option(
                                     "git-checkout-stash",
@@ -180,8 +178,11 @@ impl AppView {
                         .child(
                             modal_footer(cx)
                                 .child(
-                                    SecondaryButton::new("git-checkout-cancel", t!("common.cancel"))
-                                        .on_click(|_, window, cx| window.close_dialog(cx)),
+                                    SecondaryButton::new(
+                                        "git-checkout-cancel",
+                                        t!("common.cancel"),
+                                    )
+                                    .on_click(|_, window, cx| window.close_dialog(cx)),
                                 )
                                 .child(confirm),
                         )
@@ -250,9 +251,8 @@ impl AppView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let input = cx.new(|cx| {
-            InputState::new(window, cx).placeholder(t!("git.branch.name_placeholder"))
-        });
+        let input =
+            cx.new(|cx| InputState::new(window, cx).placeholder(t!("git.branch.name_placeholder")));
         input.update(cx, |state, cx| state.set_value(name, window, cx));
         let title = match &start {
             Some(start) => t!("git.branch.new_from", name = start.as_str()),
@@ -304,9 +304,8 @@ impl AppView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let input = cx.new(|cx| {
-            InputState::new(window, cx).placeholder(t!("git.branch.name_placeholder"))
-        });
+        let input =
+            cx.new(|cx| InputState::new(window, cx).placeholder(t!("git.branch.name_placeholder")));
         input.update(cx, |state, cx| state.set_value(name.clone(), window, cx));
         let weak = cx.weak_entity();
         let submit: NameSubmit = Rc::new(move |new_name, cx| {
@@ -540,9 +539,4 @@ fn checkout_option(
                 .text_color(palette.fg_muted)
                 .child(text.into()),
         )
-}
-
-impl AppView {
-    /// Rebuilds the open branch menu's rows from [`crate::state::git::GitState::branches`].
-    pub(crate) fn rebuild_branch_menu(&mut self, _cx: &mut Context<Self>) {}
 }

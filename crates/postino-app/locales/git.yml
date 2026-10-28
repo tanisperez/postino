@@ -760,3 +760,123 @@ _version: 2
   es: "Borrar de todos modos"
   gl: "Borrar de todos xeitos"
   it: "Elimina comunque"
+"git.menu.tooltip":
+  en: "Branches"
+  es: "Ramas"
+  gl: "Ramas"
+  it: "Branch"
+"git.menu.search":
+  en: "Search branches and actions"
+  es: "Buscar ramas y acciones"
+  gl: "Buscar ramas e accións"
+  it: "Cerca branch e azioni"
+"git.menu.empty":
+  en: "No branch or action matches."
+  es: "Ninguna rama ni acción coincide."
+  gl: "Ningunha rama nin acción coincide."
+  it: "Nessun branch o azione corrisponde."
+"git.menu.hint_checkout":
+  en: "Checkout"
+  es: "Cambiar"
+  gl: "Cambiar"
+  it: "Cambia"
+"git.menu.hint_more":
+  en: "More actions"
+  es: "Más acciones"
+  gl: "Máis accións"
+  it: "Altre azioni"
+"git.menu.hint_create":
+  en: "Create from current"
+  es: "Crear desde la actual"
+  gl: "Crear desde a actual"
+  it: "Crea dall'attuale"
+"git.menu.checkout":
+  en: "Checkout"
+  es: "Cambiar a esta rama"
+  gl: "Cambiar a esta rama"
+  it: "Passa a questo branch"
+"git.menu.new_from":
+  en: "New branch from '%{name}'…"
+  es: "Nueva rama desde '%{name}'…"
+  gl: "Nova rama desde '%{name}'…"
+  it: "Nuovo branch da '%{name}'…"
+"git.menu.compare":
+  en: "Compare with '%{name}'"
+  es: "Comparar con '%{name}'"
+  gl: "Comparar con '%{name}'"
+  it: "Confronta con '%{name}'"
+"git.menu.show_log":
+  en: "Show log"
+  es: "Ver historial"
+  gl: "Ver historial"
+  it: "Mostra cronologia"
+"git.menu.rename":
+  en: "Rename…"
+  es: "Renombrar…"
+  gl: "Renomear…"
+  it: "Rinomina…"
+"git.menu.create":
+  en: "Create branch %{name}"
+  es: "Crear la rama %{name}"
+  gl: "Crear a rama %{name}"
+  it: "Crea il branch %{name}"
+"git.menu.create_from":
+  en: "From %{name}"
+  es: "Desde %{name}"
+  gl: "Desde %{name}"
+  it: "Da %{name}"
+"git.menu.new_branch":
+  en: "New branch"
+  es: "Nueva rama"
+  gl: "Nova rama"
+  it: "Nuovo branch"
+"git.menu.log":
+  en: "Log"
+  es: "Historial"
+  gl: "Historial"
+  it: "Cronologia"
+"git.palette.init":
+  en: "Git: Initialize repository"
+  es: "Git: Inicializar repositorio"
+  gl: "Git: Inicializar repositorio"
+  it: "Git: Inizializza repository"
+"git.palette.commit":
+  en: "Git: Commit"
+  es: "Git: Commit"
+  gl: "Git: Commit"
+  it: "Git: Commit"
+"git.palette.commit_and_push":
+  en: "Git: Commit and Push"
+  es: "Git: Commit y Push"
+  gl: "Git: Commit e Push"
+  it: "Git: Commit e Push"
+"git.palette.push":
+  en: "Git: Push"
+  es: "Git: Push"
+  gl: "Git: Push"
+  it: "Git: Push"
+"git.palette.pull":
+  en: "Git: Pull"
+  es: "Git: Pull"
+  gl: "Git: Pull"
+  it: "Git: Pull"
+"git.palette.fetch":
+  en: "Git: Fetch"
+  es: "Git: Fetch"
+  gl: "Git: Fetch"
+  it: "Git: Fetch"
+"git.palette.new_branch":
+  en: "Git: New branch"
+  es: "Git: Nueva rama"
+  gl: "Git: Nova rama"
+  it: "Git: Nuovo branch"
+"git.palette.checkout":
+  en: "Git: Checkout branch"
+  es: "Git: Cambiar de rama"
+  gl: "Git: Cambiar de rama"
+  it: "Git: Cambia branch"
+"git.palette.log":
+  en: "Git: Show log"
+  es: "Git: Ver historial"
+  gl: "Git: Ver historial"
+  it: "Git: Mostra cronologia"

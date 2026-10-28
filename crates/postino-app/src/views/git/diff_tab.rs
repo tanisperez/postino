@@ -111,7 +111,10 @@ fn semantic_diff(repo: &Repo, repo_path: &str, source: &DiffSource) -> Result<Re
             let old = repo
                 .file_at(repo_path, &FileVersion::Head)
                 .map_err(|error| error.to_string())?;
-            (old, std::fs::read_to_string(repo.root().join(repo_path)).ok())
+            (
+                old,
+                std::fs::read_to_string(repo.root().join(repo_path)).ok(),
+            )
         }
     };
     diff_requests(old.as_deref(), new.as_deref()).map_err(|error| error.to_string())
@@ -670,11 +673,19 @@ fn render_column_titles(
         ColumnTitles::Commit(short) => (
             h_flex()
                 .gap(px(6.0))
-                .child(div().text_color(palette.fg_muted).child(t!("git.diff.parent")))
+                .child(
+                    div()
+                        .text_color(palette.fg_muted)
+                        .child(t!("git.diff.parent")),
+                )
                 .child(div().font_family(mono.clone()).child(format!("{short}^"))),
             h_flex()
                 .gap(px(6.0))
-                .child(div().text_color(palette.fg_muted).child(t!("git.diff.commit")))
+                .child(
+                    div()
+                        .text_color(palette.fg_muted)
+                        .child(t!("git.diff.commit")),
+                )
                 .child(div().font_family(mono).child(short)),
         ),
     };

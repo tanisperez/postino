@@ -4,20 +4,21 @@
 //! ("Pushing…"), a spacer, "Unsaved changes" when the active tab is
 //! dirty, and "UTF-8".
 
+use gpui_kit::component::button::Button;
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use postino_workspace::git_branch;
 use rust_i18n::t;
-use telaio_ui::components::open_tooltip;
+use telaio_ui::components::{SearchableMenu, open_tooltip};
 
 use crate::state;
 use crate::state::update::ReadyUpdate;
 use crate::theme::metrics::{STATUS_BAR_BUTTON, STATUS_BAR_HEIGHT};
 use crate::theme::{Palette, PaletteExt};
 
-use super::components::IconButton;
+use super::components::{IconButton, NeutralButtonExt};
 use super::root::AppView;
 
 impl AppView {
@@ -86,14 +87,33 @@ impl AppView {
                                     .child(state::number::format_integer(u64::from(count)))
                             })
                         };
-                        h_flex()
+                        let content = h_flex()
                             .items_center()
                             .gap(px(6.0))
                             .text_color(palette.accent_text)
                             .child(Icon::new(gpui_kit::assets::IconName::GitBranch).small())
                             .child(branch)
+                            .child(Icon::new(gpui_kit::assets::IconName::ChevronUp).xsmall())
                             .children(count(gpui_kit::assets::IconName::ArrowUp, ahead))
-                            .children(count(gpui_kit::assets::IconName::ArrowDown, behind))
+                            .children(count(gpui_kit::assets::IconName::ArrowDown, behind));
+                        // With git and a repository, the branch opens the branch menu (7b).
+                        if self.git.repo().is_some() {
+                            SearchableMenu::new("status-bar-branch-menu", &self.branch_menu)
+                                .trigger(
+                                    Button::new("status-bar-branch")
+                                        .neutral_ghost(cx, palette.accent_text)
+                                        .compact()
+                                        .h(px(20.0))
+                                        .px(px(6.0))
+                                        .rounded(px(4.0))
+                                        .text_size(px(11.5))
+                                        .tooltip(t!("git.menu.tooltip"))
+                                        .child(content),
+                                )
+                                .into_any_element()
+                        } else {
+                            content.into_any_element()
+                        }
                     }))
                     .children(self.git.sync.running.map(|op| {
                         h_flex()

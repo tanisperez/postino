@@ -50,9 +50,9 @@ const BRANCH_ROW_HEIGHT: f32 = 24.0;
 /// The height of a row of the changed files (design 4a).
 const FILE_ROW_HEIGHT: f32 = 26.0;
 /// The width of the branch column.
-const BRANCH_COLUMN_WIDTH: f32 = 220.0;
+const BRANCH_COLUMN_WIDTH: f32 = 200.0;
 /// The width of the detail column.
-const DETAIL_WIDTH: f32 = 320.0;
+const DETAIL_WIDTH: f32 = 300.0;
 /// The height of the filter bar and of the column titles.
 const FILTER_BAR_HEIGHT: f32 = 44.0;
 const TITLES_HEIGHT: f32 = 28.0;
@@ -61,6 +61,10 @@ const AUTHOR_WIDTH: f32 = 110.0;
 const DATE_WIDTH: f32 = 96.0;
 const HASH_WIDTH: f32 = 70.0;
 const COLUMN_GAP: f32 = 12.0;
+/// The narrowest the subject column gets; author and date give way first.
+const SUBJECT_MIN_WIDTH: f32 = 140.0;
+/// The narrowest a filter input gets when the center column is tight.
+const PILL_MIN_WIDTH: f32 = 72.0;
 /// How long the filter bar waits after the last keystroke before it reads the log again.
 const FILTER_DEBOUNCE: Duration = Duration::from_millis(350);
 /// The next page is asked for when the visible rows get this close to the end of the list.
@@ -588,7 +592,7 @@ impl AppView {
         } else {
             COLUMN_GAP
         };
-        let title = |label: String| div().flex_none().child(label);
+        let title = |label: String| div().flex_none().truncate().child(label);
         let titles = h_flex()
             .flex_none()
             .h(px(TITLES_HEIGHT))
@@ -601,14 +605,31 @@ impl AppView {
             .font_family(cx.theme().mono_font_family.clone())
             .text_size(px(11.5))
             .text_color(palette.fg_subtle)
-            .child(div().flex_1().min_w_0().child(t!("git_log.col.subject")))
-            .child(title(t!("git_log.col.author").into_owned()).w(px(AUTHOR_WIDTH)))
-            .child(title(t!("git_log.col.date").into_owned()).w(px(DATE_WIDTH)))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w(px(SUBJECT_MIN_WIDTH))
+                    .truncate()
+                    .child(t!("git_log.col.subject")),
+            )
+            .child(
+                title(t!("git_log.col.author").into_owned())
+                    .flex_shrink(1.0)
+                    .min_w_0()
+                    .w(px(AUTHOR_WIDTH)),
+            )
+            .child(
+                title(t!("git_log.col.date").into_owned())
+                    .flex_shrink(1.0)
+                    .min_w_0()
+                    .w(px(DATE_WIDTH)),
+            )
             .child(title(t!("git_log.col.commit").into_owned()).w(px(HASH_WIDTH)));
 
         v_flex()
             .flex_1()
             .min_w_0()
+            .overflow_hidden()
             .h_full()
             .child(self.render_log_filter_bar(view, snapshot, palette, weak, cx))
             .child(titles)
@@ -691,6 +712,7 @@ impl AppView {
             .px(px(12.0))
             .gap(px(8.0))
             .items_center()
+            .overflow_hidden()
             .border_b_1()
             .border_color(palette.border)
             .child(pill_input(
@@ -721,8 +743,7 @@ impl AppView {
                 palette,
                 cx,
             ))
-            .child(div().flex_1())
-            .child(refresh)
+            .child(div().flex_none().child(refresh))
             .into_any_element()
     }
 
@@ -897,6 +918,7 @@ impl AppView {
             let (new_weak, checkout_weak) = (weak.clone(), weak);
             let (new_oid, checkout_oid) = (detail.oid.clone(), detail.oid.clone());
             h_flex()
+                .flex_wrap()
                 .gap(px(6.0))
                 .mt(px(4.0))
                 .child(
@@ -1076,8 +1098,10 @@ fn pill_input(
 ) -> AnyElement {
     h_flex()
         .id(id)
-        .when_some(width, |pill, width| pill.w(px(width)).flex_none())
-        .when(width.is_none(), |pill| pill.flex_1())
+        // Shares the bar: grows up to `width`, shrinks down to a usable minimum.
+        .flex_1()
+        .min_w(px(PILL_MIN_WIDTH))
+        .when_some(width, |pill, width| pill.max_w(px(width)))
         .h(px(SIDEBAR_FILTER_HEIGHT))
         .items_center()
         .gap_2()
@@ -1286,7 +1310,8 @@ impl RowContext {
             .chain((row.hidden > 0).then(|| more_badge(row.hidden, palette, self.mono.clone())));
         let subject = h_flex()
             .flex_1()
-            .min_w_0()
+            .min_w(px(SUBJECT_MIN_WIDTH))
+            .overflow_hidden()
             .gap(px(6.0))
             .items_center()
             .children(badges)
@@ -1337,7 +1362,8 @@ impl RowContext {
             .child(subject)
             .child(
                 div()
-                    .flex_none()
+                    .flex_shrink(1.0)
+                    .min_w_0()
                     .w(px(AUTHOR_WIDTH))
                     .truncate()
                     .text_color(palette.fg_muted)
@@ -1345,7 +1371,8 @@ impl RowContext {
             )
             .child(
                 div()
-                    .flex_none()
+                    .flex_shrink(1.0)
+                    .min_w_0()
                     .w(px(DATE_WIDTH))
                     .truncate()
                     .text_color(palette.fg_muted)

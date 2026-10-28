@@ -162,9 +162,11 @@ impl OpenTab {
     pub fn environment(&self) -> Option<&EnvEditTab> {
         match &self.kind {
             TabKind::Environment(edit) => Some(edit.as_ref()),
-            TabKind::Request(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) | TabKind::Diff(_) | TabKind::Log(_) => {
-                None
-            }
+            TabKind::Request(_)
+            | TabKind::LoadTest(_)
+            | TabKind::Welcome(_)
+            | TabKind::Diff(_)
+            | TabKind::Log(_) => None,
         }
     }
 
@@ -172,9 +174,11 @@ impl OpenTab {
     pub fn environment_mut(&mut self) -> Option<&mut EnvEditTab> {
         match &mut self.kind {
             TabKind::Environment(edit) => Some(edit.as_mut()),
-            TabKind::Request(_) | TabKind::LoadTest(_) | TabKind::Welcome(_) | TabKind::Diff(_) | TabKind::Log(_) => {
-                None
-            }
+            TabKind::Request(_)
+            | TabKind::LoadTest(_)
+            | TabKind::Welcome(_)
+            | TabKind::Diff(_)
+            | TabKind::Log(_) => None,
         }
     }
 
