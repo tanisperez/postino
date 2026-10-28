@@ -10,7 +10,8 @@ arch=('x86_64')
 url='https://postino.tanis.codes'
 license=('Apache-2.0')
 depends=('libxkbcommon' 'libxkbcommon-x11' 'libxcb' 'wayland' 'libglvnd')
-optdepends=('vulkan-icd-loader: Vulkan renderer')
+optdepends=('vulkan-icd-loader: Vulkan renderer'
+            'git: Source Control view')
 provides=('postino')
 conflicts=('postino')
 source=("postino-$pkgver-linux-x86_64.tar.gz::https://github.com/tanisperez/postino/releases/download/v$pkgver/postino-$pkgver-linux-x86_64.tar.gz")
