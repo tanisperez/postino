@@ -128,6 +128,12 @@ Inno Setup, see `packaging/windows/README.md`.
   toolchain to learn.
 - Linux packages declare these dependencies: `libxkbcommon`, `libxkbcommon-x11`,
   `libwayland-client`, `libxcb`, `libvulkan` (loader), `fontconfig`, `freetype`.
+- **git is optional.** The Git integration runs the `git` installed on the machine, and the rest
+  of Postino works without it, so the packages only recommend it: `Recommends: git` in the deb
+  and the rpm (apt and dnf install recommended packages by default) and
+  `optdepends=('git: Source Control view')` in the AUR package. Windows and macOS packages do not
+  bundle or require it; the Source Control view links to
+  [Installing Git](https://postino.tanis.codes/docs/git.html#installing-git) when it is missing.
 
 The workflow, in short:
 

@@ -112,8 +112,9 @@ contents:
 
 # Runtime libraries the binary links (libxcb, libxkbcommon, libxkbcommon-x11) or loads with
 # dlopen (wayland-client, wayland-egl, EGL; the names embedded in the binary). Vulkan is only a
-# recommendation: wgpu can use it, but the binary does not name it. Names differ between deb and
-# rpm.
+# recommendation: wgpu can use it, but the binary does not name it. git is recommended too: the
+# Source Control view runs it, and everything else works without it. Names differ between deb
+# and rpm.
 depends:
   - libxkbcommon0
   - libxkbcommon-x11-0
@@ -123,6 +124,7 @@ depends:
   - libegl1
 recommends:
   - libvulkan1
+  - git
 overrides:
   rpm:
     depends:
@@ -134,3 +136,4 @@ overrides:
       - libglvnd-egl
     recommends:
       - vulkan-loader
+      - git
