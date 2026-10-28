@@ -182,6 +182,7 @@ In the app:
 | Arch (AUR) `postino-bin` | A `PKGBUILD` that downloads the release tarball and checks its sha256. `yay -Syu` updates. |
 | Debian and Ubuntu | A signed APT repo on GitHub Pages (`apt-ftparchive` and GPG). Users add the key and one `.sources` file once, then `apt upgrade` updates. |
 | Fedora and openSUSE | A signed DNF repo on the same site (`createrepo_c` and GPG, `rpm --addsign`). One `.repo` file, then `dnf upgrade`. |
+| Any distribution | The install script, `curl -fsSL https://postino.tanis.codes/install.sh \| bash`: the tarball for the current user under `~/.local`, checked against `SHA256SUMS`, with a manifest of the installed files for updates and `--uninstall` (`--purge` also deletes settings and logs). Running it again updates. Its source is `site/install.sh`, so the website deploys it, and `make install-latest` runs it. Tested by `packaging/linux/test-install.sh` against fake releases on `file://` URLs. |
 | Everyone else | The tarball, plus the deb and rpm as direct downloads. |
 
 The APT and DNF repos share one GPG key (private key and passphrase as secrets, public key

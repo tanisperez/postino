@@ -87,7 +87,7 @@
                     </li>
                     <li class="download">
                         <h2>Linux</h2>
-                        <p>x86_64. A <code>.deb</code>, an <code>.rpm</code> and a tarball. Use a repository below to get updates.</p>
+                        <p>x86_64. A <code>.deb</code>, an <code>.rpm</code> and a tarball. Use a repository below to get updates, or the <a href="#install-script">install script</a> on any distribution.</p>
                         <a class="btn btn-primary" href="https://github.com/tanisperez/postino/releases/latest">Download a package</a>
                         <span class="alt">Files <code>.deb</code>, <code>.rpm</code>, <code>.tar.gz</code></span>
                     </li>
@@ -104,6 +104,14 @@
                 </div>
 
                 <div class="channels">
+                    <article class="channel" id="install-script">
+                        <h3>Any Linux distribution <small>install script</small></h3>
+                        <p>Installs Postino for your user under <code>~/.local</code>, no sudo. Run it again to update. <a href="docs/installation.html#install-script">Options and uninstall</a>.</p>
+                        <div class="code">
+<pre><span class="prompt">$ </span>curl -fsSL https://postino.tanis.codes/install.sh | bash</pre>
+                        </div>
+                    </article>
+
                     <article class="channel" id="debian">
                         <h3>Debian and Ubuntu <small>apt</small></h3>
                         <p>Add the signing key and the repository once, then install.</p>

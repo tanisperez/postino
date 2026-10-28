@@ -71,13 +71,15 @@ install: release
 	$(MAKE) --no-print-directory refresh-desktop-caches
 
 # The latest published release instead of a local build, checked against its SHA256SUMS.
+# The same script as curl -fsSL https://postino.tanis.codes/install.sh | bash.
 install-latest:
-	packaging/linux/install-latest.sh $(PREFIX)
-	$(MAKE) --no-print-directory refresh-desktop-caches
+	site/install.sh --prefix $(PREFIX)
 
 uninstall:
 	rm -f $(PREFIX)/bin/postino $(PREFIX)/share/applications/$(APP_ID).desktop
 	rm -f $(PREFIX)/share/mime/packages/$(APP_ID).xml
+	rm -f $(PREFIX)/share/postino/installed-files
+	rmdir $(PREFIX)/share/postino 2>/dev/null || true
 	rm -f $(ICONS_DIR)/scalable/apps/$(APP_ID).svg \
 		$(foreach size,$(ICON_SIZES),$(ICONS_DIR)/$(size)x$(size)/apps/$(APP_ID).png)
 	$(MAKE) --no-print-directory refresh-desktop-caches

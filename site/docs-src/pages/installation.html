@@ -1,5 +1,5 @@
 title: Installation
-description: Install Postino on Linux, Windows or macOS from an installer, a package repository, Homebrew, winget or from source.
+description: Install Postino on Linux, Windows or macOS from an installer, the install script, a package repository, Homebrew, winget or from source.
 ---
 <h1>Installation</h1>
 <p class="lead">Postino is a single desktop application with no account and no sign in. Download it for your system, or install it with your package manager to get updates with the rest of your software.</p>
@@ -8,7 +8,7 @@ description: Install Postino on Linux, Windows or macOS from an installer, a pac
 <div class="table"><table>
     <thead><tr><th>System</th><th>Supported</th><th>Packages</th></tr></thead>
     <tbody>
-        <tr><td>Linux</td><td>x86_64, Wayland or X11, a GPU driver with Vulkan</td><td><code>.deb</code>, <code>.rpm</code>, <code>.tar.gz</code>, APT and DNF repositories</td></tr>
+        <tr><td>Linux</td><td>x86_64, Wayland or X11, a GPU driver with Vulkan</td><td><code>.deb</code>, <code>.rpm</code>, <code>.tar.gz</code>, install script, APT and DNF repositories</td></tr>
         <tr><td>Windows</td><td>Windows 10 and 11, 64 bit</td><td>Installer (<code>-setup.exe</code>), portable zip (<code>-portable.zip</code>), winget</td></tr>
         <tr><td>macOS</td><td>Apple silicon (M1 and later)</td><td>Disk image (<code>.dmg</code>), Homebrew cask</td></tr>
     </tbody>
@@ -16,6 +16,29 @@ description: Install Postino on Linux, Windows or macOS from an installer, a pac
 <p>Every file is published on the <a href="https://github.com/tanisperez/postino/releases/latest">latest release</a> page on GitHub. The <a href="../install.html">download page</a> links to the right one for each system.</p>
 
 <h2>Linux</h2>
+
+<h3 id="install-script">Install script</h3>
+<p>On any distribution, one command installs the latest release for your user, with no sudo:</p>
+```shell
+$ curl -fsSL https://postino.tanis.codes/install.sh | bash
+```
+<p>The script downloads the <a href="#tarball">tarball</a> of the latest release from GitHub, checks it against the release's <code>SHA256SUMS</code> and installs it under <code>~/.local</code>: the program in <code>~/.local/bin/postino</code>, and the menu entry, the <code>.postino</code> file type and the icons under <code>~/.local/share</code>. It also writes the list of the files it installed to <code>~/.local/share/postino/installed-files</code>, so updating and uninstalling touch exactly those. If <code>~/.local/bin</code> is not on your <code>PATH</code>, it says so; the menu entry works either way.</p>
+<p>Run the same command again to update to the latest release. It never installs a pre-release unless you ask for it with <code>--version</code>.</p>
+<p>To pass options, put them after <code>bash -s --</code>:</p>
+```shell
+$ curl -fsSL https://postino.tanis.codes/install.sh | bash -s -- --uninstall
+```
+<div class="table"><table>
+    <thead><tr><th>Option</th><th>What it does</th></tr></thead>
+    <tbody>
+        <tr><td><code>--version X.Y.Z</code></td><td>Installs that release instead of the latest one.</td></tr>
+        <tr><td><code>--prefix DIR</code></td><td>Installs under <code>DIR</code> instead of <code>~/.local</code>. A system folder such as <code>/usr/local</code> needs <code>sudo bash</code>. Pass the same <code>--prefix</code> to update or uninstall.</td></tr>
+        <tr><td><code>--uninstall</code></td><td>Removes the files the script installed. Your settings and logs stay, and the script prints where they are.</td></tr>
+        <tr><td><code>--purge</code></td><td>With <code>--uninstall</code>, also deletes your settings and logs (see <a href="files-and-folders.html">Files and folders</a>). Your workspaces are never touched.</td></tr>
+        <tr><td><code>-h</code>, <code>--help</code></td><td>Shows the options.</td></tr>
+    </tbody>
+</table></div>
+<p>The script runs only on Linux x86_64 and needs <code>curl</code>, <code>tar</code> and <code>sha256sum</code>. Run it as your user: as root it asks for a <code>--prefix</code>, since installing into root's home would leave Postino where nobody finds it. If Postino is already installed in <code>/usr/bin</code> by a package manager, the script stops and asks you to remove that copy first, so you never have two copies that update differently. You can read the script before running it at <a href="https://postino.tanis.codes/install.sh">postino.tanis.codes/install.sh</a>.</p>
 
 <h3>Debian and Ubuntu (apt)</h3>
 <p>Add the signing key and the repository once, then install. Your usual <code>apt upgrade</code> keeps Postino up to date.</p>
@@ -38,9 +61,9 @@ $ sudo zypper addrepo https://postino.tanis.codes/rpm/postino.repo
 $ sudo zypper install postino
 ```
 
-<h3>Tarball</h3>
+<h3 id="tarball">Tarball</h3>
 <p>The <code>.tar.gz</code> uses a <code>/usr</code>-like layout: <code>bin/postino</code>, plus the desktop entry, the MIME type and the icons under <code>share/</code>. Extract it anywhere and run <code>bin/postino</code>, or copy its contents under <code>~/.local</code> to get the menu entry. A tarball install does not update itself: download new versions from the releases page.</p>
-<p>From a clone of the repository, <code>make install-latest</code> does all of this for you: it downloads the tarball of the latest release, checks it against the release's <code>SHA256SUMS</code> and installs it under <code>~/.local</code>, with the menu entry and the <code>.postino</code> file type. Run it again to update, and <code>make uninstall</code> to remove it. Set <code>PREFIX</code> to install elsewhere.</p>
+<p>The <a href="#install-script">install script</a> does all of this for you. From a clone of the repository, <code>make install-latest</code> runs the same script, with <code>PREFIX</code> as its <code>--prefix</code>.</p>
 
 <h3>What the Linux packages install</h3>
 <p>The <code>.deb</code> and <code>.rpm</code> packages install <code>/usr/bin/postino</code>, a desktop entry, the icons and a MIME type for <code>.postino</code> files. Your file manager then opens a <code>.postino</code> file with Postino on a double click.</p>
@@ -81,6 +104,7 @@ $ xattr -dr com.apple.quarantine /Applications/Postino.app
     <thead><tr><th>Installed from</th><th>How it updates</th></tr></thead>
     <tbody>
         <tr><td>apt, dnf, zypper</td><td>With your system updates. Postino never updates itself on Linux.</td></tr>
+        <tr><td>Install script</td><td>Run the install command again.</td></tr>
         <tr><td>Tarball</td><td>Download the new version from the releases page.</td></tr>
         <tr><td>Windows installer, winget</td><td>In-app updater, or <code>winget upgrade</code>.</td></tr>
         <tr><td>Windows portable zip</td><td>The status bar tells you when a new version exists and opens the release page. Download the new zip and replace <code>postino.exe</code>.</td></tr>
@@ -96,6 +120,7 @@ $ xattr -dr com.apple.quarantine /Applications/Postino.app
 <ul>
     <li><strong>Debian and Ubuntu:</strong> <code>sudo apt remove postino</code>, then delete <code>/etc/apt/sources.list.d/postino.list</code> and <code>/etc/apt/keyrings/postino.asc</code> if you no longer want the repository.</li>
     <li><strong>Fedora:</strong> <code>sudo dnf remove postino</code> and delete <code>/etc/yum.repos.d/postino.repo</code>.</li>
+    <li><strong>Install script:</strong> <code>curl -fsSL https://postino.tanis.codes/install.sh | bash -s -- --uninstall</code>, adding <code>--purge</code> to also delete your settings and logs.</li>
     <li><strong>Windows:</strong> Settings, Apps, Postino, Uninstall. A portable copy is not listed there: delete its folder.</li>
     <li><strong>macOS:</strong> drag Postino from Applications to the Trash, or <code>brew uninstall --cask postino</code>.</li>
 </ul>

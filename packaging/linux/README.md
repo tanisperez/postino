@@ -8,6 +8,7 @@
 | `package.sh` | Builds the tarball, the deb and the rpm |
 | `repo.sh` | Builds the signed APT and DNF repositories published on the website |
 | `test-repo.sh` | Tests `repo.sh` end to end with podman (Ubuntu and Fedora containers) |
+| `test-install.sh` | Tests the install script (`site/install.sh`) against fake releases, no network |
 
 ## Usage
 

@@ -72,6 +72,9 @@ sudo apt update && sudo apt install postino
 # Fedora
 sudo curl -fsSLo /etc/yum.repos.d/postino.repo https://postino.tanis.codes/rpm/postino.repo
 sudo dnf install postino
+
+# Any distribution, for your user under ~/.local (run again to update)
+curl -fsSL https://postino.tanis.codes/install.sh | bash
 ```
 
 The builds are not code signed yet. See
