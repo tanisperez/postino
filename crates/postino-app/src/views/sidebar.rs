@@ -767,14 +767,14 @@ pub(crate) fn pick_workspace_folder(view: WeakEntity<AppView>, window: &mut Wind
 }
 
 /// What a name dialog does with the trimmed, non-empty name once it is confirmed.
-type NameSubmit = Rc<dyn Fn(String, &mut App)>;
+pub(crate) type NameSubmit = Rc<dyn Fn(String, &mut App)>;
 
 /// Confirms a name dialog: reads the field, closes the dialog and runs the [`NameSubmit`].
 type NameConfirm = Rc<dyn Fn(&mut Window, &mut App)>;
 
 /// Opens an in-app dialog (never a native blocking one) with a name field, a Cancel button and
 /// `ok_label`. Enter in the field and the button confirm it; an empty name keeps the dialog open.
-fn open_name_dialog(
+pub(crate) fn open_name_dialog(
     title: SharedString,
     ok_label: SharedString,
     input: Entity<InputState>,

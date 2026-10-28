@@ -135,7 +135,7 @@ impl Repo {
     }
 
     /// The checked out branch, `None` when `HEAD` is detached.
-    fn current_branch(&self) -> Result<Option<String>, GitError> {
+    pub(crate) fn current_branch(&self) -> Result<Option<String>, GitError> {
         match self.run(&["symbolic-ref", "--quiet", "--short", "HEAD"]) {
             Ok(output) => Ok(Some(String::from_utf8_lossy(&output).trim().to_string())),
             Err(GitError::Failed { code: Some(1), .. }) => Ok(None),

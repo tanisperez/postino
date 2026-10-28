@@ -14,12 +14,17 @@ use crate::state::git_sync::CommitStats;
 
 use super::root::AppView;
 
+mod branch_menu;
+mod branches;
 mod diff_tab;
+mod log_tab;
 mod panel;
 mod sync;
 mod watch;
 mod write;
 
+pub(crate) use branch_menu::{MenuContext, new_branch_menu};
+pub(crate) use branches::{CheckoutChoice, CheckoutTarget};
 pub(crate) use panel::INSTALL_GIT_URL;
 pub(crate) use write::init_with_gitignore;
 
@@ -41,6 +46,14 @@ pub(crate) struct GitTasks {
     diff_load: Option<Task<()>>,
     /// The commit box's summary line being read.
     commit_stats: Option<Task<()>>,
+    /// The branches being read for the menu (`branches.rs`).
+    branches: Option<Task<()>>,
+    /// The log tab's inputs and scroll positions (`log_tab.rs`), created when it opens.
+    log_view: Option<log_tab::LogView>,
+    /// The log page being read.
+    log_load: Option<Task<()>>,
+    /// The selected commit's detail being read.
+    log_detail: Option<Task<()>>,
 }
 
 impl AppView {
@@ -117,6 +130,7 @@ impl AppView {
                 };
                 view.watch_git(cx);
                 view.refresh_git_status(cx);
+                view.load_branches(cx);
                 view.load_git_author(cx);
                 cx.notify();
             });
@@ -179,7 +193,10 @@ impl AppView {
                             *current = Some(Arc::new(status));
                             view.rebuild_git_rows();
                             view.load_git_diff(cx);
+                            view.refresh_git_log_if_stale(cx);
                             view.load_commit_stats(cx);
+                            // A commit, checkout or fetch made anywhere moves the branches too.
+                            view.load_branches(cx);
                             cx.notify();
                         }
                     }

@@ -237,14 +237,14 @@ impl Repo {
     }
 
     /// The id of the empty tree, which depends on the repository's hash algorithm.
-    fn empty_tree(&self) -> Result<String, GitError> {
+    pub(crate) fn empty_tree(&self) -> Result<String, GitError> {
         let output = self.run_with(&["hash-object", "-t", "tree", "--stdin"], Some(b""), &[])?;
         Ok(String::from_utf8_lossy(&output).trim().to_string())
     }
 }
 
 /// Rejects a revision that git would read as an option.
-fn check_revision(rev: &str) -> Result<(), GitError> {
+pub(crate) fn check_revision(rev: &str) -> Result<(), GitError> {
     if rev.is_empty() || rev.starts_with('-') {
         return Err(GitError::Parse(format!("invalid revision {rev:?}")));
     }
@@ -260,7 +260,7 @@ fn text(bytes: Vec<u8>) -> Result<String, GitError> {
 
 /// Parses `git diff --numstat -z`: `added TAB removed TAB path NUL`, and for a rename
 /// `added TAB removed TAB NUL old NUL new NUL`.
-fn parse_numstat(output: &[u8]) -> Result<Vec<NumStat>, GitError> {
+pub(crate) fn parse_numstat(output: &[u8]) -> Result<Vec<NumStat>, GitError> {
     let mut fields = output
         .split(|b| *b == 0)
         .map(|f| String::from_utf8_lossy(f).into_owned());

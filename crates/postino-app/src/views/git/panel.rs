@@ -192,10 +192,15 @@ impl AppView {
                     });
                 })
         };
-        let log = IconButton::new("git-log", IconName::GitGraph)
-            .box_size(ICON_BUTTON_HEADER)
-            .tooltip(t!("git.panel.log"))
-            .disabled(true);
+        let log = {
+            let weak = weak.clone();
+            IconButton::new("git-log", IconName::GitGraph)
+                .box_size(ICON_BUTTON_HEADER)
+                .tooltip(t!("git.panel.log"))
+                .on_click(move |_, window, cx| {
+                    let _ = weak.update(cx, |view, cx| view.open_git_log(None, window, cx));
+                })
+        };
         let running = self.git.sync.running.is_some();
         let failure_output: Option<SharedString> = self
             .git

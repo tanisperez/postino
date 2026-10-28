@@ -23,6 +23,10 @@ pub enum GitOp {
     Pull,
     /// `git fetch`.
     Fetch,
+    /// Switching to another branch or commit, with the stash around it.
+    Checkout,
+    /// Creating, renaming or deleting a branch.
+    Branch,
 }
 
 impl GitOp {
@@ -33,6 +37,8 @@ impl GitOp {
             GitOp::Push => t!("git.sync.pushing"),
             GitOp::Pull => t!("git.sync.pulling"),
             GitOp::Fetch => t!("git.sync.fetching"),
+            GitOp::Checkout => t!("git.sync.checking_out"),
+            GitOp::Branch => t!("git.sync.branching"),
         }
         .into_owned()
     }
@@ -59,6 +65,8 @@ impl GitFailure {
             (GitOp::Pull, FailureKind::Conflicts) => t!("git.failure.pull_conflicts"),
             (GitOp::Pull, _) => t!("git.failure.pull"),
             (GitOp::Fetch, _) => t!("git.failure.fetch"),
+            (GitOp::Checkout, _) => t!("git.failure.checkout"),
+            (GitOp::Branch, _) => t!("git.failure.branch"),
         }
         .into_owned()
     }
@@ -77,6 +85,8 @@ impl GitFailure {
             FailureKind::Conflicts => t!("git.failure.conflicts_text"),
             FailureKind::Network => t!("git.failure.network_text"),
             FailureKind::Hook => t!("git.failure.hook_text"),
+            FailureKind::NotMerged => t!("git.failure.not_merged_text"),
+            FailureKind::LocalChanges => t!("git.failure.local_changes_text"),
             FailureKind::Other => t!("git.failure.other_text"),
         }
         .into_owned()

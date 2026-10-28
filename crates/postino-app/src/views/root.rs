@@ -202,6 +202,12 @@ pub struct AppView {
     pub(crate) git: state::git::GitState,
     /// The git commands running in the background (`views/git`).
     pub(crate) git_tasks: crate::views::git::GitTasks,
+    /// The choice of the "Check out with changes" dialog (design 6f).
+    pub(crate) checkout_choice: crate::views::git::CheckoutChoice,
+    /// The status bar's branch menu (`views/git/branch_menu.rs`).
+    pub(crate) branch_menu: Entity<telaio_ui::components::SearchableMenuState>,
+    /// What the branch menu's submenu and create row need to know, updated with its rows.
+    pub(crate) branch_menu_context: std::rc::Rc<std::cell::RefCell<crate::views::git::MenuContext>>,
     /// The `gpui` entities behind every open environment editor tab, keyed by tab id, created
     /// when the tab is first shown. See `views/env_editor.rs`.
     pub(crate) env_editors: HashMap<String, crate::views::env_editor::EnvEditorEntities>,
@@ -246,6 +252,12 @@ impl AppView {
         let tree_state = cx.new(|cx| TreeState::new(cx));
         let sidebar_filter_input =
             cx.new(|cx| InputState::new(window, cx).placeholder(t!("shell.sidebar.filter")));
+        let branch_menu_context = std::rc::Rc::default();
+        let branch_menu = crate::views::git::new_branch_menu(
+            std::rc::Rc::clone(&branch_menu_context),
+            window,
+            cx,
+        );
         let commit_input = cx.new(|cx| {
             TextareaState::new(window, cx)
                 .placeholder(t!("git.commit.placeholder"))
@@ -361,6 +373,9 @@ impl AppView {
             git_branch: None,
             git: Default::default(),
             git_tasks: Default::default(),
+            checkout_choice: Default::default(),
+            branch_menu,
+            branch_menu_context,
             env_editors: HashMap::new(),
             new_env_input: None,
             load_targets: state::load_panel::TargetTree::default(),
@@ -1085,6 +1100,7 @@ impl AppView {
         self.relocalize_sidebar(window, cx);
         self.relocalize_request_editor(window, cx);
         self.relocalize_env_editors(window, cx);
+        self.relocalize_git_log(window, cx);
         self.commit_input.update(cx, |state, cx| {
             state.set_placeholder(t!("git.commit.placeholder"), window, cx);
         });
@@ -1095,6 +1111,12 @@ impl AppView {
 
     /// Handles the `Ctrl+Enter` / `Cmd+Enter` key binding (see `main.rs`'s `bind_keys`).
     fn on_send_action(&mut self, _: &SendActiveTab, _window: &mut Window, cx: &mut Context<Self>) {
+        // gpui ranks a binding without context above every context binding, so this one runs
+        // before the branch menu's own Ctrl+Enter ("Create branch"): let it through.
+        if self.branch_menu.read(cx).is_open() {
+            cx.propagate();
+            return;
+        }
         self.send_active_tab(cx);
     }
 
@@ -1493,6 +1515,12 @@ impl AppView {
             .active()
             .is_some_and(|tab| tab.diff().is_some());
 
+        let is_log = self
+            .state
+            .tabs
+            .active()
+            .is_some_and(|tab| tab.log().is_some());
+
         let content = if let Some(welcome) = welcome {
             self.render_welcome(&welcome, cx)
         } else if is_load_test {
@@ -1501,6 +1529,8 @@ impl AppView {
             self.render_env_tab(window, cx)
         } else if is_diff {
             self.render_diff_tab(window, cx)
+        } else if is_log {
+            self.render_log_tab(window, cx)
         } else {
             v_resizable("postino-main")
                 .child(
@@ -1559,6 +1589,7 @@ impl AppView {
                 state::TabKind::Environment(edit) => state::env_edit::status_path(&edit.name),
                 state::TabKind::Welcome(_) => t!("welcome.tab").into_owned(),
                 state::TabKind::Diff(diff) => diff.path.clone(),
+                state::TabKind::Log(_) => t!("git_log.tab").into_owned(),
                 state::TabKind::Request(_) | state::TabKind::LoadTest(_) => tab.id.clone(),
             };
             let mut doc_tab = match &tab.kind {
@@ -1577,9 +1608,15 @@ impl AppView {
                 }
                 state::TabKind::Diff(diff) => DocumentTab::new(diff.label().to_string())
                     .icon(gpui_kit::assets::IconName::GitCompare)
-                    .detail(match diff.target {
-                        state::git_diff::DiffTarget::WorkTree => t!("git.diff.working_tree"),
-                    }),
+                    .detail(diff.target.detail()),
+                state::TabKind::Log(log) => {
+                    let log_tab = DocumentTab::new(t!("git_log.tab"))
+                        .icon(gpui_kit::assets::IconName::GitGraph);
+                    match log.filter.branch.clone() {
+                        Some(branch) => log_tab.detail(branch),
+                        None => log_tab,
+                    }
+                }
                 state::TabKind::Welcome(_) => DocumentTab::new(t!("welcome.tab"))
                     .icon(gpui_kit::assets::IconName::House)
                     .icon_color(cx.palette().accent_text),

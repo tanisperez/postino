@@ -92,6 +92,45 @@ fn relative_day_in(then_unix_seconds: i64, now_unix_seconds: i64, locale: &str) 
     }
 }
 
+/// A relative label for a moment, finer than [`relative_day`] within the last day: `"just now"`,
+/// `"12 min ago"`, `"3 h ago"`, then [`relative_day`]'s labels up to 30 days, then the date as
+/// `YYYY-MM-DD` in local time. Used for commits and branches.
+pub fn relative_time(then_unix_seconds: i64, now_unix_seconds: i64) -> String {
+    relative_time_in(then_unix_seconds, now_unix_seconds, &rust_i18n::locale())
+}
+
+/// [`relative_time`] in an explicit `locale`.
+fn relative_time_in(then_unix_seconds: i64, now_unix_seconds: i64, locale: &str) -> String {
+    let elapsed = now_unix_seconds - then_unix_seconds;
+    if elapsed < 60 {
+        t!("git.time.just_now", locale = locale).into_owned()
+    } else if elapsed < 60 * 60 {
+        t!(
+            "git.time.minutes_ago",
+            locale = locale,
+            count = elapsed / 60
+        )
+        .into_owned()
+    } else if elapsed < SECONDS_PER_DAY {
+        t!(
+            "git.time.hours_ago",
+            locale = locale,
+            count = elapsed / 3600
+        )
+        .into_owned()
+    } else if elapsed < 30 * SECONDS_PER_DAY {
+        relative_day_in(then_unix_seconds, now_unix_seconds, locale)
+    } else {
+        chrono::DateTime::from_timestamp(then_unix_seconds, 0)
+            .map(|date| {
+                date.with_timezone(&chrono::Local)
+                    .format("%Y-%m-%d")
+                    .to_string()
+            })
+            .unwrap_or_default()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,6 +221,11 @@ mod tests {
         assert_eq!(relative_day_in(now, now, "en"), "today");
         assert_eq!(relative_day_in(now - day, now, "en"), "yesterday");
         assert_eq!(relative_day_in(now - 3 * day, now, "en"), "3 days ago");
+        assert_eq!(relative_time_in(now - 30, now, "en"), "just now");
+        assert_eq!(relative_time_in(now - 12 * 60, now, "en"), "12 min ago");
+        assert_eq!(relative_time_in(now - 3 * 3600, now, "es"), "hace 3 h");
+        assert_eq!(relative_time_in(now - 3 * day, now, "en"), "3 days ago");
+        assert_eq!(relative_time_in(now - 90 * day, now, "en").len(), 10);
         assert_eq!(relative_day_in(now + day, now, "en"), "today");
     }
 

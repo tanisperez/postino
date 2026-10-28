@@ -32,7 +32,7 @@ impl AppView {
     /// Runs `work` as `op` after the write in flight, with the op in the status bar, then reads
     /// the status again. `done` gets the result on success; a failure goes to
     /// [`Self::show_git_failure`] unless `quiet` (an automatic fetch never nags).
-    fn run_git_op<T: Send + 'static>(
+    pub(super) fn run_git_op<T: Send + 'static>(
         &mut self,
         op: GitOp,
         quiet: bool,
@@ -118,6 +118,34 @@ impl AppView {
             window,
             cx,
         );
+    }
+
+    /// The palette's Commit: commits when the message and the staged files allow it, otherwise
+    /// shows the Source Control panel with the focus in the message.
+    pub(crate) fn commit_from_palette(
+        &mut self,
+        push: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let message = self.commit_input.read(cx).value().to_string();
+        let ready = can_commit(
+            &message,
+            self.git.commit.stats,
+            self.git.commit.amend,
+            self.git.sync.running.is_some(),
+        ) && !(self.state.settings.git_block_secrets && !self.git.secrets.is_empty());
+        if ready {
+            self.commit_from_box(push, window, cx);
+            return;
+        }
+        let section = crate::state::navigation::NavSection::SourceControl;
+        if !self.nav.is_active(section) {
+            self.nav.click(section);
+        }
+        self.commit_input
+            .update(cx, |input, cx| input.focus(window, cx));
+        cx.notify();
     }
 
     /// Ticks or clears Amend. Ticking it with an empty message brings back the last commit's.
@@ -326,7 +354,7 @@ impl AppView {
 
     /// 6e: a notification with the failure in plain language, "Pull and push" for a rejected
     /// push, and "Show git output".
-    fn show_git_failure(
+    pub(super) fn show_git_failure(
         &mut self,
         failure: GitFailure,
         window: &mut Window,

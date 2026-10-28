@@ -58,6 +58,7 @@ description: Every Postino setting: language, theme, fonts, the welcome tab, JSO
         <tr><td>Confirm before discarding changes (section <strong>Safety</strong>)</td><td>On</td><td>Discarded changes can't be recovered.</td></tr>
     </tbody>
 </table></div>
+<p>The branches you star in the <a href="git.html#branches">branch menu</a> are saved as <code>git_favorite_branches</code> in <code>settings.toml</code>, a list of names such as <code>["main", "origin/release"]</code> shared by every repository. It has no row in the Settings window and is left out of the file when empty.</p>
 <p><strong>Commit author</strong> is read only. It shows the <code>user.name</code> and <code>user.email</code> that git config gives the open workspace's repository, or <em>Not configured</em> when there is no repository or no author. Change it with <code>git config</code>.</p>
 
 <h2>Advanced</h2>
@@ -111,4 +112,5 @@ git_commit_action = "commit"          # commit, commit_and_push
 git_block_secrets = true              # block commits that include a .local.env file
 git_confirm_discard = true            # ask before discarding changes
 git_diff_mode = "split"              # diff tab layout: split, unified or request, set from its toolbar
+git_favorite_branches = ["main"]      # branches starred in the branch menu, absent when empty
 ```

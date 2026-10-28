@@ -252,6 +252,20 @@ fn build_all_items(view: &Entity<AppView>, cx: &mut App) -> Vec<PaletteItem> {
     let mut items = requests;
     items.extend(palette::environment_items(&environments));
     items.extend(palette::action_items());
+    let git = match (
+        &read.git.availability,
+        &read.git.repo,
+        read.state.workspace.is_some(),
+    ) {
+        (_, _, false) | (crate::state::git::GitAvailability::Detecting, _, _) => {
+            palette::GitPalette::Unavailable
+        }
+        (crate::state::git::GitAvailability::Missing(_), _, _) => palette::GitPalette::Unavailable,
+        (_, crate::state::git::RepoState::NotARepo, _) => palette::GitPalette::NotARepo,
+        (_, crate::state::git::RepoState::Repo { .. }, _) => palette::GitPalette::Repo,
+        _ => palette::GitPalette::Unavailable,
+    };
+    items.extend(palette::git_action_items(git));
     items
 }
 
@@ -360,6 +374,14 @@ fn action_icon(action: ActionId) -> gpui_kit::assets::IconName {
         ActionId::NewLoadTest => Lucide::Gauge,
         ActionId::ToggleTheme => Lucide::Palette,
         ActionId::CheckForUpdates => Lucide::RefreshCw,
+        ActionId::GitCommit | ActionId::GitCommitAndPush => Lucide::GitCommitHorizontal,
+        ActionId::GitPush => Lucide::ArrowUp,
+        ActionId::GitPull => Lucide::ArrowDown,
+        ActionId::GitFetch => Lucide::RefreshCw,
+        ActionId::GitNewBranch => Lucide::GitBranchPlus,
+        ActionId::GitCheckoutBranch => Lucide::GitBranch,
+        ActionId::GitShowLog => Lucide::GitGraph,
+        ActionId::GitInit => Lucide::GitBranch,
     }
 }
 
@@ -447,6 +469,33 @@ fn execute_action(weak: WeakEntity<AppView>, action: ActionId, window: &mut Wind
         }
         ActionId::CheckForUpdates => {
             let _ = weak.update(cx, |view, cx| view.check_for_updates_manually(window, cx));
+        }
+        ActionId::GitCommit | ActionId::GitCommitAndPush => {
+            let push = action == ActionId::GitCommitAndPush;
+            let _ = weak.update(cx, |view, cx| view.commit_from_palette(push, window, cx));
+        }
+        ActionId::GitPush => {
+            let _ = weak.update(cx, |view, cx| view.start_push(true, window, cx));
+        }
+        ActionId::GitPull => {
+            let _ = weak.update(cx, |view, cx| view.pull(false, window, cx));
+        }
+        ActionId::GitFetch => {
+            let _ = weak.update(cx, |view, cx| view.fetch(false, window, cx));
+        }
+        ActionId::GitNewBranch => {
+            let _ = weak.update(cx, |view, cx| {
+                view.new_branch_dialog(None, String::new(), window, cx);
+            });
+        }
+        ActionId::GitCheckoutBranch => {
+            let _ = weak.update(cx, |view, cx| view.open_branch_menu(window, cx));
+        }
+        ActionId::GitShowLog => {
+            let _ = weak.update(cx, |view, cx| view.open_git_log(None, window, cx));
+        }
+        ActionId::GitInit => {
+            let _ = weak.update(cx, |view, cx| view.init_git_repository(cx));
         }
     }
 }
