@@ -8,7 +8,7 @@ description: Install Postino on Linux, Windows or macOS from an installer, the i
 <div class="table"><table>
     <thead><tr><th>System</th><th>Supported</th><th>Packages</th></tr></thead>
     <tbody>
-        <tr><td>Linux</td><td>x86_64, Wayland or X11, a GPU driver with Vulkan</td><td><code>.deb</code>, <code>.rpm</code>, <code>.pkg.tar.zst</code>, <code>.tar.gz</code>, install script, APT and DNF repositories</td></tr>
+        <tr><td>Linux</td><td>x86_64, Wayland or X11, a GPU driver with Vulkan</td><td><code>.deb</code>, <code>.rpm</code>, <code>.pkg.tar.zst</code>, <code>.AppImage</code>, <code>.tar.gz</code>, install script, APT and DNF repositories</td></tr>
         <tr><td>Windows</td><td>Windows 10 and 11, 64 bit</td><td>Installer (<code>-setup.exe</code>), portable zip (<code>-portable.zip</code>), winget</td></tr>
         <tr><td>macOS</td><td>Apple silicon (M1 and later)</td><td>Disk image (<code>.dmg</code>), Homebrew cask</td></tr>
     </tbody>
@@ -68,6 +68,15 @@ $ sudo pacman -U postino-0.5.0-1-x86_64.pkg.tar.zst
 ```
 <p>There is no pacman repository yet, so <code>pacman -Syu</code> does not update Postino: install the package of the next release the same way. The <a href="#install-script">install script</a> is the alternative that updates with one command.</p>
 
+<h3 id="appimage">AppImage</h3>
+<p>The AppImage is the whole application in one file, for any distribution with glibc 2.35 or newer (Ubuntu 22.04, Debian 12, Fedora 36 and later). Download <code>Postino-…-x86_64.AppImage</code>, make it executable and run it:</p>
+```shell
+$ chmod +x Postino-0.5.0-x86_64.AppImage
+$ ./Postino-0.5.0-x86_64.AppImage
+```
+<p>It uses your system's graphics drivers, Wayland and X11 libraries, like the other packages. It adds no menu entry and no <code>.postino</code> file type by itself; a tool such as Gear Lever or AppImageLauncher can do that. It does not update itself either: download the new AppImage and replace the old one. To remove it, delete the file.</p>
+<p>If it does not start and mentions FUSE, your system lacks <code>fusermount</code> (package <code>fuse3</code> or <code>fuse</code>). Install it, or run the AppImage with <code>--appimage-extract-and-run</code>.</p>
+
 <h3 id="tarball">Tarball</h3>
 <p>The <code>.tar.gz</code> uses a <code>/usr</code>-like layout: <code>bin/postino</code>, plus the desktop entry, the MIME type and the icons under <code>share/</code>. Extract it anywhere and run <code>bin/postino</code>, or copy its contents under <code>~/.local</code> to get the menu entry. A tarball install does not update itself: download new versions from the releases page.</p>
 <p>The <a href="#install-script">install script</a> does all of this for you. From a clone of the repository, <code>make install-latest</code> runs the same script, with <code>PREFIX</code> as its <code>--prefix</code>.</p>
@@ -112,6 +121,7 @@ $ xattr -dr com.apple.quarantine /Applications/Postino.app
     <tbody>
         <tr><td>apt, dnf, zypper</td><td>With your system updates. Postino never updates itself on Linux.</td></tr>
         <tr><td>Arch package</td><td>Install the package of the new release with <code>sudo pacman -U</code>.</td></tr>
+        <tr><td>AppImage</td><td>Download the new AppImage and replace the old file.</td></tr>
         <tr><td>Install script</td><td>Run the install command again.</td></tr>
         <tr><td>Tarball</td><td>Download the new version from the releases page.</td></tr>
         <tr><td>Windows installer, winget</td><td>In-app updater, or <code>winget upgrade</code>.</td></tr>
@@ -129,6 +139,7 @@ $ xattr -dr com.apple.quarantine /Applications/Postino.app
     <li><strong>Debian and Ubuntu:</strong> <code>sudo apt remove postino</code>, then delete <code>/etc/apt/sources.list.d/postino.list</code> and <code>/etc/apt/keyrings/postino.asc</code> if you no longer want the repository.</li>
     <li><strong>Fedora:</strong> <code>sudo dnf remove postino</code> and delete <code>/etc/yum.repos.d/postino.repo</code>.</li>
     <li><strong>Arch Linux:</strong> <code>sudo pacman -R postino</code>.</li>
+    <li><strong>AppImage:</strong> delete the file.</li>
     <li><strong>Install script:</strong> <code>curl -fsSL https://postino.tanis.codes/install.sh | bash -s -- --uninstall</code>, adding <code>--purge</code> to also delete your settings and logs.</li>
     <li><strong>Windows:</strong> Settings, Apps, Postino, Uninstall. A portable copy is not listed there: delete its folder.</li>
     <li><strong>macOS:</strong> drag Postino from Applications to the Trash, or <code>brew uninstall --cask postino</code>.</li>

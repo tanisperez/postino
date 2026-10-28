@@ -6,6 +6,7 @@
 | `codes.tanis.postino.xml` | shared-mime-info definition of `*.postino` (`application/x-postino`) |
 | `nfpm.yaml` | nfpm config shared by the deb and the rpm |
 | `package.sh` | Builds the tarball, the deb, the rpm and the Arch package |
+| `appimage.sh` | Builds the AppImage (needs `appimagetool`, see the script) |
 | `repo.sh` | Builds the signed APT and DNF repositories published on the website |
 | `test-repo.sh` | Tests `repo.sh` end to end with podman (Ubuntu and Fedora containers) |
 | `test-install.sh` | Tests the install script (`site/install.sh`) against fake releases, no network |

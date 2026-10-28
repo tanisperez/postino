@@ -113,6 +113,25 @@ jobs:
           PATH="$RUNNER_TEMP/nfpm:$PATH" packaging/linux/package.sh "$VERSION" \
             "target/${{ matrix.target }}/release/postino" dist
 
+      # AppImage (packaging/linux/appimage.sh). appimagetool and the type2 runtime are pinned, and
+      # appimagetool runs extracted, since the runner has no FUSE 2.
+      - name: Package the AppImage
+        if: runner.os == 'Linux'
+        env:
+          APPIMAGETOOL_VERSION: 1.9.1
+          RUNTIME_VERSION: "20251108"
+          APPIMAGE_EXTRACT_AND_RUN: 1
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/appimage"
+          curl -sSfLo "$RUNNER_TEMP/appimage/appimagetool" \
+            "https://github.com/AppImage/appimagetool/releases/download/${APPIMAGETOOL_VERSION}/appimagetool-x86_64.AppImage"
+          curl -sSfLo "$RUNNER_TEMP/appimage/runtime-x86_64" \
+            "https://github.com/AppImage/type2-runtime/releases/download/${RUNTIME_VERSION}/runtime-x86_64"
+          chmod +x "$RUNNER_TEMP/appimage/appimagetool"
+          PATH="$RUNNER_TEMP/appimage:$PATH" APPIMAGE_RUNTIME="$RUNNER_TEMP/appimage/runtime-x86_64" \
+            packaging/linux/appimage.sh "$VERSION" "target/${{ matrix.target }}/release/postino" dist
+
       # Postino.app as .dmg and .app.tar.gz (packaging/macos).
       - name: Package for macOS
         if: runner.os == 'macOS'

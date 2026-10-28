@@ -68,6 +68,7 @@ The release stays a draft until every asset is uploaded, so nobody sees a half-b
 | `postino_X.Y.Z_amd64.deb` | Debian and Ubuntu package |
 | `postino-X.Y.Z-1.x86_64.rpm` | Fedora and openSUSE package |
 | `postino-X.Y.Z-1-x86_64.pkg.tar.zst` | Arch Linux package, for `pacman -U` |
+| `Postino-X.Y.Z-x86_64.AppImage` | AppImage, one file that runs on any distribution with glibc 2.35 or newer |
 | `Postino-X.Y.Z-macos-arm64.dmg` | macOS app, Apple silicon, ad-hoc signed |
 | `Postino-X.Y.Z-macos-arm64.app.tar.gz` | The same app, for the in-app updater |
 | `Postino-X.Y.Z-windows-x86_64-setup.exe` | Per-user Windows installer |
@@ -141,7 +142,7 @@ The workflow, in short:
 ```
 tag v0.3.0 pushed
   └─ check: tag == Cargo version, prerelease = tag contains "-"
-      ├─ build-linux   (ubuntu-22.04)   cargo build --release, tar.gz, nfpm deb + rpm, Arch pkg
+      ├─ build-linux   (ubuntu-22.04)   cargo build --release, tar.gz, nfpm deb + rpm, Arch pkg, AppImage
       ├─ build-macos   (macos-latest)   cargo build --release, .app bundle, ad-hoc codesign, dmg, app.tar.gz
       └─ build-windows (windows-latest) cargo build --release, Inno Setup installer, portable zip
           └─ publish: SHA256SUMS + latest.json, upload to the draft, mark it published
@@ -185,6 +186,7 @@ In the app:
 | Debian and Ubuntu | A signed APT repo on GitHub Pages (`apt-ftparchive` and GPG). Users add the key and one `.sources` file once, then `apt upgrade` updates. |
 | Fedora and openSUSE | A signed DNF repo on the same site (`createrepo_c` and GPG, `rpm --addsign`). One `.repo` file, then `dnf upgrade`. |
 | Any distribution | The install script, `curl -fsSL https://postino.tanis.codes/install.sh \| bash`: the tarball for the current user under `~/.local`, checked against `SHA256SUMS`, with a manifest of the installed files for updates and `--uninstall` (`--purge` also deletes settings and logs). Running it again updates. Its source is `site/install.sh`, so the website deploys it, and `make install-latest` runs it. Tested by `packaging/linux/test-install.sh` against fake releases on `file://` URLs. |
+| AppImage | `Postino-X.Y.Z-x86_64.AppImage`, built by `packaging/linux/appimage.sh` with appimagetool and the type2 runtime, both pinned in `release.yml`. It bundles the same files as the tarball and no libraries (Mesa, Vulkan, Wayland and X11 come from the system). It does not update itself. |
 | Everyone else | The tarball, plus the deb and rpm as direct downloads. |
 
 The APT and DNF repos share one GPG key (private key and passphrase as secrets, public key
@@ -205,7 +207,6 @@ Considered and left for later:
   id and name are final, because renaming a Flathub app is painful.
 - **Ubuntu PPA, Fedora COPR, official distro repos:** they build from source on their servers
   without network, with their own review. Too much work for now.
-- **AppImage:** easy to build, but no updates without extra machinery. The tarball covers it.
 
 ### macOS
 
