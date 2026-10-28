@@ -8,6 +8,7 @@
 
 use std::sync::Arc;
 
+use gpui_kit::base::SelectableText;
 use gpui_kit::component::input::EditorState;
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::component::*;
@@ -488,7 +489,9 @@ fn stage_message(stage: &FailedStage) -> String {
 
 /// Renders the response headers as a two-column card: a header row with the column labels and
 /// the "Copy all headers" button, then one row per header, name in `fg_muted` and value in `fg`,
-/// both monospace. Values wrap instead of being cut, since cookies and policies run long.
+/// both monospace. Values wrap instead of being cut, since cookies and policies run long. Every
+/// cell is selectable text (gpui-base's window selection, copied with Ctrl+C or Cmd+C by `Root`),
+/// ordered row by row, name before value, so a drag across cells copies them in reading order.
 fn render_headers_tab(tab_id: &str, result: &RunResult, cx: &Context<AppView>) -> AnyElement {
     let palette = cx.palette();
     let Some(response) = &result.response else {
@@ -561,15 +564,17 @@ fn render_headers_tab(tab_id: &str, result: &RunResult, cx: &Context<AppView>) -
             .child(name_cell(
                 div()
                     .text_color(palette.fg_muted)
-                    .child(header.name.clone())
+                    .child(
+                        SelectableText::new(("response-header-name", index), header.name.clone())
+                            .document_order(index as u64 * 2),
+                    )
                     .into_any_element(),
             ))
             .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .text_color(palette.fg)
-                    .child(header.value.clone()),
+                div().flex_1().min_w_0().text_color(palette.fg).child(
+                    SelectableText::new(("response-header-value", index), header.value.clone())
+                        .document_order(index as u64 * 2 + 1),
+                ),
             )
     });
 
