@@ -75,10 +75,6 @@ pub(crate) fn new_branch_menu(
                     t!("git.menu.hint_checkout").into_owned(),
                 ),
                 (
-                    "\u{2192}".to_string(),
-                    t!("git.menu.hint_more").into_owned(),
-                ),
-                (
                     crate::state::palette::send_shortcut_label(),
                     t!("git.menu.hint_create").into_owned(),
                 ),
@@ -268,7 +264,13 @@ impl AppView {
             }
             SearchableMenuEvent::Secondary(query) => {
                 let name = query.trim().to_string();
-                if !name.is_empty() {
+                let exists = self.branch_menu_context.borrow().locals.contains(&name);
+                if exists {
+                    // The branch is already there: go to it instead of failing to create it.
+                    if Some(name.as_str()) != self.git.branch_label().as_deref() {
+                        self.request_checkout(CheckoutTarget::Branch(name), window, cx);
+                    }
+                } else if !name.is_empty() {
                     self.create_branch(name, None, cx);
                 }
             }

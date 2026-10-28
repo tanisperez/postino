@@ -780,11 +780,6 @@ _version: 2
   es: "Cambiar"
   gl: "Cambiar"
   it: "Cambia"
-"git.menu.hint_more":
-  en: "More actions"
-  es: "Más acciones"
-  gl: "Máis accións"
-  it: "Altre azioni"
 "git.menu.hint_create":
   en: "Create from current"
   es: "Crear desde la actual"
