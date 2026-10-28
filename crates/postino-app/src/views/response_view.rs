@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use gpui_kit::base::SelectableText;
 use gpui_kit::component::input::EditorState;
+use gpui_kit::component::scroll::Scrollbar;
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -148,19 +149,43 @@ impl AppView {
         // height to fill: an ancestor `overflow_y_scroll()` container instead measures its child's
         // intrinsic height, which collapses a `flex_1` editor to a couple of lines.
         // Headers/Tests/Console are plain lists with no scrolling of their own, so they still need
-        // it here.
-        let content = div().id("response-content").flex_1().min_h_0();
-        let content = if self.active_response_tab == ResponseTab::Body {
-            content
+        // it here, with a visible scrollbar laid over the area (the welcome tab's pattern).
+        let body = self.active_response_tab == ResponseTab::Body;
+        let tab_content = self.render_response_tab_content(&tab_id, window, cx);
+        let content = if body {
+            div()
+                .id("response-content")
+                .flex_1()
+                .min_h_0()
+                .child(tab_content)
+                .into_any_element()
         } else {
-            content.overflow_y_scroll()
+            div()
+                .relative()
+                .flex_1()
+                .min_h_0()
+                .child(
+                    div()
+                        .id("response-content")
+                        .size_full()
+                        .overflow_y_scroll()
+                        .track_scroll(&self.response_scroll)
+                        .child(tab_content),
+                )
+                .child(
+                    div()
+                        .absolute()
+                        .inset_0()
+                        .child(Scrollbar::new(&self.response_scroll)),
+                )
+                .into_any_element()
         };
 
         v_flex()
             .size_full()
             .child(tab_bar)
             .children(warnings)
-            .child(content.child(self.render_response_tab_content(&tab_id, window, cx)))
+            .child(content)
             .into_any_element()
     }
 
@@ -456,10 +481,12 @@ impl AppView {
         if messages.is_empty() {
             return None;
         }
+        // Padded below too: the tab content scrolls under the strip, and without it a scrolled
+        // table would touch the last message.
         Some(
             v_flex()
                 .px(px(14.0))
-                .pt(px(8.0))
+                .py(px(8.0))
                 .gap_1()
                 .children(messages)
                 .into_any_element(),

@@ -182,6 +182,9 @@ pub struct AppView {
     pub(crate) export_job: Option<crate::views::load_test::export::ExportJob>,
     /// The welcome tab's scroll position, shared by its area and its scrollbars.
     pub(crate) welcome_scroll: ScrollHandle,
+    /// The scroll position of the response Headers, Tests and Console tabs, shared by the area
+    /// and its scrollbar.
+    pub(crate) response_scroll: ScrollHandle,
     /// The latency distribution bar under the pointer, for its crosshair and tooltip. Only the
     /// active tab shows a distribution, so one slot is enough.
     pub(crate) latency_hover: Option<usize>,
@@ -366,6 +369,7 @@ impl AppView {
             load_runs: HashMap::new(),
             latency_hover: None,
             welcome_scroll: ScrollHandle::new(),
+            response_scroll: ScrollHandle::new(),
             export_job: None,
             load_result_tasks: HashMap::new(),
             nav: state::navigation::NavState::default(),
