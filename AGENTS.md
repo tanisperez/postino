@@ -294,6 +294,12 @@ Version tags `vX.Y.Z` build and publish a GitHub release through
 `.github/workflows/release.yml`. Steps, packages, distribution
 channels and the updater are in `docs/releasing.md`.
 
+Release notes live in `release-notes/X.Y.Z.md` (English Markdown), one file per version. The app
+embeds the file of its own version for the What's new tab (#189) and the same file is the GitHub
+release's `--notes-file`. Every user-visible change of a milestone adds its entry there, with its
+issue as `#N`, in the same commit as the change, like the user documentation. A stable version
+without its notes file fails `make test`.
+
 ## Commands
 
 See `make help`. Main targets: `run`, `build`, `release`, `check`, `lint`, `format`, `test`.
