@@ -35,7 +35,7 @@ default tokens are telaio's defaults. The rest is under `crates/postino-app/src/
 - A single-line input's text sits 9 px from its border (`INPUT_PADDING_X`, 1 px less than
   gpui-component's default), and so does the text of a `VariableField`'s row of chips, so
   focusing a field does not move its text. The URL bar keeps its own 8 px.
-- Every text input hovers like the search trigger: a `border` border at rest and `border_strong`
+- Every text input hovers the same way: a `border` border at rest and `border_strong`
   while the pointer is over it, then its own focus look (`accent`) once focused. An `Input` that
   draws its own border goes through telaio's `HoverInput`, since
   gpui-component's `Input` has no hover style; one whose border is drawn by a container (URL bar,
@@ -247,9 +247,10 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
 1. **Title bar** (`surface`, bottom border): "P" logo square (18 px, radius 5, `accent`),
    "Postino" (600), 1x16 separator, workspace switcher (folder icon, folder name, chevron),
    centered 360 px search trigger ("Search requests and actions", `Ctrl K` hint; `raised` with a
-   `border` border and `fg_subtle` text, `border_strong` border, `fg_muted` text and a
-   `border_strong` hint on hover, and the focused input look while pressed: `accent` border and a
-   3 px `accent_subtle` ring), environment
+   `border` border and `fg_subtle` text; on hover an `accent` border with a soft `accent` glow, two
+   centered shadows at 0.55 alpha and 6 px blur and at 0.35 alpha and 16 px blur, `fg_muted` text
+   and a `border_strong` hint; the focused input look while pressed: `accent` border and a 3 px
+   `accent_subtle` ring. It is the only element with a glow), environment
    pill (dot, name, chevron, on `raised` with border), "Import" ghost button, settings gear,
    window controls. On Linux the app draws its own chrome (client decorations).
 2. **Activity rail** (48 px) left of the **sidebar** (`surface`, right border). Both are hidden

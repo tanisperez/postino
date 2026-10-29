@@ -220,9 +220,10 @@ fn render_logo(palette: &Palette) -> impl IntoElement {
 const SEARCH_TRIGGER_GROUP: &str = "title-bar-search-trigger";
 
 /// The centered search trigger: opens the command palette (`views/command_palette.rs`). Hovered,
-/// its border, text and key hint step up one token (`border_strong`, `fg_muted`); pressed, it takes
-/// the focused input look of the URL bar (`accent` border and a 3 px `accent_subtle` ring), since
-/// releasing it focuses the palette's search field.
+/// it takes an `accent` border with a soft `accent` glow around it, and its text and key hint step
+/// up one token (`fg_muted`, `border_strong`); pressed, it takes the focused input look of the URL
+/// bar (`accent` border and a 3 px `accent_subtle` ring), since releasing it focuses the palette's
+/// search field.
 fn render_search_trigger(
     weak: WeakEntity<AppView>,
     palette: &Palette,
@@ -246,7 +247,12 @@ fn render_search_trigger(
         .border_1()
         .border_color(palette.border)
         .text_color(palette.fg_subtle)
-        .hover(move |style| style.border_color(border_strong).text_color(fg_muted))
+        .hover(move |style| {
+            style
+                .border_color(accent)
+                .text_color(fg_muted)
+                .shadow(search_glow(accent))
+        })
         .active(move |style| {
             style.border_color(accent).shadow(vec![
                 BoxShadow::new(px(0.0), px(0.0), accent_subtle).spread_radius(px(3.0)),
@@ -270,6 +276,15 @@ fn render_search_trigger(
         .on_click(move |_, window, cx| {
             let _ = weak.update(cx, |view, cx| view.open_command_palette(window, cx));
         })
+}
+
+/// The hover glow of the search trigger: a close and a wider layer of `accent`, centered on the
+/// border, so the light fades out softly around it.
+fn search_glow(accent: Hsla) -> Vec<BoxShadow> {
+    vec![
+        BoxShadow::new(px(0.0), px(0.0), accent.opacity(0.55)).blur_radius(px(6.0)),
+        BoxShadow::new(px(0.0), px(0.0), accent.opacity(0.35)).blur_radius(px(16.0)),
+    ]
 }
 
 /// The settings gear: opens the Settings modal (`views/settings.rs`).
