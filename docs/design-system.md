@@ -248,7 +248,7 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
    "Postino" (600), 1x16 separator, workspace switcher (folder icon, folder name, chevron),
    centered 360 px search trigger ("Search requests and actions", `Ctrl K` hint; `raised` with a
    `border` border and `fg_subtle` text; on hover an `accent` border with a soft `accent` glow, two
-   centered shadows at 0.55 alpha and 6 px blur and at 0.35 alpha and 16 px blur, `fg_muted` text
+   centered shadows at 0.55 alpha and 5 px blur and at 0.35 alpha and 15 px blur, `fg_muted` text
    and a `border_strong` hint; the focused input look while pressed: `accent` border and a 3 px
    `accent_subtle` ring. It is the only element with a glow), environment
    pill (dot, name, chevron, on `raised` with border), "Import" ghost button, settings gear,

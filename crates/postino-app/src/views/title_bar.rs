@@ -282,8 +282,8 @@ fn render_search_trigger(
 /// border, so the light fades out softly around it.
 fn search_glow(accent: Hsla) -> Vec<BoxShadow> {
     vec![
-        BoxShadow::new(px(0.0), px(0.0), accent.opacity(0.55)).blur_radius(px(6.0)),
-        BoxShadow::new(px(0.0), px(0.0), accent.opacity(0.35)).blur_radius(px(16.0)),
+        BoxShadow::new(px(0.0), px(0.0), accent.opacity(0.55)).blur_radius(px(5.0)),
+        BoxShadow::new(px(0.0), px(0.0), accent.opacity(0.35)).blur_radius(px(15.0)),
     ]
 }
 
