@@ -102,6 +102,8 @@ pub(crate) struct LogView {
     path: Entity<InputState>,
     branch_filter: Entity<InputState>,
     rows_scroll: UniformListScrollHandle,
+    /// The commit list's focus, taken by a click on it, so the arrow keys move the selection.
+    rows_focus: FocusHandle,
     branches_scroll: UniformListScrollHandle,
     files_scroll: UniformListScrollHandle,
     /// The selected commit's subject, message and facts, which scroll when they are long.
@@ -164,6 +166,7 @@ impl LogView {
             path,
             branch_filter,
             rows_scroll: UniformListScrollHandle::new(),
+            rows_focus: cx.focus_handle(),
             branches_scroll: UniformListScrollHandle::new(),
             files_scroll: UniformListScrollHandle::new(),
             header_scroll: ScrollHandle::new(),
@@ -925,8 +928,14 @@ impl AppView {
         })
         .track_scroll(&view.rows_scroll)
         .size_full();
-        with_scrollbar(list.into_any_element(), &view.rows_scroll)
+        // A click on a row focuses the list (gpui focuses a tracked handle on mouse down).
+        div()
             .size_full()
+            .track_focus(&view.rows_focus)
+            .on_key_down(cx.listener(|view, event: &KeyDownEvent, _, cx| {
+                view.on_git_log_key(event, cx);
+            }))
+            .child(with_scrollbar(list.into_any_element(), &view.rows_scroll).size_full())
             .into_any_element()
     }
 
@@ -1142,6 +1151,50 @@ impl AppView {
                     .child(Scrollbar::vertical(&view.header_scroll)),
             )
             .into_any_element()
+    }
+
+    /// Moves the selection `offset` rows within the loaded list, scrolls to it and reads its
+    /// detail. Reading a detail replaces the previous read, so holding a key only lands the last.
+    fn move_git_log_selection(&mut self, offset: isize, cx: &mut Context<Self>) {
+        let Some(tab) = self.log_tab() else {
+            return;
+        };
+        let Some(index) = tab.row_from_selected(offset) else {
+            return;
+        };
+        let oid = tab.rows[index].commit.oid.clone();
+        if let Some(view) = self.git_tasks.log_view.as_ref() {
+            view.rows_scroll
+                .scroll_to_item(index, ScrollStrategy::Nearest);
+        }
+        self.select_git_log_commit(oid, cx);
+    }
+
+    /// The keys of the focused commit list: Up and Down move one row, Page Up and Page Down
+    /// one screen, Home and End to the first and last loaded row.
+    fn on_git_log_key(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
+        let keystroke = &event.keystroke;
+        let modifiers = keystroke.modifiers;
+        if modifiers.control || modifiers.alt || modifiers.platform || modifiers.shift {
+            return;
+        }
+        let page = || {
+            let height = self.git_tasks.log_view.as_ref().map_or(0.0, |view| {
+                f32::from(view.rows_scroll.0.borrow().base_handle.bounds().size.height)
+            });
+            ((height / ROW_HEIGHT) as isize - 1).max(1)
+        };
+        let offset = match keystroke.key.as_str() {
+            "up" => -1,
+            "down" => 1,
+            "pageup" => -page(),
+            "pagedown" => page(),
+            "home" => isize::MIN,
+            "end" => isize::MAX,
+            _ => return,
+        };
+        cx.stop_propagation();
+        self.move_git_log_selection(offset, cx);
     }
 
     /// Selects `oid` and scrolls to it when it is in the loaded list.

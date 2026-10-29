@@ -486,6 +486,17 @@ impl LogTab {
         self.rows.iter().position(|row| row.commit.oid == oid)
     }
 
+    /// The row `offset` rows away from the selected one, clamped to the loaded list: where the
+    /// arrow, page, Home and End keys move the selection. With no selection, or one that is not
+    /// loaded, it starts from the first row. `None` when the list is empty.
+    pub fn row_from_selected(&self, offset: isize) -> Option<usize> {
+        let last = self.rows.len().checked_sub(1)?;
+        let Some(current) = self.selected.as_deref().and_then(|oid| self.index_of(oid)) else {
+            return Some(0);
+        };
+        Some(current.saturating_add_signed(offset).min(last))
+    }
+
     /// Whether the graph is drawn: not while the filter narrows the list.
     pub fn shows_graph(&self) -> bool {
         !self.filter.narrows()
@@ -864,6 +875,37 @@ mod tests {
         assert_eq!(tab.begin_more(), None);
         // The selection survives later pages.
         assert_eq!(tab.selected, Some(format!("{:040}", 0)));
+    }
+
+    #[test]
+    fn the_keys_move_the_selection_within_the_loaded_rows() {
+        let mut tab = LogTab::new(LogFilter::default());
+        assert_eq!(tab.row_from_selected(1), None, "an empty list");
+        let generation = tab.restart(LogFilter::default(), None);
+        tab.apply_page(generation, Ok(page(5, 0)));
+        tab.selected = None;
+        assert_eq!(
+            tab.row_from_selected(1),
+            Some(0),
+            "nothing selected starts at the top"
+        );
+        tab.select(&format!("{:040}", 2));
+        assert_eq!(tab.row_from_selected(1), Some(3));
+        assert_eq!(tab.row_from_selected(-1), Some(1));
+        assert_eq!(
+            tab.row_from_selected(10),
+            Some(4),
+            "clamped to the last row"
+        );
+        assert_eq!(
+            tab.row_from_selected(-10),
+            Some(0),
+            "clamped to the first row"
+        );
+        assert_eq!(tab.row_from_selected(isize::MAX), Some(4), "End");
+        assert_eq!(tab.row_from_selected(isize::MIN), Some(0), "Home");
+        tab.select("not loaded");
+        assert_eq!(tab.row_from_selected(1), Some(0));
     }
 
     #[test]
