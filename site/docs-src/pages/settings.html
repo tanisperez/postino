@@ -20,6 +20,7 @@ description: Every Postino setting: language, theme, fonts, the welcome tab, JSO
         <tr><td>Interface font</td><td>Geist</td><td>Geist is bundled, so every platform looks the same. Any font installed on your system can be chosen, and typing in the list filters the fonts by name.</td></tr>
         <tr><td>Interface font size</td><td>13</td><td>11 to 16, in steps of 1.</td></tr>
         <tr><td>Welcome tab at startup</td><td>On</td><td>On shows the <a href="interface.html#welcome-tab">welcome tab</a> next to the last workspace every time Postino starts. Without a workspace to open, the first time you run it for example, it always shows, whatever this says. The checkbox <strong>Show the welcome tab when Postino starts</strong> at the bottom of the welcome tab changes the same setting.</td></tr>
+        <tr><td>What's new after an update</td><td>On</td><td>On opens the <a href="interface.html#whats-new">What's new</a> tab once, the first time a new version starts, with its release notes. Off never opens it by itself; <strong>Show what's new</strong> in the command palette still does. The checkbox <strong>Show after an update</strong> at the bottom of the tab changes the same setting.</td></tr>
         <tr><td>Editor monospace font</td><td>Geist Mono</td><td>Used in the URL bar, tables, code editors and the response body. Geist Mono is bundled.</td></tr>
         <tr><td>Editor font size</td><td>12.5</td><td>10 to 18, in steps of 0.5.</td></tr>
         <tr><td>JSON indentation</td><td>2 spaces</td><td>2 or 4 spaces per level when Postino formats JSON: the <a href="requests.html#body">Format</a> button of a request body and the <a href="responses.html#body">Pretty</a> view of a response. A response already shown is re-indented at once. The preview under it shows the result.</td></tr>
@@ -70,8 +71,8 @@ description: Every Postino setting: language, theme, fonts, the welcome tab, JSO
     <p>Logs never contain request or response bodies, variable values, query strings or the values of sensitive headers such as <code>Authorization</code> or <code>Cookie</code>.</p>
 </div>
 
-<h2>About</h2>
-<p>Shows the version and links to the release notes. A development build (a version ending in <code>-dev</code>) also shows the short commit it was built from next to the version, such as <code>0.5.0-dev (9bb54cc)</code>. Under the version, <strong>Design system</strong> names the version of <a href="https://github.com/tanisperez/telaio">telaio</a>, the library Postino's look and standard components come from; a click on <strong>telaio</strong> opens its repository. Include both versions when you report a visual bug. What else it shows depends on how Postino was installed:</p>
+<h2 id="about">About</h2>
+<p>Shows the version and links to the release notes. <strong>Show what's new</strong>, under the version, closes Settings and opens the <a href="interface.html#whats-new">What's new</a> tab with the notes of this version. A development build (a version ending in <code>-dev</code>) also shows the short commit it was built from next to the version, such as <code>0.5.0-dev (9bb54cc)</code>. Under the version, <strong>Design system</strong> names the version of <a href="https://github.com/tanisperez/telaio">telaio</a>, the library Postino's look and standard components come from; a click on <strong>telaio</strong> opens its repository. Include both versions when you report a visual bug. What else it shows depends on how Postino was installed:</p>
 <ul>
     <li><strong>macOS and Windows builds from the official installers</strong> have the in-app updater. <strong>Check for updates automatically</strong> (on by default) checks once, a few seconds after launch, and never polls in the background. <strong>Check now</strong> checks immediately. When an update has been downloaded and verified, <strong>Restart to update</strong> installs it. Restarting keeps your open tabs; if a tab has unsaved changes, Postino asks first.</li>
     <li><strong>The Windows portable zip</strong> checks too, but downloads nothing and does not show the download folder. When a newer version exists, a banner says so and its <strong>Download</strong> button opens the release page, where the new zip is. See <a href="installation.html#portable">Installation</a>.</li>
@@ -106,6 +107,7 @@ max_response_mb = 20                  # 1 to 1000
 log_level = "info"                    # off, error, warn, info, debug, trace
 check_updates = true                  # only used by builds with an updater
 show_welcome = true                   # show the welcome tab next to the last workspace
+show_whats_new = true                 # open the What's new tab once after an update
 # git_executable = "/usr/bin/git"     # absent: auto-detect from PATH
 git_fetch_automatically = true        # fetch when the window regains focus, every 5 minutes at most
 git_pull = "follow_config"            # follow_config, merge, rebase

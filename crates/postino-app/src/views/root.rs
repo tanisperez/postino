@@ -182,6 +182,9 @@ pub struct AppView {
     pub(crate) export_job: Option<crate::views::load_test::export::ExportJob>,
     /// The welcome tab's scroll position, shared by its area and its scrollbars.
     pub(crate) welcome_scroll: ScrollHandle,
+    /// The What's new tab's notes, parsed the first time it opens, and its scroll position.
+    pub(crate) whats_new_text: Option<Entity<gpui_kit::component::text::TextViewState>>,
+    pub(crate) whats_new_scroll: ScrollHandle,
     /// The scroll position of the response Headers, Tests and Console tabs, shared by the area
     /// and its scrollbar.
     pub(crate) response_scroll: ScrollHandle,
@@ -237,7 +240,8 @@ pub struct AppView {
 impl AppView {
     /// Creates a fresh view, opening `initial_workspace` right away if one was given (the CLI
     /// argument or the remembered last workspace, see `main.rs`), and the welcome tab when
-    /// `show_welcome` says so (`state::welcome::show_at_startup`), after that workspace.
+    /// `show_welcome` says so (`state::welcome::show_at_startup`), after that workspace, then the
+    /// What's new tab when `show_whats_new` says so (`state::whats_new::opens_at_startup`).
     /// `settings` is whatever `main.rs`
     /// loaded from `settings.toml` (or its defaults) before opening the window; the theme and
     /// fonts it describes are already applied by the time this runs, this just remembers it so
@@ -248,6 +252,7 @@ impl AppView {
         initial_workspace: Option<PathBuf>,
         initial_request: Option<String>,
         show_welcome: bool,
+        show_whats_new: bool,
         settings: Settings,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -369,6 +374,8 @@ impl AppView {
             load_runs: HashMap::new(),
             latency_hover: None,
             welcome_scroll: ScrollHandle::new(),
+            whats_new_text: None,
+            whats_new_scroll: ScrollHandle::new(),
             response_scroll: ScrollHandle::new(),
             export_job: None,
             load_result_tasks: HashMap::new(),
@@ -401,6 +408,9 @@ impl AppView {
         }
         if show_welcome {
             view.when_workspace_opens(window, cx, |view, _, cx| view.open_welcome_tab(cx));
+        }
+        if show_whats_new {
+            view.when_workspace_opens(window, cx, |view, _, cx| view.open_whats_new_tab(cx));
         }
         // Before `apply_debug_open`: a `POSTINO_OPEN=settings` launch defers opening the dialog
         // (see that method), and `Root::open_dialog` captures whatever is focused at that later
@@ -1527,6 +1537,8 @@ impl AppView {
 
         let content = if let Some(welcome) = welcome {
             self.render_welcome(&welcome, cx)
+        } else if self.state.tabs.is_whats_new_active() {
+            self.render_whats_new(cx)
         } else if is_load_test {
             self.render_load_test_tab(window, cx)
         } else if is_environment {
@@ -1594,6 +1606,7 @@ impl AppView {
                 state::TabKind::Welcome(_) => t!("welcome.tab").into_owned(),
                 state::TabKind::Diff(diff) => diff.path.clone(),
                 state::TabKind::Log(_) => t!("git_log.tab").into_owned(),
+                state::TabKind::WhatsNew => t!("whats_new.tab").into_owned(),
                 state::TabKind::Request(_) | state::TabKind::LoadTest(_) => tab.id.clone(),
             };
             let mut doc_tab = match &tab.kind {
@@ -1623,6 +1636,9 @@ impl AppView {
                 }
                 state::TabKind::Welcome(_) => DocumentTab::new(t!("welcome.tab"))
                     .icon(gpui_kit::assets::IconName::House)
+                    .icon_color(cx.palette().accent_text),
+                state::TabKind::WhatsNew => DocumentTab::new(t!("whats_new.tab"))
+                    .icon(gpui_kit::assets::IconName::Sparkles)
                     .icon_color(cx.palette().accent_text),
             };
             doc_tab = doc_tab

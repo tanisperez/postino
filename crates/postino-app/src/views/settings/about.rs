@@ -1,4 +1,5 @@
-//! The "About" pane of the Settings modal: the version, the release links and the updater. The
+//! The "About" pane of the Settings modal: the version, the release links, the What's new tab
+//! and the updater. The
 //! updater logic is `state::update` and `views/update.rs`; this only renders it and forwards the
 //! clicks to the same flows the status bar and the command palette use. Everything it shows is
 //! captured once per frame from [`AppView`] as plain data ([`AboutPane`]), with no IO.
@@ -42,7 +43,7 @@ impl AboutPane {
     }
 }
 
-/// The pane's body sections: the header row and the updates section.
+/// The pane's body sections: the header row, the What's new row and the updates section.
 pub(super) fn render_about(
     weak: WeakEntity<AppView>,
     palette: &Palette,
@@ -56,8 +57,22 @@ pub(super) fn render_about(
             palette,
             mono_font_family,
         ),
+        render_whats_new(weak.clone()),
         render_updates(weak, palette, mono_font_family, pane),
     ]
+}
+
+/// The row that opens the What's new tab (#189), closing the Settings modal so it shows.
+fn render_whats_new(weak: WeakEntity<AppView>) -> AnyElement {
+    let button = SecondaryButton::new("about-whats-new", t!("whats_new.palette_action"))
+        .icon(Icon::new(gpui_kit::assets::IconName::Sparkles))
+        .on_click(move |_, window, cx| {
+            window.close_dialog(cx);
+            let _ = weak.update(cx, |view, cx| view.open_whats_new_tab(cx));
+        });
+    LabeledRow::new(t!("whats_new.tab"), button)
+        .description(t!("settings.about.whats_new_description"))
+        .into_any_element()
 }
 
 /// The About footer's note: whether updates are checked or the build has no updater.

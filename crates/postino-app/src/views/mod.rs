@@ -30,5 +30,6 @@ pub mod title_bar;
 pub mod update;
 pub mod variable_hover;
 pub mod welcome;
+pub mod whats_new;
 
 pub use root::AppView;

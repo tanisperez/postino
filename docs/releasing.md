@@ -30,32 +30,36 @@ The work of a version is tracked by its GitHub milestone (`gh issue list --miles
 
 1. Check that every issue of the milestone is closed and `make format`, `make lint` and
    `make test` pass on `main`.
-2. Set `version` in `Cargo.toml` to the release (drop `-dev`), run `cargo check` so `Cargo.lock`
-   follows, and commit.
-3. Tag and push:
+2. Finish `release-notes/X.Y.Z.md`, the release notes in English Markdown (what changes and
+   which milestone issues went in, as `#N`). The binary embeds this file for the What's new tab
+   (`crates/postino-app/build.rs`, #189), and it is also the text of the GitHub release, so the
+   two never differ. Write it as the milestone goes, one entry per user-visible change.
+3. Set `version` in `Cargo.toml` to the release (drop `-dev`), run `cargo check` so `Cargo.lock`
+   follows, and commit. From this point `make test` fails if `release-notes/X.Y.Z.md` is missing
+   (`state::whats_new` tests), since a stable build without notes would show no What's new tab.
+4. Tag and push:
 
    ```
    git tag v0.1.0
    git push origin main v0.1.0
    ```
 
-4. Create the release as a **draft**, with the notes in English Markdown (what changes and which
-   milestone issues went in):
+5. Create the release as a **draft**, with the notes file of step 2:
 
    ```
-   gh release create v0.1.0 --draft --verify-tag --title v0.1.0 --notes-file notes.md
+   gh release create v0.1.0 --draft --verify-tag --title v0.1.0 --notes-file release-notes/0.1.0.md
    ```
 
-5. Wait for the `Release` workflow (`gh run watch`). It uploads the assets to the draft and then
+6. Wait for the `Release` workflow (`gh run watch`). It uploads the assets to the draft and then
    publishes it. If the draft does not exist yet when the builds finish, the workflow creates one
-   with placeholder notes; edit them afterwards with `gh release edit v0.1.0 --notes-file notes.md`.
+   with placeholder notes; edit them afterwards with `gh release edit v0.1.0 --notes-file release-notes/0.1.0.md`.
 
-6. For a stable release, run the `Website` workflow by hand (`gh workflow run website.yml`) once
+7. For a stable release, run the `Website` workflow by hand (`gh workflow run website.yml`) once
    the release is published. It rebuilds the APT and DNF repositories with the new packages. Its
    `release: published` trigger does not fire here, because the release workflow publishes with
    `GITHUB_TOKEN`, and events caused by that token never start other workflows.
 
-7. Bump `version` in `Cargo.toml` to the next `X.Y.Z-dev` (the next milestone), run `cargo check`
+8. Bump `version` in `Cargo.toml` to the next `X.Y.Z-dev` (the next milestone), run `cargo check`
    so `Cargo.lock` follows, and commit.
 
 The release stays a draft until every asset is uploaded, so nobody sees a half-built release.

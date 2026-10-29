@@ -310,6 +310,21 @@ _version: 2
   es: "Junto al último espacio de trabajo. Sin espacio de trabajo que abrir, se muestra siempre."
   gl: "Xunto ao último espazo de traballo. Sen espazo de traballo que abrir, amósase sempre."
   it: "Accanto all'ultimo spazio di lavoro. Senza uno spazio di lavoro da aprire, appare sempre."
+"settings.about.whats_new_description":
+  en: "The notes of this version, in a tab."
+  es: "Las notas de esta versión, en una pestaña."
+  gl: "As notas desta versión, nunha lapela."
+  it: "Le note di questa versione, in una scheda."
+"settings.interface.whats_new":
+  en: "What's new after an update"
+  es: "Novedades tras actualizar"
+  gl: "Novidades tras actualizar"
+  it: "Novità dopo un aggiornamento"
+"settings.interface.whats_new_description":
+  en: "Opens a tab with the notes of the new version, once."
+  es: "Abre una pestaña con las notas de la nueva versión, una vez."
+  gl: "Abre unha lapela coas notas da nova versión, unha vez."
+  it: "Apre una scheda con le note della nuova versione, una volta."
 "settings.category.git":
   en: "Git"
   es: "Git"

@@ -17,7 +17,7 @@ use super::locale::LanguageChoice;
 pub use telaio_app::logging::LogLevel;
 
 /// The path, relative to the config directory ([`config_dir`]), of the settings file.
-const SETTINGS_FILE: &str = "settings.toml";
+pub(crate) const SETTINGS_FILE: &str = "settings.toml";
 
 /// Valid range of [`Settings::ui_font_size`], in points.
 pub const UI_FONT_SIZE_RANGE: RangeInclusive<f32> = 11.0..=16.0;
@@ -305,6 +305,8 @@ pub struct Settings {
     /// Whether the welcome tab opens at startup next to the reopened workspace. Without a
     /// workspace to open it always does (`state::welcome::show_at_startup`).
     pub show_welcome: bool,
+    /// Whether the What's new tab opens once after an update (`state::whats_new`).
+    pub show_whats_new: bool,
     /// The git executable to use, `None` to search the `PATH`. Stored as `git_executable`, absent
     /// when auto-detecting.
     #[serde(rename = "git_executable", skip_serializing_if = "Option::is_none")]
@@ -343,6 +345,7 @@ impl Default for Settings {
             log_level: LogLevel::default(),
             check_updates: true,
             show_welcome: true,
+            show_whats_new: true,
             git_executable: None,
             git_fetch_automatically: true,
             git_pull: GitPull::default(),
@@ -492,6 +495,10 @@ fn parse_settings(content: &str) -> Settings {
         .and_then(|table| table.get("show_welcome"))
         .and_then(toml::Value::as_bool)
         .unwrap_or(defaults.show_welcome);
+    let show_whats_new = table
+        .and_then(|table| table.get("show_whats_new"))
+        .and_then(toml::Value::as_bool)
+        .unwrap_or(defaults.show_whats_new);
     let git_executable = table
         .and_then(|table| table.get("git_executable"))
         .and_then(toml::Value::as_str)
@@ -551,6 +558,7 @@ fn parse_settings(content: &str) -> Settings {
         log_level,
         check_updates,
         show_welcome,
+        show_whats_new,
         git_executable,
         git_fetch_automatically,
         git_pull,
@@ -680,6 +688,7 @@ mod tests {
             log_level: LogLevel::Trace,
             check_updates: false,
             show_welcome: true,
+            show_whats_new: false,
             git_executable: Some(PathBuf::from("/usr/local/bin/git")),
             git_fetch_automatically: false,
             git_pull: GitPull::Rebase,
@@ -890,6 +899,14 @@ mod tests {
         let settings = parse_settings("show_welcome = 0\ntheme = \"light\"\n");
         assert_eq!(settings.theme, ThemeChoice::Light);
         assert!(settings.show_welcome);
+    }
+
+    #[test]
+    fn show_whats_new_defaults_to_on_and_falls_back_per_field() {
+        let parse = |text: &str| parse_settings(text).show_whats_new;
+        assert!(parse(""));
+        assert!(!parse("show_whats_new = false\n"));
+        assert!(parse("show_whats_new = 1\n"));
     }
 
     #[test]

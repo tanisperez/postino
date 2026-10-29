@@ -183,6 +183,17 @@ impl AppView {
         self.apply_settings_live(window, cx);
     }
 
+    /// Turns the What's new tab after an update on or off, from Settings or the tab's checkbox.
+    pub(crate) fn set_show_whats_new(
+        &mut self,
+        enabled: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.state.settings.show_whats_new = enabled;
+        self.apply_settings_live(window, cx);
+    }
+
     /// Toggles between the light and dark theme (the command palette's "Toggle theme" action): picks the opposite of whichever mode is currently
     /// showing, so it also does the sensible thing from "System" (moving to whichever of Light or
     /// Dark the OS is not currently showing). Always lands on an explicit choice, like clicking a
@@ -481,15 +492,37 @@ fn render_interface_section(
                     "settings-show-welcome-halo",
                     Switch::new("settings-show-welcome")
                         .checked(settings.show_welcome)
-                        .on_click(move |checked, window, cx| {
-                            let checked = *checked;
-                            let _ = weak
-                                .update(cx, |view, cx| view.set_show_welcome(checked, window, cx));
+                        .on_click({
+                            let weak = weak.clone();
+                            move |checked, window, cx| {
+                                let checked = *checked;
+                                let _ = weak.update(cx, |view, cx| {
+                                    view.set_show_welcome(checked, window, cx)
+                                });
+                            }
                         }),
                     palette,
                 ),
             )
             .description(t!("settings.interface.welcome_description")),
+        )
+        .child(
+            LabeledRow::new(
+                t!("settings.interface.whats_new"),
+                switch_halo(
+                    "settings-show-whats-new-halo",
+                    Switch::new("settings-show-whats-new")
+                        .checked(settings.show_whats_new)
+                        .on_click(move |checked, window, cx| {
+                            let checked = *checked;
+                            let _ = weak.update(cx, |view, cx| {
+                                view.set_show_whats_new(checked, window, cx)
+                            });
+                        }),
+                    palette,
+                ),
+            )
+            .description(t!("settings.interface.whats_new_description")),
         )
         .into_any_element()
 }

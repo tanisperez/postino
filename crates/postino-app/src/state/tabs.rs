@@ -14,6 +14,7 @@ use super::git_log::{self, LogFilter, LogTab};
 use super::load_test::LoadTestTab;
 use super::request_edit::{self, BodyKind, BodyStash};
 use super::welcome::{self, WelcomeTab};
+use super::whats_new;
 
 /// What one open tab shows: a request being edited, an environment being edited, or a load test in
 /// progress or finished. Dirty state and saving apply to [`TabKind::Request`] and
@@ -35,6 +36,9 @@ pub enum TabKind {
     Diff(Box<DiffTab>),
     /// The git log (`state::git_log`). Read only, nothing to save.
     Log(Box<LogTab>),
+    /// The release notes of this version (`state::whats_new`). Nothing to save, and nothing to
+    /// hold: the notes are embedded in the binary.
+    WhatsNew,
 }
 
 /// One open tab.
@@ -71,7 +75,8 @@ impl OpenTab {
             | TabKind::LoadTest(_)
             | TabKind::Welcome(_)
             | TabKind::Diff(_)
-            | TabKind::Log(_) => None,
+            | TabKind::Log(_)
+            | TabKind::WhatsNew => None,
         }
     }
 
@@ -83,7 +88,8 @@ impl OpenTab {
             | TabKind::LoadTest(_)
             | TabKind::Welcome(_)
             | TabKind::Diff(_)
-            | TabKind::Log(_) => None,
+            | TabKind::Log(_)
+            | TabKind::WhatsNew => None,
         }
     }
 
@@ -166,7 +172,8 @@ impl OpenTab {
             | TabKind::LoadTest(_)
             | TabKind::Welcome(_)
             | TabKind::Diff(_)
-            | TabKind::Log(_) => None,
+            | TabKind::Log(_)
+            | TabKind::WhatsNew => None,
         }
     }
 
@@ -178,7 +185,8 @@ impl OpenTab {
             | TabKind::LoadTest(_)
             | TabKind::Welcome(_)
             | TabKind::Diff(_)
-            | TabKind::Log(_) => None,
+            | TabKind::Log(_)
+            | TabKind::WhatsNew => None,
         }
     }
 
@@ -190,7 +198,8 @@ impl OpenTab {
             | TabKind::Environment(_)
             | TabKind::Welcome(_)
             | TabKind::Diff(_)
-            | TabKind::Log(_) => None,
+            | TabKind::Log(_)
+            | TabKind::WhatsNew => None,
         }
     }
 
@@ -202,7 +211,8 @@ impl OpenTab {
             | TabKind::Environment(_)
             | TabKind::LoadTest(_)
             | TabKind::Diff(_)
-            | TabKind::Log(_) => None,
+            | TabKind::Log(_)
+            | TabKind::WhatsNew => None,
         }
     }
 
@@ -246,7 +256,8 @@ impl OpenTab {
             | TabKind::Environment(_)
             | TabKind::Welcome(_)
             | TabKind::Diff(_)
-            | TabKind::Log(_) => None,
+            | TabKind::Log(_)
+            | TabKind::WhatsNew => None,
         }
     }
 }
@@ -380,6 +391,22 @@ impl TabsState {
         (false, index)
     }
 
+    /// Opens the What's new tab and makes it active, or just makes it active when it is open.
+    /// Returns its index.
+    pub fn open_whats_new(&mut self) -> usize {
+        if let Some(index) = self.index_of(whats_new::TAB_ID) {
+            self.active = Some(index);
+            return index;
+        }
+        self.push_and_activate(whats_new::TAB_ID.to_string(), TabKind::WhatsNew)
+    }
+
+    /// Whether the active tab is the What's new tab.
+    pub fn is_whats_new_active(&self) -> bool {
+        self.active()
+            .is_some_and(|tab| tab.kind == TabKind::WhatsNew)
+    }
+
     /// Opens a new load test tab and makes it active. Always a fresh tab, never deduplicated:
     /// unlike a request, several load test tabs can target the same request or collection at once.
     /// Returns the tab's id and index.
@@ -403,7 +430,8 @@ impl TabsState {
             | TabKind::LoadTest(_)
             | TabKind::Welcome(_)
             | TabKind::Diff(_)
-            | TabKind::Log(_) => None,
+            | TabKind::Log(_)
+            | TabKind::WhatsNew => None,
         };
         self.open.push(OpenTab {
             id,
@@ -1015,5 +1043,19 @@ mod tests {
         assert!(tab.environment().is_none());
         assert!(tab.load_test().is_none());
         assert!(!tab.dirty);
+    }
+
+    #[test]
+    fn there_is_one_whats_new_tab() {
+        let mut tabs = TabsState::default();
+        assert!(!tabs.is_whats_new_active());
+        let first = tabs.open_whats_new();
+        tabs.open("a.postino", request());
+        assert!(!tabs.is_whats_new_active());
+        assert_eq!(tabs.open_whats_new(), first);
+        assert_eq!(tabs.open_tabs().len(), 2);
+        assert!(tabs.is_whats_new_active());
+        let tab = tabs.active().expect("just opened");
+        assert!(tab.request().is_none() && tab.welcome().is_none() && !tab.dirty);
     }
 }

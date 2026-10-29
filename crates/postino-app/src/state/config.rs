@@ -1,11 +1,14 @@
 //! Remembers recently opened workspace folders in the OS config directory, most recent first,
 //! so the app can offer to reopen one
 //! automatically at startup and show them in the workspace switcher menu. Also remembers each
-//! recent workspace's last active environment, restored when it is opened again.
+//! recent workspace's last active environment, restored when it is opened again, and the last
+//! version that ran, for the What's new tab (`state::whats_new`).
 
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use super::whats_new::LastSeen;
 
 /// Postino's folder inside the OS config directory, `<config dir>/postino`, where the settings and
 /// the files of this module live. `None` when the OS does not report the config directory.
@@ -29,6 +32,64 @@ const LEGACY_LAST_WORKSPACE_FILE: &str = "last-workspace.txt";
 /// lives here rather than in the workspace so picking an environment never shows up in the
 /// workspace's git diff.
 const LAST_ENVIRONMENTS_FILE: &str = "last-environments.toml";
+
+/// The path, relative to the config directory ([`config_dir`]), of the file holding the last
+/// stable version that ran, one line.
+const LAST_VERSION_FILE: &str = "last-version.txt";
+
+/// The files whose presence means Postino ran here before, though it never recorded a version
+/// (versions before 0.6.0).
+const EARLIER_RUN_FILES: [&str; 3] = [
+    super::settings::SETTINGS_FILE,
+    RECENT_WORKSPACES_FILE,
+    LEGACY_LAST_WORKSPACE_FILE,
+];
+
+/// The last version that ran. Read once at startup.
+pub fn last_seen_version() -> LastSeen {
+    match config_dir() {
+        Some(base) => last_seen_version_at(&base),
+        None => LastSeen::FirstRun,
+    }
+}
+
+/// Records `version` as the last one that ran, when it differs from the recorded one. Errors are
+/// logged and otherwise ignored, like the other files of this module.
+pub fn record_version(version: &str) {
+    if let Some(base) = config_dir() {
+        record_version_at(&base, version);
+    }
+}
+
+/// The testable core of [`last_seen_version`], taking the config base directory explicitly.
+fn last_seen_version_at(base: &Path) -> LastSeen {
+    if let Ok(content) = fs::read_to_string(base.join(LAST_VERSION_FILE)) {
+        return LastSeen::Version(content.trim().to_string());
+    }
+    if EARLIER_RUN_FILES
+        .iter()
+        .any(|file| base.join(file).exists())
+    {
+        LastSeen::Unrecorded
+    } else {
+        LastSeen::FirstRun
+    }
+}
+
+/// The testable core of [`record_version`], taking the config base directory explicitly.
+fn record_version_at(base: &Path, version: &str) {
+    if last_seen_version_at(base) == LastSeen::Version(version.to_string()) {
+        return;
+    }
+    if let Err(error) = fs::create_dir_all(base) {
+        log::warn!("could not create {}: {error}", base.display());
+        return;
+    }
+    let path = base.join(LAST_VERSION_FILE);
+    if let Err(error) = fs::write(&path, format!("{version}\n")) {
+        log::warn!("could not save {}: {error}", path.display());
+    }
+}
 
 /// Returns the list of recently opened workspaces, most recent first, migrating from the legacy
 /// single-workspace file the first time the new file does not exist yet.
@@ -212,6 +273,25 @@ fn write_recent_workspaces(base: &Path, recents: &[PathBuf]) {
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn the_last_version_tells_a_first_run_from_an_earlier_one() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let base = dir.path().join("postino");
+        assert_eq!(last_seen_version_at(&base), LastSeen::FirstRun);
+        record_workspace_at(&base, Path::new("/work/api"));
+        assert_eq!(last_seen_version_at(&base), LastSeen::Unrecorded);
+        record_version_at(&base, "0.6.0");
+        assert_eq!(
+            last_seen_version_at(&base),
+            LastSeen::Version("0.6.0".to_string())
+        );
+        record_version_at(&base, "0.7.0");
+        assert_eq!(
+            fs::read_to_string(base.join(LAST_VERSION_FILE)).expect("file"),
+            "0.7.0\n"
+        );
+    }
 
     #[test]
     fn missing_files_read_as_an_empty_list() {

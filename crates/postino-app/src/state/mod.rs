@@ -52,6 +52,7 @@ pub mod update;
 pub mod variable_completion;
 pub mod variable_hint;
 pub mod welcome;
+pub mod whats_new;
 pub mod workspace_log;
 
 pub use tabs::{TabKind, TabsState};

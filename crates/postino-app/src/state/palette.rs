@@ -67,6 +67,8 @@ pub enum ActionId {
     OpenWorkspace,
     /// Opens the welcome tab, or brings it to the front.
     ShowWelcome,
+    /// Opens the What's new tab, or brings it to the front.
+    ShowWhatsNew,
     /// Starts creating a new load test tab.
     NewLoadTest,
     /// Toggles between the light and dark theme.
@@ -230,6 +232,7 @@ pub fn action_items() -> Vec<PaletteItem> {
             Some(format!("{MODIFIER_KEY}+O")),
         ),
         action_item(ActionId::ShowWelcome, t!("welcome.palette_action"), None),
+        action_item(ActionId::ShowWhatsNew, t!("whats_new.palette_action"), None),
         action_item(
             ActionId::NewLoadTest,
             t!("shell.palette.new_load_test"),
@@ -449,7 +452,7 @@ mod tests {
     #[test]
     fn action_items_cover_every_action_id() {
         let items = action_items();
-        assert_eq!(items.len(), 13);
+        assert_eq!(items.len(), 14);
         assert!(
             items
                 .iter()

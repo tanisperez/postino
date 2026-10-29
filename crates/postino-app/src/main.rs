@@ -79,6 +79,21 @@ fn main() -> ExitCode {
     );
     let show_welcome =
         state::welcome::show_at_startup(arg.is_some(), launch.is_some(), settings.show_welcome);
+    // The What's new tab, once after an update (#189). The version that ran is recorded here,
+    // before the window opens, so a crash or a second window never shows it twice.
+    let last_seen = state::config::last_seen_version();
+    let show_whats_new = state::whats_new::opens_at_startup(
+        state::whats_new::VERSION,
+        &last_seen,
+        settings.show_whats_new,
+        state::whats_new::NOTES.is_some(),
+    );
+    if state::whats_new::records(state::whats_new::VERSION) {
+        state::config::record_version(state::whats_new::VERSION);
+    }
+    if show_whats_new {
+        log::info!("updated since {last_seen:?}, opening what's new");
+    }
     let (initial_workspace, initial_request) = match launch {
         Some(target) => (Some(target.workspace), target.request_id),
         None => (None, None),
@@ -112,6 +127,7 @@ fn main() -> ExitCode {
                         initial_workspace.clone(),
                         initial_request.clone(),
                         show_welcome,
+                        show_whats_new,
                         settings,
                         window,
                         cx,
