@@ -10,6 +10,7 @@ mod document;
 mod error;
 mod example;
 mod generate;
+mod manifest;
 mod spec;
 
 pub use catalog::{
@@ -20,6 +21,10 @@ pub use error::OpenApiError;
 pub use generate::{
     Grouping, ImportOptions, OpenApiPlan, PlanEnvironment, PlanFolder, PlanRequest, SpecVersion,
     build_plan,
+};
+pub use manifest::{
+    ChangeKind, MANIFEST_FILE, Manifest, ManifestGrouping, ManifestOptions, ManifestRequest,
+    ManifestSource, PlanChange, diff_plan, fingerprint, update_request,
 };
 pub use spec::{
     Operation, Parameter, ParameterLocation, RequestBody, SchemeKind, SecurityScheme, Server, Spec,

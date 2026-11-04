@@ -27,6 +27,7 @@ pub use create::{
 pub use env_edit::{EnvChange, EnvLayer, EnvLayers};
 pub use error::WorkspaceError;
 pub use git::git_branch;
+pub use openapi::{ImportOrigin, OpenApiCollection, UpdateReport};
 pub use postman::ImportReport;
 pub use sanitize::sanitize_file_name;
 pub use tree::{Folder, Node, RequestEntry, natural_cmp};

@@ -131,7 +131,7 @@ pub(crate) fn unique_path(dir: &Path, sanitized_name: &str) -> PathBuf {
 
 /// Like [`unique_path`], but for a file with `extension`: the numeric suffix is inserted before
 /// the extension (`"login (2).postino"`), not after it.
-fn unique_named_path(dir: &Path, sanitized_name: &str, extension: &str) -> PathBuf {
+pub(crate) fn unique_named_path(dir: &Path, sanitized_name: &str, extension: &str) -> PathBuf {
     let mut candidate = dir.join(format!("{sanitized_name}.{extension}"));
     let mut counter = 2;
     while candidate.exists() {
