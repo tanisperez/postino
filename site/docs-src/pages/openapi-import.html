@@ -1,5 +1,5 @@
 title: Importing OpenAPI
-description: Import OpenAPI 3.1, 3.0 and Swagger 2.0 specs, YAML or JSON, from a file, a URL or pasted text, as Postino requests, environments and tests.
+description: Import OpenAPI 3.1, 3.0 and Swagger 2.0 specs, YAML or JSON, from a file, a URL, pasted text, a folder or a Git repository, as Postino requests, environments and tests.
 ---
 <h1>Importing OpenAPI</h1>
 <p class="lead">An OpenAPI or Swagger spec becomes a collection of ready to send requests: one <code>.postino</code> file per operation, an environment per server, auth variables kept out of git, example bodies and a status code test. A three step wizard shows everything before anything is written, and the import never overwrites a file.</p>
@@ -20,17 +20,33 @@ description: Import OpenAPI 3.1, 3.0 and Swagger 2.0 specs, YAML or JSON, from a
 </ul>
 
 <h2>Step 1: Source</h2>
-<p>Three sources, chosen with the buttons at the top:</p>
+<p>Five sources, chosen with the buttons at the top:</p>
 <ul>
-    <li><strong>File:</strong> drop a spec file on the dashed area, or click it to pick one. External references are read from the disk, relative to the file.</li>
+    <li><strong>File:</strong> drop a spec file on the dashed area, or click it to pick one. External references are read from the disk, relative to the file. A <a href="#backstage-catalogs"><code>catalog-info.yaml</code></a> brings in the specs it references.</li>
     <li><strong>URL:</strong> type the address of the spec and click <strong>Download</strong>, or press <kbd>Enter</kbd> to download it and go on. The download uses the same <a href="settings.html">TLS settings</a> as requests, and external references are fetched relative to the URL. Relative server URLs such as <code>/v2</code> are resolved against it too.</li>
     <li><strong>Paste text:</strong> paste the spec. Pasted text has no location, so external references cannot be read.</li>
+    <li><strong>Folder:</strong> <strong>Choose…</strong> picks a folder, and every spec in it and its subfolders is read: the YAML and JSON files whose first lines have an <code>openapi</code> or <code>swagger</code> key, so schema fragments are left out, plus the specs of every <code>catalog-info.yaml</code>. Hidden folders and <code>node_modules</code>, <code>target</code>, <code>vendor</code>, <code>dist</code> and <code>build</code> are skipped. The scan goes 8 folders deep and looks at 5,000 files at most, of up to 32 MB each. A spec found both on its own and through a catalog is read once.</li>
+    <li><strong>Git repository:</strong> type the repository (<code>https://…</code>, <code>git@host:owner/repo.git</code> or a local path) and, optionally, a branch, then click <strong>Clone</strong> or press <kbd>Enter</kbd>. Only the last commit of the branch (the default branch when the field is empty) is downloaded, with the <a href="git.html">git Postino uses</a> and your own credentials, into a temporary folder that is deleted when the wizard closes. The specs are then found as in a folder.</li>
 </ul>
-<p>A spec that was read shows under <strong>Found</strong>, with its title, version, format and number of operations, and the number of warnings when there are any. A text that is not a spec shows the reason in red and the wizard stays on this step.</p>
+<p>A spec that was read shows under <strong>Found</strong>, with its title, version, format and number of operations, and the number of warnings when there are any. A catalog file shows above the list with the number of specs it references. A file that looked like a spec but could not be read is listed in red with the reason, and the others still import. A text that is not a spec, or a folder without any, shows the reason in red and the wizard stays on this step.</p>
+
+<h3>Backstage catalogs</h3>
+<p>A <code>catalog-info.yaml</code> of <a href="https://backstage.io/docs/features/software-catalog/descriptor-format">Backstage</a> describes the APIs of a repository. Every entity of kind <code>API</code> and type <code>openapi</code> is read, in every YAML document of the file; other kinds and API types (AsyncAPI, GraphQL, gRPC) are skipped. Its <code>spec.definition</code> can be the spec itself, or a <code>$text</code>, <code>$yaml</code> or <code>$json</code> substitution with a path relative to the catalog file or a URL:</p>
+```yaml
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: payments-v2
+spec:
+  type: openapi
+  definition:
+    $text: ./specs/payments-v2.yaml
+```
 
 <h2>Step 2: Options</h2>
 <ul>
-    <li><strong>Collection name:</strong> the name of the new folder, the spec's title by default.</li>
+    <li><strong>Collection name:</strong> the name of the new folder, the spec's title by default (the first spec's, with several).</li>
+    <li><strong>Versions:</strong> shown when the source gave several specs, each with its file, format and number of operations. Unchecked ones are not imported. Each spec goes in a folder of its own inside the collection: <code>v1</code>, <code>v2</code> after the major version of <code>info.version</code> when they all differ, else the spec titles when they differ, else the file names.</li>
     <li><strong>Folders:</strong> <strong>Path segments</strong> puts <code>/customers/{id}</code> in the folder <code>customers/{id}</code>; <strong>Tags</strong> puts each operation in the folder of its first tag, and untagged operations at the top of the collection.</li>
 </ul>
 <p>What to generate, every option on by default:</p>

@@ -3,29 +3,34 @@
 //! Plain Rust, so the wizard's logic is tested without a window; `views/openapi_import.rs`
 //! renders it.
 //!
-//! Loading a spec reads a file or fetches a URL, and with it every document its `$ref`s point
-//! to. It is blocking, the view runs it on the background executor.
+//! Loading a spec reads a file, scans a folder, clones a repository or fetches a URL, and with it
+//! every document its `$ref`s point to. It is blocking, the view runs it on the background
+//! executor.
 
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use postino_core::{Method, ResolvedField, ResolvedRequest};
 use postino_format::openapi::{
-    ImportOptions, NoExternalRefs, OpenApiPlan, PlanFolder, RefLoader, Spec, SpecVersion,
-    build_plan, parse_spec,
+    CatalogDefinition, ImportOptions, NoExternalRefs, OpenApiPlan, PlanFolder, RefLoader, Spec,
+    SpecVersion, build_plan, looks_like_catalog, looks_like_spec, parse_catalog, parse_spec,
 };
 use postino_runner::Client;
 
 /// Where the wizard reads the spec from (the source tabs of the first step).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SourceKind {
-    /// A spec file picked or dropped.
+    /// A spec file (or a `catalog-info.yaml`) picked or dropped.
     File,
     /// A spec fetched from a URL.
     Url,
     /// Spec text pasted into the wizard.
     Paste,
+    /// Every spec of a folder and its subfolders (GitHub #202).
+    Folder,
+    /// Every spec of a branch of a Git repository, cloned to a temporary folder (GitHub #202).
+    Git,
 }
 
 /// The wizard's steps, in order.
@@ -46,34 +51,268 @@ pub enum Step {
 pub struct LoadedSpec {
     /// The spec.
     pub spec: Spec,
-    /// What the source list shows under the title: the file name or the URL, empty for pasted
-    /// text.
+    /// What the source list shows under the title: the file name, its path in the folder or
+    /// repository, or the URL. Empty for pasted text.
     pub source: String,
+    /// Where it was read from (a canonical path or a URL), to read each file once.
+    pub location: String,
+}
+
+/// A file that looked like a spec, or that a catalog pointed to, and could not be read.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Failure {
+    /// The file, as the source list shows it.
+    pub source: String,
+    /// Why.
+    pub error: String,
+}
+
+/// A Backstage catalog file that was read.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogFile {
+    /// The file, as the source list shows it.
+    pub source: String,
+    /// How many OpenAPI APIs it declares.
+    pub apis: usize,
+}
+
+/// Everything a source gave.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Loaded {
+    /// The specs read, in source order.
+    pub specs: Vec<LoadedSpec>,
+    /// The files that could not be read.
+    pub failures: Vec<Failure>,
+    /// The catalog files read.
+    pub catalogs: Vec<CatalogFile>,
 }
 
 /// The `Accept` header of a spec download: the YAML and JSON types servers use for specs.
 const SPEC_ACCEPT: &str = "application/yaml, application/x-yaml, application/json;q=0.9, */*;q=0.8";
 
-/// Reads the spec file at `path`. External references are read relative to it, or fetched
-/// with `client` when they are URLs.
-pub fn load_file(path: &Path, client: &Client) -> Result<LoadedSpec, String> {
+/// The folders a folder scan never enters, besides hidden ones: dependencies and build output.
+const SKIPPED_FOLDERS: &[&str] = &["node_modules", "target", "vendor", "dist", "build"];
+
+/// How deep a folder scan goes below the folder picked.
+const MAX_SCAN_DEPTH: usize = 8;
+
+/// How many files a folder scan looks at, at most.
+const MAX_SCAN_FILES: usize = 5_000;
+
+/// The biggest file a folder scan reads.
+const MAX_SCAN_FILE_SIZE: u64 = 32 * 1024 * 1024;
+
+/// Reads the file at `path`: a spec, or a Backstage catalog whose OpenAPI APIs are read in turn.
+/// `shown` is how the source list names it. A catalog with no readable spec is not an error:
+/// the result lists the failures.
+pub fn load_path(path: &Path, shown: &str, client: &Client) -> Result<Loaded, String> {
     let text = std::fs::read_to_string(path).map_err(|error| error.to_string())?;
-    let location = path.to_string_lossy();
+    let location = canonical(path);
+    if is_catalog_name(path) || (!looks_like_spec(&text) && looks_like_catalog(&text)) {
+        return load_catalog(&text, &location, shown, client);
+    }
     let spec = parse_spec(&text, &location, &SourceLoader { client })
         .map_err(|error| error.to_string())?;
-    Ok(LoadedSpec {
-        spec,
-        source: path.file_name().map_or_else(
-            || location.to_string(),
-            |name| name.to_string_lossy().into_owned(),
-        ),
+    Ok(Loaded {
+        specs: vec![LoadedSpec {
+            spec,
+            source: shown.to_string(),
+            location,
+        }],
+        ..Loaded::default()
     })
+}
+
+/// Whether `path` is named like a Backstage catalog file.
+fn is_catalog_name(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| {
+            name.eq_ignore_ascii_case("catalog-info.yaml")
+                || name.eq_ignore_ascii_case("catalog-info.yml")
+        })
+}
+
+fn canonical(path: &Path) -> String {
+    dunce::canonicalize(path)
+        .unwrap_or_else(|_| path.to_path_buf())
+        .to_string_lossy()
+        .into_owned()
+}
+
+/// Reads the OpenAPI APIs of the catalog text found at `location`.
+fn load_catalog(
+    text: &str,
+    location: &str,
+    shown: &str,
+    client: &Client,
+) -> Result<Loaded, String> {
+    let apis = parse_catalog(text).map_err(|error| error.to_string())?;
+    let mut loaded = Loaded {
+        catalogs: vec![CatalogFile {
+            source: shown.to_string(),
+            apis: apis.len(),
+        }],
+        ..Loaded::default()
+    };
+    let directory = Path::new(location)
+        .parent()
+        .unwrap_or_else(|| Path::new(""));
+    let shown_directory = shown
+        .rsplit_once('/')
+        .map_or("", |(directory, _)| directory);
+    for api in apis {
+        let result = match &api.definition {
+            CatalogDefinition::Inline(spec) => parse_spec(spec, location, &SourceLoader { client })
+                .map(|spec| LoadedSpec {
+                    spec,
+                    source: format!("{shown} ({})", api.name),
+                    location: format!("{location}#{}", api.name),
+                })
+                .map_err(|error| (format!("{shown} ({})", api.name), error.to_string())),
+            CatalogDefinition::Reference(reference) if is_url(reference) => {
+                load_url(reference, client).map_err(|error| (reference.clone(), error))
+            }
+            CatalogDefinition::Reference(reference) => {
+                let relative = reference.trim_start_matches("./");
+                let shown = if shown_directory.is_empty() {
+                    relative.to_string()
+                } else {
+                    format!("{shown_directory}/{relative}")
+                };
+                load_path(&directory.join(relative), &shown, client)
+                    .map_err(|error| (shown.clone(), error))
+                    .map(|mut found| found.specs.remove(0))
+            }
+        };
+        match result {
+            Ok(spec) => loaded.specs.push(spec),
+            Err((source, error)) => loaded.failures.push(Failure { source, error }),
+        }
+    }
+    Ok(loaded)
+}
+
+/// Reads every spec under `root`: files that look like a spec root, and the specs of every
+/// catalog file. Hidden folders, dependency and build folders are skipped. A spec found both
+/// directly and through a catalog is read once.
+pub fn scan_folder(root: &Path, client: &Client) -> Result<Loaded, String> {
+    let mut files = Vec::new();
+    collect_files(root, 0, &mut files);
+    files.sort();
+    let mut loaded = Loaded::default();
+    let mut seen: HashSet<String> = HashSet::new();
+    // Catalogs first, so their specs keep the catalog's order.
+    let (catalogs, others): (Vec<PathBuf>, Vec<PathBuf>) =
+        files.into_iter().partition(|path| is_catalog_name(path));
+    for path in catalogs.into_iter().chain(others) {
+        let shown = relative_name(root, &path);
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let catalog = is_catalog_name(&path);
+        if !catalog && !looks_like_spec(&text) {
+            continue;
+        }
+        if !catalog && seen.contains(&canonical(&path)) {
+            continue;
+        }
+        match load_path(&path, &shown, client) {
+            Ok(found) => {
+                for spec in found.specs {
+                    if seen.insert(spec.location.clone()) {
+                        loaded.specs.push(spec);
+                    }
+                }
+                loaded.failures.extend(found.failures);
+                loaded.catalogs.extend(found.catalogs);
+            }
+            Err(error) => loaded.failures.push(Failure {
+                source: shown,
+                error,
+            }),
+        }
+    }
+    Ok(loaded)
+}
+
+/// The YAML and JSON files under `dir`, up to [`MAX_SCAN_DEPTH`] folders deep and
+/// [`MAX_SCAN_FILES`] files.
+fn collect_files(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let mut entries: Vec<_> = entries.flatten().collect();
+    entries.sort_by_key(|entry| entry.file_name());
+    for entry in entries {
+        if out.len() >= MAX_SCAN_FILES {
+            return;
+        }
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name.starts_with('.') {
+            continue;
+        }
+        let Ok(kind) = entry.file_type() else {
+            continue;
+        };
+        let path = entry.path();
+        if kind.is_dir() {
+            if depth < MAX_SCAN_DEPTH && !SKIPPED_FOLDERS.contains(&name.as_str()) {
+                collect_files(&path, depth + 1, out);
+            }
+        } else if kind.is_file() {
+            let extension = path
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .map(str::to_ascii_lowercase);
+            let small = entry
+                .metadata()
+                .is_ok_and(|metadata| metadata.len() <= MAX_SCAN_FILE_SIZE);
+            if matches!(extension.as_deref(), Some("yaml" | "yml" | "json")) && small {
+                out.push(path);
+            }
+        }
+    }
+}
+
+/// `path` relative to `root`, with `/` separators.
+fn relative_name(root: &Path, path: &Path) -> String {
+    let relative = path.strip_prefix(root).unwrap_or(path);
+    relative
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+/// Clones the last commit of `branch` (the default branch when empty) of `url` into a new
+/// temporary folder and reads its specs. The folder is deleted when the returned guard drops.
+pub fn clone_repository(
+    git: &telaio_git::Git,
+    url: &str,
+    branch: &str,
+    client: &Client,
+) -> Result<(tempfile::TempDir, Loaded), String> {
+    let url = url.trim();
+    if url.is_empty() {
+        return Err("no repository".to_string());
+    }
+    let parent = tempfile::Builder::new()
+        .prefix("postino-openapi-")
+        .tempdir()
+        .map_err(|error| error.to_string())?;
+    let target = parent.path().join("repository");
+    let branch = Some(branch.trim()).filter(|branch| !branch.is_empty());
+    git.clone_shallow(url, branch, &target)
+        .map_err(|error| error.to_string())?;
+    let loaded = scan_folder(&target, client)?;
+    Ok((parent, loaded))
 }
 
 /// Fetches the spec at `url` with `client`, and its external references relative to it.
 pub fn load_url(url: &str, client: &Client) -> Result<LoadedSpec, String> {
     let url = url.trim();
-    if !(url.starts_with("http://") || url.starts_with("https://")) {
+    if !is_url(url) {
         return Err("the URL must start with http:// or https://".to_string());
     }
     let text = fetch(client, url)?;
@@ -82,6 +321,7 @@ pub fn load_url(url: &str, client: &Client) -> Result<LoadedSpec, String> {
     Ok(LoadedSpec {
         spec,
         source: url.to_string(),
+        location: url.to_string(),
     })
 }
 
@@ -91,6 +331,7 @@ pub fn load_text(text: &str) -> Result<LoadedSpec, String> {
     Ok(LoadedSpec {
         spec,
         source: String::new(),
+        location: String::new(),
     })
 }
 
@@ -232,6 +473,12 @@ pub struct Wizard {
     pub options: ImportOptions,
     /// The specs loaded in the first step.
     specs: Vec<LoadedSpec>,
+    /// Which of them are imported (the Versions list), one flag per spec.
+    enabled: Vec<bool>,
+    /// The files of the source that could not be read.
+    failures: Vec<Failure>,
+    /// The catalog files of the source.
+    catalogs: Vec<CatalogFile>,
     /// The plan of the loaded specs with the current options and collection name.
     plan: Option<Arc<OpenApiPlan>>,
     /// The plan with every option on, for the summaries of what the options generate.
@@ -254,6 +501,9 @@ impl Wizard {
             source,
             options: ImportOptions::default(),
             specs: Vec::new(),
+            enabled: Vec::new(),
+            failures: Vec::new(),
+            catalogs: Vec::new(),
             plan: None,
             full_plan: None,
             excluded: HashSet::new(),
@@ -268,9 +518,34 @@ impl Wizard {
         &self.specs
     }
 
+    /// The files of the source that could not be read.
+    pub fn failures(&self) -> &[Failure] {
+        &self.failures
+    }
+
+    /// The catalog files of the source.
+    pub fn catalogs(&self) -> &[CatalogFile] {
+        &self.catalogs
+    }
+
+    /// Whether nothing was loaded, not even a failure.
+    pub fn is_empty(&self) -> bool {
+        self.specs.is_empty() && self.failures.is_empty() && self.catalogs.is_empty()
+    }
+
+    /// Replaces what the source gave, which starts the selection over.
+    pub fn set_loaded(&mut self, loaded: Loaded) {
+        self.set_specs(loaded.specs);
+        self.failures = loaded.failures;
+        self.catalogs = loaded.catalogs;
+    }
+
     /// Replaces the loaded specs, which starts the selection over.
     pub fn set_specs(&mut self, specs: Vec<LoadedSpec>) {
+        self.enabled = vec![true; specs.len()];
         self.specs = specs;
+        self.failures.clear();
+        self.catalogs.clear();
         self.plan = None;
         self.full_plan = None;
         self.excluded.clear();
@@ -288,33 +563,78 @@ impl Wizard {
             .unwrap_or_else(|| "OpenAPI".to_string())
     }
 
-    /// The version folder of each spec: none for a single spec, `v<major>` of the API version
-    /// otherwise, or the spec's source when two specs would share one.
-    fn version_labels(&self) -> Vec<String> {
+    /// Whether the spec at `index` is imported.
+    pub fn is_enabled(&self, index: usize) -> bool {
+        self.enabled.get(index).copied().unwrap_or(false)
+    }
+
+    /// Imports the spec at `index`, or stops importing it. The plan has to be rebuilt.
+    pub fn toggle_version(&mut self, index: usize) {
+        if let Some(flag) = self.enabled.get_mut(index) {
+            *flag = !*flag;
+            self.full_plan = None;
+        }
+    }
+
+    /// How many specs are imported.
+    pub fn enabled_count(&self) -> usize {
+        self.enabled.iter().filter(|enabled| **enabled).count()
+    }
+
+    /// The folder of each spec when several are imported together: `v<major>` of the API
+    /// versions when they differ, else the titles when they differ, else the file names.
+    pub fn version_labels(&self) -> Vec<String> {
         if self.specs.len() < 2 {
             return vec![String::new(); self.specs.len()];
         }
+        let unique = |labels: &[String]| {
+            let set: HashSet<&String> = labels.iter().collect();
+            set.len() == labels.len() && labels.iter().all(|label| !label.is_empty())
+        };
         let majors: Vec<String> = self
             .specs
             .iter()
             .map(|loaded| {
-                let major = loaded.spec.api_version.trim_start_matches(['v', 'V']);
+                let major = loaded
+                    .spec
+                    .api_version
+                    .trim()
+                    .trim_start_matches(['v', 'V']);
                 let major = major.split('.').next().unwrap_or_default();
-                format!("v{major}")
-            })
-            .collect();
-        majors
-            .iter()
-            .enumerate()
-            .map(|(index, label)| {
-                let shared = majors.iter().filter(|other| *other == label).count() > 1;
-                if label == "v" || shared {
-                    self.specs[index].source.clone()
+                if major.is_empty() {
+                    String::new()
                 } else {
-                    label.clone()
+                    format!("v{major}")
                 }
             })
-            .collect()
+            .collect();
+        if unique(&majors) {
+            return majors;
+        }
+        let titles: Vec<String> = self
+            .specs
+            .iter()
+            .map(|loaded| loaded.spec.title.clone())
+            .collect();
+        if unique(&titles) {
+            return titles;
+        }
+        let mut names: Vec<String> = self
+            .specs
+            .iter()
+            .map(|loaded| {
+                let file = loaded.source.rsplit('/').next().unwrap_or_default();
+                file.rsplit_once('.')
+                    .map_or(file, |(stem, _)| stem)
+                    .to_string()
+            })
+            .collect();
+        if !unique(&names) {
+            for (index, name) in names.iter_mut().enumerate() {
+                *name = format!("{name} ({})", index + 1);
+            }
+        }
+        names
     }
 
     /// Builds the plan of the loaded specs for a collection named `name`, with the current
@@ -326,7 +646,9 @@ impl Wizard {
             .specs
             .iter()
             .zip(&labels)
-            .map(|(loaded, label)| SpecVersion {
+            .zip(&self.enabled)
+            .filter(|(_, enabled)| **enabled)
+            .map(|((loaded, label), _)| SpecVersion {
                 label,
                 spec: &loaded.spec,
             })
@@ -405,7 +727,9 @@ impl Wizard {
     pub fn operation_count(&self) -> usize {
         self.specs
             .iter()
-            .map(|loaded| loaded.spec.operations.len())
+            .zip(&self.enabled)
+            .filter(|(_, enabled)| **enabled)
+            .map(|(loaded, _)| loaded.spec.operations.len())
             .sum()
     }
 
@@ -679,21 +1003,30 @@ paths:
         let mut wizard = Wizard::new(SourceKind::File);
         let v1 = load_text(&SPEC.replace("2.0.0", "1.4.0")).expect("valid");
         let mut v2 = load_text(SPEC).expect("valid");
-        v2.source = "payments-v2.yaml".to_string();
+        v2.source = "specs/payments-v2.yaml".to_string();
         wizard.set_specs(vec![v1.clone(), v2.clone()]);
         assert_eq!(wizard.version_labels(), vec!["v1", "v2"]);
-        // Two specs of the same major version fall back to their source.
-        wizard.set_specs(vec![
-            v2.clone(),
-            LoadedSpec {
-                source: "other.yaml".into(),
-                ..v2
-            },
-        ]);
+        // Same major version, different titles: the titles.
+        let mut other = v2.clone();
+        other.spec.title = "Other API".into();
+        wizard.set_specs(vec![v2.clone(), other.clone()]);
         assert_eq!(
             wizard.version_labels(),
-            vec!["payments-v2.yaml", "other.yaml"]
+            vec!["Acme Payments API", "Other API"]
         );
+        // Same version and title: the file names.
+        other.spec.title = v2.spec.title.clone();
+        other.source = "other.yaml".into();
+        wizard.set_specs(vec![v2.clone(), other]);
+        assert_eq!(wizard.version_labels(), vec!["payments-v2", "other"]);
+        // A disabled version leaves the plan.
+        wizard.set_specs(vec![v1, v2]);
+        wizard.toggle_version(0);
+        wizard.rebuild("");
+        assert_eq!(wizard.enabled_count(), 1);
+        assert_eq!(wizard.operation_count(), 4);
+        assert_eq!(wizard.total_count(), 4);
+        assert_eq!(wizard.plan().expect("built").root.folders[0].name, "v2");
     }
 
     #[test]
@@ -738,11 +1071,13 @@ paths:
             "get: {summary: Get x, responses: {}}\n",
         )
         .expect("write");
-        let loaded = load_file(
+        let loaded = load_path(
             &dir.path().join("api.yaml"),
+            "api.yaml",
             &Client::new(Default::default()),
         )
         .expect("loads");
+        let loaded = &loaded.specs[0];
         assert_eq!(loaded.source, "api.yaml");
         assert_eq!(loaded.spec.operations[0].summary, "Get x");
         assert!(
@@ -750,5 +1085,144 @@ paths:
             "{:?}",
             loaded.spec.warnings
         );
+    }
+
+    fn write(dir: &Path, path: &str, text: &str) {
+        let path = dir.join(path);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(path, text).expect("write");
+    }
+
+    fn spec_text(title: &str, version: &str) -> String {
+        format!(
+            "openapi: 3.0.0\ninfo: {{title: {title}, version: '{version}'}}\npaths:\n  /x:\n    get: {{responses: {{}}}}\n"
+        )
+    }
+
+    /// A repository like the design's: a catalog pointing to two specs, a spec it does not
+    /// list, a fragment, a broken spec and folders a scan skips.
+    fn sample_tree(dir: &Path) {
+        write(
+            dir,
+            "catalog-info.yaml",
+            "apiVersion: backstage.io/v1alpha1\nkind: API\nmetadata: {name: v1}\nspec: {type: openapi, definition: {$text: ./specs/payments-v1.yaml}}\n---\napiVersion: backstage.io/v1alpha1\nkind: API\nmetadata: {name: v2}\nspec: {type: openapi, definition: {$text: ./specs/payments-v2.yaml}}\n",
+        );
+        write(
+            dir,
+            "specs/payments-v1.yaml",
+            &spec_text("Payments", "1.0.0"),
+        );
+        write(
+            dir,
+            "specs/payments-v2.yaml",
+            &spec_text("Payments", "2.0.0"),
+        );
+        write(
+            dir,
+            "other/users.json",
+            "{\"openapi\": \"3.1.0\", \"info\": {\"title\": \"Users\", \"version\": \"1\"}, \"paths\": {}}",
+        );
+        write(dir, "specs/schemas/pet.yaml", "type: object\n");
+        write(dir, "broken.yaml", "openapi: 4.0.0\n");
+        write(
+            dir,
+            "node_modules/x/openapi.yaml",
+            &spec_text("Dependency", "1"),
+        );
+        write(dir, ".hidden/openapi.yaml", &spec_text("Hidden", "1"));
+    }
+
+    fn sources(loaded: &Loaded) -> Vec<&str> {
+        loaded
+            .specs
+            .iter()
+            .map(|spec| spec.source.as_str())
+            .collect()
+    }
+
+    #[test]
+    fn catalogs_read_the_specs_they_point_to() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        sample_tree(dir.path());
+        let loaded = load_path(
+            &dir.path().join("catalog-info.yaml"),
+            "catalog-info.yaml",
+            &Client::new(Default::default()),
+        )
+        .expect("a catalog");
+        assert_eq!(
+            sources(&loaded),
+            vec!["specs/payments-v1.yaml", "specs/payments-v2.yaml"]
+        );
+        assert_eq!(
+            loaded.catalogs,
+            vec![CatalogFile {
+                source: "catalog-info.yaml".into(),
+                apis: 2
+            }]
+        );
+    }
+
+    #[test]
+    fn folder_scans_find_every_spec_once() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        sample_tree(dir.path());
+        let loaded = scan_folder(dir.path(), &Client::new(Default::default())).expect("scans");
+        assert_eq!(
+            sources(&loaded),
+            vec![
+                "specs/payments-v1.yaml",
+                "specs/payments-v2.yaml",
+                "other/users.json"
+            ]
+        );
+        assert_eq!(loaded.failures.len(), 1);
+        assert_eq!(loaded.failures[0].source, "broken.yaml");
+        assert_eq!(loaded.catalogs.len(), 1);
+    }
+
+    #[test]
+    fn repositories_are_cloned_and_scanned() {
+        let Ok(git) = telaio_git::detect(&telaio_git::Executable::Auto) else {
+            eprintln!("skipping, no git");
+            return;
+        };
+        let repo = tempfile::tempdir().expect("tempdir");
+        sample_tree(repo.path());
+        let run = |args: &[&str]| {
+            let output = std::process::Command::new(git.path())
+                .args(args)
+                .current_dir(repo.path())
+                .output()
+                .expect("git runs");
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        };
+        run(&["init", "--quiet", "--initial-branch=main"]);
+        run(&["add", "."]);
+        run(&[
+            "-c",
+            "user.name=T",
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "--quiet",
+            "-m",
+            "specs",
+        ]);
+        let url = format!("file://{}", repo.path().display());
+        let client = Client::new(Default::default());
+        let (checkout, loaded) = clone_repository(&git, &url, "", &client).expect("clones");
+        assert_eq!(loaded.specs.len(), 3);
+        let path = checkout.path().to_path_buf();
+        assert!(path.exists());
+        drop(checkout);
+        assert!(!path.exists(), "the checkout is deleted with its guard");
+        assert!(clone_repository(&git, &url, "missing", &client).is_err());
     }
 }

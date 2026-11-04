@@ -28,8 +28,8 @@ use telaio_ui::metrics::CHECKBOX_HALO_PADDING;
 use crate::state::locale::plural;
 use crate::state::number::format_integer;
 use crate::state::openapi_import::{
-    Check, LoadedSpec, PreviewRow, RowKind, SourceKind, Step, Wizard, load_file, load_text,
-    load_url,
+    Check, Loaded, LoadedSpec, PreviewRow, RowKind, SourceKind, Step, Wizard, clone_repository,
+    load_path, load_text, load_url, scan_folder,
 };
 use crate::theme::metrics::{RADIUS_MD, RADIUS_SM};
 use crate::theme::{Palette, PaletteExt};
@@ -54,6 +54,8 @@ const SOURCE_TAB_HEIGHT: f32 = 30.0;
 const DROP_ZONE_HEIGHT: f32 = 150.0;
 /// Height of the paste text area.
 const PASTE_HEIGHT: f32 = 200.0;
+/// Width of the Git source's branch field, from the design.
+const GIT_BRANCH_WIDTH: f32 = 140.0;
 /// How many steps the stepper shows (Done is not one of them).
 const STEP_COUNT: usize = 3;
 
@@ -82,6 +84,15 @@ pub(crate) struct ImportWizard {
     name: Entity<InputState>,
     url: Entity<InputState>,
     paste: Entity<TextareaState>,
+    repository: Entity<InputState>,
+    branch: Entity<InputState>,
+    /// The folder of the Folder source.
+    folder: Option<PathBuf>,
+    /// The git Postino uses, read on the first clone like the client.
+    git: Option<Option<telaio_git::Git>>,
+    /// The temporary checkout of the Git source, deleted when the wizard closes or the source
+    /// changes.
+    checkout: Option<tempfile::TempDir>,
     /// Whether a file is being read or a URL downloaded.
     loading: bool,
     /// Why the last load failed.
@@ -121,11 +132,42 @@ impl ImportWizard {
                 client
             }
         };
+        if matches!(input, LoadInput::Git { .. }) && self.git.is_none() {
+            let git = self
+                .view
+                .upgrade()
+                .and_then(|view| view.read(cx).git.availability.git().cloned());
+            self.git = Some(git);
+        }
+        let git = self.git.clone().flatten();
         let task = cx.background_executor().spawn(async move {
+            let single = |result: Result<LoadedSpec, String>| {
+                result.map(|spec| {
+                    (
+                        None,
+                        Loaded {
+                            specs: vec![spec],
+                            ..Loaded::default()
+                        },
+                    )
+                })
+            };
             match input {
-                LoadInput::File(path) => load_file(&path, &client),
-                LoadInput::Url(url) => load_url(&url, &client),
-                LoadInput::Text(text) => load_text(&text),
+                LoadInput::File(path) => {
+                    let shown = path.file_name().map_or_else(
+                        || path.display().to_string(),
+                        |name| name.to_string_lossy().into_owned(),
+                    );
+                    load_path(&path, &shown, &client).map(|loaded| (None, loaded))
+                }
+                LoadInput::Folder(path) => scan_folder(&path, &client).map(|loaded| (None, loaded)),
+                LoadInput::Git { url, branch } => match git {
+                    Some(git) => clone_repository(&git, &url, &branch, &client)
+                        .map(|(checkout, loaded)| (Some(checkout), loaded)),
+                    None => Err(t!("openapi.git.missing").into_owned()),
+                },
+                LoadInput::Url(url) => single(load_url(&url, &client)),
+                LoadInput::Text(text) => single(load_text(&text)),
             }
         });
         cx.spawn(async move |wizard, cx| {
@@ -138,7 +180,7 @@ impl ImportWizard {
     fn loaded(
         &mut self,
         kind: SourceKind,
-        result: Result<LoadedSpec, String>,
+        result: Result<(Option<tempfile::TempDir>, Loaded), String>,
         cx: &mut Context<Self>,
     ) {
         self.loading = false;
@@ -148,20 +190,26 @@ impl ImportWizard {
             return;
         }
         match result {
-            Ok(loaded) => {
+            Ok((checkout, loaded)) => {
                 log::info!(
-                    "OpenAPI import: read {} ({} operations, {} warnings)",
-                    if loaded.source.is_empty() {
-                        "pasted text"
-                    } else {
-                        "a spec"
-                    },
-                    loaded.spec.operations.len(),
-                    loaded.spec.warnings.len()
+                    "OpenAPI import: read {} specs ({} operations), {} files failed, {} catalogs",
+                    loaded.specs.len(),
+                    loaded
+                        .specs
+                        .iter()
+                        .map(|spec| spec.spec.operations.len())
+                        .sum::<usize>(),
+                    loaded.failures.len(),
+                    loaded.catalogs.len()
                 );
-                self.state.set_specs(vec![loaded]);
-                self.name_pending = true;
-                if self.advance_after_load {
+                let found = !loaded.specs.is_empty();
+                if !found && loaded.failures.is_empty() {
+                    self.error = Some(t!("openapi.none_found").into_owned());
+                }
+                self.checkout = checkout;
+                self.state.set_loaded(loaded);
+                self.name_pending = found;
+                if self.advance_after_load && found {
                     self.state.step = Step::Options;
                 }
             }
@@ -180,14 +228,16 @@ impl ImportWizard {
         }
         self.state.source = source;
         self.state.set_specs(Vec::new());
+        self.checkout = None;
         self.error = None;
         cx.notify();
     }
 
     /// Clears what a source input loaded once its text changes.
     fn source_edited(&mut self, cx: &mut Context<Self>) {
-        if !self.state.specs().is_empty() || self.error.is_some() {
+        if !self.state.is_empty() || self.error.is_some() {
             self.state.set_specs(Vec::new());
+            self.checkout = None;
             self.error = None;
             cx.notify();
         }
@@ -213,8 +263,13 @@ impl ImportWizard {
                 SourceKind::Paste => {
                     !self.state.specs().is_empty() || !self.paste.read(cx).value().trim().is_empty()
                 }
+                SourceKind::Folder => !self.state.specs().is_empty(),
+                SourceKind::Git => {
+                    !self.state.specs().is_empty()
+                        || !self.repository.read(cx).value().trim().is_empty()
+                }
             },
-            Step::Options => true,
+            Step::Options => self.state.enabled_count() > 0,
             Step::Preview => self.state.selected_count() > 0,
             Step::Done => true,
         }
@@ -224,6 +279,8 @@ impl ImportWizard {
 /// What to load.
 enum LoadInput {
     File(PathBuf),
+    Folder(PathBuf),
+    Git { url: String, branch: String },
     Url(String),
     Text(String),
 }
@@ -240,6 +297,10 @@ pub(crate) fn open_openapi_wizard(
         .new(|cx| InputState::new(window, cx).placeholder("https://api.example.com/openapi.yaml"));
     let paste =
         cx.new(|cx| TextareaState::new(window, cx).placeholder(t!("openapi.paste.placeholder")));
+    let repository =
+        cx.new(|cx| InputState::new(window, cx).placeholder("git@github.com:acme/payments.git"));
+    let branch =
+        cx.new(|cx| InputState::new(window, cx).placeholder(t!("openapi.git.branch_placeholder")));
     let wizard = cx.new(|cx| ImportWizard {
         state: Wizard::new(source),
         view: view.clone(),
@@ -247,6 +308,11 @@ pub(crate) fn open_openapi_wizard(
         name: name.clone(),
         url: url.clone(),
         paste: paste.clone(),
+        repository: repository.clone(),
+        branch: branch.clone(),
+        folder: None,
+        git: None,
+        checkout: None,
         loading: false,
         error: None,
         name_pending: false,
@@ -275,6 +341,16 @@ pub(crate) fn open_openapi_wizard(
                 }
             })
             .detach();
+        for input in [&repository, &branch] {
+            let weak = wizard.downgrade();
+            window
+                .subscribe(input, cx, move |_, event: &InputEvent, _, cx| {
+                    if matches!(event, InputEvent::Change) {
+                        let _ = weak.update(cx, |wizard, cx| wizard.source_edited(cx));
+                    }
+                })
+                .detach();
+        }
     }
     window.open_dialog(cx, move |dialog, window, _| {
         let enter = wizard.clone();
@@ -290,8 +366,10 @@ pub(crate) fn open_openapi_wizard(
             move |window, cx| render_wizard(&wizard, window, cx),
         )
     });
-    if source == SourceKind::Url {
-        url.update(cx, |state, cx| state.focus(window, cx));
+    match source {
+        SourceKind::Url => url.update(cx, |state, cx| state.focus(window, cx)),
+        SourceKind::Git => repository.update(cx, |state, cx| state.focus(window, cx)),
+        _ => {}
     }
 }
 
@@ -310,7 +388,12 @@ fn primary_action(wizard: &Entity<ImportWizard>, window: &mut Window, cx: &mut A
                     return;
                 }
                 match wizard.state.source {
-                    SourceKind::File => {}
+                    SourceKind::File | SourceKind::Folder => {}
+                    SourceKind::Git => {
+                        let url = wizard.repository.read(cx).value().to_string();
+                        let branch = wizard.branch.read(cx).value().to_string();
+                        wizard.load(SourceKind::Git, LoadInput::Git { url, branch }, true, cx);
+                    }
                     SourceKind::Url => {
                         let url = wizard.url.read(cx).value().to_string();
                         wizard.load(SourceKind::Url, LoadInput::Url(url), true, cx);
@@ -609,6 +692,12 @@ fn render_footer(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) -> 
     let selected = state.state.selected_count();
     let note: SharedString = match step {
         Step::Source => t!("openapi.supported").into(),
+        Step::Options if state.state.specs().len() > 1 => t!(
+            &telaio_app::language::plural_key("openapi.from_versions", state.state.enabled_count()),
+            operations = plural("openapi.operations", state.state.operation_count()),
+            count = format_integer(state.state.enabled_count() as u64)
+        )
+        .into(),
         Step::Options => plural("openapi.operations", state.state.operation_count()).into(),
         Step::Preview => plural("openapi.selected", selected).into(),
         Step::Done => SharedString::default(),
@@ -616,6 +705,7 @@ fn render_footer(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) -> 
     let label: SharedString = match step {
         Step::Source if state.loading && state.advance_after_load => match state.state.source {
             SourceKind::Url => t!("openapi.url.fetching").into(),
+            SourceKind::Git => t!("openapi.git.cloning").into(),
             _ => t!("openapi.file.reading").into(),
         },
         Step::Source | Step::Options => t!("openapi.next").into(),
@@ -682,6 +772,16 @@ fn render_source(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) -> 
             t!("openapi.source.paste"),
             IconName::Clipboard,
         ),
+        (
+            SourceKind::Folder,
+            t!("openapi.source.folder"),
+            IconName::Folder,
+        ),
+        (
+            SourceKind::Git,
+            t!("openapi.source.git"),
+            IconName::GitBranch,
+        ),
     ];
     let tab_row = h_flex()
         .gap(px(6.0))
@@ -736,7 +836,12 @@ fn render_source(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) -> 
                             SourceKind::Paste => {
                                 wizard.paste.update(cx, |state, cx| state.focus(window, cx));
                             }
-                            SourceKind::File => {}
+                            SourceKind::Git => {
+                                wizard
+                                    .repository
+                                    .update(cx, |state, cx| state.focus(window, cx));
+                            }
+                            SourceKind::File | SourceKind::Folder => {}
                         }
                     });
                 })
@@ -759,6 +864,8 @@ fn render_source(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) -> 
             )
             .child(hint(t!("openapi.paste.hint"), palette))
             .into_any_element(),
+        SourceKind::Folder => render_folder_input(wizard, palette, cx),
+        SourceKind::Git => render_git_input(wizard, palette, cx),
     };
 
     v_flex()
@@ -771,8 +878,8 @@ fn render_source(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) -> 
                 .clone()
                 .map(|error| InlineMessage::new(InlineMessageKind::Danger, error)),
         )
-        .when(!state.state.specs().is_empty(), |column| {
-            column.child(render_found(state.state.specs(), palette, cx))
+        .when(!state.state.is_empty(), |column| {
+            column.child(render_found(&state.state, palette, cx))
         })
         .into_any_element()
 }
@@ -898,76 +1005,278 @@ fn render_url_input(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) 
         .into_any_element()
 }
 
-/// The specs read from the source, one card each.
-fn render_found(specs: &[LoadedSpec], palette: &Palette, cx: &App) -> AnyElement {
+/// What the source gave: its catalog files, then one card per spec read and per file that
+/// could not be read.
+fn render_found(state: &Wizard, palette: &Palette, cx: &App) -> AnyElement {
     let mono = cx.theme().mono_font_family.clone();
+    let card = || {
+        h_flex()
+            .gap(px(10.0))
+            .px(px(12.0))
+            .py(px(10.0))
+            .rounded(px(RADIUS_MD))
+            .border_1()
+            .border_color(palette.border)
+    };
+    let source_line = |text: String| {
+        div()
+            .truncate()
+            .font_family(mono.clone())
+            .text_size(px(11.0))
+            .text_color(palette.fg_subtle)
+            .child(text)
+    };
+    let catalogs = state.catalogs().iter().map(|catalog| {
+        h_flex()
+            .gap(px(10.0))
+            .px(px(12.0))
+            .py(px(10.0))
+            .rounded(px(RADIUS_MD))
+            .bg(palette.raised)
+            .child(
+                Icon::new(IconName::FileText)
+                    .size(px(15.0))
+                    .text_color(palette.fg_muted),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .truncate()
+                    .font_family(mono.clone())
+                    .text_size(px(12.0))
+                    .child(catalog.source.clone()),
+            )
+            .child(
+                div()
+                    .flex_none()
+                    .text_size(px(12.0))
+                    .text_color(palette.fg_muted)
+                    .child(plural("openapi.catalog", catalog.apis)),
+            )
+    });
+    let specs = state.specs().iter().map(|loaded| {
+        let spec = &loaded.spec;
+        let format = if spec.spec_version == "2.0" {
+            "Swagger 2.0".to_string()
+        } else {
+            format!("OpenAPI {}", spec.spec_version)
+        };
+        let meta = format!(
+            "{format} · {}",
+            plural("openapi.operations", spec.operations.len())
+        );
+        let title = if spec.api_version.is_empty() {
+            spec.title.clone()
+        } else {
+            format!("{} {}", spec.title, spec.api_version)
+        };
+        card()
+            .child(
+                Icon::new(IconName::CircleCheck)
+                    .size(px(15.0))
+                    .text_color(palette.success),
+            )
+            .child(
+                v_flex()
+                    .flex_1()
+                    .min_w_0()
+                    .gap(px(2.0))
+                    .child(div().truncate().child(title))
+                    .when(!loaded.source.is_empty(), |column| {
+                        column.child(source_line(loaded.source.clone()))
+                    }),
+            )
+            .child(
+                v_flex()
+                    .flex_none()
+                    .items_end()
+                    .gap(px(2.0))
+                    .text_size(px(12.0))
+                    .text_color(palette.fg_muted)
+                    .child(meta)
+                    .when(!spec.warnings.is_empty(), |column| {
+                        column.child(
+                            div()
+                                .text_color(palette.warning)
+                                .child(plural("openapi.warnings", spec.warnings.len())),
+                        )
+                    }),
+            )
+    });
+    let failures = state.failures().iter().map(|failure| {
+        card()
+            .child(
+                Icon::new(IconName::CircleAlert)
+                    .size(px(15.0))
+                    .text_color(palette.danger),
+            )
+            .child(
+                v_flex()
+                    .flex_1()
+                    .min_w_0()
+                    .gap(px(2.0))
+                    .child(source_line(failure.source.clone()).text_color(palette.fg_muted))
+                    .child(
+                        div()
+                            .text_size(px(12.0))
+                            .text_color(palette.danger)
+                            .child(failure.error.clone()),
+                    ),
+            )
+    });
     v_flex()
         .gap(px(8.0))
-        .child(SectionLabel::new(t!("openapi.found")))
-        .children(specs.iter().map(|loaded| {
-            let spec = &loaded.spec;
-            let mut meta = format!(
-                "OpenAPI {} · {}",
-                spec.spec_version,
-                plural("openapi.operations", spec.operations.len())
-            );
-            if spec.spec_version == "2.0" {
-                meta = format!(
-                    "Swagger 2.0 · {}",
-                    plural("openapi.operations", spec.operations.len())
-                );
-            }
-            let title = if spec.api_version.is_empty() {
-                spec.title.clone()
-            } else {
-                format!("{} {}", spec.title, spec.api_version)
-            };
+        .children(catalogs)
+        .child(
+            div()
+                .pt(px(4.0))
+                .child(SectionLabel::new(t!("openapi.found"))),
+        )
+        .children(specs)
+        .children(failures)
+        .into_any_element()
+}
+
+/// The Folder source: the chosen folder and the button that opens the folder picker.
+fn render_folder_input(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) -> AnyElement {
+    let state = wizard.read(cx);
+    let pick = wizard.downgrade();
+    let shown: SharedString = match &state.folder {
+        Some(folder) => {
+            crate::state::format::shorten_path(folder, dirs::home_dir().as_deref()).into()
+        }
+        None => t!("openapi.folder.none").into(),
+    };
+    v_flex()
+        .gap(px(6.0))
+        .child(
             h_flex()
-                .gap(px(10.0))
-                .px(px(12.0))
-                .py(px(10.0))
-                .rounded(px(RADIUS_MD))
-                .border_1()
-                .border_color(palette.border)
+                .gap(px(8.0))
                 .child(
-                    Icon::new(IconName::CircleCheck)
-                        .size(px(15.0))
-                        .text_color(palette.success),
+                    h_flex()
+                        .flex_1()
+                        .min_w_0()
+                        .h(px(telaio_ui::components::text_field::FIELD_HEIGHT))
+                        .gap(px(8.0))
+                        .px(px(10.0))
+                        .rounded(px(RADIUS_MD))
+                        .bg(palette.surface)
+                        .border_1()
+                        .border_color(palette.border)
+                        .font_family(cx.theme().mono_font_family.clone())
+                        .text_size(px(12.0))
+                        .text_color(if state.folder.is_some() {
+                            palette.fg
+                        } else {
+                            palette.fg_subtle
+                        })
+                        .child(
+                            Icon::new(IconName::Folder)
+                                .size(px(14.0))
+                                .text_color(palette.fg_muted),
+                        )
+                        .child(div().truncate().child(shown)),
                 )
+                .child(
+                    SecondaryButton::new(
+                        "openapi-choose-folder",
+                        if state.loading {
+                            t!("openapi.folder.scanning")
+                        } else {
+                            t!("openapi.folder.choose")
+                        },
+                    )
+                    .disabled(state.loading)
+                    .on_click(move |_, _, cx| pick_folder(pick.clone(), cx)),
+                ),
+        )
+        .child(hint(t!("openapi.folder.hint"), palette))
+        .into_any_element()
+}
+
+/// Opens the native folder picker and scans the picked folder.
+fn pick_folder(wizard: WeakEntity<ImportWizard>, cx: &mut App) {
+    let receiver = cx.prompt_for_paths(PathPromptOptions {
+        files: false,
+        directories: true,
+        multiple: false,
+        prompt: None,
+    });
+    cx.spawn(async move |cx| {
+        let Ok(Ok(Some(mut paths))) = receiver.await else {
+            return;
+        };
+        let Some(path) = paths.pop() else {
+            return;
+        };
+        let _ = wizard.update(cx, |wizard, cx| {
+            wizard.folder = Some(path.clone());
+            wizard.load(SourceKind::Folder, LoadInput::Folder(path), false, cx);
+        });
+    })
+    .detach();
+}
+
+/// The Git source: the repository, the branch and the Clone button.
+fn render_git_input(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) -> AnyElement {
+    let state = wizard.read(cx);
+    let clone = wizard.downgrade();
+    let empty = state.repository.read(cx).value().trim().is_empty();
+    v_flex()
+        .gap(px(6.0))
+        .child(
+            h_flex()
+                .items_start()
+                .gap(px(10.0))
                 .child(
                     v_flex()
                         .flex_1()
                         .min_w_0()
-                        .gap(px(2.0))
-                        .child(div().truncate().child(title))
-                        .when(!loaded.source.is_empty(), |column| {
-                            column.child(
-                                div()
-                                    .truncate()
-                                    .font_family(mono.clone())
-                                    .text_size(px(11.0))
-                                    .text_color(palette.fg_subtle)
-                                    .child(loaded.source.clone()),
-                            )
-                        }),
+                        .gap(px(6.0))
+                        .child(field_label(t!("openapi.git.repository"), palette))
+                        .child(text_field(&state.repository, cx)),
+                )
+                .child(
+                    v_flex()
+                        .w(px(GIT_BRANCH_WIDTH))
+                        .flex_none()
+                        .gap(px(6.0))
+                        .child(field_label(t!("openapi.git.branch"), palette))
+                        .child(text_field(&state.branch, cx)),
                 )
                 .child(
                     v_flex()
                         .flex_none()
-                        .items_end()
-                        .gap(px(2.0))
-                        .text_size(px(12.0))
-                        .text_color(palette.fg_muted)
-                        .child(meta)
-                        .when(!spec.warnings.is_empty(), |column| {
-                            column.child(
-                                div()
-                                    .text_color(palette.warning)
-                                    .child(plural("openapi.warnings", spec.warnings.len())),
+                        .gap(px(6.0))
+                        // An empty label line, so the button lines up with the fields.
+                        .child(field_label(" ", palette))
+                        .child(
+                            SecondaryButton::new(
+                                "openapi-clone",
+                                if state.loading {
+                                    t!("openapi.git.cloning")
+                                } else {
+                                    t!("openapi.git.clone")
+                                },
                             )
-                        }),
-                )
-        }))
+                            .disabled(state.loading || empty)
+                            .on_click(move |_, _, cx| {
+                                let _ = clone.update(cx, |wizard, cx| {
+                                    let url = wizard.repository.read(cx).value().to_string();
+                                    let branch = wizard.branch.read(cx).value().to_string();
+                                    wizard.load(
+                                        SourceKind::Git,
+                                        LoadInput::Git { url, branch },
+                                        false,
+                                        cx,
+                                    );
+                                });
+                            }),
+                        ),
+                ),
+        )
+        .child(hint(t!("openapi.git.hint"), palette))
         .into_any_element()
 }
 
@@ -1031,6 +1340,70 @@ fn render_options(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) ->
                 )
         }));
 
+    let labels = state.state.version_labels();
+    let versions = (state.state.specs().len() > 1).then(|| {
+        v_flex()
+            .gap(px(4.0))
+            .child(
+                div()
+                    .pb(px(4.0))
+                    .child(SectionLabel::new(t!("openapi.options.versions"))),
+            )
+            .children(
+                state
+                    .state
+                    .specs()
+                    .iter()
+                    .enumerate()
+                    .map(|(index, loaded)| {
+                        let weak = wizard.downgrade();
+                        let file = loaded.source.rsplit('/').next().unwrap_or_default();
+                        let label = if file.is_empty() {
+                            labels[index].clone()
+                        } else {
+                            format!("{} · {file}", labels[index])
+                        };
+                        let format = if loaded.spec.spec_version == "2.0" {
+                            "Swagger 2.0".to_string()
+                        } else {
+                            loaded.spec.spec_version.clone()
+                        };
+                        h_flex()
+                            .gap(px(10.0))
+                            .py(px(6.0))
+                            .child(
+                                div().min_w_0().child(
+                                    telaio_ui::components::labelled_checkbox(
+                                        SharedString::from(format!("openapi-version-{index}")),
+                                        state.state.is_enabled(index),
+                                        label,
+                                        palette,
+                                    )
+                                    .on_change(
+                                        move |_, _, cx| {
+                                            let _ = weak.update(cx, |wizard, cx| {
+                                                wizard.state.toggle_version(index);
+                                                wizard.rebuild(cx);
+                                            });
+                                        },
+                                    ),
+                                ),
+                            )
+                            .child(div().flex_1())
+                            .child(
+                                div()
+                                    .flex_none()
+                                    .text_size(px(12.0))
+                                    .text_color(palette.fg_subtle)
+                                    .child(format!(
+                                        "{format} · {}",
+                                        plural("openapi.operations", loaded.spec.operations.len())
+                                    )),
+                            )
+                    }),
+            )
+    });
+
     let left = v_flex()
         .gap(px(16.0))
         .child(
@@ -1039,6 +1412,7 @@ fn render_options(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) ->
                 .child(field_label(t!("openapi.options.name"), palette))
                 .child(text_field(&state.name, cx)),
         )
+        .children(versions)
         .child(folders);
 
     let base_urls = state.state.base_urls();

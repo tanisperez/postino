@@ -5,12 +5,16 @@
 //! [`build_plan`] turns one or more specs and the [`ImportOptions`] into an [`OpenApiPlan`].
 //! `postino-workspace` writes the plan into a workspace.
 
+mod catalog;
 mod document;
 mod error;
 mod example;
 mod generate;
 mod spec;
 
+pub use catalog::{
+    CatalogApi, CatalogDefinition, looks_like_catalog, looks_like_spec, parse_catalog,
+};
 pub use document::{NoExternalRefs, RefLoader};
 pub use error::OpenApiError;
 pub use generate::{

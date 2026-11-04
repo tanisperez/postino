@@ -53,8 +53,9 @@ Expo/React Native conventions here.
   are in `docs/architecture.md`.
 - Postman import: Collection format v2.1 (v2.0 accepted when it parses the same) and Postman
   environment exports.
-- OpenAPI import (#201): OpenAPI 3.1, 3.0 and Swagger 2.0, JSON or YAML (`serde_norway`), from
-  a file, a URL or pasted text, through a three step wizard. See `docs/openapi-import.md`.
+- OpenAPI import (#201, #202): OpenAPI 3.1, 3.0 and Swagger 2.0, JSON or YAML (`serde_norway`),
+  from a file, a URL, pasted text, a folder or a shallow clone of a Git repository, plus Backstage
+  `catalog-info.yaml`, through a three step wizard. See `docs/openapi-import.md`.
 - HTTP client: `ureq` 3 (blocking, rustls), run on GPUI's background executor.
 - License: Apache-2.0 (`LICENSE`, `license` in `[workspace.package]`). Permissive, compatible with
   GPUI, includes a patent grant and does not grant trademark rights. Contributor terms (CLA or
@@ -86,7 +87,7 @@ postino-app ──> postino-load ──> postino-runner ──> postino-script �
 
 From telaio: `postino-app` uses `telaio-ui` (design system and standard components),
 `telaio-update` (the in-app updater) and `telaio-git` (drives the installed `git` executable:
-detection, discovery, status, stage, commit, branches, sync, log and diffs; blocking, no `gpui`,
+detection, discovery, status, stage, commit, branches, sync, log, diffs and shallow clones; blocking, no `gpui`,
 shared with ted). Postino keeps its own git pieces in the app: `is_secret_file` (`*.local.env`)
 in `state/git_sync.rs` and the `postino-auto:` prefix of automatic stashes in
 `views/git/branches.rs`.

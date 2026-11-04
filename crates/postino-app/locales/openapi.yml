@@ -66,10 +66,10 @@ _version: 2
   gl: "búscao"
   it: "sfoglia"
 "openapi.file.types":
-  en: ".yaml · .yml · .json"
-  es: ".yaml · .yml · .json"
-  gl: ".yaml · .yml · .json"
-  it: ".yaml · .yml · .json"
+  en: ".yaml · .yml · .json · catalog-info.yaml"
+  es: ".yaml · .yml · .json · catalog-info.yaml"
+  gl: ".yaml · .yml · .json · catalog-info.yaml"
+  it: ".yaml · .yml · .json · catalog-info.yaml"
 "openapi.file.reading":
   en: "Reading the spec..."
   es: "Leyendo la especificación..."
@@ -340,3 +340,98 @@ _version: 2
   es: "Una carpeta nueva y vacía para la colección OpenAPI %{name}."
   gl: "Un cartafol novo e baleiro para a colección OpenAPI %{name}."
   it: "Una nuova cartella vuota per la raccolta OpenAPI %{name}."
+"openapi.source.folder":
+  en: "Folder"
+  es: "Carpeta"
+  gl: "Cartafol"
+  it: "Cartella"
+"openapi.source.git":
+  en: "Git repository"
+  es: "Repositorio Git"
+  gl: "Repositorio Git"
+  it: "Repository Git"
+"openapi.folder.none":
+  en: "No folder chosen"
+  es: "Ninguna carpeta elegida"
+  gl: "Ningún cartafol escollido"
+  it: "Nessuna cartella scelta"
+"openapi.folder.choose":
+  en: "Choose..."
+  es: "Elegir..."
+  gl: "Escoller..."
+  it: "Scegli..."
+"openapi.folder.scanning":
+  en: "Looking for specs..."
+  es: "Buscando especificaciones..."
+  gl: "Buscando especificacións..."
+  it: "Ricerca delle specifiche..."
+"openapi.folder.hint":
+  en: "Subfolders are searched too, except hidden ones and node_modules, target, vendor, dist and build. A catalog-info.yaml brings in the specs it references."
+  es: "También se buscan las subcarpetas, salvo las ocultas y node_modules, target, vendor, dist y build. Un catalog-info.yaml añade las especificaciones a las que hace referencia."
+  gl: "Tamén se buscan os subcartafoles, agás os ocultos e node_modules, target, vendor, dist e build. Un catalog-info.yaml engade as especificacións ás que fai referencia."
+  it: "Vengono cercate anche le sottocartelle, tranne quelle nascoste e node_modules, target, vendor, dist e build. Un catalog-info.yaml aggiunge le specifiche a cui fa riferimento."
+"openapi.git.repository":
+  en: "Repository"
+  es: "Repositorio"
+  gl: "Repositorio"
+  it: "Repository"
+"openapi.git.branch":
+  en: "Branch"
+  es: "Rama"
+  gl: "Rama"
+  it: "Branch"
+"openapi.git.branch_placeholder":
+  en: "default"
+  es: "predeterminada"
+  gl: "predeterminada"
+  it: "predefinito"
+"openapi.git.clone":
+  en: "Clone"
+  es: "Clonar"
+  gl: "Clonar"
+  it: "Clona"
+"openapi.git.cloning":
+  en: "Cloning..."
+  es: "Clonando..."
+  gl: "Clonando..."
+  it: "Clonazione..."
+"openapi.git.hint":
+  en: "Only the last commit of the branch is downloaded, with your git and its credentials, to a temporary folder deleted when the wizard closes."
+  es: "Solo se descarga el último commit de la rama, con tu git y sus credenciales, a una carpeta temporal que se borra al cerrar el asistente."
+  gl: "Só se descarga o último commit da rama, co teu git e as súas credenciais, a un cartafol temporal que se borra ao pechar o asistente."
+  it: "Viene scaricato solo l'ultimo commit del branch, con il tuo git e le sue credenziali, in una cartella temporanea eliminata alla chiusura della procedura."
+"openapi.git.missing":
+  en: "Git is not available: install it, or choose it in Settings, Git."
+  es: "Git no está disponible: instálalo o elígelo en Ajustes, Git."
+  gl: "Git non está dispoñible: instálao ou escólleo en Axustes, Git."
+  it: "Git non è disponibile: installalo o sceglilo in Impostazioni, Git."
+"openapi.none_found":
+  en: "No OpenAPI or Swagger spec found."
+  es: "No se encontró ninguna especificación OpenAPI o Swagger."
+  gl: "Non se atopou ningunha especificación OpenAPI ou Swagger."
+  it: "Nessuna specifica OpenAPI o Swagger trovata."
+"openapi.catalog.one":
+  en: "Backstage · references %{count} spec"
+  es: "Backstage · referencia %{count} especificación"
+  gl: "Backstage · referencia %{count} especificación"
+  it: "Backstage · fa riferimento a %{count} specifica"
+"openapi.catalog.other":
+  en: "Backstage · references %{count} specs"
+  es: "Backstage · referencia %{count} especificaciones"
+  gl: "Backstage · referencia %{count} especificacións"
+  it: "Backstage · fa riferimento a %{count} specifiche"
+"openapi.options.versions":
+  en: "VERSIONS"
+  es: "VERSIONES"
+  gl: "VERSIÓNS"
+  it: "VERSIONI"
+"openapi.from_versions.one":
+  en: "%{operations} from %{count} version"
+  es: "%{operations} de %{count} versión"
+  gl: "%{operations} de %{count} versión"
+  it: "%{operations} da %{count} versione"
+"openapi.from_versions.other":
+  en: "%{operations} from %{count} versions"
+  es: "%{operations} de %{count} versiones"
+  gl: "%{operations} de %{count} versións"
+  it: "%{operations} da %{count} versioni"

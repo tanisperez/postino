@@ -13,7 +13,8 @@ with it.
 | Example values from schemas | `postino-format`, `openapi/example.rs` | none |
 | `Spec`s plus `ImportOptions` to an `OpenApiPlan` | `postino-format`, `openapi/generate.rs` | none |
 | Writing the selected part of a plan | `postino-workspace`, `openapi.rs` | files |
-| Reading a file, downloading a URL, the wizard state | `postino-app`, `state/openapi_import.rs` | files, HTTP |
+| Spotting spec files, reading Backstage catalogs | `postino-format`, `openapi/catalog.rs` | none |
+| Reading a file, a folder, a cloned repository or a URL, the wizard state | `postino-app`, `state/openapi_import.rs` | files, HTTP, git |
 | The wizard | `postino-app`, `views/openapi_import.rs` | none |
 
 `postino-format` stays pure: `parse_spec(text, location, loader)` takes a `RefLoader` that the
@@ -89,9 +90,28 @@ Loading a file or a URL runs on the background executor; parsing the 11 MB GitHu
 250 ms in release. Without a workspace, Import hands the plan and the exclusions to the "New
 workspace" dialog (`NewWorkspacePurpose::OpenApi`), which imports once the folder is open.
 
+## Sources (#202)
+
+- **File**: `load_path` reads a spec, or a catalog when the file is named `catalog-info.yaml` (or
+  `.yml`), or has a `backstage.io/` `apiVersion` and no spec root.
+- **Catalog**: `parse_catalog` reads every YAML document and keeps the entities of kind `API` and
+  type `openapi`. A `definition` string is the spec itself, read with the catalog's location; a
+  `$text`, `$yaml` or `$json` substitution is a path relative to the catalog, or a URL.
+- **Folder**: `scan_folder` collects the `.yaml`, `.yml` and `.json` files (no hidden folders, no
+  `node_modules`, `target`, `vendor`, `dist`, `build`; 8 levels, 5,000 files, 32 MB per file),
+  reads the catalogs first, then every file that `looks_like_spec` (an `openapi` or `swagger` key
+  at the top level in the first 16 KB). A spec is read once, by canonical path. A file that fails
+  is a `Failure`, listed in the wizard; the rest still imports.
+- **Git**: `clone_repository` runs telaio-git's `Git::clone_shallow` (`--depth 1
+  --single-branch`, the given branch or the default one) into a `tempfile::TempDir`, then scans
+  it. The wizard entity keeps the guard: the checkout is deleted when the source changes or the
+  wizard closes.
+
+Several specs import together: each enabled one becomes a `SpecVersion` whose label (the version
+folder) is `v<major>` of `info.version` when those are all different, else the titles when those
+are, else the file names.
+
 ## Not done yet
 
-- Folder and Git repository sources, `catalog-info.yaml`, several specs in one import with a
-  Versions list (#202).
 - Re-importing an updated spec with a diff (#203).
 - Headers for a URL that needs auth to download.
