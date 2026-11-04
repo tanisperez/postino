@@ -14,6 +14,7 @@ mod env_edit;
 mod error;
 mod git;
 mod ids;
+mod openapi;
 mod postman;
 mod sanitize;
 mod scan;

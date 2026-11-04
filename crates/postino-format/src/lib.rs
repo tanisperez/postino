@@ -7,6 +7,9 @@
 //! The `postman` module (Postman collection import, see `docs/postman-import.md`) maps Postman collection
 //! and environment exports into the same `postino-core` types, pure JSON in, plain data out.
 //!
+//! The `openapi` module (OpenAPI and Swagger import, see `docs/openapi-import.md`) reads OpenAPI
+//! 3.1, 3.0 and Swagger 2.0 specs, JSON or YAML, into the same `postino-core` types.
+//!
 //! The `snippet` module turns a resolved request into copyable code (curl, JavaScript `fetch`,
 //! Python `requests`) for the UI's "Code" action.
 //!
@@ -21,6 +24,7 @@ mod semantic_diff;
 
 pub mod env;
 pub mod highlight;
+pub mod openapi;
 pub mod postman;
 pub mod snippet;
 

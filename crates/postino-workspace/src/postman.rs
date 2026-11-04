@@ -94,7 +94,7 @@ impl Workspace {
 
 /// Writes the folders and requests of `folder` inside `dir`, recursively. Every written
 /// request's workspace id (relative to `root`) is appended to `created`.
-fn write_folder(
+pub(crate) fn write_folder(
     dir: &Path,
     root: &Path,
     folder: &ImportFolder,
@@ -119,7 +119,7 @@ fn write_folder(
 /// Finds a filesystem path inside `dir` for `sanitized_name` that does not exist yet, appending
 /// ` (2)`, ` (3)`, ... to the name until one is free. Used for folders, which have no extension
 /// (including the new top-level collection folder itself).
-fn unique_path(dir: &Path, sanitized_name: &str) -> PathBuf {
+pub(crate) fn unique_path(dir: &Path, sanitized_name: &str) -> PathBuf {
     let mut candidate = dir.join(sanitized_name);
     let mut counter = 2;
     while candidate.exists() {
@@ -151,7 +151,7 @@ fn unique_named_path(dir: &Path, sanitized_name: &str, extension: &str) -> PathB
 /// is handled, so one import never aborts partway through because of a stray existing file.
 /// Writing nothing (`base` and `secret` both empty) is a no-op, the `environments/` folder is
 /// not even created in that case.
-fn write_environment(
+pub(crate) fn write_environment(
     root: &Path,
     name: &str,
     base: &[KeyValue],
