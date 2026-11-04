@@ -20,6 +20,7 @@ use gpui_kit::*;
 use postino_core::Method;
 use rust_i18n::t;
 
+use crate::state::openapi_import::SourceKind;
 use crate::state::palette::{self, ActionId, PaletteItem, PaletteItemKind};
 use crate::theme::Palette;
 use crate::theme::{PaletteExt, PostinoColors};
@@ -365,6 +366,8 @@ fn action_icon(action: ActionId) -> gpui_kit::assets::IconName {
         ActionId::Save => Lucide::Save,
         ActionId::NewRequest => Lucide::Plus,
         ActionId::NewFolder => Lucide::FolderPlus,
+        ActionId::ImportOpenApi => Lucide::FileCode,
+        ActionId::ImportOpenApiUrl => Lucide::Link,
         ActionId::ImportCollection | ActionId::ImportEnvironment => Lucide::Download,
         ActionId::OpenSettings => Lucide::Settings,
         ActionId::OpenShortcuts => Lucide::Keyboard,
@@ -439,6 +442,12 @@ fn execute_action(weak: WeakEntity<AppView>, action: ActionId, window: &mut Wind
         }
         ActionId::NewRequest => sidebar::open_new_request_dialog(weak, None, window, cx),
         ActionId::NewFolder => sidebar::open_new_folder_dialog(weak, None, window, cx),
+        ActionId::ImportOpenApi => {
+            super::openapi_import::open_openapi_wizard(weak, SourceKind::File, window, cx);
+        }
+        ActionId::ImportOpenApiUrl => {
+            super::openapi_import::open_openapi_wizard(weak, SourceKind::Url, window, cx);
+        }
         ActionId::ImportCollection => {
             import_menu::pick_and_import(weak, import_menu::ImportKind::Collection, window, cx);
         }

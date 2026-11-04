@@ -302,7 +302,8 @@ fn render_start(
 ) -> impl IntoElement {
     let new_weak = weak.clone();
     let open_weak = weak.clone();
-    let rows: [(&str, Lucide, SharedString, Option<String>, ClickHandler); 3] = [
+    let openapi_weak = weak.clone();
+    let rows: [(&str, Lucide, SharedString, Option<String>, ClickHandler); 4] = [
         (
             "welcome-new-workspace",
             Lucide::Plus,
@@ -325,6 +326,20 @@ fn render_start(
             Some(format!("{MODIFIER_KEY}+O")),
             Box::new(move |window, cx| {
                 sidebar::pick_workspace_folder(open_weak.clone(), window, cx);
+            }),
+        ),
+        (
+            "welcome-import-openapi",
+            Lucide::FileCode,
+            t!("openapi.welcome").into(),
+            Some(format!("{MODIFIER_KEY}+Shift+O")),
+            Box::new(move |window, cx| {
+                super::openapi_import::open_openapi_wizard(
+                    openapi_weak.clone(),
+                    crate::state::openapi_import::SourceKind::File,
+                    window,
+                    cx,
+                );
             }),
         ),
         (

@@ -24,12 +24,12 @@ use postino_script::QuickJsEngine;
 use postino_workspace::{Workspace, WorkspaceError};
 
 use crate::actions::{
-    CloseActiveTab, DeleteSelectedEntry, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts,
-    OpenWorkspace, PreviousTab, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1,
-    SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
-    SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
-    SelectNoEnvironment, SendActiveTab, ToggleCollections, ToggleEnvironments, ToggleLoadTests,
-    ToggleSourceControl,
+    CloseActiveTab, DeleteSelectedEntry, ImportOpenApi, NextTab, OpenCommandPalette, OpenSettings,
+    OpenShortcuts, OpenWorkspace, PreviousTab, RenameSelectedEntry, SaveActiveTab,
+    SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
+    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
+    SelectEnvironment9, SelectNoEnvironment, SendActiveTab, ToggleCollections, ToggleEnvironments,
+    ToggleLoadTests, ToggleSourceControl,
 };
 use crate::state::about::AboutInfo;
 use crate::state::debug_open::{self, DebugOpenTarget};
@@ -1205,6 +1205,22 @@ impl AppView {
         sidebar::pick_workspace_folder(cx.weak_entity(), window, cx);
     }
 
+    /// Handles the `Ctrl+Shift+O` / `Cmd+Shift+O` key binding (see `main.rs`'s `bind_keys`): the
+    /// OpenAPI import wizard, on its File source.
+    fn on_import_openapi_action(
+        &mut self,
+        _: &ImportOpenApi,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        super::openapi_import::open_openapi_wizard(
+            cx.weak_entity(),
+            crate::state::openapi_import::SourceKind::File,
+            window,
+            cx,
+        );
+    }
+
     /// Handles the `F1` / `Cmd+Shift+/` key binding (see `main.rs`'s `bind_keys`).
     fn on_open_shortcuts_action(
         &mut self,
@@ -1779,6 +1795,7 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_open_settings_action))
             .on_action(cx.listener(Self::on_open_command_palette_action))
             .on_action(cx.listener(Self::on_open_workspace_action))
+            .on_action(cx.listener(Self::on_import_openapi_action))
             .on_action(cx.listener(Self::on_open_shortcuts_action))
             .on_action(cx.listener(Self::on_close_tab_action))
             .on_action(cx.listener(Self::on_next_tab_action))

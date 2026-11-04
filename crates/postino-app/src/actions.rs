@@ -56,6 +56,9 @@ actions!(
         /// Opens the native folder picker to open a workspace (`Ctrl O` / `Cmd O`), like the
         /// workspace switcher's "Open folder..." item.
         OpenWorkspace,
+        /// Opens the OpenAPI import wizard (`Ctrl+Shift+O` / `Cmd+Shift+O`), like the Import
+        /// menu's "OpenAPI / Swagger..." item.
+        ImportOpenApi,
         /// Opens the keyboard shortcuts cheat sheet (`F1`, or `Cmd+Shift+/` on macOS).
         OpenShortcuts,
         /// Closes the active tab (`Ctrl+W` / `Cmd+W`), asking first when it has unsaved

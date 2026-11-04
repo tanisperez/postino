@@ -32,6 +32,10 @@ pub fn groups() -> Vec<ShortcutGroup> {
             shortcuts: vec![
                 Shortcut::new(t!("shortcuts.action.palette"), &[modifier, "K"]),
                 Shortcut::new(t!("shortcuts.action.open_folder"), &[modifier, "O"]),
+                Shortcut::new(
+                    t!("shortcuts.action.import_openapi"),
+                    &[modifier, "Shift", "O"],
+                ),
                 Shortcut::new(t!("shortcuts.action.settings"), &[modifier, ","]),
                 Shortcut::open_sheet(),
                 Shortcut::new(t!("shortcuts.action.close_tab"), &[modifier, "W"]),

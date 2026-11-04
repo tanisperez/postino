@@ -17,6 +17,7 @@ pub mod load_panel;
 pub mod load_test;
 pub mod navigation;
 pub mod new_workspace;
+pub mod openapi_import;
 pub mod request_editor;
 pub mod response_console;
 pub mod response_view;

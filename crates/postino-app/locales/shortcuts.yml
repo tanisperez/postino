@@ -35,6 +35,11 @@ _version: 2
   es: "Abrir una carpeta"
   gl: "Abrir un cartafol"
   it: "Apri una cartella"
+"shortcuts.action.import_openapi":
+  en: "Import an OpenAPI spec"
+  es: "Importar una especificación OpenAPI"
+  gl: "Importar unha especificación OpenAPI"
+  it: "Importa una specifica OpenAPI"
 "shortcuts.action.settings":
   en: "Open Settings"
   es: "Abrir ajustes"

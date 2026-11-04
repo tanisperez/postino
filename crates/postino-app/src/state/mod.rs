@@ -35,6 +35,7 @@ pub mod navigation;
 pub mod new_workspace;
 pub use telaio_app::number;
 pub mod open_queue;
+pub mod openapi_import;
 pub mod palette;
 pub mod request_edit;
 pub mod response_render;

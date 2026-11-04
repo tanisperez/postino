@@ -53,6 +53,8 @@ Expo/React Native conventions here.
   are in `docs/architecture.md`.
 - Postman import: Collection format v2.1 (v2.0 accepted when it parses the same) and Postman
   environment exports.
+- OpenAPI import (#201): OpenAPI 3.1, 3.0 and Swagger 2.0, JSON or YAML (`serde_norway`), from
+  a file, a URL or pasted text, through a three step wizard. See `docs/openapi-import.md`.
 - HTTP client: `ureq` 3 (blocking, rustls), run on GPUI's background executor.
 - License: Apache-2.0 (`LICENSE`, `license` in `[workspace.package]`). Permissive, compatible with
   GPUI, includes a patent grant and does not grant trademark rights. Contributor terms (CLA or
@@ -91,7 +93,7 @@ in `state/git_sync.rs` and the `postino-auto:` prefix of automatic stashes in
 
 - `postino-core`: domain model (`Request`, `Method`, `Body`, ...) and `{{ }}` variable
   interpolation. No IO.
-- `postino-format`: `.postino` and `.env` parse/serialize, Postman import. No IO.
+- `postino-format`: `.postino` and `.env` parse/serialize, Postman and OpenAPI import. No IO.
 - `postino-workspace`: filesystem access, scans a folder, loads/saves requests and environments.
 - `postino-script`: the `ScriptEngine` trait and its QuickJS implementation.
 - `postino-http`: sends a resolved request with `ureq`, measures timing.

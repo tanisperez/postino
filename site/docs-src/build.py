@@ -48,6 +48,7 @@ NAV = [
         ("scripting.html", "Scripts and tests"),
         ("load-testing.html", "Load testing"),
         ("code-snippets.html", "Code snippets"),
+        ("openapi-import.html", "Importing OpenAPI"),
         ("postman-import.html", "Importing from Postman"),
         ("git.html", "Working with git"),
     ]),

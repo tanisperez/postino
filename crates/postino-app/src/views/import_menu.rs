@@ -51,20 +51,33 @@ impl AppView {
             .tooltip(t!("shell.import.button"))
             .dropdown_menu(move |mut menu, _, _| {
                 let weak = collection_weak.clone();
+                let openapi_weak = weak.clone();
                 menu = menu.item(
-                    PopupMenuItem::new(t!("shell.import.menu_collection")).on_click(
-                        move |_, window, cx| {
+                    PopupMenuItem::new(t!("openapi.menu"))
+                        .icon(Icon::new(gpui_kit::assets::IconName::FileCode))
+                        .on_click(move |_, window, cx| {
+                            super::openapi_import::open_openapi_wizard(
+                                openapi_weak.clone(),
+                                crate::state::openapi_import::SourceKind::File,
+                                window,
+                                cx,
+                            );
+                        }),
+                );
+                menu = menu.item(
+                    PopupMenuItem::new(t!("shell.import.menu_collection"))
+                        .icon(Icon::new(gpui_kit::assets::IconName::Package))
+                        .on_click(move |_, window, cx| {
                             pick_and_import(weak.clone(), ImportKind::Collection, window, cx);
-                        },
-                    ),
+                        }),
                 );
                 let weak = environment_weak.clone();
                 menu = menu.item(
-                    PopupMenuItem::new(t!("shell.import.menu_environment")).on_click(
-                        move |_, window, cx| {
+                    PopupMenuItem::new(t!("shell.import.menu_environment"))
+                        .icon(Icon::new(gpui_kit::assets::IconName::Layers))
+                        .on_click(move |_, window, cx| {
                             pick_and_import(weak.clone(), ImportKind::Environment, window, cx);
-                        },
-                    ),
+                        }),
                 );
                 menu
             })

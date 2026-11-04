@@ -14,8 +14,8 @@ mod spec;
 pub use document::{NoExternalRefs, RefLoader};
 pub use error::OpenApiError;
 pub use generate::{
-    BASE_URL_VARIABLE, Grouping, ImportOptions, OpenApiPlan, PlanEnvironment, PlanFolder,
-    PlanRequest, SpecVersion, build_plan, operation_key, used_security_schemes,
+    Grouping, ImportOptions, OpenApiPlan, PlanEnvironment, PlanFolder, PlanRequest, SpecVersion,
+    build_plan,
 };
 pub use spec::{
     Operation, Parameter, ParameterLocation, RequestBody, SchemeKind, SecurityScheme, Server, Spec,

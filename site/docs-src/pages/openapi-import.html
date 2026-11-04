@@ -1,0 +1,118 @@
+title: Importing OpenAPI
+description: Import OpenAPI 3.1, 3.0 and Swagger 2.0 specs, YAML or JSON, from a file, a URL or pasted text, as Postino requests, environments and tests.
+---
+<h1>Importing OpenAPI</h1>
+<p class="lead">An OpenAPI or Swagger spec becomes a collection of ready to send requests: one <code>.postino</code> file per operation, an environment per server, auth variables kept out of git, example bodies and a status code test. A three step wizard shows everything before anything is written, and the import never overwrites a file.</p>
+
+<h2>Supported specs</h2>
+<ul>
+    <li><strong>OpenAPI 3.1 and 3.0</strong>, and <strong>Swagger 2.0</strong>, which is read into the same model.</li>
+    <li>YAML or JSON, detected from the text itself, not from the file extension.</li>
+    <li><code>$ref</code> references inside the spec, and to other files or URLs: <code>schemas/pet.yaml</code> or <code>../common.yaml#/components/schemas/Error</code> are read relative to the spec. A reference that cannot be read becomes a warning, and the rest of the spec still imports.</li>
+</ul>
+
+<h2>Opening the wizard</h2>
+<ul>
+    <li>The <strong>Import</strong> menu in the sidebar header: <strong>OpenAPI / Swagger…</strong>.</li>
+    <li><strong>Import OpenAPI…</strong> in the <a href="interface.html#welcome-tab">welcome tab</a>.</li>
+    <li>The command palette: <strong>Import OpenAPI spec…</strong>, or <strong>Import OpenAPI from URL…</strong>, which opens on the URL source.</li>
+    <li>The shortcut <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>O</kbd> (<kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>O</kbd> on macOS).</li>
+</ul>
+
+<h2>Step 1: Source</h2>
+<p>Three sources, chosen with the buttons at the top:</p>
+<ul>
+    <li><strong>File:</strong> drop a spec file on the dashed area, or click it to pick one. External references are read from the disk, relative to the file.</li>
+    <li><strong>URL:</strong> type the address of the spec and click <strong>Download</strong>, or press <kbd>Enter</kbd> to download it and go on. The download uses the same <a href="settings.html">TLS settings</a> as requests, and external references are fetched relative to the URL. Relative server URLs such as <code>/v2</code> are resolved against it too.</li>
+    <li><strong>Paste text:</strong> paste the spec. Pasted text has no location, so external references cannot be read.</li>
+</ul>
+<p>A spec that was read shows under <strong>Found</strong>, with its title, version, format and number of operations, and the number of warnings when there are any. A text that is not a spec shows the reason in red and the wizard stays on this step.</p>
+
+<h2>Step 2: Options</h2>
+<ul>
+    <li><strong>Collection name:</strong> the name of the new folder, the spec's title by default.</li>
+    <li><strong>Folders:</strong> <strong>Path segments</strong> puts <code>/customers/{id}</code> in the folder <code>customers/{id}</code>; <strong>Tags</strong> puts each operation in the folder of its first tag, and untagged operations at the top of the collection.</li>
+</ul>
+<p>What to generate, every option on by default:</p>
+<div class="table"><table>
+    <thead><tr><th>Option</th><th>What it writes</th></tr></thead>
+    <tbody>
+        <tr><td>Environment from servers</td><td>One environment per server origin, with <code>baseUrl</code> set to it (<code>https://api.acme.dev</code>). The server path (<code>/v2</code>) stays in the request URLs. With one origin the environment is named after the collection; with several, each name adds the server description, or its host when there is none. Without an absolute server URL, <code>baseUrl</code> is <code>http://localhost</code>, with a warning. Turned off, the requests use the first server URL as written.</td></tr>
+        <tr><td>Auth variables from securitySchemes</td><td>The <a href="requests.html#authentication">auth</a> of each request, and one empty variable per scheme in <code>environments/&lt;name&gt;.local.env</code>, a file kept out of git.</td></tr>
+        <tr><td>Example bodies</td><td>The body from the spec's example, or one built from the schema. Turned off, the body keeps its type and is empty.</td></tr>
+        <tr><td>Status code tests</td><td>A <code>::: post</code> script with one <code>test()</code> asserting the first 2xx response the spec documents.</td></tr>
+        <tr><td>Request documentation</td><td>The <code>::: docs</code> section: summary, description and the list of parameters.</td></tr>
+    </tbody>
+</table></div>
+
+<h2>Step 3: Preview</h2>
+<p>The tree of folders and requests that will be written, every request checked. A folder's checkbox checks or unchecks everything under it, a row opens a folder or toggles a request, and <strong>Select all</strong> and <strong>None</strong> act on the whole tree. The line under the tree tells which environments and auth variables are created. <strong>Import</strong> writes the checked requests; folders left without one are not created.</p>
+<p>The last screen tells how many requests were imported and lists the warnings. The new collection opens in the sidebar and its environments appear in the environment picker.</p>
+
+<h3>Importing without a workspace</h3>
+<p>With no workspace open, <strong>Import</strong> closes the wizard and opens the <a href="workspaces.html#creating-a-workspace">New workspace</a> dialog with the collection name as the folder name. <strong>Create</strong> makes an empty folder, opens it and imports into it. Cancelling the dialog writes nothing.</p>
+
+<h2>How a spec maps to requests</h2>
+<div class="table"><table>
+    <thead><tr><th>OpenAPI</th><th>Postino</th></tr></thead>
+    <tbody>
+        <tr><td>Operation</td><td>A <code>.postino</code> file, named after its <code>summary</code>, else its <code>operationId</code>, else <code>METHOD /path</code></td></tr>
+        <tr><td>Path parameter <code>{id}</code></td><td>The variable <code>{{id}}</code> in the URL</td></tr>
+        <tr><td>Query parameter</td><td>The <code>::: query</code> section, with the example or default value. Optional ones are disabled (<code>#</code>)</td></tr>
+        <tr><td>Header parameter</td><td>A header, disabled when optional. <code>Accept</code>, <code>Content-Type</code> and <code>Authorization</code> are skipped, as OpenAPI says</td></tr>
+        <tr><td>Cookie parameter</td><td>A <code>Cookie</code> header</td></tr>
+        <tr><td>JSON body (<code>application/json</code>, <code>*+json</code>)</td><td><code>::: body json</code>, with a <code>Content-Type</code> header when the type is not <code>application/json</code></td></tr>
+        <tr><td>Form body (URL encoded or multipart)</td><td><code>::: body form</code>; multipart is sent URL encoded, with a warning</td></tr>
+        <tr><td>XML and text bodies</td><td><code>::: body xml</code> or <code>text</code>, with their <code>Content-Type</code></td></tr>
+        <tr><td>HTTP basic</td><td>Basic auth with <code>{{&lt;scheme&gt;Username}}</code> and <code>{{&lt;scheme&gt;Password}}</code></td></tr>
+        <tr><td>HTTP bearer, OAuth 2 and OpenID Connect</td><td>Bearer auth with <code>{{&lt;scheme&gt;}}</code>. OAuth 2 and OpenID Connect get a warning: the token has to be obtained separately</td></tr>
+        <tr><td>API key (header, query or cookie)</td><td>API key auth, or a <code>Cookie</code> header, with <code>{{&lt;scheme&gt;}}</code></td></tr>
+        <tr><td><code>security: []</code> on an operation</td><td>No auth</td></tr>
+    </tbody>
+</table></div>
+<p>Variable names come from the scheme names, with anything but letters, digits and <code>_</code> replaced by <code>_</code>: the scheme <code>bearerAuth</code> becomes <code>{{bearerAuth}}</code>. An operation that needs several schemes at once gets the first as its auth and the API keys of the others as headers or query entries.</p>
+<p>A body generated from a schema takes the first value that exists among <code>example</code>, <code>examples</code>, <code>default</code>, <code>const</code> and <code>enum</code>, then falls back to the type: <code>"string"</code> (or a sample value for formats such as <code>date-time</code>, <code>email</code> or <code>uuid</code>), <code>0</code> or the <code>minimum</code>, <code>true</code>, and one item for arrays. <code>allOf</code> merges its parts, <code>oneOf</code> and <code>anyOf</code> take the first, and read only properties are left out. Recursive schemas stop instead of repeating.</p>
+<p>A GET or HEAD operation whose body would be empty gets no body: some specs declare one by mistake.</p>
+<p>Names are made safe for every operating system as in the <a href="postman-import.html#collections">Postman import</a>, and two requests with the same name in one folder get a <code>(2)</code> suffix.</p>
+
+<h2>Example</h2>
+<p>This operation:</p>
+```yaml
+paths:
+  /customers:
+    post:
+      summary: Create customer
+      requestBody:
+        content:
+          application/json:
+            example: {name: Ada}
+      responses:
+        '201': {description: Created}
+```
+<p>with a server <code>https://api.acme.dev/v2</code> and a global bearer scheme named <code>bearerAuth</code> becomes <code>customers/Create customer.postino</code>:</p>
+```postino
+POST {{baseUrl}}/v2/customers
+
+::: auth bearer
+token = {{bearerAuth}}
+
+::: body json
+{
+  "name": "Ada"
+}
+
+::: post
+test("status is 201", () => {
+  expect(res.status).toBe(201);
+});
+
+::: docs
+# Create customer
+```
+
+<h2>After importing</h2>
+<ul>
+    <li>Fill the auth variables in the environment, in the <a href="environments.html">Environments panel</a>.</li>
+    <li>Define the path variables (<code>{{id}}</code>) in the environment, or replace them in the URL.</li>
+    <li>Read the warnings: they name every scheme or body that needs attention.</li>
+</ul>

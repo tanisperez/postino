@@ -4,9 +4,7 @@
 use postino_core::{ApiKeyLocation, Auth, Body, KeyValue, Method, Request};
 use serde_json::Value;
 
-use super::spec::{
-    Operation, ParameterLocation, SchemeKind, SecurityScheme, Spec, Success, scalar_text,
-};
+use super::spec::{Operation, ParameterLocation, SchemeKind, Spec, Success, scalar_text};
 use crate::postman::ImportFolder;
 
 /// The longest server description used as an environment name, longer ones use the host.
@@ -16,7 +14,7 @@ const MAX_ENVIRONMENT_LABEL: usize = 32;
 const FALLBACK_BASE_URL: &str = "http://localhost";
 
 /// The name of the environment variable that holds the server origin.
-pub const BASE_URL_VARIABLE: &str = "baseUrl";
+const BASE_URL_VARIABLE: &str = "baseUrl";
 
 /// How requests are grouped into folders.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -172,7 +170,7 @@ impl PlanFolder {
 }
 
 /// The key of an operation, as in [`PlanRequest::key`].
-pub fn operation_key(label: &str, operation: &Operation) -> String {
+fn operation_key(label: &str, operation: &Operation) -> String {
     let key = format!("{} {}", operation.method, operation.path);
     if label.is_empty() {
         key
@@ -625,18 +623,6 @@ fn push_unique(list: &mut Vec<String>, value: String) {
     if !list.contains(&value) {
         list.push(value);
     }
-}
-
-/// The schemes of `spec` that at least one operation uses, for the options step's summary.
-pub fn used_security_schemes(spec: &Spec) -> Vec<&SecurityScheme> {
-    spec.security_schemes
-        .iter()
-        .filter(|scheme| {
-            spec.operations
-                .iter()
-                .any(|operation| operation.security.contains(&scheme.name))
-        })
-        .collect()
 }
 
 #[cfg(test)]

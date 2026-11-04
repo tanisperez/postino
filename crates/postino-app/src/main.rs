@@ -21,12 +21,13 @@ use telaio_app::{logging, window};
 
 use actions::{
     CloseActiveTab, CommitFromMessage, ConfirmCompletion, CopyLoadTestSummary, DeleteLine,
-    DeleteSelectedEntry, DismissCompletion, NextCompletion, NextTab, OpenCommandPalette,
-    OpenSettings, OpenShortcuts, OpenWorkspace, PreviousCompletion, PreviousTab, RedoRequestEdit,
-    RenameSelectedEntry, SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3,
-    SelectEnvironment4, SelectEnvironment5, SelectEnvironment6, SelectEnvironment7,
-    SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab, ShowCompletion,
-    ToggleCollections, ToggleEnvironments, ToggleLoadTests, ToggleSourceControl, UndoRequestEdit,
+    DeleteSelectedEntry, DismissCompletion, ImportOpenApi, NextCompletion, NextTab,
+    OpenCommandPalette, OpenSettings, OpenShortcuts, OpenWorkspace, PreviousCompletion,
+    PreviousTab, RedoRequestEdit, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1,
+    SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
+    SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
+    SelectNoEnvironment, SendActiveTab, ShowCompletion, ToggleCollections, ToggleEnvironments,
+    ToggleLoadTests, ToggleSourceControl, UndoRequestEdit,
 };
 use state::settings::ThemeChoice;
 use views::AppView;
@@ -220,6 +221,7 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-,", OpenSettings, None),
         KeyBinding::new("cmd-k", OpenCommandPalette, None),
         KeyBinding::new("cmd-o", OpenWorkspace, None),
+        KeyBinding::new("cmd-shift-o", ImportOpenApi, None),
         KeyBinding::new("cmd-w", CloseActiveTab, None),
         KeyBinding::new("cmd-shift-c", CopyLoadTestSummary, None),
         // Ctrl, not Option: Option + a digit types `|`, `@` or `#` on many layouts.
@@ -245,6 +247,7 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-,", OpenSettings, None),
         KeyBinding::new("ctrl-k", OpenCommandPalette, None),
         KeyBinding::new("ctrl-o", OpenWorkspace, None),
+        KeyBinding::new("ctrl-shift-o", ImportOpenApi, None),
         KeyBinding::new("ctrl-w", CloseActiveTab, None),
         KeyBinding::new("ctrl-shift-c", CopyLoadTestSummary, None),
         KeyBinding::new("alt-1", ToggleCollections, None),
