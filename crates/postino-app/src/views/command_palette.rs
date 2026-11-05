@@ -149,7 +149,7 @@ fn render_palette_content(
         let section = match item.kind {
             PaletteItemKind::Request(_) => 0,
             PaletteItemKind::Environment(_) => 1,
-            PaletteItemKind::Action(_) => 2,
+            PaletteItemKind::Action(_) | PaletteItemKind::OpenApiUpdate { .. } => 2,
         };
         sections[section].push((item, matched));
     }
@@ -253,6 +253,7 @@ fn build_all_items(view: &Entity<AppView>, cx: &mut App) -> Vec<PaletteItem> {
     let mut items = requests;
     items.extend(palette::environment_items(&environments));
     items.extend(palette::action_items());
+    items.extend(palette::openapi_update_items(&read.openapi_collections));
     let git = match (
         &read.git.availability,
         &read.git.repo,
@@ -355,6 +356,17 @@ fn render_leading(
                     .text_color(palette.fg_muted),
             )
             .into_any_element(),
+        PaletteItemKind::OpenApiUpdate { .. } => div()
+            .flex_none()
+            .w(px(14.0))
+            .flex()
+            .justify_center()
+            .child(
+                Icon::new(gpui_kit::assets::IconName::RefreshCw)
+                    .small()
+                    .text_color(palette.fg_muted),
+            )
+            .into_any_element(),
     }
 }
 
@@ -427,6 +439,9 @@ fn execute_palette_item(
             let _ = weak.update(cx, |view, cx| view.select_environment(name, cx));
         }
         PaletteItemKind::Action(action) => execute_action(weak, action, window, cx),
+        PaletteItemKind::OpenApiUpdate { source, .. } => {
+            super::openapi_import::open_openapi_update(weak, &source, window, cx);
+        }
     }
 }
 

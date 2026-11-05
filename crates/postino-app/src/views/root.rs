@@ -178,6 +178,9 @@ pub struct AppView {
     /// empty to non-empty, so clearing the filter can restore it instead of resetting every
     /// folder to expanded. `None` while the filter is empty.
     pub(crate) sidebar_filter_pre_expansion: Option<HashMap<String, bool>>,
+    /// The collections an OpenAPI import created in the workspace, read with the tree, for the
+    /// command palette's "Update from OpenAPI" items (GitHub #203).
+    pub(crate) openapi_collections: Vec<postino_workspace::OpenApiCollection>,
     /// The Code snippet dialog's currently selected language. Kept here (rather than local to the
     /// dialog) because it must survive the dialog's `content` closure being re-invoked on every
     /// repaint: see `views/snippet_dialog.rs`'s module doc comment.
@@ -400,6 +403,7 @@ impl AppView {
             sidebar_filter_input,
             commit_input,
             sidebar_filter_pre_expansion: None,
+            openapi_collections: Vec::new(),
             snippet_language: SnippetLanguage::Curl,
             load_test_entities: crate::views::load_test::LoadTestEntities::default(),
             load_runs: HashMap::new(),
@@ -782,6 +786,12 @@ impl AppView {
         }
         // The tree changes after Postino writes a file (or a rescan), which also changes git's
         // status; the method badges of the Source Control rows come from the tree.
+        self.openapi_collections = self
+            .state
+            .workspace
+            .as_ref()
+            .map(|workspace| workspace.openapi_collections())
+            .unwrap_or_default();
         self.rebuild_git_rows();
         self.refresh_git_status(cx);
     }

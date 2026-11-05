@@ -326,10 +326,10 @@ _version: 2
   gl: "Importáronse %{count} peticións en %{name}"
   it: "Importate %{count} richieste in %{name}"
 "openapi.done.note":
-  en: "The collection is open in the sidebar."
-  es: "La colección está abierta en la barra lateral."
-  gl: "A colección está aberta na barra lateral."
-  it: "La raccolta è aperta nella barra laterale."
+  en: "The collection is open in the sidebar. Importing the same source again offers an update with the changes."
+  es: "La colección está abierta en la barra lateral. Al importar de nuevo el mismo origen se ofrece actualizarla con los cambios."
+  gl: "A colección está aberta na barra lateral. Ao importar de novo a mesma orixe ofrécese actualizala cos cambios."
+  it: "La raccolta è aperta nella barra laterale. Importando di nuovo la stessa origine viene proposto di aggiornarla con le modifiche."
 "openapi.done.warnings":
   en: "Imported with these warnings:"
   es: "Importada con estas advertencias:"
@@ -435,3 +435,73 @@ _version: 2
   es: "%{operations} de %{count} versiones"
   gl: "%{operations} de %{count} versións"
   it: "%{operations} da %{count} versioni"
+"openapi.update.imported":
+  en: "\"%{name}\" was imported from this source on %{date}."
+  es: "\"%{name}\" se importó desde este origen el %{date}."
+  gl: "\"%{name}\" importouse desde esta orixe o %{date}."
+  it: "\"%{name}\" è stata importata da questa origine il %{date}."
+"openapi.update.existing":
+  en: "Update existing"
+  es: "Actualizar la existente"
+  gl: "Actualizar a existente"
+  it: "Aggiorna quella esistente"
+"openapi.update.new":
+  en: "Import as new collection"
+  es: "Importar como colección nueva"
+  gl: "Importar como colección nova"
+  it: "Importa come nuova raccolta"
+"openapi.update.summary":
+  en: "%{added} added · %{changed} changed · %{removed} removed · %{unchanged} unchanged"
+  es: "añadidas: %{added} · cambiadas: %{changed} · eliminadas: %{removed} · sin cambios: %{unchanged}"
+  gl: "engadidas: %{added} · cambiadas: %{changed} · eliminadas: %{removed} · sen cambios: %{unchanged}"
+  it: "aggiunte: %{added} · modificate: %{changed} · rimosse: %{removed} · invariate: %{unchanged}"
+"openapi.update.added":
+  en: "Added"
+  es: "Añadida"
+  gl: "Engadida"
+  it: "Aggiunta"
+"openapi.update.changed":
+  en: "Changed"
+  es: "Cambiada"
+  gl: "Cambiada"
+  it: "Modificata"
+"openapi.update.removed":
+  en: "Removed"
+  es: "Eliminada"
+  gl: "Eliminada"
+  it: "Rimossa"
+"openapi.update.kept":
+  en: "kept, unchecked"
+  es: "se conserva, sin marcar"
+  gl: "consérvase, sen marcar"
+  it: "conservata, non selezionata"
+"openapi.update.note":
+  en: "Changed requests keep their scripts, tests and edited values: only the URL, parameters, headers and an example body that was not edited are updated from the spec. Removed endpoints stay unless checked."
+  es: "Las peticiones cambiadas conservan sus scripts, pruebas y valores editados: de la especificación solo se actualizan la URL, los parámetros, las cabeceras y un cuerpo de ejemplo que no se haya editado. Los endpoints eliminados se conservan salvo que se marquen."
+  gl: "As peticións cambiadas conservan os seus scripts, probas e valores editados: da especificación só se actualizan o URL, os parámetros, as cabeceiras e un corpo de exemplo que non se editase. Os endpoints eliminados consérvanse agás que se marquen."
+  it: "Le richieste modificate mantengono script, test e valori modificati: dalla specifica si aggiornano solo URL, parametri, intestazioni e un corpo di esempio non modificato. Gli endpoint rimossi restano, a meno che non siano selezionati."
+"openapi.update.up_to_date":
+  en: "The collection is up to date with the spec."
+  es: "La colección está al día con la especificación."
+  gl: "A colección está ao día coa especificación."
+  it: "La raccolta è aggiornata rispetto alla specifica."
+"openapi.update.button.one":
+  en: "Update %{count} request"
+  es: "Actualizar %{count} petición"
+  gl: "Actualizar %{count} petición"
+  it: "Aggiorna %{count} richiesta"
+"openapi.update.button.other":
+  en: "Update %{count} requests"
+  es: "Actualizar %{count} peticiones"
+  gl: "Actualizar %{count} peticións"
+  it: "Aggiorna %{count} richieste"
+"openapi.done.updated":
+  en: "Updated %{name}: %{added} added, %{changed} changed, %{removed} removed"
+  es: "%{name} actualizada. Añadidas: %{added}, cambiadas: %{changed}, eliminadas: %{removed}"
+  gl: "%{name} actualizada. Engadidas: %{added}, cambiadas: %{changed}, eliminadas: %{removed}"
+  it: "%{name} aggiornata. Aggiunte: %{added}, modificate: %{changed}, rimosse: %{removed}"
+"openapi.palette.update":
+  en: "Update from OpenAPI: %{name}"
+  es: "Actualizar desde OpenAPI: %{name}"
+  gl: "Actualizar desde OpenAPI: %{name}"
+  it: "Aggiorna da OpenAPI: %{name}"

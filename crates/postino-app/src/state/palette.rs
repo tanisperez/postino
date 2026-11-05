@@ -40,6 +40,36 @@ pub enum PaletteItemKind {
     Action(ActionId),
     /// Switches to this environment, or to "No environment" for `None`.
     Environment(Option<String>),
+    /// Opens the OpenAPI import wizard on the source of the collection in this folder, to
+    /// update it (GitHub #203).
+    OpenApiUpdate {
+        /// The collection folder.
+        folder: String,
+        /// Where its spec came from.
+        source: postino_format::openapi::ManifestSource,
+    },
+}
+
+/// The "Update from OpenAPI" item of each collection an OpenAPI import created, except those
+/// imported from pasted text, which cannot be read again.
+pub fn openapi_update_items(
+    collections: &[postino_workspace::OpenApiCollection],
+) -> Vec<PaletteItem> {
+    collections
+        .iter()
+        .filter(|collection| {
+            super::openapi_import::source_kind_of(&collection.manifest.source.kind).is_some()
+        })
+        .map(|collection| PaletteItem {
+            kind: PaletteItemKind::OpenApiUpdate {
+                folder: collection.folder.clone(),
+                source: collection.manifest.source.clone(),
+            },
+            label: t!("openapi.palette.update", name = collection.folder.clone()).into_owned(),
+            detail: None,
+            shortcut: None,
+        })
+        .collect()
 }
 
 /// A built-in action reachable from the command palette.

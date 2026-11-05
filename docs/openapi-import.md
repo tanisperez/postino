@@ -111,7 +111,28 @@ Several specs import together: each enabled one becomes a `SpecVersion` whose la
 folder) is `v<major>` of `info.version` when those are all different, else the titles when those
 are, else the file names.
 
+## Re-import (#203)
+
+- **Manifest**: `Workspace::import_openapi` writes `<collection>/.openapi.toml` (`Manifest`,
+  `postino-format`, `openapi/manifest.rs`): version, date, `[source]` (`kind`, `location`,
+  `branch`), `[options]` and one `[requests."<key>"]` table per written request with its `file`
+  (relative to the collection) and a fingerprint of what was generated: `method`, `path`, `url`,
+  `query` and `headers` names, `body` (FNV-1a 64 of a canonical text, stable across builds, tested)
+  and `body_keys`. Hidden files are not scanned, so the sidebar never lists it.
+- **Finding an import**: after a load the wizard compares the source (canonical path, URL, or
+  repository and branch) with the manifests of `Workspace::openapi_collections` (top-level
+  folders). `AppView` caches that list in `refresh_tree_with` for the palette's "Update from
+  OpenAPI" items, which carry the source so the palette never reads `AppView`.
+- **Diff**: `diff_plan` compares the manifest with the new plan: added (no entry), removed (no
+  operation), changed (a fingerprint part differs, with a short detail per part), unchanged.
+- **Update**: `Workspace::update_openapi` writes the added requests, rewrites the changed ones
+  with `update_request` (method and URL replaced; query and header entries merged by name, the
+  spec's new ones appended, the ones it dropped removed, the others and the user's own kept; body
+  replaced only when its hash still matches the manifest) and deletes the removed ones with the
+  folders they leave empty. The manifest then tracks the written and unchanged requests, keeps the
+  old fingerprint of a skipped change and drops a kept removed request.
+- `serde_json` has `preserve_order` in `postino-format`, so plans follow the spec's order.
+
 ## Not done yet
 
-- Re-importing an updated spec with a diff (#203).
 - Headers for a URL that needs auth to download.

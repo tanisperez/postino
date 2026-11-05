@@ -17,6 +17,7 @@ description: Import OpenAPI 3.1, 3.0 and Swagger 2.0 specs, YAML or JSON, from a
     <li><strong>Import OpenAPI…</strong> in the <a href="interface.html#welcome-tab">welcome tab</a>.</li>
     <li>The command palette: <strong>Import OpenAPI spec…</strong>, or <strong>Import OpenAPI from URL…</strong>, which opens on the URL source.</li>
     <li>The shortcut <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>O</kbd> (<kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>O</kbd> on macOS).</li>
+    <li>The command palette's <strong>Update from OpenAPI: &lt;collection&gt;</strong>, one per imported collection, which reads its source again to <a href="#updating-an-imported-collection">update it</a>.</li>
 </ul>
 
 <h2>Step 1: Source</h2>
@@ -67,6 +68,22 @@ spec:
 
 <h3>Importing without a workspace</h3>
 <p>With no workspace open, <strong>Import</strong> closes the wizard and opens the <a href="workspaces.html#creating-a-workspace">New workspace</a> dialog with the collection name as the folder name. <strong>Create</strong> makes an empty folder, opens it and imports into it. Cancelling the dialog writes nothing.</p>
+
+<h2>Updating an imported collection</h2>
+<p>Every import leaves a small <code>.openapi.toml</code> file in the collection folder. It records the source, the day and the options of the import, and for each request its file and what the spec generated: method, URL, parameter and header names and the example body. The sidebar hides it; commit it with the requests, so everyone working on the collection can update it.</p>
+<p>When a source that was already imported is read again (the same file, folder, URL, or repository and branch; pasted text never matches), the wizard takes the options of the earlier import and the Preview step shows that collection's update instead of a new tree:</p>
+<ul>
+    <li>A line tells which collection was imported from this source, and when.</li>
+    <li><strong>Update existing</strong> or <strong>Import as new collection</strong>; the second shows the usual tree.</li>
+    <li>The counts of added, changed, removed and unchanged operations, then one row per change: <strong>Added</strong>, <strong>Changed</strong> (with what changed, such as <code>query: +created_after</code> or <code>body: +phone</code>) and <strong>Removed</strong>. Added and changed ones start checked, removed ones unchecked. A click on a row checks or unchecks it.</li>
+</ul>
+<p><strong>Update</strong> applies the checked changes:</p>
+<ul>
+    <li><strong>Added:</strong> a new request, in the folder the options put it in.</li>
+    <li><strong>Changed:</strong> the request file is updated in place. The method and URL come from the spec. Parameters and headers the spec added are appended and those it dropped are removed, while the values set on the others and the entries added by hand stay. The body takes the new example only when it was not edited since the import. Auth, scripts, tests and docs are kept.</li>
+    <li><strong>Removed:</strong> the request file is deleted, and its folder too when nothing else is left in it. An unchecked removed request stays as an ordinary request, no longer tracked, so it is not offered again.</li>
+</ul>
+<p>An unchecked change is offered again the next time. Environments are not touched by an update. A spec with nothing new shows that the collection is up to date.</p>
 
 <h2>How a spec maps to requests</h2>
 <div class="table"><table>

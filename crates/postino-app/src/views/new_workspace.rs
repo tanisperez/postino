@@ -406,7 +406,8 @@ impl AppView {
             }
             NewWorkspacePurpose::OpenApi(pending) => {
                 self.when_workspace_opens(window, cx, move |view, window, cx| {
-                    match view.import_openapi(&pending.plan, &pending.excluded, cx) {
+                    match view.import_openapi(&pending.plan, &pending.excluded, &pending.origin, cx)
+                    {
                         Ok(report) => super::openapi_import::show_report(
                             &pending.plan.root.name,
                             &report,

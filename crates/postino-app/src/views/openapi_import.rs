@@ -19,9 +19,9 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
-use postino_format::openapi::{Grouping, OpenApiPlan};
+use postino_format::openapi::{ChangeKind, Grouping, ManifestSource, OpenApiPlan, PlanChange};
 use postino_runner::Client;
-use postino_workspace::ImportReport;
+use postino_workspace::{ImportOrigin, ImportReport, UpdateReport};
 use telaio_ui::components::{CheckState, TextArea, TriCheckbox};
 use telaio_ui::metrics::CHECKBOX_HALO_PADDING;
 
@@ -29,7 +29,7 @@ use crate::state::locale::plural;
 use crate::state::number::format_integer;
 use crate::state::openapi_import::{
     Check, Loaded, LoadedSpec, PreviewRow, RowKind, SourceKind, Step, Wizard, clone_repository,
-    load_path, load_text, load_url, scan_folder,
+    find_existing, load_path, load_text, load_url, scan_folder, source_kind_name, source_kind_of,
 };
 use crate::theme::metrics::{RADIUS_MD, RADIUS_SM};
 use crate::theme::{Palette, PaletteExt};
@@ -56,6 +56,12 @@ const DROP_ZONE_HEIGHT: f32 = 150.0;
 const PASTE_HEIGHT: f32 = 200.0;
 /// Width of the Git source's branch field, from the design.
 const GIT_BRANCH_WIDTH: f32 = 140.0;
+/// Height of a row of the preview tree and of the list of changes.
+const ROW_HEIGHT: f32 = 28.0;
+/// Width of the change kind column of the list of changes ("Added", "Removed").
+const CHANGE_KIND_WIDTH: f32 = 72.0;
+/// Widest a change's details get before they are cut.
+const CHANGE_DETAIL_WIDTH: f32 = 240.0;
 /// How many steps the stepper shows (Done is not one of them).
 const STEP_COUNT: usize = 3;
 
@@ -65,6 +71,8 @@ pub(crate) struct PendingOpenApi {
     pub(crate) plan: Arc<OpenApiPlan>,
     /// The requests the user unchecked.
     pub(crate) excluded: HashSet<String>,
+    /// The source, date and options, for the collection's manifest.
+    pub(crate) origin: ImportOrigin,
 }
 
 /// The result shown by the Done step.
@@ -72,6 +80,8 @@ struct Done {
     count: usize,
     name: String,
     warnings: Vec<String>,
+    /// `(added, changed, removed)` when the wizard updated an existing collection.
+    updated: Option<(usize, usize, usize)>,
 }
 
 /// The wizard's entity: the plain state plus the inputs and what is being loaded.
@@ -88,6 +98,8 @@ pub(crate) struct ImportWizard {
     branch: Entity<InputState>,
     /// The folder of the Folder source.
     folder: Option<PathBuf>,
+    /// The source of the specs loaded, for the manifest and to find an earlier import of it.
+    source: Option<ManifestSource>,
     /// The git Postino uses, read on the first clone like the client.
     git: Option<Option<telaio_git::Git>>,
     /// The temporary checkout of the Git source, deleted when the wizard closes or the source
@@ -140,6 +152,7 @@ impl ImportWizard {
             self.git = Some(git);
         }
         let git = self.git.clone().flatten();
+        let source = manifest_source(kind, &input);
         let task = cx.background_executor().spawn(async move {
             let single = |result: Result<LoadedSpec, String>| {
                 result.map(|spec| {
@@ -172,7 +185,7 @@ impl ImportWizard {
         });
         cx.spawn(async move |wizard, cx| {
             let result = task.await;
-            let _ = wizard.update(cx, |wizard, cx| wizard.loaded(kind, result, cx));
+            let _ = wizard.update(cx, |wizard, cx| wizard.loaded(kind, source, result, cx));
         })
         .detach();
     }
@@ -180,6 +193,7 @@ impl ImportWizard {
     fn loaded(
         &mut self,
         kind: SourceKind,
+        source: ManifestSource,
         result: Result<(Option<tempfile::TempDir>, Loaded), String>,
         cx: &mut Context<Self>,
     ) {
@@ -209,6 +223,22 @@ impl ImportWizard {
                 self.checkout = checkout;
                 self.state.set_loaded(loaded);
                 self.name_pending = found;
+                if found {
+                    // An earlier import of the same source turns the Preview into an update.
+                    let collections = self
+                        .view
+                        .upgrade()
+                        .and_then(|view| {
+                            view.read(cx)
+                                .state
+                                .workspace
+                                .as_ref()
+                                .map(|workspace| workspace.openapi_collections())
+                        })
+                        .unwrap_or_default();
+                    self.state.set_existing(find_existing(collections, &source));
+                    self.source = Some(source);
+                }
                 if self.advance_after_load && found {
                     self.state.step = Step::Options;
                 }
@@ -270,10 +300,37 @@ impl ImportWizard {
                 }
             },
             Step::Options => self.state.enabled_count() > 0,
+            Step::Preview if self.state.is_update() => self.state.selected_change_count() > 0,
             Step::Preview => self.state.selected_count() > 0,
             Step::Done => true,
         }
     }
+}
+
+/// The manifest source of a load of `input` from the `kind` source.
+fn manifest_source(kind: SourceKind, input: &LoadInput) -> ManifestSource {
+    let canonical = |path: &PathBuf| {
+        dunce::canonicalize(path)
+            .unwrap_or_else(|_| path.clone())
+            .to_string_lossy()
+            .into_owned()
+    };
+    let (location, branch) = match input {
+        LoadInput::File(path) | LoadInput::Folder(path) => (canonical(path), String::new()),
+        LoadInput::Git { url, branch } => (url.trim().to_string(), branch.trim().to_string()),
+        LoadInput::Url(url) => (url.trim().to_string(), String::new()),
+        LoadInput::Text(_) => (String::new(), String::new()),
+    };
+    ManifestSource {
+        kind: source_kind_name(kind).to_string(),
+        location,
+        branch,
+    }
+}
+
+/// Today, as a manifest writes it.
+fn today() -> String {
+    chrono::Local::now().format("%Y-%m-%d").to_string()
 }
 
 /// What to load.
@@ -292,6 +349,62 @@ pub(crate) fn open_openapi_wizard(
     window: &mut Window,
     cx: &mut App,
 ) {
+    open_wizard(view, source, window, cx);
+}
+
+/// Opens the wizard on the source an earlier import recorded, and reads it right away: once
+/// read, the Preview step offers to update the collection (GitHub #203). Pasted text cannot be
+/// read again and opens nothing.
+pub(crate) fn open_openapi_update(
+    view: WeakEntity<AppView>,
+    source: &ManifestSource,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let Some(kind) = source_kind_of(&source.kind) else {
+        return;
+    };
+    let wizard = open_wizard(view, kind, window, cx);
+    let location = source.location.clone();
+    let branch = source.branch.clone();
+    wizard.update(cx, |wizard, cx| {
+        let input = match kind {
+            SourceKind::File => LoadInput::File(PathBuf::from(&location)),
+            SourceKind::Folder => {
+                wizard.folder = Some(PathBuf::from(&location));
+                LoadInput::Folder(PathBuf::from(&location))
+            }
+            SourceKind::Url => {
+                wizard.url.update(cx, |state, cx| {
+                    state.set_value(location.clone(), window, cx)
+                });
+                LoadInput::Url(location)
+            }
+            SourceKind::Git => {
+                wizard.repository.update(cx, |state, cx| {
+                    state.set_value(location.clone(), window, cx)
+                });
+                wizard
+                    .branch
+                    .update(cx, |state, cx| state.set_value(branch.clone(), window, cx));
+                LoadInput::Git {
+                    url: location,
+                    branch,
+                }
+            }
+            SourceKind::Paste => return,
+        };
+        wizard.load(kind, input, false, cx);
+    });
+}
+
+/// Builds the wizard on `source` and opens it.
+fn open_wizard(
+    view: WeakEntity<AppView>,
+    source: SourceKind,
+    window: &mut Window,
+    cx: &mut App,
+) -> Entity<ImportWizard> {
     let name = cx.new(|cx| InputState::new(window, cx));
     let url = cx
         .new(|cx| InputState::new(window, cx).placeholder("https://api.example.com/openapi.yaml"));
@@ -311,6 +424,7 @@ pub(crate) fn open_openapi_wizard(
         repository: repository.clone(),
         branch: branch.clone(),
         folder: None,
+        source: None,
         git: None,
         checkout: None,
         loading: false,
@@ -352,7 +466,9 @@ pub(crate) fn open_openapi_wizard(
                 .detach();
         }
     }
+    let dialog_wizard = wizard.clone();
     window.open_dialog(cx, move |dialog, window, _| {
+        let wizard = dialog_wizard.clone();
         let enter = wizard.clone();
         // Enter is the primary button; the dialog stays open unless the wizard is done.
         let dialog = dialog.on_ok(move |_, window, cx| primary_action(&enter, window, cx));
@@ -371,6 +487,7 @@ pub(crate) fn open_openapi_wizard(
         SourceKind::Git => repository.update(cx, |state, cx| state.focus(window, cx)),
         _ => {}
     }
+    wizard
 }
 
 /// Runs the primary button (Next, Import or Close). Returns whether the dialog closes.
@@ -422,29 +539,85 @@ fn primary_action(wizard: &Entity<ImportWizard>, window: &mut Window, cx: &mut A
 /// Imports the selected requests. Into the open workspace the wizard moves to Done; without one
 /// it closes and the "New workspace" dialog takes over.
 fn run_import(wizard: &Entity<ImportWizard>, window: &mut Window, cx: &mut App) -> bool {
-    let (view, plan, excluded) = {
+    let (view, plan, excluded, origin, update) = {
         let wizard = wizard.read(cx);
         let Some(plan) = wizard.state.plan().cloned() else {
             return false;
         };
-        (wizard.view.clone(), plan, wizard.state.excluded().clone())
+        let origin = ImportOrigin {
+            source: wizard.source.clone().unwrap_or_else(|| ManifestSource {
+                kind: "paste".to_string(),
+                ..ManifestSource::default()
+            }),
+            date: today(),
+            options: wizard.state.options,
+        };
+        let update = wizard.state.is_update().then(|| {
+            let folder = wizard
+                .state
+                .existing()
+                .map(|existing| existing.folder.clone())
+                .unwrap_or_default();
+            let skipped: HashSet<String> = wizard
+                .state
+                .changes()
+                .iter()
+                .filter(|change| !wizard.state.is_change_selected(&change.key))
+                .map(|change| change.key.clone())
+                .collect();
+            (folder, skipped)
+        });
+        (
+            wizard.view.clone(),
+            plan,
+            wizard.state.excluded().clone(),
+            origin,
+            update,
+        )
     };
     let Some(app) = view.upgrade() else {
         return true;
     };
+    if let Some((folder, skipped)) = update {
+        let result = app.update(cx, |app, cx| {
+            app.update_openapi(&folder, &plan, &skipped, &origin, cx)
+        });
+        wizard.update(cx, |wizard, cx| {
+            match result {
+                Ok(report) => {
+                    wizard.done = Some(Done {
+                        count: report.added + report.changed + report.removed,
+                        name: folder.clone(),
+                        warnings: report.warnings,
+                        updated: Some((report.added, report.changed, report.removed)),
+                    });
+                    wizard.state.step = Step::Done;
+                }
+                Err(error) => wizard.error = Some(error),
+            }
+            cx.notify();
+        });
+        return false;
+    }
     if app.read(cx).state.workspace.is_none() {
         let name = plan.root.name.clone();
         window.close_dialog(cx);
         new_workspace::open_new_workspace_dialog(
             view,
-            NewWorkspacePurpose::OpenApi(PendingOpenApi { plan, excluded }),
+            NewWorkspacePurpose::OpenApi(PendingOpenApi {
+                plan,
+                excluded,
+                origin,
+            }),
             Some(name),
             window,
             cx,
         );
         return false;
     }
-    let result = app.update(cx, |app, cx| app.import_openapi(&plan, &excluded, cx));
+    let result = app.update(cx, |app, cx| {
+        app.import_openapi(&plan, &excluded, &origin, cx)
+    });
     wizard.update(cx, |wizard, cx| {
         match result {
             Ok(report) => {
@@ -456,6 +629,7 @@ fn run_import(wizard: &Entity<ImportWizard>, window: &mut Window, cx: &mut App) 
                         .count(),
                     name: plan.root.name.clone(),
                     warnings: report.warnings,
+                    updated: None,
                 });
                 wizard.state.step = Step::Done;
             }
@@ -473,12 +647,13 @@ impl AppView {
         &mut self,
         plan: &OpenApiPlan,
         excluded: &HashSet<String>,
+        origin: &ImportOrigin,
         cx: &mut Context<Self>,
     ) -> Result<ImportReport, String> {
         let Some(workspace) = self.state.workspace.as_mut() else {
             return Err("no workspace is open".to_string());
         };
-        match workspace.import_openapi(plan, &|key| !excluded.contains(key)) {
+        match workspace.import_openapi(plan, &|key| !excluded.contains(key), origin) {
             Ok(report) => {
                 log::info!(
                     "imported an OpenAPI spec: {} files created, {} warnings",
@@ -506,6 +681,43 @@ impl AppView {
             }
             Err(error) => {
                 crate::state::workspace_log::log_workspace_error("OpenAPI import", &error);
+                Err(error.to_string())
+            }
+        }
+    }
+
+    /// Updates the collection in `folder` from `plan`, applying every change but the `skipped`
+    /// ones, then refreshes the sidebar with the collection open.
+    pub(crate) fn update_openapi(
+        &mut self,
+        folder: &str,
+        plan: &OpenApiPlan,
+        skipped: &HashSet<String>,
+        origin: &ImportOrigin,
+        cx: &mut Context<Self>,
+    ) -> Result<UpdateReport, String> {
+        let Some(workspace) = self.state.workspace.as_mut() else {
+            return Err("no workspace is open".to_string());
+        };
+        match workspace.update_openapi(folder, plan, &|key| !skipped.contains(key), origin) {
+            Ok(report) => {
+                log::info!(
+                    "updated an OpenAPI collection: {} added, {} changed, {} removed, {} warnings",
+                    report.added,
+                    report.changed,
+                    report.removed,
+                    report.warnings.len()
+                );
+                self.workspace_error = None;
+                let folder = folder.to_string();
+                self.refresh_tree_with(cx, |expansion| {
+                    expansion.insert(folder, true);
+                });
+                cx.notify();
+                Ok(report)
+            }
+            Err(error) => {
+                crate::state::workspace_log::log_workspace_error("OpenAPI update", &error);
                 Err(error.to_string())
             }
         }
@@ -699,6 +911,9 @@ fn render_footer(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) -> 
         )
         .into(),
         Step::Options => plural("openapi.operations", state.state.operation_count()).into(),
+        Step::Preview if state.state.is_update() => {
+            plural("openapi.selected", state.state.selected_change_count()).into()
+        }
         Step::Preview => plural("openapi.selected", selected).into(),
         Step::Done => SharedString::default(),
     };
@@ -709,6 +924,9 @@ fn render_footer(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) -> 
             _ => t!("openapi.file.reading").into(),
         },
         Step::Source | Step::Options => t!("openapi.next").into(),
+        Step::Preview if state.state.is_update() => {
+            plural("openapi.update.button", state.state.selected_change_count()).into()
+        }
         Step::Preview => plural("openapi.import", selected).into(),
         Step::Done => t!("common.close").into(),
     };
@@ -1560,6 +1778,285 @@ fn described_checkbox(
 /// Step 3: the counts, the tree of requests to pick from and what else is written.
 fn render_preview(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) -> AnyElement {
     let state = wizard.read(cx);
+    let Some(existing) = state.state.existing() else {
+        return render_tree_preview(wizard, palette, cx);
+    };
+    let update = state.state.is_update();
+    let choice = |id: &'static str, label: SharedString, selected: bool, value: bool| {
+        let weak = wizard.downgrade();
+        choice_pill(id, label, selected, palette).on_click(move |_, _, cx| {
+            let _ = weak.update(cx, |wizard, cx| {
+                wizard.state.set_update(value);
+                cx.notify();
+            });
+        })
+    };
+    v_flex()
+        .size_full()
+        .gap(px(12.0))
+        .child(
+            h_flex()
+                .flex_none()
+                .gap(px(10.0))
+                .px(px(12.0))
+                .py(px(10.0))
+                .rounded(px(RADIUS_MD))
+                .bg(palette.raised)
+                .child(
+                    Icon::new(IconName::Info)
+                        .size(px(15.0))
+                        .text_color(palette.accent_text),
+                )
+                .child(div().flex_1().min_w_0().child(t!(
+                    "openapi.update.imported",
+                    name = existing.folder.clone(),
+                    date = existing.manifest.imported.clone()
+                ))),
+        )
+        .child(
+            h_flex()
+                .flex_none()
+                .gap(px(6.0))
+                .child(choice(
+                    "openapi-update-existing",
+                    t!("openapi.update.existing").into(),
+                    update,
+                    true,
+                ))
+                .child(choice(
+                    "openapi-update-new",
+                    t!("openapi.update.new").into(),
+                    !update,
+                    false,
+                )),
+        )
+        .child(div().flex_1().min_h_0().w_full().map(|area| {
+            if update {
+                area.child(render_changes(wizard, palette, cx))
+            } else {
+                area.child(render_tree_preview(wizard, palette, cx))
+            }
+        }))
+        .into_any_element()
+}
+
+/// A pill button of a two way choice, styled like the source buttons of the first step.
+fn choice_pill(
+    id: &'static str,
+    label: SharedString,
+    selected: bool,
+    palette: &Palette,
+) -> Stateful<Div> {
+    let (rest, hover, pressed) = if selected {
+        (
+            palette.raised,
+            palette.hover_over(palette.raised),
+            palette.pressed_over(palette.raised),
+        )
+    } else {
+        (
+            gpui_kit::transparent_black(),
+            palette.hover,
+            palette.pressed,
+        )
+    };
+    h_flex()
+        .id(id)
+        .h(px(SOURCE_TAB_HEIGHT - 2.0))
+        .px(px(12.0))
+        .rounded(px(RADIUS_MD))
+        .border_1()
+        .border_color(if selected {
+            palette.accent
+        } else {
+            palette.border
+        })
+        .bg(rest)
+        .text_color(if selected {
+            palette.fg
+        } else {
+            palette.fg_muted
+        })
+        .cursor_pointer()
+        .hover(move |style| style.bg(hover))
+        .active(move |style| style.bg(pressed))
+        .child(label)
+}
+
+/// The changes since the existing collection was imported, each with its checkbox (design 1e).
+fn render_changes(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) -> AnyElement {
+    let state = wizard.read(cx);
+    let (added, changed, removed, unchanged) = state.state.change_counts();
+    let changes = state.state.changes();
+    let count = changes.len();
+    let note = div()
+        .flex_none()
+        .text_size(px(12.0))
+        .line_height(relative(1.5))
+        .text_color(palette.fg_subtle)
+        .child(t!("openapi.update.note"));
+    let summary = div()
+        .flex_none()
+        .text_size(px(12.0))
+        .text_color(palette.fg_muted)
+        .child(t!(
+            "openapi.update.summary",
+            added = format_integer(added as u64),
+            changed = format_integer(changed as u64),
+            removed = format_integer(removed as u64),
+            unchanged = format_integer(unchanged as u64)
+        ));
+    if count == 0 {
+        return v_flex()
+            .size_full()
+            .gap(px(12.0))
+            .child(summary)
+            .child(
+                div()
+                    .flex_1()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .text_color(palette.fg_muted)
+                    .child(t!("openapi.update.up_to_date")),
+            )
+            .into_any_element();
+    }
+    let selected: Vec<bool> = changes
+        .iter()
+        .map(|change| state.state.is_change_selected(&change.key))
+        .collect();
+    let weak = wizard.downgrade();
+    let row_palette = palette.clone();
+    let mono = cx.theme().mono_font_family.clone();
+    let list = uniform_list("openapi-changes", count, move |range, _, _| {
+        range
+            .map(|index| {
+                render_change(
+                    index,
+                    &changes[index],
+                    selected[index],
+                    &weak,
+                    &row_palette,
+                    &mono,
+                )
+            })
+            .collect::<Vec<_>>()
+    })
+    .track_scroll(&state.rows_scroll)
+    .size_full();
+    let rows_scroll = state.rows_scroll.clone();
+    v_flex()
+        .size_full()
+        .gap(px(12.0))
+        .child(summary)
+        .child(
+            div()
+                .flex_1()
+                .min_h_0()
+                .relative()
+                .py(px(6.0))
+                .rounded(px(RADIUS_MD))
+                .border_1()
+                .border_color(palette.border)
+                .bg(palette.bg)
+                .child(list)
+                .child(
+                    div()
+                        .absolute()
+                        .inset_0()
+                        .child(Scrollbar::vertical(&rows_scroll)),
+                ),
+        )
+        .child(note)
+        .into_any_element()
+}
+
+/// One change: its checkbox, what happened, the method, the path and what changed. The whole
+/// row toggles it.
+fn render_change(
+    index: usize,
+    change: &PlanChange,
+    selected: bool,
+    wizard: &WeakEntity<ImportWizard>,
+    palette: &Palette,
+    mono: &SharedString,
+) -> AnyElement {
+    let (label, color) = match change.kind {
+        ChangeKind::Added => (t!("openapi.update.added"), palette.success),
+        ChangeKind::Changed => (t!("openapi.update.changed"), palette.warning),
+        _ => (t!("openapi.update.removed"), palette.danger),
+    };
+    let detail = if change.kind == ChangeKind::Removed && !selected {
+        t!("openapi.update.kept").into_owned()
+    } else {
+        change.details.join(", ")
+    };
+    let toggle = |weak: WeakEntity<ImportWizard>, key: String| {
+        move |cx: &mut App| {
+            let _ = weak.update(cx, |wizard, cx| {
+                wizard.state.toggle_change(&key);
+                cx.notify();
+            });
+        }
+    };
+    let box_toggle = toggle(wizard.clone(), change.key.clone());
+    let row_toggle = toggle(wizard.clone(), change.key.clone());
+    let state = if selected {
+        CheckState::Checked
+    } else {
+        CheckState::Unchecked
+    };
+    let method = change
+        .method
+        .parse::<postino_core::Method>()
+        .unwrap_or_default();
+    h_flex()
+        .id(("openapi-change", index))
+        .w_full()
+        .h(px(ROW_HEIGHT))
+        .gap(px(10.0))
+        .px(px(12.0))
+        .text_size(px(12.0))
+        .cursor_pointer()
+        .hover(|style| style.bg(palette.hover))
+        .active(|style| style.bg(palette.pressed))
+        .on_click(move |_, _, cx| row_toggle(cx))
+        .child(
+            TriCheckbox::new(("openapi-change-check", index), state)
+                .on_click(move |_, _, cx| box_toggle(cx)),
+        )
+        .child(
+            div()
+                .flex_none()
+                .w(px(CHANGE_KIND_WIDTH))
+                .font_weight(FontWeight::SEMIBOLD)
+                .text_color(color)
+                .child(label),
+        )
+        .child(div().flex_none().child(MethodBadge::label(method)))
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .truncate()
+                .font_family(mono.clone())
+                .child(change.path.clone()),
+        )
+        .child(
+            div()
+                .flex_none()
+                .max_w(px(CHANGE_DETAIL_WIDTH))
+                .truncate()
+                .text_color(palette.fg_subtle)
+                .child(detail),
+        )
+        .into_any_element()
+}
+
+/// The new collection's tree of requests, with the counts and what else is written.
+fn render_tree_preview(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) -> AnyElement {
+    let state = wizard.read(cx);
     let total = state.state.total_count();
     let selected = state.state.selected_count();
     let summary = format!(
@@ -1840,14 +2337,22 @@ fn render_done(wizard: &Entity<ImportWizard>, palette: &Palette, cx: &App) -> An
                 .text_size(px(15.0))
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_center()
-                .child(
-                    t!(
+                .child(match done.updated {
+                    Some((added, changed, removed)) => t!(
+                        "openapi.done.updated",
+                        name = done.name.clone(),
+                        added = format_integer(added as u64),
+                        changed = format_integer(changed as u64),
+                        removed = format_integer(removed as u64)
+                    )
+                    .into_owned(),
+                    None => t!(
                         &telaio_app::language::plural_key("openapi.done.title", done.count),
                         count = format_integer(done.count as u64),
                         name = done.name.clone()
                     )
                     .into_owned(),
-                ),
+                }),
         )
         .child(
             div()

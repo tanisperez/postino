@@ -13,10 +13,12 @@ use std::sync::Arc;
 
 use postino_core::{Method, ResolvedField, ResolvedRequest};
 use postino_format::openapi::{
-    CatalogDefinition, ImportOptions, NoExternalRefs, OpenApiPlan, PlanFolder, RefLoader, Spec,
-    SpecVersion, build_plan, looks_like_catalog, looks_like_spec, parse_catalog, parse_spec,
+    CatalogDefinition, ChangeKind, ImportOptions, ManifestSource, NoExternalRefs, OpenApiPlan,
+    PlanChange, PlanFolder, RefLoader, Spec, SpecVersion, build_plan, diff_plan,
+    looks_like_catalog, looks_like_spec, parse_catalog, parse_spec,
 };
 use postino_runner::Client;
+use postino_workspace::OpenApiCollection;
 
 /// Where the wizard reads the spec from (the source tabs of the first step).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -491,6 +493,57 @@ pub struct Wizard {
     rows: Arc<[PreviewRow]>,
     /// `(selected, total, folders)` of the plan, counted with the rows so render reads them.
     counts: (usize, usize, usize),
+    /// The collection an earlier import of the same source created, if any (GitHub #203).
+    existing: Option<OpenApiCollection>,
+    /// Whether the Preview step updates [`Self::existing`] instead of importing a new
+    /// collection.
+    update: bool,
+    /// What changed since [`Self::existing`] was imported, the unchanged operations left out:
+    /// added first, then changed, then removed.
+    changes: Arc<[PlanChange]>,
+    /// The changes the user unchecked, by request key. Removed operations start unchecked.
+    skipped: HashSet<String>,
+    /// How many operations are unchanged.
+    unchanged: usize,
+}
+
+/// The kind of manifest source of `kind`, as written in `.openapi.toml`.
+pub fn source_kind_name(kind: SourceKind) -> &'static str {
+    match kind {
+        SourceKind::File => "file",
+        SourceKind::Url => "url",
+        SourceKind::Paste => "paste",
+        SourceKind::Folder => "folder",
+        SourceKind::Git => "git",
+    }
+}
+
+/// The source kind of a manifest's `kind`, `None` for pasted text or an unknown kind: those
+/// cannot be read again.
+pub fn source_kind_of(name: &str) -> Option<SourceKind> {
+    match name {
+        "file" => Some(SourceKind::File),
+        "url" => Some(SourceKind::Url),
+        "folder" => Some(SourceKind::Folder),
+        "git" => Some(SourceKind::Git),
+        _ => None,
+    }
+}
+
+/// The collection of `collections` imported from `source`. Pasted text has no source to match.
+pub fn find_existing(
+    collections: Vec<OpenApiCollection>,
+    source: &ManifestSource,
+) -> Option<OpenApiCollection> {
+    if source.kind == "paste" || source.location.is_empty() {
+        return None;
+    }
+    collections.into_iter().find(|collection| {
+        let known = &collection.manifest.source;
+        known.kind == source.kind
+            && known.location == source.location
+            && known.branch.trim() == source.branch.trim()
+    })
 }
 
 impl Wizard {
@@ -510,6 +563,11 @@ impl Wizard {
             closed: HashSet::new(),
             rows: Arc::from(Vec::new()),
             counts: (0, 0, 0),
+            existing: None,
+            update: false,
+            changes: Arc::from(Vec::new()),
+            skipped: HashSet::new(),
+            unchanged: 0,
         }
     }
 
@@ -552,6 +610,78 @@ impl Wizard {
         self.closed.clear();
         self.rows = Arc::from(Vec::new());
         self.counts = (0, 0, 0);
+        self.existing = None;
+        self.update = false;
+        self.changes = Arc::from(Vec::new());
+        self.skipped.clear();
+        self.unchanged = 0;
+    }
+
+    /// Records the collection an earlier import of this source created: the Preview step then
+    /// offers to update it, with its options.
+    pub fn set_existing(&mut self, existing: Option<OpenApiCollection>) {
+        if let Some(collection) = &existing {
+            self.options = collection.manifest.options.into();
+        }
+        self.update = existing.is_some();
+        self.existing = existing;
+        self.skipped.clear();
+    }
+
+    /// The collection an earlier import of this source created.
+    pub fn existing(&self) -> Option<&OpenApiCollection> {
+        self.existing.as_ref()
+    }
+
+    /// Whether the Preview step updates the existing collection.
+    pub fn is_update(&self) -> bool {
+        self.update && self.existing.is_some()
+    }
+
+    /// Chooses between updating the existing collection and importing a new one.
+    pub fn set_update(&mut self, update: bool) {
+        self.update = update;
+    }
+
+    /// The changes since the existing collection was imported, unchanged operations left out.
+    pub fn changes(&self) -> Arc<[PlanChange]> {
+        self.changes.clone()
+    }
+
+    /// `(added, changed, removed, unchanged)`.
+    pub fn change_counts(&self) -> (usize, usize, usize, usize) {
+        let count = |kind| {
+            self.changes
+                .iter()
+                .filter(|change| change.kind == kind)
+                .count()
+        };
+        (
+            count(ChangeKind::Added),
+            count(ChangeKind::Changed),
+            count(ChangeKind::Removed),
+            self.unchanged,
+        )
+    }
+
+    /// Whether the change of `key` is applied.
+    pub fn is_change_selected(&self, key: &str) -> bool {
+        !self.skipped.contains(key)
+    }
+
+    /// Applies the change of `key`, or not.
+    pub fn toggle_change(&mut self, key: &str) {
+        if !self.skipped.remove(key) {
+            self.skipped.insert(key.to_string());
+        }
+    }
+
+    /// How many changes are applied.
+    pub fn selected_change_count(&self) -> usize {
+        self.changes
+            .iter()
+            .filter(|change| self.is_change_selected(&change.key))
+            .count()
     }
 
     /// The name the collection gets unless the user types another one: the first spec's title.
@@ -658,10 +788,36 @@ impl Wizard {
         } else {
             name.trim().to_string()
         };
-        self.plan = Some(Arc::new(build_plan(&name, &versions, &self.options)));
+        let plan = build_plan(&name, &versions, &self.options);
         if self.full_plan.is_none() {
             self.full_plan = Some(build_plan(&name, &versions, &ImportOptions::default()));
         }
+        if let Some(existing) = &self.existing {
+            let first = self.changes.is_empty() && self.unchanged == 0;
+            let mut changes = diff_plan(&existing.manifest, &plan);
+            self.unchanged = changes
+                .iter()
+                .filter(|change| change.kind == ChangeKind::Unchanged)
+                .count();
+            changes.retain(|change| change.kind != ChangeKind::Unchanged);
+            // The design's order: added, changed, removed, each in plan order.
+            changes.sort_by_key(|change| match change.kind {
+                ChangeKind::Added => 0,
+                ChangeKind::Changed => 1,
+                _ => 2,
+            });
+            if first {
+                // Removed operations stay unless the user checks them.
+                self.skipped.extend(
+                    changes
+                        .iter()
+                        .filter(|change| change.kind == ChangeKind::Removed)
+                        .map(|change| change.key.clone()),
+                );
+            }
+            self.changes = Arc::from(changes);
+        }
+        self.plan = Some(Arc::new(plan));
         self.refresh_rows();
     }
 
@@ -1027,6 +1183,77 @@ paths:
         assert_eq!(wizard.operation_count(), 4);
         assert_eq!(wizard.total_count(), 4);
         assert_eq!(wizard.plan().expect("built").root.folders[0].name, "v2");
+    }
+
+    #[test]
+    fn an_existing_import_turns_the_preview_into_an_update() {
+        use postino_format::openapi::{Manifest, ManifestSource};
+        let mut wizard = wizard();
+        let old = wizard.plan().expect("built").clone();
+        let source = ManifestSource {
+            kind: "url".into(),
+            location: "https://x/spec.yaml".into(),
+            branch: String::new(),
+        };
+        let mut files = std::collections::BTreeMap::new();
+        for key in ["GET /customers", "GET /charges", "DELETE /gone"] {
+            files.insert(key.to_string(), format!("{key}.postino"));
+        }
+        let mut manifest = Manifest::new(
+            "2026-10-28",
+            source.clone(),
+            &ImportOptions::default(),
+            &old,
+            &files,
+        );
+        manifest.requests.insert(
+            "DELETE /gone".into(),
+            postino_format::openapi::ManifestRequest {
+                method: "DELETE".into(),
+                path: "/gone".into(),
+                ..Default::default()
+            },
+        );
+        let collection = OpenApiCollection {
+            folder: "Acme".into(),
+            manifest,
+        };
+        assert!(
+            find_existing(
+                vec![collection.clone()],
+                &ManifestSource {
+                    kind: "paste".into(),
+                    ..source.clone()
+                }
+            )
+            .is_none()
+        );
+        let found = find_existing(vec![collection], &source).expect("the same source");
+
+        wizard.set_existing(Some(found));
+        wizard.rebuild("");
+        assert!(wizard.is_update());
+        // POST /customers and GET /customers/{id} were not imported: added. DELETE /gone: removed.
+        assert_eq!(wizard.change_counts(), (2, 0, 1, 2));
+        let kinds: Vec<ChangeKind> = wizard.changes().iter().map(|change| change.kind).collect();
+        assert_eq!(
+            kinds,
+            vec![ChangeKind::Added, ChangeKind::Added, ChangeKind::Removed]
+        );
+        assert_eq!(
+            wizard.selected_change_count(),
+            2,
+            "removed ones start unchecked"
+        );
+        wizard.toggle_change("DELETE /gone");
+        wizard.rebuild("");
+        assert_eq!(
+            wizard.selected_change_count(),
+            3,
+            "the choice survives a rebuild"
+        );
+        wizard.set_update(false);
+        assert!(!wizard.is_update());
     }
 
     #[test]
