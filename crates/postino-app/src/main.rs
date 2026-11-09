@@ -24,12 +24,13 @@ use telaio_app::{logging, window};
 use actions::{
     CloseActiveTab, CommitFromMessage, ConfirmCompletion, CopyLoadTestSummary, DeleteLine,
     DeleteSelectedEntry, DismissCompletion, ImportOpenApi, MoveEnvironmentDown, MoveEnvironmentUp,
-    NextCompletion, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, OpenWorkspace,
-    PreviousCompletion, PreviousTab, RedoRequestEdit, RenameSelectedEntry, SaveActiveTab,
-    SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
-    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
-    SelectEnvironment9, SelectNoEnvironment, SendActiveTab, ShowCompletion, ToggleCollections,
-    ToggleEnvironments, ToggleLoadTests, ToggleSourceControl, UndoRequestEdit,
+    NextCompletion, NextDiffChange, NextTab, OpenCommandPalette, OpenDiffFile, OpenSettings,
+    OpenShortcuts, OpenWorkspace, PreviousCompletion, PreviousDiffChange, PreviousTab,
+    RedoRequestEdit, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1, SelectEnvironment2,
+    SelectEnvironment3, SelectEnvironment4, SelectEnvironment5, SelectEnvironment6,
+    SelectEnvironment7, SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+    ShowCompletion, ToggleCollections, ToggleEnvironments, ToggleLoadTests, ToggleSourceControl,
+    UndoRequestEdit,
 };
 use state::settings::ThemeChoice;
 use state::window::WindowState;
@@ -404,6 +405,14 @@ fn bind_keys(cx: &mut App) {
             KeyBinding::new("ctrl-y", RedoRequestEdit, context),
         ]);
     }
+    // The diff tab's keys, as in IntelliJ (#224), only while the diff tab has the focus
+    // (`views/git/diff_tab.rs`'s `DIFF_KEY_CONTEXT`).
+    let diff = Some(views::git::DIFF_KEY_CONTEXT);
+    cx.bind_keys([
+        KeyBinding::new("f7", NextDiffChange, diff),
+        KeyBinding::new("shift-f7", PreviousDiffChange, diff),
+        KeyBinding::new("f4", OpenDiffFile, diff),
+    ]);
     // Only while the sidebar tree has the focus (gpui-base's `Tree` key context): in a text input
     // these keys keep editing the text.
     let tree = Some(gpui_kit::base::tree_key_context());

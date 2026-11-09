@@ -150,11 +150,36 @@ _version: 2
   es: "Cambio siguiente"
   gl: "Cambio seguinte"
   it: "Modifica successiva"
-"git.diff.position":
-  en: "%{current} of %{total}"
-  es: "%{current} de %{total}"
-  gl: "%{current} de %{total}"
-  it: "%{current} di %{total}"
+"git.diff.prev_button":
+  en: "Prev"
+  es: "Anterior"
+  gl: "Anterior"
+  it: "Prec."
+"git.diff.next_button":
+  en: "Next"
+  es: "Siguiente"
+  gl: "Seguinte"
+  it: "Succ."
+"git.diff.of_changes.one":
+  en: "of %{count} change"
+  es: "de %{count} cambio"
+  gl: "de %{count} cambio"
+  it: "di %{count} modifica"
+"git.diff.of_changes.other":
+  en: "of %{count} changes"
+  es: "de %{count} cambios"
+  gl: "de %{count} cambios"
+  it: "di %{count} modifiche"
+"git.diff.next_file_hint":
+  en: "Press %{key} again to go to the next file"
+  es: "Pulsa %{key} otra vez para ir al siguiente archivo"
+  gl: "Preme %{key} outra vez para ir ao seguinte ficheiro"
+  it: "Premi di nuovo %{key} per passare al file successivo"
+"git.diff.previous_file_hint":
+  en: "Press %{key} again to go to the previous file"
+  es: "Pulsa %{key} otra vez para ir al archivo anterior"
+  gl: "Preme %{key} outra vez para ir ao ficheiro anterior"
+  it: "Premi di nuovo %{key} per passare al file precedente"
 "git.diff.split":
   en: "Side by side"
   es: "Lado a lado"
@@ -165,11 +190,11 @@ _version: 2
   es: "Unificado"
   gl: "Unificado"
   it: "Unificato"
-"git.diff.open_request":
-  en: "Open request"
-  es: "Abrir petición"
-  gl: "Abrir petición"
-  it: "Apri richiesta"
+"git.diff.open_file":
+  en: "Open file"
+  es: "Abrir archivo"
+  gl: "Abrir ficheiro"
+  it: "Apri file"
 "git.diff.status_modified":
   en: "Modified"
   es: "Modificado"

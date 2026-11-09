@@ -25,6 +25,7 @@ mod write;
 
 pub(crate) use branch_menu::{MenuContext, new_branch_menu};
 pub(crate) use branches::{CheckoutChoice, CheckoutTarget};
+pub(crate) use diff_tab::DIFF_KEY_CONTEXT;
 pub(crate) use panel::INSTALL_GIT_URL;
 pub(crate) use write::init_with_gitignore;
 
@@ -44,6 +45,18 @@ pub(crate) struct GitTasks {
     diff_view: Option<diff_tab::DiffView>,
     /// The diff tab's patch being read.
     diff_load: Option<Task<()>>,
+    /// The diff tab's focus, where its keys (F7, Shift+F7, F4) act. Created with the first diff.
+    diff_focus: Option<FocusHandle>,
+    /// Give the diff tab the focus on its next render: it just opened a file.
+    focus_diff: bool,
+    /// Whether the last render of the main area showed the diff tab, so it takes the focus when
+    /// it becomes the active tab again.
+    diff_shown: bool,
+    /// Land on the last change of the next patch read, not the first: Shift+F7 went back to the
+    /// previous file.
+    diff_land_last: bool,
+    /// Hides the "press F7 again" hint of the diff tab after a moment.
+    diff_hint: Option<Task<()>>,
     /// The commit box's summary line being read.
     commit_stats: Option<Task<()>>,
     /// The branches being read for the menu (`branches.rs`).

@@ -102,5 +102,15 @@ actions!(
         /// Copies the summary of the active load test tab's results to the clipboard as Markdown
         /// (`Ctrl+Shift+C` / `Cmd+Shift+C`), like the Export menu's "Copy summary as Markdown".
         CopyLoadTestSummary,
+        /// Goes to the next change of the diff tab, or past its last one to the next file's diff
+        /// (`F7`, only while the diff tab has the focus, #224).
+        NextDiffChange,
+        /// Goes to the previous change of the diff tab, or past its first one to the previous
+        /// file's diff (`Shift+F7`, only while the diff tab has the focus).
+        PreviousDiffChange,
+        /// Opens the file of the diff tab at its current change: a request, an environment or,
+        /// for any other file, the system's application (`F4`, only while the diff tab has the
+        /// focus).
+        OpenDiffFile,
     ]
 );

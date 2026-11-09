@@ -1,14 +1,21 @@
 //! The diff tab (designs 2a, 2b, 7a): a header with the file, its kind of change, the change
-//! counter with previous and next, the layout switch and "Open request", the column titles
-//! (`HEAD` and its commit, the working tree) and the lines, side by side or unified, with syntax
-//! colors, the changed words marked and the Revert and Stage buttons of each block of changes.
-//! The patch is read, parsed and highlighted on the background executor whenever the tab opens a
-//! file or the git status changes, never in render; the lines are a virtualized list.
+//! counter with Prev and Next, the layout switch and "Open file", the column titles (`HEAD` and
+//! its commit, the working tree) and the lines, side by side or unified, with syntax colors, the
+//! changed words marked and the Revert and Stage buttons of each block of changes. The patch is
+//! read, parsed and highlighted on the background executor whenever the tab opens a file or the
+//! git status changes, never in render; the lines are a virtualized list.
+//!
+//! Its keys work like IntelliJ's (#224), only while the tab has the focus: F7 and Shift+F7 step
+//! through the changes and, past the last (or first) one, to the next (or previous) file, and F4
+//! opens the file at the current change.
 
 use gpui_kit::assets::IconName;
+use std::collections::HashSet;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::time::Duration;
 
+use gpui_kit::component::button::Button;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -18,15 +25,21 @@ use postino_format::{DiffRowKind, RequestDiff, RequestPart, RowNote, diff_reques
 use rust_i18n::t;
 use telaio_git::{ApplyTarget, DiffSource, FileVersion, LineKind, Repo, block_patch};
 
+use crate::actions::{NextDiffChange, OpenDiffFile, PreviousDiffChange};
 use crate::state::diff_view::DiffModel;
-use crate::state::git_diff::{DiffSummary, DiffTab, DiffTarget, HunkStage, summarize};
+use crate::state::git::{ChangeRowKind, change_rows};
+use crate::state::git_diff::{
+    DiffSummary, DiffTab, DiffTarget, HunkStage, block_at_row, block_new_line, neighbour,
+    request_location, summarize,
+};
+use crate::state::git_log::Detail;
 use crate::state::locale::plural;
 use crate::state::number::format_integer;
 use crate::state::settings::GitDiffMode;
 use crate::theme::metrics::{RAIL_WIDTH, SIDEBAR_WIDTH};
 use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::{
-    ConfirmDialog, EmptyState, IconButton, SecondaryButton, SegmentedControl, SegmentedItem,
+    ConfirmDialog, EmptyState, NeutralButtonExt, SecondaryButton, SegmentedControl, SegmentedItem,
     open_confirm_dialog,
 };
 
@@ -46,6 +59,12 @@ const LINE_HEIGHT: f32 = 20.0;
 const GUTTER_WIDTH: f32 = 44.0;
 /// The group that shows a row's block buttons while the pointer is over it.
 const ROW_GROUP: &str = "git-diff-row";
+
+/// The key context of the diff tab, where `main.rs` binds F7, Shift+F7 and F4.
+pub(crate) const DIFF_KEY_CONTEXT: &str = "GitDiff";
+
+/// How long the "press F7 again" hint stays.
+const EDGE_HINT_DURATION: Duration = Duration::from_secs(3);
 
 /// A patch read in the background, ready for the viewer.
 struct LoadedDiff {
@@ -154,6 +173,12 @@ pub(crate) struct DiffView {
     semantic: Option<Rc<Result<RequestDiff, String>>>,
     /// The scroll position of the lines.
     scroll: UniformListScrollHandle,
+    /// Scroll to the current change on the next render, where the layout is known: a new patch
+    /// was read.
+    scroll_pending: bool,
+    /// The direction of the "press F7 again to go to the next file" hint while it shows: `true`
+    /// past the last change, `false` before the first one.
+    edge_hint: Option<bool>,
 }
 
 impl DiffView {
@@ -182,6 +207,13 @@ impl AppView {
         self.state
             .tabs
             .open_diff(DiffTab::new(repo_path, path, target, letter));
+        if self.git_tasks.diff_focus.is_none() {
+            self.git_tasks.diff_focus = Some(cx.focus_handle());
+        }
+        self.git_tasks.focus_diff = true;
+        if let Some(view) = self.git_tasks.diff_view.as_mut() {
+            view.edge_hint = None;
+        }
         self.load_git_diff(cx);
         cx.notify();
     }
@@ -261,11 +293,18 @@ impl AppView {
         tab.summary = Some(loaded.summary);
         let blocks = Rc::new(loaded.blocks);
         let semantic = loaded.semantic.map(Rc::new);
+        // A new file starts on its first change, or on its last one after Shift+F7.
+        let first = if std::mem::take(&mut self.git_tasks.diff_land_last) {
+            loaded.model.diff.blocks.len().saturating_sub(1)
+        } else {
+            0
+        };
         match &mut self.git_tasks.diff_view {
             Some(view) => {
                 if view.patch != loaded.patch {
-                    view.current = 0;
+                    view.current = first;
                     view.scroll = UniformListScrollHandle::new();
+                    view.scroll_pending = true;
                 }
                 view.generation = generation;
                 view.patch = loaded.patch;
@@ -276,12 +315,14 @@ impl AppView {
             None => {
                 self.git_tasks.diff_view = Some(DiffView {
                     generation,
-                    current: 0,
+                    current: first,
                     patch: loaded.patch,
                     model: loaded.model,
                     blocks,
                     semantic,
                     scroll: UniformListScrollHandle::new(),
+                    scroll_pending: true,
+                    edge_hint: None,
                 });
             }
         }
@@ -307,24 +348,189 @@ impl AppView {
         }
     }
 
-    /// Moves to the next (or previous) change block of the diff, in the layout that shows.
-    fn step_git_diff(&mut self, forward: bool, unified: bool, cx: &mut Context<Self>) {
+    /// The layout the diff tab shows: the chosen one, unless the main area is too narrow for two
+    /// columns or the file has no request diff.
+    fn shown_git_diff_mode(&self, window: &Window) -> GitDiffMode {
+        // The main area's width, without measuring a frame: the window less the rail and the
+        // sidebar when it shows.
+        let sidebar = if self.nav.sidebar_visible() {
+            SIDEBAR_WIDTH
+        } else {
+            0.0
+        };
+        let narrow =
+            f32::from(window.viewport_size().width) - RAIL_WIDTH - sidebar < SPLIT_MIN_WIDTH;
+        let semantic = self
+            .git_tasks
+            .diff_view
+            .as_ref()
+            .and_then(|view| view.semantic.as_deref());
+        shown_mode(self.state.settings.git_diff_mode, narrow, semantic)
+    }
+
+    /// Moves to the next (or previous) change block of the diff, in the layout that shows. Past
+    /// the last (or before the first) one, a first press shows a hint and a second one opens the
+    /// next (or previous) file's diff.
+    fn step_git_diff(&mut self, forward: bool, window: &Window, cx: &mut Context<Self>) {
+        let unified = match self.shown_git_diff_mode(window) {
+            GitDiffMode::Request => return,
+            mode => mode == GitDiffMode::Unified,
+        };
+        let has_neighbour = self.neighbour_diff_file(forward).is_some();
         let Some(view) = self.git_tasks.diff_view.as_mut() else {
             return;
         };
         let count = view.model.diff.blocks.len();
-        if count == 0 {
+        let at_edge = count == 0
+            || if forward {
+                view.current + 1 >= count
+            } else {
+                view.current == 0
+            };
+        if !at_edge {
+            view.edge_hint = None;
+            view.current = if forward {
+                view.current + 1
+            } else {
+                view.current - 1
+            };
+            if let Some(row) = view.block_row(view.current, unified) {
+                view.scroll.scroll_to_item(row, ScrollStrategy::Center);
+            }
+            cx.notify();
             return;
         }
-        view.current = if forward {
-            (view.current + 1).min(count - 1)
-        } else {
-            view.current.saturating_sub(1)
-        };
-        if let Some(row) = view.block_row(view.current, unified) {
-            view.scroll.scroll_to_item(row, ScrollStrategy::Center);
+        if !has_neighbour {
+            return;
         }
+        if view.edge_hint == Some(forward) {
+            view.edge_hint = None;
+            self.open_neighbour_diff(forward, cx);
+            return;
+        }
+        view.edge_hint = Some(forward);
+        self.git_tasks.diff_hint = Some(cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(EDGE_HINT_DURATION).await;
+            let _ = this.update(cx, |view, cx| {
+                if let Some(diff) = view.git_tasks.diff_view.as_mut() {
+                    diff.edge_hint = None;
+                }
+                cx.notify();
+            });
+        }));
         cx.notify();
+    }
+
+    /// Makes the change block that list row `row` is part of the current one, so the counter,
+    /// F7 and F4 start from where the user clicked.
+    fn select_git_diff_row(&mut self, row: usize, unified: bool, cx: &mut Context<Self>) {
+        let Some(view) = self.git_tasks.diff_view.as_mut() else {
+            return;
+        };
+        if let Some(block) = block_at_row(&view.model.diff, row, unified)
+            && block != view.current
+        {
+            view.current = block;
+            view.edge_hint = None;
+            cx.notify();
+        }
+    }
+
+    /// The file before or after the diff tab's one: in the Source Control tree for the work tree,
+    /// in the selected commit's file list for a commit. As `(repo_path, path, letter)`.
+    fn neighbour_diff_file(&self, forward: bool) -> Option<(String, String, char)> {
+        let tab = self.diff_tab()?;
+        let files: Vec<(String, String, char)> = match &tab.target {
+            DiffTarget::WorkTree => {
+                let (repo, status) = self.git.status()?;
+                // Every file in tree order, folded folders included.
+                change_rows(status, repo.prefix(), &HashSet::new(), self.git.flat)
+                    .into_iter()
+                    .filter_map(|row| match row.kind {
+                        ChangeRowKind::File { letter, .. } => {
+                            Some((row.repo_paths.first()?.clone(), row.path, letter))
+                        }
+                        _ => None,
+                    })
+                    .collect()
+            }
+            DiffTarget::Commit { oid, .. } => {
+                let Detail::Ready(detail) = &self.log_tab()?.detail else {
+                    return None;
+                };
+                if detail.oid != *oid {
+                    return None;
+                }
+                detail
+                    .files
+                    .iter()
+                    .map(|file| (file.repo_path.clone(), file.path.clone(), file.letter))
+                    .collect()
+            }
+        };
+        let index = files.iter().position(|file| file.0 == tab.repo_path)?;
+        neighbour(&files, index, forward).cloned()
+    }
+
+    /// Opens the diff of the file after (or before) the diff tab's one, on its first (or last)
+    /// change.
+    fn open_neighbour_diff(&mut self, forward: bool, cx: &mut Context<Self>) {
+        let Some((repo_path, path, letter)) = self.neighbour_diff_file(forward) else {
+            return;
+        };
+        let Some(target) = self.diff_tab().map(|tab| tab.target.clone()) else {
+            return;
+        };
+        self.git_tasks.diff_land_last = !forward;
+        self.open_git_diff(repo_path, path, target, letter, cx);
+    }
+
+    /// Called when the main area shows another tab: the diff tab takes the focus again when it
+    /// is back.
+    pub(crate) fn note_diff_tab_hidden(&mut self) {
+        self.git_tasks.diff_shown = false;
+    }
+
+    /// The open diff tab.
+    fn diff_tab(&self) -> Option<&DiffTab> {
+        let index = self.state.tabs.index_of(crate::state::git_diff::TAB_ID)?;
+        self.state.tabs.open_tabs().get(index)?.diff()
+    }
+
+    /// Opens the diff tab's file (F4, "Open file"): a request on the tab of its current change,
+    /// with the cursor on the changed line in a code editor; an environment on its tab; any
+    /// other file in the system's application. Nothing for a deleted file.
+    fn open_diff_file(&mut self, cx: &mut Context<Self>) {
+        let Some(tab) = self.diff_tab().cloned() else {
+            return;
+        };
+        if tab.letter == 'D' {
+            return;
+        }
+        if let Some(id) = tab.request_id() {
+            let location = self.git_tasks.diff_view.as_ref().and_then(|view| {
+                let line = block_new_line(&view.model.diff, view.current)?;
+                let lines = view
+                    .model
+                    .diff
+                    .lines
+                    .iter()
+                    .filter(|line| line.kind != LineKind::Removed)
+                    .map(|line| line.text.as_str());
+                Some(request_location(lines, line))
+            });
+            self.open_request(id.to_string(), cx);
+            if let Some(location) = location
+                && let Some(request_tab) = location.tab
+            {
+                self.active_request_tab = request_tab;
+                self.request_editor.reveal_line = location.row.map(|row| (id.to_string(), row));
+            }
+        } else if let Some(name) = tab.environment_name() {
+            self.open_environment_tab(name.to_string(), cx);
+        } else if let Some(repo) = self.git.repo() {
+            cx.open_with_system(&repo.root().join(&tab.repo_path));
+        }
     }
 
     /// The patch of change block `index` of the diff tab, with the repository it applies to.
@@ -392,22 +598,30 @@ impl AppView {
         let Some(tab) = self.state.tabs.active().and_then(|tab| tab.diff()).cloned() else {
             return div().into_any_element();
         };
-        // The main area's width, without measuring a frame: the window less the rail and the
-        // sidebar when it shows.
-        let sidebar = if self.nav.sidebar_visible() {
-            SIDEBAR_WIDTH
-        } else {
-            0.0
-        };
-        let narrow =
-            f32::from(window.viewport_size().width) - RAIL_WIDTH - sidebar < SPLIT_MIN_WIDTH;
-        let chosen = self.state.settings.git_diff_mode;
         let semantic = self
             .git_tasks
             .diff_view
             .as_ref()
             .and_then(|view| view.semantic.clone());
-        let shows = shown_mode(chosen, narrow, semantic.as_deref());
+        let shows = self.shown_git_diff_mode(window);
+        let focus = self
+            .git_tasks
+            .diff_focus
+            .get_or_insert_with(|| cx.focus_handle())
+            .clone();
+        // It takes the focus when it opens a file and when it becomes the active tab, so its
+        // keys work right away.
+        let shown_before = std::mem::replace(&mut self.git_tasks.diff_shown, true);
+        if std::mem::take(&mut self.git_tasks.focus_diff) || !shown_before {
+            window.focus(&focus, cx);
+        }
+        if let Some(view) = self.git_tasks.diff_view.as_mut()
+            && shows != GitDiffMode::Request
+            && std::mem::take(&mut view.scroll_pending)
+            && let Some(row) = view.block_row(view.current, shows == GitDiffMode::Unified)
+        {
+            view.scroll.scroll_to_item(row, ScrollStrategy::Center);
+        }
 
         let header = self.render_diff_header(&tab, shows, semantic.is_some(), &palette, cx);
         let body = match (&tab.summary, &self.git_tasks.diff_view) {
@@ -455,8 +669,20 @@ impl AppView {
                     .into_any_element()
             }
         };
+        // A click anywhere in the tab focuses it (gpui focuses a tracked handle on mouse down).
         v_flex()
             .size_full()
+            .track_focus(&focus)
+            .key_context(DIFF_KEY_CONTEXT)
+            .on_action(cx.listener(|view, _: &NextDiffChange, window, cx| {
+                view.step_git_diff(true, window, cx);
+            }))
+            .on_action(cx.listener(|view, _: &PreviousDiffChange, window, cx| {
+                view.step_git_diff(false, window, cx);
+            }))
+            .on_action(cx.listener(|view, _: &OpenDiffFile, _, cx| {
+                view.open_diff_file(cx);
+            }))
             .bg(palette.bg)
             .child(header)
             .child(div().flex_1().min_h_0().child(body))
@@ -472,6 +698,7 @@ impl AppView {
         cx: &Context<Self>,
     ) -> AnyElement {
         let rows = RowContext {
+            unified,
             model: view.model.clone(),
             blocks: view.blocks.clone(),
             palette: palette.clone(),
@@ -566,39 +793,103 @@ impl AppView {
                     ))),
             );
 
-        let unified = shows == GitDiffMode::Unified;
+        let edge_hint = self
+            .git_tasks
+            .diff_view
+            .as_ref()
+            .and_then(|view| view.edge_hint);
         let navigation = (summary.blocks > 0 && shows != GitDiffMode::Request).then(|| {
-            let (previous, next) = (weak.clone(), weak.clone());
+            let step = |id: &'static str,
+                        icon: IconName,
+                        label: String,
+                        tooltip: String,
+                        action: &dyn Action,
+                        forward: bool| {
+                let weak = weak.clone();
+                Button::new(id)
+                    .neutral_ghost(cx, palette.fg_muted)
+                    .h(px(26.0))
+                    .px(px(8.0))
+                    .rounded(px(0.0))
+                    .icon(Icon::new(icon).size(px(14.0)))
+                    .label(label)
+                    .tooltip_with_action(tooltip, action, Some(DIFF_KEY_CONTEXT))
+                    .on_click(move |_, window, cx| {
+                        let _ = weak.update(cx, |view, cx| view.step_git_diff(forward, window, cx));
+                    })
+            };
+            // Deferred, so it paints over the column titles below the header.
+            let hint = edge_hint.map(|forward| {
+                let text = if forward {
+                    t!("git.diff.next_file_hint", key = "F7")
+                } else {
+                    t!("git.diff.previous_file_hint", key = "Shift+F7")
+                };
+                deferred(
+                    div()
+                        .absolute()
+                        .top(px(34.0))
+                        .left_0()
+                        .px(px(8.0))
+                        .py(px(5.0))
+                        .rounded(px(6.0))
+                        .bg(palette.raised)
+                        .border_1()
+                        .border_color(palette.border_strong)
+                        .shadow_md()
+                        .text_size(px(12.0))
+                        .text_color(palette.fg)
+                        .whitespace_nowrap()
+                        .child(text.into_owned()),
+                )
+                .with_priority(1)
+            });
             h_flex()
+                .relative()
                 .flex_none()
                 .items_center()
-                .gap(px(2.0))
+                .gap(px(8.0))
                 .child(
-                    IconButton::new("git-diff-previous", IconName::ArrowUp)
-                        .tooltip(t!("git.diff.previous"))
-                        .on_click(move |_, _, cx| {
-                            let _ = previous
-                                .update(cx, |view, cx| view.step_git_diff(false, unified, cx));
-                        }),
-                )
-                .child(
-                    IconButton::new("git-diff-next", IconName::ArrowDown)
-                        .tooltip(t!("git.diff.next"))
-                        .on_click(move |_, _, cx| {
-                            let _ =
-                                next.update(cx, |view, cx| view.step_git_diff(true, unified, cx));
-                        }),
-                )
-                .child(
-                    div()
-                        .text_size(px(11.5))
-                        .text_color(palette.fg_subtle)
-                        .child(t!(
-                            "git.diff.position",
-                            current = format_integer((current + 1) as u64),
-                            total = format_integer(summary.blocks as u64)
+                    h_flex()
+                        .h(px(28.0))
+                        .items_center()
+                        .rounded(px(7.0))
+                        .border_1()
+                        .border_color(palette.border_strong)
+                        .bg(palette.raised)
+                        .overflow_hidden()
+                        .child(step(
+                            "git-diff-previous",
+                            IconName::ChevronUp,
+                            t!("git.diff.prev_button").into_owned(),
+                            t!("git.diff.previous").into_owned(),
+                            &PreviousDiffChange,
+                            false,
+                        ))
+                        .child(div().w(px(1.0)).h_full().bg(palette.border_strong))
+                        .child(step(
+                            "git-diff-next",
+                            IconName::ChevronDown,
+                            t!("git.diff.next_button").into_owned(),
+                            t!("git.diff.next").into_owned(),
+                            &NextDiffChange,
+                            true,
                         )),
                 )
+                .child(
+                    h_flex()
+                        .gap(px(4.0))
+                        .text_size(px(12.0))
+                        .text_color(palette.fg_subtle)
+                        .whitespace_nowrap()
+                        .child(
+                            div()
+                                .text_color(palette.fg)
+                                .child(format_integer((current + 1) as u64)),
+                        )
+                        .child(plural("git.diff.of_changes", summary.blocks)),
+                )
+                .children(hint)
         });
 
         let mut modes = SegmentedControl::new("git-diff-mode");
@@ -617,15 +908,14 @@ impl AppView {
             ));
         }
 
-        let open_request = tab.request_id().filter(|_| tab.letter != 'D').map(|id| {
-            let id = id.to_string();
+        let open_file = (tab.letter != 'D').then(|| {
             let weak = weak.clone();
-            SecondaryButton::new("git-diff-open-request", t!("git.diff.open_request")).on_click(
-                move |_, _, cx| {
-                    let id = id.clone();
-                    let _ = weak.update(cx, |view, cx| view.open_request(id, cx));
-                },
-            )
+            SecondaryButton::new("git-diff-open-file", t!("git.diff.open_file"))
+                .icon(Icon::new(IconName::ExternalLink).size(px(12.0)))
+                .key_hint("F4")
+                .on_click(move |_, _, cx| {
+                    let _ = weak.update(cx, |view, cx| view.open_diff_file(cx));
+                })
         });
 
         h_flex()
@@ -640,7 +930,7 @@ impl AppView {
             .child(div().flex_1().min_w_0().child(file))
             .children(navigation)
             .child(modes)
-            .children(open_request)
+            .children(open_file)
             .into_any_element()
     }
 }
@@ -724,6 +1014,8 @@ fn render_column_titles(
 
 /// What every row of the list reads, cloned once per frame into the list's closure.
 struct RowContext {
+    /// Whether the rows are the unified layout's.
+    unified: bool,
     model: Arc<DiffModel>,
     blocks: Rc<Vec<Option<HunkStage>>>,
     palette: Palette,
@@ -737,11 +1029,7 @@ impl RowContext {
     fn split_row(&self, index: usize, scale: f32) -> AnyElement {
         let row = self.model.diff.split[index];
         let block = self.block_starting_at(index, false);
-        h_flex()
-            .id(("git-diff-row", index))
-            .group(ROW_GROUP)
-            .h(px(LINE_HEIGHT))
-            .w_full()
+        self.row(index)
             .child(self.side(index, scale, row.left, false, None))
             .child(self.side(index, scale, row.right, true, block))
             .into_any_element()
@@ -753,15 +1041,24 @@ impl RowContext {
         let palette = &self.palette;
         let tone = Tone::of(line.kind, palette);
         let number = |number: Option<u32>| gutter(number, &tone, palette);
+        self.row(index)
+            .child(number(line.old_number))
+            .child(number(line.new_number))
+            .child(self.content(Some(index), &tone, self.block_starting_at(index, true)))
+            .into_any_element()
+    }
+
+    /// The frame of list row `index`. A click on it makes its change block the current one.
+    fn row(&self, index: usize) -> Stateful<Div> {
+        let (weak, unified) = (self.weak.clone(), self.unified);
         h_flex()
             .id(("git-diff-row", index))
             .group(ROW_GROUP)
             .h(px(LINE_HEIGHT))
             .w_full()
-            .child(number(line.old_number))
-            .child(number(line.new_number))
-            .child(self.content(Some(index), &tone, self.block_starting_at(index, true)))
-            .into_any_element()
+            .on_click(move |_, _, cx| {
+                let _ = weak.update(cx, |view, cx| view.select_git_diff_row(index, unified, cx));
+            })
     }
 
     /// One half of side by side row `row`: the line number and the text of `line` (`new` picks

@@ -248,7 +248,7 @@ impl AppView {
         }
     }
 
-    fn log_tab(&self) -> Option<&crate::state::git_log::LogTab> {
+    pub(super) fn log_tab(&self) -> Option<&crate::state::git_log::LogTab> {
         self.state
             .tabs
             .index_of(TAB_ID)

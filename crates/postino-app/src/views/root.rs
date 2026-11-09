@@ -1662,6 +1662,9 @@ impl AppView {
             .tabs
             .active()
             .is_some_and(|tab| tab.diff().is_some());
+        if !is_diff {
+            self.note_diff_tab_hidden();
+        }
 
         let is_log = self
             .state

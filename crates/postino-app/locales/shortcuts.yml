@@ -145,6 +145,26 @@ _version: 2
   es: "Borrar la línea en un editor de scripts"
   gl: "Borrar a liña nun editor de scripts"
   it: "Elimina la riga in un editor di script"
+"shortcuts.group.git_diff":
+  en: "Git diff"
+  es: "Diff de Git"
+  gl: "Diff de Git"
+  it: "Diff di Git"
+"shortcuts.action.next_change":
+  en: "Next change"
+  es: "Cambio siguiente"
+  gl: "Cambio seguinte"
+  it: "Modifica successiva"
+"shortcuts.action.previous_change":
+  en: "Previous change"
+  es: "Cambio anterior"
+  gl: "Cambio anterior"
+  it: "Modifica precedente"
+"shortcuts.action.open_diff_file":
+  en: "Open the file at the current change"
+  es: "Abrir el archivo en el cambio actual"
+  gl: "Abrir o ficheiro no cambio actual"
+  it: "Apri il file alla modifica corrente"
 "shortcuts.group.load_tests":
   en: "Load tests"
   es: "Pruebas de carga"

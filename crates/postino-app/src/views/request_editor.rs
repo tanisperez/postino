@@ -369,6 +369,9 @@ pub(crate) struct RequestEditorEntities {
     /// (#109) put back a whole request without typing into the fields. Cheaper and kinder than a
     /// rebuild, which would take the focus and the cursor away from the field being edited.
     pub(crate) resync_values: bool,
+    /// The request (tab id) and 0 based line where the code editor of the active request tab
+    /// puts its cursor on the next render, once: the diff tab's "Open file" (#224).
+    pub(crate) reveal_line: Option<(String, u32)>,
 }
 
 /// The handles that style and explain the markers of the body editor.
@@ -873,6 +876,31 @@ impl AppView {
         }
     }
 
+    /// Puts the cursor of the active request tab's code editor (Body, Pre, Post or Docs) on line
+    /// `row` and focuses it. Nothing on the other tabs.
+    fn reveal_editor_line(&mut self, row: u32, window: &mut Window, cx: &mut Context<Self>) {
+        let editors = &self.request_editor;
+        let editor = match self.active_request_tab {
+            RequestTab::Body => editors.body_editor.clone(),
+            RequestTab::Pre => editors
+                .pre_editor
+                .as_ref()
+                .map(|script| script.editor.clone()),
+            RequestTab::Post => editors
+                .post_editor
+                .as_ref()
+                .map(|script| script.editor.clone()),
+            RequestTab::Docs => editors.docs.clone(),
+            RequestTab::Params | RequestTab::Headers | RequestTab::Auth => None,
+        };
+        if let Some(editor) = editor {
+            let position = gpui_kit::base::input::Position::new(row, 0);
+            editor.update(cx, |state, cx| {
+                state.set_cursor_position(position, window, cx)
+            });
+        }
+    }
+
     /// Renders the active tab's request editor, or a placeholder when no tab is open.
     pub(crate) fn render_request_editor(
         &mut self,
@@ -899,6 +927,11 @@ impl AppView {
             // nothing in it: a rebuild happens on a tab switch or a row/body-kind change, none
             // of which should leave a stale custom-method editor open.
             self.editing_method = false;
+        }
+        if let Some((id, row)) = self.request_editor.reveal_line.take()
+            && id == tab_id
+        {
+            self.reveal_editor_line(row, window, cx);
         }
         // Computed fresh on every render rather than from a separate `InputState` subscription,
         // since every edit that could change it (URL, query, headers, body) already goes through
