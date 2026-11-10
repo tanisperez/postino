@@ -30,6 +30,7 @@ mod semantic_diff;
 pub mod bruno;
 pub mod env;
 pub mod highlight;
+pub mod oauth_import;
 pub mod openapi;
 pub mod postman;
 pub mod project;

@@ -62,8 +62,9 @@ of one spec when several are imported together; with one spec it is empty.
   after the collection. Several: `<collection> <label>`, the label being the server description
   (32 characters at most) or the host, or the whole origin when two labels clash. No absolute
   server URL: `baseUrl = http://localhost` and a warning.
-- **Auth**: basic, bearer (also OAuth 2 and OpenID Connect, with a warning) and API keys map to
-  `Auth`; variable names are the scheme names with other characters replaced by `_`. Secrets are
+- **Auth**: basic, bearer and API keys map to `Auth`; OAuth 2 and OpenID Connect become OAuth
+  profiles (`docs/oauth.md`, `SchemeKind::OAuth2`) that the requests reference; variable names are
+  the scheme names with other characters replaced by `_`. Secrets are
   written empty to `<environment>.local.env` of every environment. Further API keys of the same
   requirement become headers or query entries.
 - **Bodies**: `example`, the first of `examples`, or a value built from the schema

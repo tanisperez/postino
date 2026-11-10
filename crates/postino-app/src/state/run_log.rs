@@ -108,6 +108,7 @@ mod tests {
             sent_at: None,
             finished_at: std::time::UNIX_EPOCH,
             oauth: None,
+            oauth_more: Vec::new(),
         }
     }
 

@@ -115,7 +115,9 @@ spec:
         <tr><td>Multipart body</td><td><code>::: body multipart</code>; a file field needs its <code>@path</code> filled in</td></tr>
         <tr><td>XML and text bodies</td><td><code>::: body xml</code> or <code>text</code>, with their <code>Content-Type</code></td></tr>
         <tr><td>HTTP basic</td><td>Basic auth with <code>{{&lt;scheme&gt;Username}}</code> and <code>{{&lt;scheme&gt;Password}}</code></td></tr>
-        <tr><td>HTTP bearer, OAuth 2 and OpenID Connect</td><td>Bearer auth with <code>{{&lt;scheme&gt;}}</code>. OAuth 2 and OpenID Connect get a warning: the token has to be obtained separately</td></tr>
+        <tr><td>HTTP bearer</td><td>Bearer auth with <code>{{&lt;scheme&gt;}}</code></td></tr>
+        <tr><td>OAuth 2</td><td>An <a href="oauth.html">OAuth 2.0 profile</a> named after the scheme, from its first flow (authorization code, client credentials, password; implicit becomes authorization code with PKCE), with its URLs and every scope it lists. The client ID and secret are variables named after the scheme, left empty in <code>.local.env</code></td></tr>
+        <tr><td>OpenID Connect</td><td>An authorization code profile with the scope <code>openid</code>, and a warning: fill its URLs from the discovery document</td></tr>
         <tr><td>API key (header, query or cookie)</td><td>API key auth, or a <code>Cookie</code> header, with <code>{{&lt;scheme&gt;}}</code></td></tr>
         <tr><td><code>security: []</code> on an operation</td><td>No auth</td></tr>
     </tbody>

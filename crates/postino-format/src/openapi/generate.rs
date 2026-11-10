@@ -75,6 +75,8 @@ pub struct OpenApiPlan {
     pub environments: Vec<PlanEnvironment>,
     /// Everything that could not be mapped faithfully, the specs' own warnings included.
     pub warnings: Vec<String>,
+    /// The OAuth 2.0 profiles the requests use (`::: auth oauth2`), for `.postino/project.toml`.
+    pub profiles: Vec<postino_core::OAuthProfile>,
 }
 
 /// A folder of an [`OpenApiPlan`].
@@ -284,6 +286,23 @@ pub fn build_plan(
     }
 
     let secret: Vec<KeyValue> = secrets.iter().map(|name| KeyValue::new(name, "")).collect();
+    // The profiles of the OAuth schemes the requests use, once each.
+    let mut profiles: Vec<postino_core::OAuthProfile> = Vec::new();
+    for version in specs {
+        for scheme in &version.spec.security_schemes {
+            let SchemeKind::OAuth2(profile) = &scheme.kind else {
+                continue;
+            };
+            let used = version
+                .spec
+                .operations
+                .iter()
+                .any(|operation| operation.security.contains(&scheme.name));
+            if used && !profiles.iter().any(|known| known.name == profile.name) {
+                profiles.push(profile.as_ref().clone());
+            }
+        }
+    }
     let mut environments = Vec::new();
     if options.environments {
         if origins.is_empty() {
@@ -313,6 +332,7 @@ pub fn build_plan(
         root,
         environments,
         warnings,
+        profiles,
     }
 }
 
@@ -345,7 +365,7 @@ fn origin_host(origin: &str) -> &str {
 }
 
 /// A security scheme name made into a variable name: letters, digits and `_` only.
-fn variable_name(scheme: &str) -> String {
+pub(crate) fn variable_name(scheme: &str) -> String {
     let name: String = scheme
         .chars()
         .map(|character| {
@@ -489,6 +509,26 @@ fn apply_security(
                 push_unique(secrets, username);
                 push_unique(secrets, password);
             }
+            SchemeKind::OAuth2(profile) if auth_free => {
+                request.auth = Auth::OAuth2 {
+                    profile: profile.name.clone(),
+                    scope: String::new(),
+                };
+                // The variables of the profile, empty: they are the client's secrets.
+                for field in [
+                    &profile.client_id,
+                    &profile.client_secret,
+                    &profile.username,
+                    &profile.password,
+                ] {
+                    if let Some(name) = field
+                        .strip_prefix("{{")
+                        .and_then(|rest| rest.strip_suffix("}}"))
+                    {
+                        push_unique(secrets, name.to_string());
+                    }
+                }
+            }
             SchemeKind::Bearer if auth_free => {
                 request.auth = Auth::Bearer {
                     token: format!("{{{{{variable}}}}}"),
@@ -527,7 +567,7 @@ fn apply_security(
                     spec.title
                 ),
             ),
-            SchemeKind::Basic | SchemeKind::Bearer => push_unique(
+            SchemeKind::Basic | SchemeKind::Bearer | SchemeKind::OAuth2(_) => push_unique(
                 warnings,
                 format!(
                     "{}: operations needing several credentials only get the first, {name} is not set",

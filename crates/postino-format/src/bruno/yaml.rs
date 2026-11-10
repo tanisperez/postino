@@ -70,9 +70,27 @@ fn auth(value: Option<&Value>) -> Option<RawAuth> {
             value: text(value.get("value")),
             query: matches!(str_at(value, "placement"), "query" | "queryparams"),
         },
-        "oauth2" => RawAuth::OAuth2,
+        "oauth2" => RawAuth::OAuth2(oauth_fields(value)),
         other => RawAuth::Other(other.to_string()),
     })
+}
+
+/// The text and boolean settings of an OAuth 2.0 auth object, nested objects (`credentials`,
+/// `settings`) flattened into it.
+fn oauth_fields(value: &Value) -> Vec<(String, String)> {
+    let mut fields = Vec::new();
+    let Some(object) = value.as_object() else {
+        return fields;
+    };
+    for (key, entry) in object {
+        match entry {
+            Value::String(text) => fields.push((key.clone(), text.clone())),
+            Value::Bool(flag) => fields.push((key.clone(), flag.to_string())),
+            Value::Object(_) => fields.extend(oauth_fields(entry)),
+            _ => {}
+        }
+    }
+    fields
 }
 
 fn body(value: Option<&Value>) -> RawBody {

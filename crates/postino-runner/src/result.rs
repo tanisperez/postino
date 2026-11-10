@@ -36,9 +36,12 @@ pub struct RunResult {
     pub sent_at: Option<SystemTime>,
     /// When the run ended, after the post script or the stage that failed.
     pub finished_at: SystemTime,
-    /// What getting the OAuth 2.0 token did, for a request whose auth is a profile. `None` for
-    /// any other auth.
+    /// What getting the OAuth 2.0 token did, for a request whose auth is a profile, or the first
+    /// profile an `oauthToken()` call names. `None` when the request uses no profile. When a
+    /// token could not be obtained, this is the run that failed.
     pub oauth: Option<OAuthRun>,
+    /// The tokens of the other profiles `oauthToken()` calls name, in order.
+    pub oauth_more: Vec<OAuthRun>,
 }
 
 /// The pipeline stage that stopped a run from completing normally.

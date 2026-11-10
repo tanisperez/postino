@@ -356,10 +356,10 @@ _version: 2
   gl: "script sen converter"
   it: "script non convertito"
 "import.issue.oauth2":
-  en: "OAuth 2.0: fixed token, not renewed"
-  es: "OAuth 2.0: token fijo, no se renueva"
-  gl: "OAuth 2.0: token fixo, non se renova"
-  it: "OAuth 2.0: token fisso, non rinnovato"
+  en: "OAuth 2.0: uses the profile %{profile}"
+  es: "OAuth 2.0: usa el perfil %{profile}"
+  gl: "OAuth 2.0: usa o perfil %{profile}"
+  it: "OAuth 2.0: usa il profilo %{profile}"
 "import.issue.auth_unsupported":
   en: "%{kind} auth not supported, imported without it"
   es: "autorización %{kind} sin soporte, se importa sin ella"

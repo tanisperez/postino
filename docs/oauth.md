@@ -59,6 +59,24 @@ the user's sessions and password manager).
   `poll` (cancel, pasted URL) and `page` (translated texts). `NoSignIn` is for places without a
   UI: the command line and load tests fail with "sign in from the Postino app first".
 
+## Imports and other places
+
+- `postino_format::oauth_import` turns the OAuth settings of a Postman, Bruno or OpenCollection
+  auth (`profile_from_fields`, field names compared ignoring case, `_` and `-`) or an OpenAPI
+  `oauth2` scheme into a profile. `ProfileBuilder` shares equal settings, never repeats a name and
+  moves a secret written in clear to a `.local.env` variable. The plan carries the profiles, and
+  `Workspace::import_openapi` writes them to `project.toml`, reusing a profile with the same
+  settings and renaming one whose name is taken.
+- `{{ oauthToken("name") }}` and `oauthToken("name", "id_token")`: the runner finds the calls
+  (`postino_core::oauth_token_calls`) before the pre script, gets the tokens, and hands them to
+  interpolation as request variables whose names start with a control character
+  (`oauth_token_variable`), so no environment can collide with them.
+- Load tests: `Runner::prepare_oauth` gets every token once before the virtual users start; the
+  app gives the load runner a `CachedStore` (the system store read once per key) and `NoSignIn`.
+- Command line (#220): the runner with `SystemStore` and `NoSignIn` gives what the design asks:
+  client credentials and password work, authorization code uses the stored token and its
+  refresh, and fails asking to sign in from the app when there is none.
+
 ## Storage
 
 `SystemStore` uses the `keyring` crate (Keychain, Windows Credential Manager, Secret Service

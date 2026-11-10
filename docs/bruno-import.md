@@ -68,7 +68,7 @@ files passed are taken as a collection when at least one is a request, so a sing
 | `body:sparql`, `body:file` | No body, reported |
 | Auth `basic`, `bearer`, `apikey` (header or `queryparams`) | `::: auth` |
 | Auth `inherit` | The nearest folder's or the collection's auth |
-| Auth `oauth2` | `Bearer {{oauth2AccessToken}}`, the variable in `.local.env`, as for Postman |
+| Auth `oauth2` | An OAuth profile named after the collection, `::: auth oauth2`, as for Postman |
 | Auth `digest`, `ntlm`, `awsv4`, `wsse`, `oauth1`, ... | No auth, reported |
 | `docs` | `::: docs`, with the Docs option |
 | gRPC and WebSocket requests | Not imported, reported |

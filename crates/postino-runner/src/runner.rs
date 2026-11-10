@@ -7,8 +7,8 @@ use std::sync::Arc;
 use std::time::{Instant, SystemTime};
 
 use postino_core::{
-    ApiKeyLocation, Auth, Environment, KeyValue, OAuthProfile, Request, ResolvedRequest, Response,
-    TokenPlacement, VarScope,
+    ApiKeyLocation, Auth, Environment, KeyValue, OAUTH_TOKEN_FUNCTION, OAuthProfile, Request,
+    ResolvedRequest, Response, TokenPlacement, VarScope, oauth_token_calls, oauth_token_variable,
 };
 use postino_http::{Client, HttpError, SendOptions};
 use postino_oauth::{
@@ -111,6 +111,42 @@ impl Runner {
         self
     }
 
+    /// Gets, once, the token of every profile `requests` use (their `oauth2` auth and their
+    /// `oauthToken()` calls), so the sends that follow find it stored: a load test calls this
+    /// before its virtual users start. Returns what each profile did; a failure is reported
+    /// again, as `FailedStage::Auth`, by every send that needs it.
+    pub fn prepare_oauth(
+        &self,
+        requests: &[&Request],
+        environment: &Environment,
+        session_env: &SessionEnv,
+    ) -> Vec<OAuthRun> {
+        let vars = VarScope {
+            request_vars: &[],
+            session_env: session_env.as_slice(),
+            environment: &environment.variables,
+        };
+        let mut wanted: Vec<(String, String)> = Vec::new();
+        for request in requests {
+            if let Auth::OAuth2 { profile, scope } = &request.auth {
+                wanted.push((profile.clone(), scope.clone()));
+            }
+            for profile in oauth_token_profiles(request, &vars) {
+                wanted.push((profile, String::new()));
+            }
+        }
+        let mut runs = Vec::new();
+        let mut seen = Vec::new();
+        for (profile, scope) in wanted {
+            if seen.contains(&(profile.clone(), scope.clone())) {
+                continue;
+            }
+            seen.push((profile.clone(), scope.clone()));
+            runs.push(self.oauth_token(&profile, &scope, environment, session_env, Force::None));
+        }
+        runs
+    }
+
     /// Gets the token of the profile `name` for `environment`, as Send does, or with `force` as
     /// the buttons of the Auth tab do. `scope` overrides the profile's when not empty.
     pub fn oauth_token(
@@ -211,7 +247,7 @@ impl Runner {
         // 0. The OAuth 2.0 token, before the pre script: scripts have no network, and the token
         // only depends on the environment.
         let mut token_auth_value = None;
-        let mut oauth = None;
+        let mut oauth: Option<OAuthRun> = None;
         if let Auth::OAuth2 { profile, scope } = &request.auth {
             let run = self.oauth_token(profile, scope, environment, session_env, Force::None);
             match (&run.result, self.oauth.profile(profile)) {
@@ -231,6 +267,62 @@ impl Runner {
                         sent_at: None,
                         finished_at: SystemTime::now(),
                         oauth: Some(run),
+                        oauth_more: Vec::new(),
+                    };
+                }
+            }
+        }
+
+        // The tokens `oauthToken()` calls ask for, for the request variables.
+        let mut oauth_more: Vec<OAuthRun> = Vec::new();
+        let mut token_vars: Vec<KeyValue> = Vec::new();
+        if let Some(run) = &oauth
+            && let Ok(token) = &run.result
+        {
+            push_token_vars(&mut token_vars, &run.profile, token);
+        }
+        let calls = {
+            let vars = VarScope {
+                request_vars: &[],
+                session_env: session_env.as_slice(),
+                environment: &environment.variables,
+            };
+            oauth_token_profiles(request, &vars)
+        };
+        for name in calls {
+            let already = oauth
+                .iter()
+                .chain(oauth_more.iter())
+                .any(|run| run.profile == name && run.key.scope.is_none());
+            if already {
+                continue;
+            }
+            let run = self.oauth_token(&name, "", environment, session_env, Force::None);
+            match &run.result {
+                Ok(token) => {
+                    push_token_vars(&mut token_vars, &name, token);
+                    if oauth.is_none() {
+                        oauth = Some(run);
+                    } else {
+                        oauth_more.push(run);
+                    }
+                }
+                Err(_) => {
+                    if let Some(first) = oauth.take() {
+                        oauth_more.insert(0, first);
+                    }
+                    return RunResult {
+                        resolved_request: None,
+                        response: None,
+                        tests,
+                        console,
+                        warnings: Vec::new(),
+                        failed_stage: Some(FailedStage::Auth),
+                        started_at,
+                        sent_at: None,
+                        finished_at: SystemTime::now(),
+                        oauth: Some(run),
+                        oauth_more,
                     };
                 }
             }
@@ -265,6 +357,7 @@ impl Runner {
                         sent_at: None,
                         finished_at: SystemTime::now(),
                         oauth,
+                        oauth_more,
                     };
                 }
                 Ok(outcome) => {
@@ -280,6 +373,7 @@ impl Runner {
         if let Some(auth) = token_auth_value {
             working_request.auth = auth;
         }
+        request_vars.extend(token_vars);
 
         // 2. Interpolate into a ResolvedRequest. Never fatal: unresolved markers become warnings.
         let scope = VarScope {
@@ -319,6 +413,7 @@ impl Runner {
                     sent_at: Some(sent_at),
                     finished_at: SystemTime::now(),
                     oauth,
+                    oauth_more,
                 };
             }
         };
@@ -353,6 +448,7 @@ impl Runner {
                         sent_at: Some(sent_at),
                         finished_at: SystemTime::now(),
                         oauth,
+                        oauth_more,
                     };
                 }
                 Ok(outcome) => {
@@ -373,6 +469,7 @@ impl Runner {
                             sent_at: Some(sent_at),
                             finished_at: SystemTime::now(),
                             oauth,
+                            oauth_more,
                         };
                     }
                 }
@@ -390,6 +487,63 @@ impl Runner {
             sent_at: Some(sent_at),
             finished_at: SystemTime::now(),
             oauth,
+            oauth_more,
         }
     }
+}
+
+/// Adds the variables `oauthToken("<profile>")` reads: the access token, and the id token when
+/// there is one.
+fn push_token_vars(vars: &mut Vec<KeyValue>, profile: &str, token: &postino_oauth::TokenSet) {
+    vars.push(KeyValue::new(
+        oauth_token_variable(profile, "access_token"),
+        token.access_token.clone(),
+    ));
+    if let Some(id_token) = &token.id_token {
+        vars.push(KeyValue::new(
+            oauth_token_variable(profile, "id_token"),
+            id_token.clone(),
+        ));
+    }
+}
+
+/// The profiles the `oauthToken()` calls of `request` name, in order, without repeats.
+fn oauth_token_profiles(request: &Request, vars: &VarScope) -> Vec<String> {
+    let mut texts: Vec<&str> = vec![request.url.as_str()];
+    for entry in request.headers.iter().chain(request.query.iter()) {
+        if entry.enabled {
+            texts.push(&entry.key);
+            texts.push(&entry.value);
+        }
+    }
+    match &request.auth {
+        Auth::Basic { username, password } => texts.extend([username.as_str(), password.as_str()]),
+        Auth::Bearer { token } => texts.push(token),
+        Auth::ApiKey { name, value, .. } => texts.extend([name.as_str(), value.as_str()]),
+        Auth::OAuth2 { .. } | Auth::None => {}
+    }
+    match &request.body {
+        postino_core::Body::Json(text)
+        | postino_core::Body::Text(text)
+        | postino_core::Body::Xml(text) => texts.push(text),
+        postino_core::Body::Form(fields) | postino_core::Body::Multipart(fields) => {
+            for field in fields.iter().filter(|field| field.enabled) {
+                texts.push(&field.key);
+                texts.push(&field.value);
+            }
+        }
+        postino_core::Body::None => {}
+    }
+    let mut profiles: Vec<String> = Vec::new();
+    for text in texts {
+        if !text.contains(OAUTH_TOKEN_FUNCTION) {
+            continue;
+        }
+        for (profile, _) in oauth_token_calls(text, vars) {
+            if !profiles.contains(&profile) {
+                profiles.push(profile);
+            }
+        }
+    }
+    profiles
 }

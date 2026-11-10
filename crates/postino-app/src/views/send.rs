@@ -131,10 +131,10 @@ impl AppView {
             // dropped task never reaches this point at all).
             let _ = this.update(cx, |view, cx| {
                 view.oauth.waiting = None;
-                if let Some(run) = &result.oauth
-                    && let Ok(token) = &run.result
-                {
-                    view.remember_oauth_token(&run.key, Some(token.clone()));
+                for run in result.oauth.iter().chain(result.oauth_more.iter()) {
+                    if let Ok(token) = &run.result {
+                        view.remember_oauth_token(&run.key, Some(token.clone()));
+                    }
                 }
                 view.state.session_env = session_env;
                 view.responses.insert(tab_id.clone(), result);
@@ -198,6 +198,7 @@ fn run_with_force(
                 sent_at: None,
                 finished_at: now,
                 oauth: Some(forced),
+                oauth_more: Vec::new(),
             };
         }
         let mut result = runner.run(request, environment, session_env);

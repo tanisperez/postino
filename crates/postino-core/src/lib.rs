@@ -23,8 +23,8 @@ pub use body::{Body, MultipartValue, multipart_value};
 pub use environment::Environment;
 pub use functions::{Arg, FunctionError};
 pub use interpolate::{
-    Interpolated, TemplateWarning, VarScope, VariableKind, VariableSpan, interpolate,
-    variable_spans,
+    Interpolated, OAUTH_TOKEN_FUNCTION, OAUTH_TOKEN_KINDS, TemplateWarning, VarScope, VariableKind,
+    VariableSpan, interpolate, oauth_token_calls, oauth_token_variable, variable_spans,
 };
 pub use key_value::KeyValue;
 pub use method::Method;

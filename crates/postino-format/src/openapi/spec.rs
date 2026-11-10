@@ -65,6 +65,8 @@ pub enum SchemeKind {
         /// Where the key goes.
         location: ParameterLocation,
     },
+    /// OAuth 2 or OpenID Connect: the profile its flow describes (#227), named after the scheme.
+    OAuth2(Box<postino_core::OAuthProfile>),
     /// Anything else (mutual TLS, an unknown HTTP scheme), which is not mapped.
     Other(String),
 }
@@ -336,7 +338,20 @@ fn security_schemes(root: Node<'_>, swagger: bool) -> Vec<SecurityScheme> {
                 "bearer" => SchemeKind::Bearer,
                 other => SchemeKind::Other(format!("http {other}")),
             },
-            "oauth2" | "openIdConnect" => SchemeKind::Bearer,
+            "oauth2" => SchemeKind::OAuth2(Box::new(oauth2_profile(name, scheme, swagger))),
+            "openIdConnect" => {
+                let url = scheme.str("openIdConnectUrl").unwrap_or_default();
+                scheme.warn(format!(
+                    "security scheme {name} (openIdConnect): fill the authorization and token URLs \
+                     of its OAuth profile from {url}"
+                ));
+                let mut profile = postino_core::OAuthProfile::new(
+                    crate::oauth_import::profile_slug(name),
+                    postino_core::OAuthGrant::AuthorizationCode,
+                );
+                profile.scope = "openid".to_string();
+                SchemeKind::OAuth2(Box::new(profile))
+            }
             "apiKey" => SchemeKind::ApiKey {
                 name: scheme.str("name").unwrap_or_default().to_string(),
                 location: match scheme.str("in") {
@@ -347,17 +362,85 @@ fn security_schemes(root: Node<'_>, swagger: bool) -> Vec<SecurityScheme> {
             },
             other => SchemeKind::Other(other.to_string()),
         };
-        if kind_name == "oauth2" || kind_name == "openIdConnect" {
-            scheme.warn(format!(
-                "security scheme {name} ({kind_name}) imported as a bearer token, get the token yourself"
-            ));
-        }
         out.push(SecurityScheme {
             name: name.to_string(),
             kind,
         });
     }
     out
+}
+
+/// The profile of an `oauth2` security scheme named `name`: its first flow among authorization
+/// code, client credentials, password and implicit (read as authorization code with PKCE), with
+/// every scope it lists. The client id and secret are variables named after the scheme.
+fn oauth2_profile(name: &str, scheme: Node<'_>, swagger: bool) -> postino_core::OAuthProfile {
+    use postino_core::{OAuthGrant, OAuthProfile};
+    // OpenAPI 3: `flows.<flow>`; Swagger 2: the scheme itself with `flow`.
+    let flows: Vec<(OAuthGrant, Node<'_>)> = if swagger {
+        match scheme.str("flow") {
+            Some("application") => vec![(OAuthGrant::ClientCredentials, scheme)],
+            Some("password") => vec![(OAuthGrant::Password, scheme)],
+            Some("accessCode" | "implicit") => vec![(OAuthGrant::AuthorizationCode, scheme)],
+            _ => Vec::new(),
+        }
+    } else {
+        let flows = scheme.get("flows");
+        [
+            ("authorizationCode", OAuthGrant::AuthorizationCode),
+            ("clientCredentials", OAuthGrant::ClientCredentials),
+            ("password", OAuthGrant::Password),
+            ("implicit", OAuthGrant::AuthorizationCode),
+        ]
+        .into_iter()
+        .filter_map(|(key, grant)| Some((grant, flows?.get(key)?)))
+        .collect()
+    };
+    let slug = crate::oauth_import::profile_slug(name);
+    let Some((grant, flow)) = flows.first().copied() else {
+        scheme.warn(format!("security scheme {name} (oauth2) has no flow"));
+        return OAuthProfile::new(slug, OAuthGrant::AuthorizationCode);
+    };
+    if flows.len() > 1 {
+        scheme.warn(format!(
+            "security scheme {name} (oauth2) has several flows, its OAuth profile uses the first"
+        ));
+    }
+    let implicit = swagger && scheme.str("flow") == Some("implicit")
+        || !swagger
+            && scheme
+                .get("flows")
+                .and_then(|f| f.get("implicit"))
+                .is_some()
+            && flows.len() == 1;
+    if implicit {
+        scheme.warn(format!(
+            "security scheme {name}: the implicit flow is imported as authorization code with PKCE"
+        ));
+    }
+    let mut profile = OAuthProfile::new(slug.clone(), grant);
+    profile.auth_url = flow.str("authorizationUrl").unwrap_or_default().to_string();
+    profile.token_url = flow.str("tokenUrl").unwrap_or_default().to_string();
+    profile.scope = flow
+        .get("scopes")
+        .map(|scopes| {
+            scopes
+                .entries()
+                .into_iter()
+                .map(|(scope, _)| scope)
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
+        .unwrap_or_default();
+    let variable = crate::openapi::generate::variable_name(name);
+    profile.client_id = format!("{{{{{variable}ClientId}}}}");
+    if grant != OAuthGrant::AuthorizationCode {
+        profile.client_secret = format!("{{{{{variable}ClientSecret}}}}");
+    }
+    if grant == OAuthGrant::Password {
+        profile.username = format!("{{{{{variable}Username}}}}");
+        profile.password = format!("{{{{{variable}Password}}}}");
+    }
+    profile
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -801,8 +884,11 @@ paths:
             .collect();
         assert_eq!(urls, vec!["https://petstore.test/v1"]);
         assert_eq!(spec.security_schemes[0].kind, SchemeKind::Basic);
-        assert_eq!(spec.security_schemes[1].kind, SchemeKind::Bearer);
-        assert_eq!(spec.warnings.len(), 1, "the oauth2 warning");
+        assert!(matches!(
+            &spec.security_schemes[1].kind,
+            SchemeKind::OAuth2(profile) if profile.name == "oauth"
+        ));
+        assert_eq!(spec.warnings.len(), 1, "the oauth2 scheme has no flow");
         let post = spec
             .operations
             .iter()
@@ -823,5 +909,45 @@ paths:
         assert_eq!(body.media_type, "multipart/form-data");
         assert_eq!(body.example, Some(json!({"photo": "", "tag": "a"})));
         assert_eq!(put.success, None);
+    }
+
+    #[test]
+    fn oauth2_schemes_become_profiles() {
+        let spec = parse_spec(
+            r#"openapi: 3.0.3
+info: {title: Acme, version: "1"}
+paths: {}
+components:
+  securitySchemes:
+    Acme SSO:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.acme.dev/token
+          scopes: {payments:read: read, payments:write: write}
+    oidc: {type: openIdConnect, openIdConnectUrl: "https://auth/.well-known/openid-configuration"}
+"#,
+            "",
+            &NoExternalRefs,
+        )
+        .expect("valid");
+        let SchemeKind::OAuth2(profile) = &spec.security_schemes[0].kind else {
+            panic!("an OAuth scheme");
+        };
+        assert_eq!(profile.name, "acme-sso");
+        assert_eq!(profile.grant, postino_core::OAuthGrant::ClientCredentials);
+        assert_eq!(profile.token_url, "https://auth.acme.dev/token");
+        assert_eq!(profile.scope, "payments:read payments:write");
+        assert_eq!(profile.client_id, "{{Acme_SSOClientId}}");
+        assert_eq!(profile.client_secret, "{{Acme_SSOClientSecret}}");
+        let SchemeKind::OAuth2(oidc) = &spec.security_schemes[1].kind else {
+            panic!("an OAuth scheme");
+        };
+        assert_eq!(oidc.scope, "openid");
+        assert!(
+            spec.warnings
+                .iter()
+                .any(|warning| warning.contains("well-known"))
+        );
     }
 }

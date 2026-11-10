@@ -15,9 +15,6 @@ use super::value::value_to_text;
 const IMPORT_SCRIPT_HEADER: &str =
     "// Imported from Postman. Scripts were not converted, adapt the pm.* calls.";
 
-/// The variable that holds the access token of a request with OAuth 2.0 authorization.
-const OAUTH2_TOKEN_VARIABLE: &str = "oauth2AccessToken";
-
 /// What to convert from a collection, the wizard's "Convert" options.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PostmanOptions {
@@ -64,8 +61,8 @@ pub enum RequestIssue {
     SendRequest,
     /// Its scripts were copied as comments, since the option is off.
     ScriptNotConverted,
-    /// OAuth 2.0: the token is sent as a bearer token and is not renewed.
-    OAuth2Token,
+    /// OAuth 2.0: the request uses this profile of the workspace, created from its settings.
+    OAuth2Profile(String),
     /// An authorization Postino does not have: the request is imported without it.
     AuthUnsupported(String),
     /// A form-data field points to a file, whose path may not exist on this machine.
@@ -91,11 +88,10 @@ impl RequestIssue {
     /// How serious it is.
     pub fn level(&self) -> IssueLevel {
         match self {
-            RequestIssue::ScriptConverted => IssueLevel::Note,
+            RequestIssue::ScriptConverted | RequestIssue::OAuth2Profile(_) => IssueLevel::Note,
             RequestIssue::ScriptPartial { .. }
             | RequestIssue::SendRequest
             | RequestIssue::ScriptNotConverted
-            | RequestIssue::OAuth2Token
             | RequestIssue::FormDataFile
             | RequestIssue::FormDataManyFiles => IssueLevel::Warning,
             RequestIssue::AuthUnsupported(_) | RequestIssue::BodyUnsupported(_) => {
@@ -123,9 +119,11 @@ pub struct ImportPlan {
     /// The collection's own `variable` array, to become the environment named after the
     /// collection (`environments/<collection name>.env`).
     pub variables: Vec<KeyValue>,
-    /// The variables of type `secret`, and the access tokens of OAuth 2.0 authorizations, for
+    /// The variables of type `secret`, and the secrets taken out of OAuth 2.0 profiles, for
     /// `environments/<collection name>.local.env`.
     pub secret_variables: Vec<KeyValue>,
+    /// The OAuth 2.0 profiles the requests use (#227).
+    pub oauth_profiles: Vec<postino_core::OAuthProfile>,
     /// Everything that could not be mapped faithfully, in the order it was found.
     pub warnings: Vec<String>,
 }
@@ -147,8 +145,10 @@ pub struct ImportFolder {
 struct Mapping<'a> {
     options: &'a PostmanOptions,
     warnings: Vec<String>,
-    /// The variables OAuth 2.0 authorizations need.
-    secrets: Vec<KeyValue>,
+    /// The OAuth 2.0 profiles, and the secrets taken out of them.
+    profiles: crate::oauth_import::ProfileBuilder,
+    /// The collection name, the profiles' name when the auth has no token name.
+    collection: String,
 }
 
 /// Parses the text of a Postman collection export into an [`ImportPlan`].
@@ -158,7 +158,8 @@ pub fn parse_collection(text: &str, options: &PostmanOptions) -> Result<ImportPl
     let mut mapping = Mapping {
         options,
         warnings: Vec::new(),
-        secrets: Vec::new(),
+        profiles: crate::oauth_import::ProfileBuilder::default(),
+        collection: raw.info.name.clone(),
     };
     warn_about_dropped_events(
         raw.event.as_deref(),
@@ -168,7 +169,8 @@ pub fn parse_collection(text: &str, options: &PostmanOptions) -> Result<ImportPl
     );
     let root = map_items(&raw.item, raw.auth.as_ref(), &raw.info.name, &mut mapping);
     let mut warnings = mapping.warnings;
-    let mut secret_variables = mapping.secrets;
+    let mut secret_variables = mapping.profiles.secrets;
+    let oauth_profiles = mapping.profiles.profiles;
     let mut variables = Vec::new();
     for variable in raw.variable {
         let Some(key) = variable.key else { continue };
@@ -197,6 +199,7 @@ pub fn parse_collection(text: &str, options: &PostmanOptions) -> Result<ImportPl
         root,
         variables,
         secret_variables,
+        oauth_profiles,
         warnings,
     })
 }
@@ -311,9 +314,14 @@ fn map_request(
         });
     }
     let auth = match auth {
-        Some(auth) if mapping.options.auth => {
-            map_auth(auth, path, warnings, &mut mapping.secrets, &mut issues)
-        }
+        Some(auth) if mapping.options.auth => map_auth(
+            auth,
+            path,
+            warnings,
+            &mut mapping.profiles,
+            &mapping.collection,
+            &mut issues,
+        ),
         _ => Auth::None,
     };
 
@@ -457,7 +465,8 @@ fn map_auth(
     auth: &RawAuth,
     path: &str,
     warnings: &mut Vec<String>,
-    secrets: &mut Vec<KeyValue>,
+    profiles: &mut crate::oauth_import::ProfileBuilder,
+    collection: &str,
     issues: &mut Vec<RequestIssue>,
 ) -> Auth {
     match auth.kind.as_str() {
@@ -505,18 +514,33 @@ fn map_auth(
             }
         }
         "oauth2" => {
-            let context = format!("{path}: auth oauth2 \"accessToken\"");
-            let token =
-                find_param(&auth.oauth2, "accessToken", &context, warnings).unwrap_or_default();
-            if !secrets
+            // The settings become a profile of the workspace; a stored access token is never
+            // imported, Postino gets its own on Send.
+            let fields = crate::oauth_import::OAuthFields(
+                auth.oauth2
+                    .iter()
+                    .map(|param| {
+                        let context = format!("{path}: auth oauth2 \"{}\"", param.key);
+                        (
+                            param.key.clone(),
+                            value_to_text(param.value.as_ref(), &context, warnings),
+                        )
+                    })
+                    .collect(),
+            );
+            let mut notes = Vec::new();
+            let profile = crate::oauth_import::profile_from_fields(&fields, &mut notes);
+            warnings.extend(notes.into_iter().map(|note| format!("{path}: {note}")));
+            let hint = fields
+                .0
                 .iter()
-                .any(|entry| entry.key == OAUTH2_TOKEN_VARIABLE)
-            {
-                secrets.push(KeyValue::new(OAUTH2_TOKEN_VARIABLE, token));
-            }
-            issues.push(RequestIssue::OAuth2Token);
-            Auth::Bearer {
-                token: format!("{{{{{OAUTH2_TOKEN_VARIABLE}}}}}"),
+                .find(|(key, value)| key == "tokenName" && !value.trim().is_empty())
+                .map_or(collection, |(_, value)| value.as_str());
+            let name = profiles.add(hint, profile);
+            issues.push(RequestIssue::OAuth2Profile(name.clone()));
+            Auth::OAuth2 {
+                profile: name,
+                scope: String::new(),
             }
         }
         "noauth" | "" => Auth::None,

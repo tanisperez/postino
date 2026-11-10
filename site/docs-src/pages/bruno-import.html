@@ -51,7 +51,8 @@ description: Import Bruno collections, in .bru files or OpenCollection YAML, wit
         <tr><td>Headers of the collection and its folders</td><td>Copied into each request, the nearest one winning</td></tr>
         <tr><td>JSON, text, XML, form URL encoded and multipart bodies</td><td>The same body types; a multipart file becomes an <code>@path</code> upload</td></tr>
         <tr><td>GraphQL requests</td><td>A JSON body with the query and its variables, as GraphQL is sent over HTTP</td></tr>
-        <tr><td>Basic, Bearer and API key auth, and inherited auth</td><td>The same auth; OAuth 2.0 becomes a bearer token in <code>{{oauth2AccessToken}}</code>, left empty in <code>.local.env</code></td></tr>
+        <tr><td>Basic, Bearer and API key auth, and inherited auth</td><td>The same auth</td></tr>
+        <tr><td>OAuth 2.0 auth</td><td>An <a href="oauth.html">OAuth 2.0 profile</a> named after the collection, shared by the requests with the same settings, its secrets in <code>.local.env</code>, as for Postman</td></tr>
         <tr><td>Docs</td><td>The Docs tab</td></tr>
     </tbody>
 </table></div>

@@ -184,23 +184,33 @@ fn form_data_becomes_multipart_with_its_files() {
 }
 
 #[test]
-fn oauth2_sends_its_access_token_from_a_local_variable() {
-    let text = r#"{"info": {"name": "x"}, "auth": {"type": "oauth2", "oauth2": [
-        {"key": "accessToken", "value": "tok"}, {"key": "tokenType", "value": "Bearer"}
-      ]}, "item": [{"name": "A", "request": {"method": "GET", "url": "http://x"}}]}"#;
+fn oauth2_becomes_a_profile_with_its_secret_in_a_local_variable() {
+    let text = r#"{"info": {"name": "Acme API"}, "auth": {"type": "oauth2", "oauth2": [
+        {"key": "accessToken", "value": "tok"}, {"key": "grant_type", "value": "client_credentials"},
+        {"key": "accessTokenUrl", "value": "{{authUrl}}/token"}, {"key": "clientId", "value": "id"},
+        {"key": "clientSecret", "value": "s3cr3t"}, {"key": "scope", "value": "read"}
+      ]}, "item": [{"name": "A", "request": {"method": "GET", "url": "http://x"}},
+                   {"name": "B", "request": {"method": "GET", "url": "http://y"}}]}"#;
     let plan = parse_collection(text, &everything()).expect("valid collection");
-    assert_eq!(
-        plan.root.requests[0].1.auth,
-        Auth::Bearer {
-            token: "{{oauth2AccessToken}}".to_string()
-        }
-    );
+    let expected = Auth::OAuth2 {
+        profile: "acme-api".to_string(),
+        scope: String::new(),
+    };
+    assert_eq!(plan.root.requests[0].1.auth, expected);
+    assert_eq!(plan.root.requests[1].1.auth, expected);
+    assert_eq!(plan.oauth_profiles.len(), 1, "both requests share it");
+    let profile = &plan.oauth_profiles[0];
+    assert_eq!(profile.grant, postino_core::OAuthGrant::ClientCredentials);
+    assert_eq!(profile.token_url, "{{authUrl}}/token");
+    assert_eq!(profile.client_secret, "{{acmeApiClientSecret}}");
+    // The stored access token is never imported.
     assert_eq!(
         plan.secret_variables,
-        vec![KeyValue::new("oauth2AccessToken", "tok")]
+        vec![KeyValue::new("acmeApiClientSecret", "s3cr3t")]
     );
-    assert_eq!(plan.root.issues[0], vec![RequestIssue::OAuth2Token]);
-    assert_eq!(RequestIssue::OAuth2Token.level(), IssueLevel::Warning);
+    let issue = RequestIssue::OAuth2Profile("acme-api".to_string());
+    assert_eq!(plan.root.issues[0], vec![issue.clone()]);
+    assert_eq!(issue.level(), IssueLevel::Note);
 }
 
 #[test]

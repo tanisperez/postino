@@ -22,7 +22,7 @@ description: Use OAuth 2.0 in Postino with named profiles: client credentials, p
 <h2 id="first-profile">Creating a profile</h2>
 <p>In the Auth tab, choose <strong>OAuth 2.0</strong>. With no profile in the workspace yet, the tab shows <strong>No OAuth profiles in this workspace</strong> and a <strong>Create profile</strong> button. Type a <strong>Name</strong> (letters, digits, <code>-</code> and <code>_</code>), pick the <strong>Grant type</strong> and press <strong>Create</strong> or <kbd>Enter</kbd>. The new profile is saved to <code>.postino/project.toml</code> at once, chosen for the request, and its settings open.</p>
 <p>Once there are profiles, the <strong>Profile</strong> picker lists them with their grant type and how many requests use each. At its end, <strong>New profile…</strong> creates another one and <strong>New profile from acme-sso…</strong> copies the current one under a new name. Choosing another profile only changes this request.</p>
-<p>The <a href="postman-import.html">Postman</a>, <a href="bruno-import.html">Bruno</a> and <a href="openapi-import.html">OpenAPI</a> imports do not create profiles yet.</p>
+<p>The <a href="postman-import.html">Postman</a>, <a href="bruno-import.html">Bruno</a> and <a href="openapi-import.html">OpenAPI</a> imports create profiles on their own from the OAuth settings they find. A profile the workspace already has with the same settings is reused; a name taken by other settings gets a suffix, such as <code>acme-sso-2</code>.</p>
 
 <h2 id="profile-settings">Profile settings</h2>
 <p><strong>Profile settings</strong>, next to the picker, unfolds the profile inside the Auth tab, between the picker and the token card. The panel stays open or closed for every request until you press it again.</p>
@@ -100,6 +100,10 @@ description: Use OAuth 2.0 in Postino with named profiles: client credentials, p
     <li><strong>The provider rejected the redirect URL</strong>: register <code>http://127.0.0.1</code> (any port) in the provider, or switch the profile to <strong>Fixed URL</strong>. <strong>Copy redirect URL</strong> copies what to register.</li>
     <li><strong>The API rejected the token</strong>: the API answered <code>401</code>, so the token may have been revoked, or lack a scope. The response is shown as it came, and Postino never retries by itself, since a 401 can also mean missing permissions. <strong>Get new token and resend</strong> renews it and sends again; <strong>Dismiss</strong> hides the card.</li>
 </ul>
+
+<h2 id="other-places">Tokens elsewhere in a request</h2>
+<p>For an API that wants the token somewhere else, such as another header or the body, write the <a href="template-functions.html">template function</a> <code>{{ oauthToken("acme-sso") }}</code>, or <code>{{ oauthToken("acme-sso", "id_token") }}</code> for the OpenID Connect id token. The token is obtained or renewed on Send exactly as with the OAuth 2.0 type, before the pre-request script, which has no network.</p>
+<p>A <a href="load-testing.html">load test</a> gets the token of each profile once, before its virtual users start, and renews it when it expires. It never opens the browser, so sign in first for the authorization code grant.</p>
 
 <h2 id="where-tokens-live">Where tokens are stored</h2>
 <p>Tokens are stored per workspace, profile and environment, in the system credential store: the Keychain on macOS, the Credential Manager on Windows, and the Secret Service (KWallet, GNOME Keyring) on Linux. When there is none, they go to <code>oauth-tokens.json</code> in Postino's <a href="files-and-folders.html#on-your-system">configuration folder</a>, readable only by you. The token card says which one is used. Moving or renaming the workspace folder means signing in again.</p>

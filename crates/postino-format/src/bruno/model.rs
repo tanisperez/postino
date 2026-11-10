@@ -23,8 +23,8 @@ pub(super) enum RawAuth {
         value: String,
         query: bool,
     },
-    /// OAuth 2.0: Bruno fetches the token, which is not in the files.
-    OAuth2,
+    /// OAuth 2.0: its settings, by name. Bruno fetches the token, which is not in the files.
+    OAuth2(Vec<(String, String)>),
     /// A kind Postino does not have (`digest`, `ntlm`, `awsv4`, `wsse`, `oauth1`, ...).
     Other(String),
 }
@@ -183,7 +183,13 @@ fn bru_auth(file: &BruFile, mode: &str) -> RawAuth {
             value: get("value"),
             query: get("placement") == "queryparams",
         },
-        "oauth2" => RawAuth::OAuth2,
+        "oauth2" => RawAuth::OAuth2(
+            file.dict(&block)
+                .iter()
+                .filter(|pair| pair.enabled)
+                .map(|pair| (pair.key.clone(), pair.value.clone()))
+                .collect(),
+        ),
         other => RawAuth::Other(other.to_string()),
     }
 }

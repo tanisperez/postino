@@ -33,7 +33,7 @@ pub use manager::{
 };
 pub use resolve::{ResolvedProfile, resolve_profile};
 pub use store::{
-    FileStore, MemoryStore, StoreError, StoreKind, SystemStore, TOKENS_FILE, TokenKey, TokenStore,
-    workspace_id,
+    CachedStore, FileStore, MemoryStore, StoreError, StoreKind, SystemStore, TOKENS_FILE, TokenKey,
+    TokenStore, workspace_id,
 };
 pub use token::{EXPIRY_MARGIN, TokenSet, from_unix_seconds, jwt_claims, unix_seconds};

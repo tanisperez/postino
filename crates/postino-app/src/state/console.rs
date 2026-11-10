@@ -332,7 +332,23 @@ impl ConsoleTimeline {
 
         let mut networks = Vec::new();
         let mut token_network = None;
-        if let Some(run) = &result.oauth {
+        // In the order they ran: when a token failed, `oauth` is the one that failed, after the
+        // others.
+        let runs: Vec<&postino_oauth::OAuthRun> =
+            if matches!(result.failed_stage, Some(FailedStage::Auth)) {
+                result
+                    .oauth_more
+                    .iter()
+                    .chain(result.oauth.iter())
+                    .collect()
+            } else {
+                result
+                    .oauth
+                    .iter()
+                    .chain(result.oauth_more.iter())
+                    .collect()
+            };
+        for run in runs {
             for step in &run.steps {
                 match step {
                     OAuthStep::Note { time, note } => {
@@ -1158,6 +1174,7 @@ mod tests {
             sent_at: Some(SystemTime::UNIX_EPOCH),
             finished_at: SystemTime::UNIX_EPOCH,
             oauth: None,
+            oauth_more: Vec::new(),
         }
     }
 

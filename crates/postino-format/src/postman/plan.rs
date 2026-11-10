@@ -74,8 +74,24 @@ pub fn build_postman_plan(
     };
     let mut issues = HashMap::new();
     let mut warnings = Vec::new();
+    // One set of OAuth profiles for every collection: equal settings are shared, a name taken by
+    // other settings is renamed in the requests of its collection.
+    let mut profiles = crate::oauth_import::ProfileBuilder::default();
     for collection in collections {
         warnings.extend(collection.warnings.iter().cloned());
+        let renames = profiles.merge(&crate::oauth_import::ProfileBuilder {
+            profiles: collection.oauth_profiles.clone(),
+            secrets: Vec::new(),
+        });
+        let renamed;
+        let collection = if renames.is_empty() {
+            collection
+        } else {
+            let mut copy = collection.clone();
+            rename_profiles(&mut copy.root, &renames);
+            renamed = copy;
+            &renamed
+        };
         if let [_] = collections {
             add_folder(&mut root, &collection.root, "", options, &mut issues);
         } else {
@@ -147,6 +163,7 @@ pub fn build_postman_plan(
             root,
             environments: plan_environments,
             warnings,
+            profiles: profiles.profiles,
         },
         issues,
     }
@@ -223,6 +240,26 @@ fn add_folder(
         } else {
             add_folder(target, child, &child_path, options, issues);
         }
+    }
+}
+
+/// Points the requests of `folder` at the names their OAuth profiles got in the merged plan.
+fn rename_profiles(folder: &mut ImportFolder, renames: &[(String, String)]) {
+    for (_, request) in &mut folder.requests {
+        if let postino_core::Auth::OAuth2 { profile, .. } = &mut request.auth {
+            *profile = crate::oauth_import::ProfileBuilder::renamed(renames, profile).to_string();
+        }
+    }
+    for issues in &mut folder.issues {
+        for issue in issues {
+            if let RequestIssue::OAuth2Profile(profile) = issue {
+                *profile =
+                    crate::oauth_import::ProfileBuilder::renamed(renames, profile).to_string();
+            }
+        }
+    }
+    for child in &mut folder.folders {
+        rename_profiles(child, renames);
     }
 }
 

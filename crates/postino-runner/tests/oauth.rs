@@ -124,3 +124,57 @@ fn an_unknown_profile_stops_the_run_before_the_pre_script() {
     assert!(result.console.is_empty());
     assert!(result.resolved_request.is_none());
 }
+
+#[test]
+fn oauth_token_calls_get_their_profile_token_before_the_pre_script() {
+    let server = TestServer::start();
+    let (tx, rx) = mpsc::channel();
+    let handle = server.serve(move |captured| {
+        let answer = if captured.url == "/token" {
+            StubResponse::new(200)
+                .with_body(r#"{"access_token":"tok","id_token":"idt","expires_in":3600}"#)
+        } else {
+            StubResponse::new(200).with_body("ok")
+        };
+        let _ = tx.send(captured);
+        answer
+    });
+    let mut profile = OAuthProfile::new("machine", OAuthGrant::ClientCredentials);
+    profile.token_url = format!("{}/token", server.url());
+    profile.client_id = "id".into();
+    let runner = runner(profile);
+    let request = Request {
+        method: Method::Get,
+        url: format!("{}/api", server.url()),
+        headers: vec![
+            KeyValue::new("X-Token", "{{ oauthToken(\"machine\") }}"),
+            KeyValue::new("X-Id", "{{ oauthToken(\"machine\", \"id_token\") }}"),
+        ],
+        ..Request::default()
+    };
+    let mut session = SessionEnv::default();
+    let result = runner.run(&request, &environment(), &mut session);
+    assert!(result.failed_stage.is_none(), "{:?}", result.failed_stage);
+    assert!(result.warnings.is_empty(), "{:?}", result.warnings);
+    assert_eq!(rx.recv().unwrap().url, "/token");
+    let api = rx.recv().unwrap();
+    let header = |name: &str| {
+        api.headers
+            .iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value.clone())
+    };
+    assert_eq!(header("x-token").as_deref(), Some("tok"));
+    assert_eq!(header("x-id").as_deref(), Some("idt"));
+    assert_eq!(result.oauth.unwrap().profile, "machine");
+
+    let unknown = Request {
+        method: Method::Get,
+        url: format!("{}/api?t={{{{ oauthToken(\"nope\") }}}}", server.url()),
+        ..Request::default()
+    };
+    let result = runner.run(&unknown, &environment(), &mut session);
+    assert!(matches!(result.failed_stage, Some(FailedStage::Auth)));
+    drop(server);
+    handle.join().unwrap();
+}

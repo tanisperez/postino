@@ -194,6 +194,22 @@ fn run_supervisor(
 ) -> LoadSummary {
     let mut handles = Vec::with_capacity(config.vus as usize);
 
+    // The OAuth tokens the targets need, once, before any virtual user starts: from then on every
+    // send finds them stored, and renews them only when they expire.
+    let requests: Vec<&postino_core::Request> = config
+        .targets
+        .iter()
+        .map(|target| &target.request)
+        .collect();
+    let prepared = runner.prepare_oauth(&requests, environment, &session_env);
+    if !prepared.is_empty() {
+        let failed = prepared.iter().filter(|run| run.result.is_err()).count();
+        log::info!(
+            "load test: {} OAuth token(s) ready, {failed} failed",
+            prepared.len() - failed
+        );
+    }
+
     for vu_index in 0..config.vus {
         // Linear ramp-up: the Nth virtual user (0-based) starts this far into `ramp_up`.
         let start_offset = config

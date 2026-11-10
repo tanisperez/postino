@@ -267,3 +267,66 @@ fn a_failed_import_leaves_nothing_behind() {
     assert!(result.is_err());
     assert!(!dir.path().join("Acme Payments API").exists());
 }
+
+#[test]
+fn oauth_profiles_go_to_the_project_file_and_clashing_names_are_renamed() {
+    const OAUTH_SPEC: &str = r#"openapi: 3.0.3
+info: {title: Acme, version: "1"}
+servers: [{url: "https://api.acme.dev"}]
+security: [{sso: []}]
+paths:
+  /charges: {get: {operationId: listCharges, responses: {"200": {description: ok}}}}
+components:
+  securitySchemes:
+    sso:
+      type: oauth2
+      flows: {clientCredentials: {tokenUrl: "https://auth.acme.dev/token", scopes: {read: r}}}
+"#;
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut workspace = Workspace::open(dir.path()).expect("open");
+    // The workspace already has a different profile named `sso`.
+    workspace
+        .update_project(postino_workspace::ProjectWrite::Create, |config| {
+            config.set_oauth_profile(&postino_core::OAuthProfile::new(
+                "sso",
+                postino_core::OAuthGrant::Password,
+            ));
+        })
+        .expect("seed");
+    let report = workspace
+        .import_openapi(&plan(OAUTH_SPEC), &|_| true, &origin("2026-11-10"))
+        .expect("import");
+    let profiles = workspace.load_project().expect("project").oauth_profiles();
+    let names: Vec<&str> = profiles
+        .iter()
+        .map(|profile| profile.name.as_str())
+        .collect();
+    assert_eq!(names, vec!["sso", "sso-2"]);
+    let request_id = report
+        .created_files
+        .iter()
+        .find(|id| id.ends_with(".postino"))
+        .expect("a request");
+    let request = workspace.load_request(request_id).expect("request");
+    assert_eq!(
+        request.auth,
+        postino_core::Auth::OAuth2 {
+            profile: "sso-2".to_string(),
+            scope: String::new()
+        }
+    );
+
+    // A second import of the same spec shares the profile it already wrote.
+    workspace
+        .import_openapi(&plan(OAUTH_SPEC), &|_| true, &origin("2026-11-10"))
+        .expect("import again");
+    assert_eq!(
+        workspace
+            .load_project()
+            .expect("project")
+            .oauth_profiles()
+            .len(),
+        2,
+        "the same settings as sso-2: shared, no third profile"
+    );
+}

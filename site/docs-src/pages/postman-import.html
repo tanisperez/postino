@@ -58,7 +58,7 @@ description: Import Postman collections (v2.1 and v2.0), environment and globals
         <tr><td>Form-data body</td><td><code>::: body multipart</code>; a file field becomes <code>@path</code>, with a warning, since that path rarely exists on another machine</td></tr>
         <tr><td>File and GraphQL bodies</td><td>An empty body, with a warning</td></tr>
         <tr><td>Bearer, Basic and API key auth (header or query)</td><td>The <code>::: auth</code> section, shown in the <a href="requests.html#authentication">Auth tab</a></td></tr>
-        <tr><td>OAuth 2.0 auth</td><td>A bearer token <code>{{oauth2AccessToken}}</code>, with the token in <code>.local.env</code>. Postino does not run the flow or renew it, with a warning</td></tr>
+        <tr><td>OAuth 2.0 auth</td><td>An <a href="oauth.html">OAuth 2.0 profile</a> of the workspace, named after the token name or the collection, and the requests use it. Requests with the same settings share one profile. A client secret or password written in clear goes to a variable of <code>.local.env</code> (with the Secrets option). The stored access token is not imported: Postino gets its own on Send. The implicit grant becomes authorization code with PKCE, and Postman's own callback the loopback redirect, with a warning</td></tr>
         <tr><td>OAuth 1.0, Digest, AWS, Hawk and other auth</td><td>No auth, with a warning</td></tr>
         <tr><td>Auth set on the collection or a folder</td><td>Copied to every request below that inherits it</td></tr>
         <tr><td>Description and saved examples</td><td>The <code>::: docs</code> section, when the option is on</td></tr>

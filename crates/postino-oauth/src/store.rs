@@ -327,6 +327,48 @@ impl TokenStore for SystemStore {
     }
 }
 
+/// A store that keeps what it read from `inner` in memory, for the thousands of sends of a load
+/// test: the system store is read once per key, and every new token is written to both.
+pub struct CachedStore {
+    inner: std::sync::Arc<dyn TokenStore>,
+    cache: Mutex<BTreeMap<TokenKey, Option<TokenSet>>>,
+}
+
+impl CachedStore {
+    /// A cache over `inner`.
+    pub fn new(inner: std::sync::Arc<dyn TokenStore>) -> Self {
+        CachedStore {
+            inner,
+            cache: Mutex::new(BTreeMap::new()),
+        }
+    }
+}
+
+impl TokenStore for CachedStore {
+    fn get(&self, key: &TokenKey) -> Result<Option<TokenSet>, StoreError> {
+        if let Some(cached) = lock(&self.cache).get(key) {
+            return Ok(cached.clone());
+        }
+        let token = self.inner.get(key)?;
+        lock(&self.cache).insert(key.clone(), token.clone());
+        Ok(token)
+    }
+
+    fn set(&self, key: &TokenKey, token: &TokenSet) -> Result<(), StoreError> {
+        lock(&self.cache).insert(key.clone(), Some(token.clone()));
+        self.inner.set(key, token)
+    }
+
+    fn remove(&self, key: &TokenKey) -> Result<(), StoreError> {
+        lock(&self.cache).insert(key.clone(), None);
+        self.inner.remove(key)
+    }
+
+    fn kind(&self) -> StoreKind {
+        self.inner.kind()
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::expect_used)]
 mod tests {
@@ -417,5 +459,48 @@ mod tests {
         assert_eq!(store.get(&key(None)).expect("get"), Some(token("one")));
         store.remove(&key(None)).expect("remove");
         assert_eq!(store.get(&key(None)).expect("get"), None);
+    }
+
+    /// Counts the reads that reach the inner store.
+    #[derive(Default)]
+    struct CountingStore {
+        inner: MemoryStore,
+        reads: std::sync::atomic::AtomicUsize,
+    }
+
+    impl TokenStore for CountingStore {
+        fn get(&self, key: &TokenKey) -> Result<Option<TokenSet>, StoreError> {
+            self.reads.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            self.inner.get(key)
+        }
+        fn set(&self, key: &TokenKey, token: &TokenSet) -> Result<(), StoreError> {
+            self.inner.set(key, token)
+        }
+        fn remove(&self, key: &TokenKey) -> Result<(), StoreError> {
+            self.inner.remove(key)
+        }
+        fn kind(&self) -> StoreKind {
+            StoreKind::Memory
+        }
+    }
+
+    #[test]
+    fn cached_store_reads_the_inner_store_once_per_key() {
+        let inner = std::sync::Arc::new(CountingStore::default());
+        inner.inner.set(&key(None), &token("one")).expect("set");
+        let cached = CachedStore::new(inner.clone());
+        for _ in 0..3 {
+            assert_eq!(cached.get(&key(None)).expect("get"), Some(token("one")));
+        }
+        assert_eq!(cached.get(&key(Some("x"))).expect("get"), None);
+        assert_eq!(cached.get(&key(Some("x"))).expect("get"), None);
+        assert_eq!(inner.reads.load(std::sync::atomic::Ordering::SeqCst), 2);
+        cached.set(&key(None), &token("two")).expect("set");
+        assert_eq!(
+            inner.inner.get(&key(None)).expect("get"),
+            Some(token("two"))
+        );
+        cached.remove(&key(None)).expect("remove");
+        assert_eq!(cached.get(&key(None)).expect("get"), None);
     }
 }

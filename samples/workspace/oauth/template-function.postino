@@ -1,0 +1,12 @@
+GET {{baseUrl}}/oauth/me
+Authorization: Bearer {{ oauthToken("sample-short") }}
+
+::: post
+test("oauthToken() puts the profile's token in the header", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().user).toBe("demo");
+});
+
+::: docs
+No auth section: the token of `sample-short` goes in a header written by hand, through the
+`oauthToken()` template function.

@@ -26,6 +26,7 @@ sanitized for every OS (Windows-reserved names and characters, trailing dots and
 | Body mode `formdata` | `::: body multipart`, a file field as `@path` |
 | Body modes `file` and `graphql` | Imported as an empty body, with a warning |
 | Auth `bearer`, `basic` and `apikey` (header or query location) | `::: auth` section |
+| Auth `oauth2` | An OAuth profile (`oauth_import::ProfileBuilder`), `::: auth oauth2`; secrets in clear go to `.local.env`, the stored token is dropped |
 | Description | `::: docs` section |
 | `{{var}}` | Kept as is, the syntax is compatible |
 | Collection `variable` array | Copied into every imported environment; `environments/<collection name>.env` when there is none. Those of type `secret` go to `.local.env` |

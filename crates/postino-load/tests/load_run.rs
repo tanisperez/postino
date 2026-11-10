@@ -450,3 +450,59 @@ fn read_samples_called_repeatedly_ends_with_the_same_log_as_the_summary() {
 
     assert_eq!(polled, summary.log);
 }
+
+#[test]
+fn an_oauth_token_is_obtained_once_before_the_virtual_users_start() {
+    use postino_core::{Auth, OAuthGrant, OAuthProfile};
+    use postino_oauth::{MemoryStore, NoSignIn};
+    use postino_runner::OAuthConfig;
+
+    let server = TestServer::start();
+    let token_requests = Arc::new(AtomicUsize::new(0));
+    let counter = Arc::clone(&token_requests);
+    let handle = server.serve(move |captured: CapturedRequest| {
+        if captured.url == "/token" {
+            counter.fetch_add(1, Ordering::SeqCst);
+            return StubResponse::new(200).with_body(r#"{"access_token":"tok","expires_in":3600}"#);
+        }
+        let authorized = captured.headers.iter().any(|(name, value)| {
+            name.eq_ignore_ascii_case("authorization") && value == "Bearer tok"
+        });
+        StubResponse::new(if authorized { 200 } else { 401 })
+    });
+    let mut profile = OAuthProfile::new("machine", OAuthGrant::ClientCredentials);
+    profile.token_url = format!("{}/token", server.url());
+    profile.client_id = "id".into();
+    let runner = Arc::new(
+        Runner::new(Arc::new(QuickJsEngine), SendOptions::default()).with_oauth(OAuthConfig {
+            workspace: "ws-000000".into(),
+            profiles: Arc::new(vec![profile]),
+            store: Arc::new(MemoryStore::default()),
+            sign_in: Arc::new(NoSignIn),
+        }),
+    );
+    let mut request = get(format!("{}/api", server.url()));
+    request.auth = Auth::OAuth2 {
+        profile: "machine".into(),
+        scope: String::new(),
+    };
+    let config = LoadConfig {
+        targets: vec![LoadTarget::new("a", request)],
+        vus: 4,
+        duration: Duration::from_millis(600),
+        ramp_up: Duration::ZERO,
+        think_time: Duration::ZERO,
+        stop_on_error_rate: None,
+        reuse_connections: false,
+    };
+    let summary = LoadRun::start(config, Environment::default(), SessionEnv::new(), runner).join();
+    drop(server);
+    handle.join().expect("test server thread panicked");
+
+    assert_eq!(token_requests.load(Ordering::SeqCst), 1);
+    assert!(summary.snapshot.total > 0);
+    assert_eq!(
+        summary.snapshot.status_counts,
+        vec![(StatusKey::Code(200), summary.snapshot.total)]
+    );
+}

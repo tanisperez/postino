@@ -5085,8 +5085,10 @@ version = "0.10.0-dev"
 dependencies = [
  "flate2",
  "krilla",
+ "log",
  "postino-core",
  "postino-http",
+ "postino-oauth",
  "postino-runner",
  "postino-script",
  "pretty_assertions",

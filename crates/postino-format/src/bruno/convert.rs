@@ -12,16 +12,16 @@ use crate::postman::{ImportFolder, PostmanOptions, RequestIssue};
 
 /// The variable that holds the access token of a request with OAuth 2.0 authorization, the same
 /// as a Postman import's.
-pub(super) const OAUTH2_TOKEN_VARIABLE: &str = "oauth2AccessToken";
-
 /// What mapping a collection collects on the way.
 pub(super) struct Mapping<'a> {
     pub(super) options: &'a PostmanOptions,
     pub(super) warnings: Vec<String>,
     /// Variables of the collection and its folders, for every environment.
     pub(super) variables: Vec<KeyValue>,
-    /// Whether a request uses OAuth 2.0, whose token goes to `.local.env`.
-    pub(super) oauth2: bool,
+    /// The OAuth 2.0 profiles the requests use, and the secrets taken out of them.
+    pub(super) profiles: crate::oauth_import::ProfileBuilder,
+    /// The collection name, the profiles' name.
+    pub(super) collection: String,
 }
 
 /// What a request inherits from its folders and the collection, the nearest last.
@@ -209,11 +209,17 @@ fn map_auth(auth: &RawAuth, mapping: &mut Mapping, issues: &mut Vec<RequestIssue
                 ApiKeyLocation::Header
             },
         },
-        RawAuth::OAuth2 => {
-            mapping.oauth2 = true;
-            issues.push(RequestIssue::OAuth2Token);
-            Auth::Bearer {
-                token: format!("{{{{{OAUTH2_TOKEN_VARIABLE}}}}}"),
+        RawAuth::OAuth2(fields) => {
+            let fields = crate::oauth_import::OAuthFields(fields.clone());
+            let mut notes = Vec::new();
+            let profile = crate::oauth_import::profile_from_fields(&fields, &mut notes);
+            mapping.warnings.extend(notes);
+            let collection = mapping.collection.clone();
+            let name = mapping.profiles.add(&collection, profile);
+            issues.push(RequestIssue::OAuth2Profile(name.clone()));
+            Auth::OAuth2 {
+                profile: name,
+                scope: String::new(),
             }
         }
         RawAuth::Other(kind) => {
@@ -365,7 +371,8 @@ mod tests {
             options,
             warnings: Vec::new(),
             variables: Vec::new(),
-            oauth2: false,
+            profiles: crate::oauth_import::ProfileBuilder::default(),
+            collection: "acme".to_string(),
         }
     }
 
@@ -456,7 +463,14 @@ mod tests {
             field: KeyValue::new("doc", "@file(a.pdf|b.pdf)"),
             files: Some(vec!["a.pdf".to_string(), "b.pdf".to_string()]),
         }]);
-        raw.auth = RawAuth::OAuth2;
+        raw.auth = RawAuth::OAuth2(vec![
+            ("grant_type".to_string(), "client_credentials".to_string()),
+            (
+                "access_token_url".to_string(),
+                "https://auth/token".to_string(),
+            ),
+            ("client_secret".to_string(), "s3".to_string()),
+        ]);
         let (mapped, issues) = map_request(&raw, &Inherited::default(), &mut mapping);
         assert_eq!(
             mapped.body,
@@ -464,15 +478,22 @@ mod tests {
         );
         assert_eq!(
             mapped.auth,
-            Auth::Bearer {
-                token: "{{oauth2AccessToken}}".to_string()
+            Auth::OAuth2 {
+                profile: "acme".to_string(),
+                scope: String::new()
             }
         );
-        assert!(mapping.oauth2);
+        let profile = &mapping.profiles.profiles[0];
+        assert_eq!(profile.token_url, "https://auth/token");
+        assert_eq!(profile.client_secret, "{{acmeClientSecret}}");
+        assert_eq!(
+            mapping.profiles.secrets,
+            vec![KeyValue::new("acmeClientSecret", "s3")]
+        );
         assert_eq!(
             issues,
             vec![
-                RequestIssue::OAuth2Token,
+                RequestIssue::OAuth2Profile("acme".to_string()),
                 RequestIssue::FormDataFile,
                 RequestIssue::FormDataManyFiles
             ]
@@ -522,7 +543,8 @@ mod tests {
             options: &off,
             warnings: Vec::new(),
             variables: Vec::new(),
-            oauth2: false,
+            profiles: crate::oauth_import::ProfileBuilder::default(),
+            collection: "acme".to_string(),
         };
         let (mapped, issues) = map_request(&raw, &Inherited::default(), &mut mapping);
         assert!(mapped.pre_script.starts_with(NOT_CONVERTED_HEADER));

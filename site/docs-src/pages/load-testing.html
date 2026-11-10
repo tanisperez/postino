@@ -57,6 +57,7 @@ description: Run load tests against a request or a whole folder in Postino with 
     <li>Each virtual user is a separate thread that loops over the target: one request, or every request of the folder in order, then the think time, then again, until the duration is over or you press <strong>Stop run</strong>.</li>
     <li>Every iteration runs the full pipeline: pre-request script, variables, HTTP, post-response script.</li>
     <li>Each virtual user has its own copy of the session variables. A collection that starts with a login request whose post-response script calls <code>env.set("token", …)</code> works as expected: each user logs in and uses its own token for the next requests.</li>
+    <li>Requests that use an <a href="oauth.html">OAuth 2.0 profile</a>, as their auth or through <code>oauthToken()</code>, get its token once, before the virtual users start, and every iteration reuses it until it expires, when it is renewed. A load test never opens the browser: with the authorization code grant, sign in first, with Send or <strong>Sign in now</strong>.</li>
     <li>Stopping takes effect in well under a second, even during a long think time.</li>
     <li>With <strong>Reuse connections</strong> on, each virtual user has its own connections, so 50 users against one server keep about 50 connections open.</li>
     <li>The run happens on your machine. Your own CPU and network are part of the measurement, so for serious numbers use a machine close to the server.</li>

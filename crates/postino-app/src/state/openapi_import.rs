@@ -1062,7 +1062,9 @@ pub fn issue_text(issue: &RequestIssue) -> String {
         .into_owned(),
         RequestIssue::SendRequest => t!("import.issue.send_request").into_owned(),
         RequestIssue::ScriptNotConverted => t!("import.issue.script_not_converted").into_owned(),
-        RequestIssue::OAuth2Token => t!("import.issue.oauth2").into_owned(),
+        RequestIssue::OAuth2Profile(profile) => {
+            t!("import.issue.oauth2", profile = profile.as_str()).into_owned()
+        }
         RequestIssue::AuthUnsupported(kind) => {
             t!("import.issue.auth_unsupported", kind = kind.as_str()).into_owned()
         }

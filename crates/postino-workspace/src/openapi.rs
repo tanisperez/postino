@@ -74,6 +74,7 @@ impl Workspace {
         origin: &ImportOrigin,
     ) -> Result<ImportReport, WorkspaceError> {
         let mut created = Vec::new();
+        let plan = &self.reconcile_profiles(plan)?;
         let target = unique_path(self.root(), &sanitize_file_name(&plan.root.name));
         let written = write_plan(self.root(), &target, plan, keep, origin, &mut created);
         if let Err(error) = written {
@@ -85,6 +86,57 @@ impl Workspace {
             created_files: created,
             warnings: plan.warnings.clone(),
         })
+    }
+
+    /// Writes the OAuth profiles of `plan` to `.postino/project.toml` (#227) and returns the plan
+    /// its requests should be written from: a profile whose name the workspace already uses for
+    /// different settings is renamed, here and in the requests; one with the same settings is
+    /// shared. A plan without profiles is returned as it is, and the file is not touched.
+    fn reconcile_profiles(&self, plan: &OpenApiPlan) -> Result<OpenApiPlan, WorkspaceError> {
+        if plan.profiles.is_empty() {
+            return Ok(plan.clone());
+        }
+        let existing = self.load_project()?.oauth_profiles();
+        let mut renames: Vec<(String, String)> = Vec::new();
+        let mut written: Vec<postino_core::OAuthProfile> = Vec::new();
+        for profile in &plan.profiles {
+            // The same settings under any name: the requests use that one.
+            if let Some(same) = existing.iter().find(|other| {
+                let mut candidate = profile.clone();
+                candidate.name = other.name.clone();
+                **other == candidate
+            }) {
+                if same.name != profile.name {
+                    renames.push((profile.name.clone(), same.name.clone()));
+                }
+                continue;
+            }
+            let mut renamed = profile.clone();
+            let mut n = 2;
+            while existing.iter().any(|other| other.name == renamed.name)
+                || written.iter().any(|other| other.name == renamed.name)
+            {
+                renamed.name = format!("{}-{n}", profile.name);
+                n += 1;
+            }
+            if renamed.name != profile.name {
+                renames.push((profile.name.clone(), renamed.name.clone()));
+            }
+            written.push(renamed);
+        }
+        if !written.is_empty() {
+            self.update_project(crate::ProjectWrite::Create, |config| {
+                for profile in &written {
+                    config.set_oauth_profile(profile);
+                }
+            })?;
+            log::info!("import: {} OAuth profile(s) added", written.len());
+        }
+        let mut plan = plan.clone();
+        if !renames.is_empty() {
+            rename_profiles(&mut plan.root, &renames);
+        }
+        Ok(plan)
     }
 
     /// The collections an OpenAPI import created: every top-level folder with a manifest.
@@ -111,6 +163,7 @@ impl Workspace {
         apply: &dyn Fn(&str) -> bool,
         origin: &ImportOrigin,
     ) -> Result<UpdateReport, WorkspaceError> {
+        let plan = &self.reconcile_profiles(plan)?;
         let dir = id_to_path(self.root(), collection)?;
         let manifest_path = dir.join(MANIFEST_FILE);
         let text = fs::read_to_string(&manifest_path).map_err(|source| WorkspaceError::Io {
@@ -269,6 +322,20 @@ fn write_plan(
         )?;
     }
     Ok(())
+}
+
+/// Points the requests of `folder` at the new names of their profiles.
+fn rename_profiles(folder: &mut PlanFolder, renames: &[(String, String)]) {
+    for request in &mut folder.requests {
+        if let postino_core::Auth::OAuth2 { profile, .. } = &mut request.request.auth
+            && let Some((_, new)) = renames.iter().find(|(old, _)| old == profile)
+        {
+            *profile = new.clone();
+        }
+    }
+    for child in &mut folder.folders {
+        rename_profiles(child, renames);
+    }
 }
 
 /// Removes the folders above `file` that the deletion left empty, up to `collection`, which

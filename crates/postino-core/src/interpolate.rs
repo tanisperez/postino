@@ -168,11 +168,90 @@ pub fn variable_spans(text: &str) -> Vec<VariableSpan> {
     spans
 }
 
+/// The template function that inserts an OAuth 2.0 token: `{{ oauthToken("acme-sso") }}`, or
+/// `{{ oauthToken("acme-sso", "id_token") }}`. The runner obtains the token before the request is
+/// resolved and hands it in as the variable [`oauth_token_variable`] names.
+pub const OAUTH_TOKEN_FUNCTION: &str = "oauthToken";
+
+/// The token kinds [`OAUTH_TOKEN_FUNCTION`] accepts as its second argument.
+pub const OAUTH_TOKEN_KINDS: [&str; 2] = ["access_token", "id_token"];
+
+/// The name of the variable that carries the `kind` token of `profile` for
+/// [`OAUTH_TOKEN_FUNCTION`]. It starts with a control character, so no environment, session or
+/// script variable can collide with it.
+pub fn oauth_token_variable(profile: &str, kind: &str) -> String {
+    format!("\u{1}oauthToken\u{1}{profile}\u{1}{kind}")
+}
+
+/// The `(profile, kind)` of every [`OAUTH_TOKEN_FUNCTION`] call in `text`, in order, with their
+/// arguments resolved in `scope`. Calls that are not valid are left out: interpolating them
+/// reports why.
+pub fn oauth_token_calls(text: &str, scope: &VarScope) -> Vec<(String, String)> {
+    variable_spans(text)
+        .into_iter()
+        .filter(|span| span.kind == VariableKind::FunctionCall && span.name == OAUTH_TOKEN_FUNCTION)
+        .filter_map(|span| {
+            let raw = &text[span.range.start + 2..span.range.end - 2];
+            let (_, args) = parse_call(raw.trim())?;
+            oauth_token_args(&resolve_args(args, scope).ok()?).ok()
+        })
+        .collect()
+}
+
+/// Reads the arguments of an [`OAUTH_TOKEN_FUNCTION`] call: a profile name, and optionally a
+/// token kind, `access_token` by default.
+fn oauth_token_args(args: &[Arg]) -> Result<(String, String), FunctionError> {
+    let text = |index: usize| match args.get(index) {
+        Some(Arg::Str(value)) => Ok(value.clone()),
+        Some(Arg::Int(value)) => Err(FunctionError::InvalidArgument {
+            function: OAUTH_TOKEN_FUNCTION.to_string(),
+            message: format!("expected a string, got the integer {value}"),
+        }),
+        None => Ok(String::new()),
+    };
+    if args.is_empty() || args.len() > 2 {
+        return Err(FunctionError::Arity {
+            function: OAUTH_TOKEN_FUNCTION.to_string(),
+            expected: 1,
+            got: args.len(),
+        });
+    }
+    let profile = text(0)?;
+    let kind = match text(1)? {
+        kind if kind.is_empty() => OAUTH_TOKEN_KINDS[0].to_string(),
+        kind if OAUTH_TOKEN_KINDS.contains(&kind.as_str()) => kind,
+        other => {
+            return Err(FunctionError::InvalidArgument {
+                function: OAUTH_TOKEN_FUNCTION.to_string(),
+                message: format!(
+                    "the token kind must be access_token or id_token, got \"{other}\""
+                ),
+            });
+        }
+    };
+    Ok((profile, kind))
+}
+
 /// Resolves the content of a single `{{ ... }}` marker (without the braces) to its replacement
 /// text, or the warning explaining why it could not be resolved.
 fn resolve_marker(raw: &str, scope: &VarScope) -> Result<String, TemplateWarning> {
     let trimmed = raw.trim();
     match parse_call(trimmed) {
+        Some((OAUTH_TOKEN_FUNCTION, args)) => {
+            let args = resolve_args(args, scope)?;
+            let (profile, kind) = oauth_token_args(&args)?;
+            scope
+                .lookup(&oauth_token_variable(&profile, &kind))
+                .map(str::to_string)
+                .ok_or_else(|| {
+                    TemplateWarning::Function(FunctionError::InvalidArgument {
+                        function: OAUTH_TOKEN_FUNCTION.to_string(),
+                        message: format!(
+                            "no {kind} for the OAuth profile \"{profile}\": it is obtained when the request is sent"
+                        ),
+                    })
+                })
+        }
         Some((name, args)) => {
             let args = resolve_args(args, scope)?;
             functions::call(name, &args).map_err(TemplateWarning::from)
@@ -526,5 +605,49 @@ mod tests {
         let span = &spans[0];
         assert_eq!(&text[span.range.clone()], "{{name}}");
         assert_eq!(span.name, "name");
+    }
+
+    #[test]
+    fn oauth_token_reads_the_token_the_runner_handed_in() {
+        let request_vars = vec![
+            KeyValue::new(oauth_token_variable("acme-sso", "access_token"), "tok"),
+            KeyValue::new(oauth_token_variable("acme-sso", "id_token"), "idt"),
+            KeyValue::new("which", "acme-sso"),
+        ];
+        let scope = VarScope {
+            request_vars: &request_vars,
+            session_env: &[],
+            environment: &[],
+        };
+        assert_eq!(
+            interpolate("X {{ oauthToken(\"acme-sso\") }}", &scope).text,
+            "X tok"
+        );
+        assert_eq!(
+            interpolate("{{oauthToken(which, \"id_token\")}}", &scope).text,
+            "idt"
+        );
+        let missing = interpolate("{{ oauthToken(\"other\") }}", &scope);
+        assert_eq!(missing.text, "{{ oauthToken(\"other\") }}");
+        assert_eq!(missing.warnings.len(), 1);
+        assert_eq!(interpolate("{{ oauthToken() }}", &scope).warnings.len(), 1);
+        assert_eq!(
+            interpolate("{{ oauthToken(\"a\", \"refresh_token\") }}", &scope)
+                .warnings
+                .len(),
+            1
+        );
+        assert_eq!(
+            oauth_token_calls(
+                "{{ oauthToken(\"a\") }} {{ uuid() }} {{oauthToken(which, \"id_token\")}}",
+                &scope
+            ),
+            vec![
+                ("a".to_string(), "access_token".to_string()),
+                ("acme-sso".to_string(), "id_token".to_string())
+            ]
+        );
+        // An environment variable can never be mistaken for a token.
+        assert!(oauth_token_variable("a", "access_token").starts_with('\u{1}'));
     }
 }

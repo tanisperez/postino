@@ -18,7 +18,7 @@ use postino_core::KeyValue;
 
 use crate::postman::{ImportPlan, ImportedEnvironment, PostmanOptions};
 use bru::parse_bru;
-use convert::{Inherited, Mapping, OAUTH2_TOKEN_VARIABLE, map_folder, take_defaults};
+use convert::{Inherited, Mapping, map_folder, take_defaults};
 use model::{Defaults, RawEnvironment, RawFolder};
 use yaml::parse_yaml;
 
@@ -292,14 +292,13 @@ pub fn parse_bruno_collection(
         options,
         warnings,
         variables: Vec::new(),
-        oauth2: false,
+        profiles: crate::oauth_import::ProfileBuilder::default(),
+        collection: collection_name.clone(),
     };
     take_defaults(&root_folder.defaults, "collection", &mut mapping);
     let root_import = map_folder(&root_folder, &Inherited::default(), "", &mut mapping);
-    let mut secret_variables = Vec::new();
-    if mapping.oauth2 {
-        secret_variables.push(KeyValue::new(OAUTH2_TOKEN_VARIABLE, ""));
-    }
+    let secret_variables = std::mem::take(&mut mapping.profiles.secrets);
+    let oauth_profiles = std::mem::take(&mut mapping.profiles.profiles);
     let environment_colors = environments
         .iter()
         .filter_map(|environment| {
@@ -321,6 +320,7 @@ pub fn parse_bruno_collection(
                 Vec::new()
             },
             secret_variables,
+            oauth_profiles,
             warnings: mapping.warnings,
         },
         environments,
