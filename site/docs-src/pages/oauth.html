@@ -33,7 +33,7 @@ description: Use OAuth 2.0 in Postino with named profiles: client credentials, p
     <li>A secret written in clear in <strong>Client secret</strong> or <strong>Password</strong> shows <strong>Move to .local.env</strong> in orange: the profile is shared through git. Clicking it saves the value as a variable in the active environment's <code>.local.env</code> file (the name is offered, such as <code>acmeSsoPassword</code>, and can be changed) and writes <code>{{acmeSsoPassword}}</code> in the field instead.</li>
     <li><strong>Duplicate</strong> copies the profile under a new name. <strong>Delete…</strong> asks first, listing the requests that use it; they keep naming the deleted profile, in red, until another one is chosen.</li>
     <li><strong>Sign in (dev)</strong> or <strong>Get token (dev)</strong> gets a new token right away with the current settings, for the active environment.</li>
-    <li>Renaming with the pencil happens at once: the profile and the <code>profile =</code> line of every request that uses it are rewritten. The stored tokens of the old name are not kept.</li>
+    <li>Renaming with the pencil happens at once: the profile and the <code>profile =</code> line of every request that uses it are rewritten. The tokens of the old name are not kept.</li>
 </ul>
 
 <h3 id="grant-types">Grant types and fields</h3>
@@ -105,8 +105,8 @@ description: Use OAuth 2.0 in Postino with named profiles: client credentials, p
 <p>For an API that wants the token somewhere else, such as another header or the body, write the <a href="template-functions.html">template function</a> <code>{{ oauthToken("acme-sso") }}</code>, or <code>{{ oauthToken("acme-sso", "id_token") }}</code> for the OpenID Connect id token. The token is obtained or renewed on Send exactly as with the OAuth 2.0 type, before the pre-request script, which has no network.</p>
 <p>A <a href="load-testing.html">load test</a> gets the token of each profile once, before its virtual users start, and renews it when it expires. It never opens the browser, so sign in first for the authorization code grant.</p>
 
-<h2 id="where-tokens-live">Where tokens are stored</h2>
-<p>Tokens are stored per workspace, profile and environment, in the system credential store: the Keychain on macOS, the Credential Manager on Windows, and the Secret Service (KWallet, GNOME Keyring) on Linux. When there is none, they go to <code>oauth-tokens.json</code> in Postino's <a href="files-and-folders.html#on-your-system">configuration folder</a>, readable only by you. The token card says which one is used. Moving or renaming the workspace folder means signing in again.</p>
+<h2 id="where-tokens-live">Where tokens are kept</h2>
+<p>Tokens are kept in memory only, per workspace, profile and environment. Postino never writes them to the workspace, to disk or to the system credential store, so they are gone when it closes. The first Send after opening Postino gets a new token: silently for client credentials and password, and through your browser for authorization code, where a session still open in the browser needs no password.</p>
 <p>Postino logs that a token expired or was obtained, with the profile, the environment and the grant, never a token, a secret or a code.</p>
 
 <h2 id="profile-file">Profiles in the file</h2>

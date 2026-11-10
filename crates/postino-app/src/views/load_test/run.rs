@@ -157,10 +157,9 @@ impl AppView {
             .workspace
             .as_ref()
             .map(|workspace| workspace.root().to_path_buf());
-        // Tokens come from memory after the first read, and a load test never opens the browser:
-        // a profile with the authorization code grant needs a token first (design OAuth 4).
+        // A load test never opens the browser: a profile with the authorization code grant needs
+        // a token first (design OAuth 4).
         let mut oauth = self.oauth_config(&tab_id);
-        oauth.store = Arc::new(postino_oauth::CachedStore::new(self.oauth.store.clone()));
         oauth.sign_in = Arc::new(postino_oauth::NoSignIn);
         let runner = Arc::new(
             Runner::new(engine, options)

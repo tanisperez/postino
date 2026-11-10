@@ -530,16 +530,11 @@ _version: 2
   es: "Borrar"
   gl: "Borrar"
   it: "Cancella"
-"oauth.stored_keychain":
-  en: "Stored in the system keychain"
-  es: "Guardado en el llavero del sistema"
-  gl: "Gardado no chaveiro do sistema"
-  it: "Salvato nel portachiavi di sistema"
-"oauth.stored_file":
-  en: "Stored in Postino's folder, readable only by you"
-  es: "Guardado en la carpeta de Postino, solo legible por ti"
-  gl: "Gardado no cartafol de Postino, só lexible por ti"
-  it: "Salvato nella cartella di Postino, leggibile solo da te"
+"oauth.stored_memory":
+  en: "Kept in memory until Postino closes"
+  es: "En memoria hasta que se cierre Postino"
+  gl: "En memoria ata que se peche Postino"
+  it: "In memoria fino alla chiusura di Postino"
 "oauth.same_token":
   en: "Same token for every request using %{profile}"
   es: "El mismo token para todas las peticiones que usan %{profile}"

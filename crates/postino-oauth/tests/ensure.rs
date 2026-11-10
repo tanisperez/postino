@@ -71,9 +71,9 @@ fn run(
 
 fn expire(store: &dyn TokenStore, profile: &OAuthProfile) {
     let key = token_key("ws-123456", "dev", profile, "");
-    let mut token: TokenSet = store.get(&key).unwrap().unwrap();
+    let mut token: TokenSet = store.get(&key).unwrap();
     token.expires_at = Some(token.obtained_at.saturating_sub(720));
-    store.set(&key, &token).unwrap();
+    store.set(&key, &token);
 }
 
 #[test]
@@ -170,20 +170,18 @@ fn a_rejected_refresh_repeats_the_grant() {
     let store = MemoryStore::default();
     let profile = profile(&server, OAuthGrant::Password);
     let key = token_key("ws-123456", "dev", &profile, "");
-    store
-        .set(
-            &key,
-            &TokenSet {
-                access_token: "old".into(),
-                refresh_token: Some("dead".into()),
-                id_token: None,
-                token_type: "Bearer".into(),
-                expires_at: Some(1),
-                obtained_at: 0,
-                scope: String::new(),
-            },
-        )
-        .unwrap();
+    store.set(
+        &key,
+        &TokenSet {
+            access_token: "old".into(),
+            refresh_token: Some("dead".into()),
+            id_token: None,
+            token_type: "Bearer".into(),
+            expires_at: Some(1),
+            obtained_at: 0,
+            scope: String::new(),
+        },
+    );
     let run = run(&store, &profile, &NoSignIn, Force::None);
     assert_eq!(run.event, Some(TokenEvent::Renewed));
     assert_eq!(run.token().unwrap().access_token, "fresh");

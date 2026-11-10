@@ -72,18 +72,20 @@ the user's sessions and password manager).
   interpolation as request variables whose names start with a control character
   (`oauth_token_variable`), so no environment can collide with them.
 - Load tests: `Runner::prepare_oauth` gets every token once before the virtual users start; the
-  app gives the load runner a `CachedStore` (the system store read once per key) and `NoSignIn`.
-- Command line (#220): the runner with `SystemStore` and `NoSignIn` gives what the design asks:
-  client credentials and password work, authorization code uses the stored token and its
-  refresh, and fails asking to sign in from the app when there is none.
+  app gives the load runner its store and `NoSignIn`.
+- Command line (#220): the runner with `NoSignIn`. Client credentials and password work. Since
+  tokens live in memory (#228) a new process never has one, so the authorization code grant
+  fails asking to sign in from the app; what the command line does about it is open in #220.
 
 ## Storage
 
-`SystemStore` uses the `keyring` crate (Keychain, Windows Credential Manager, Secret Service
-over zbus, service `postino`, account the key URI, the token as JSON). Whether the system store
-works is probed once, on the first use, never on the UI thread. Without one, tokens go to
-`<config dir>/postino/oauth-tokens.json`, written atomically with mode 0600. The app caches what
-it read per key (`views/oauth`), so render never touches the store.
+Tokens live in memory only (`MemoryStore`, #228): nothing is written to disk or to a system
+credential store, and they are gone when Postino closes. The next Send obtains a new one, which
+for the authorization code grant means the browser again. Postino 0.10.0 used the system
+credential store through the `keyring` crate, but the Windows Credential Manager holds at most
+2560 bytes per entry (1280 UTF-16 characters), less than one access token of many servers.
+The app removes the `oauth-tokens.json` file 0.10.0 could leave in the config folder. The app
+caches what it read per key (`views/oauth`), so render never locks the store.
 
 ## Logging
 

@@ -17,7 +17,7 @@ use std::time::Instant;
 use gpui_kit::component::input::InputState;
 use gpui_kit::*;
 use postino_core::{Auth, OAuthProfile};
-use postino_oauth::{Force, SignInPrompt, StoreKind, SystemStore, TokenKey, TokenSet, TokenStore};
+use postino_oauth::{Force, MemoryStore, SignInPrompt, TokenKey, TokenSet, TokenStore};
 use postino_runner::{OAuthConfig, Runner};
 
 use crate::state::oauth::ProfileFieldKind;
@@ -27,7 +27,7 @@ use super::root::AppView;
 
 /// The OAuth parts of [`AppView`].
 pub(crate) struct OAuthUi {
-    /// Where tokens are kept, shared with every send.
+    /// Where tokens are kept, in memory, shared with every send.
     pub(crate) store: Arc<dyn TokenStore>,
     /// The browser sign-in, shared with every send.
     pub(crate) sign_in: Arc<AppSignIn>,
@@ -35,10 +35,6 @@ pub(crate) struct OAuthUi {
     pub(crate) waiting: Option<SignInPrompt>,
     /// The stored token of each key, as last read. `None` inside means no token.
     tokens: HashMap<String, Option<TokenSet>>,
-    /// The keys being read.
-    loading: HashSet<String>,
-    /// Which store the tokens are in, known after the first read.
-    pub(crate) store_kind: Option<StoreKind>,
     /// The inputs of the Profile settings panel and the create form.
     pub(crate) inputs: OAuthInputs,
     /// The grant chosen in the create form ("Create profile"), `Some` while it shows.
@@ -81,17 +77,17 @@ impl OAuthInputs {
 }
 
 impl OAuthUi {
-    /// The OAuth state of a new window: tokens in the system store, or in Postino's folder of
-    /// the config directory when there is none.
+    /// The OAuth state of a new window, with no token: they live in memory only (#228).
     pub(crate) fn new(prompts: async_channel::Sender<SignInPrompt>) -> Self {
-        let folder = crate::state::config::config_dir().unwrap_or_else(std::env::temp_dir);
+        // Postino 0.10.0 kept tokens in this file when the system had no credential store.
+        if let Some(folder) = crate::state::config::config_dir() {
+            let _ = std::fs::remove_file(folder.join("oauth-tokens.json"));
+        }
         OAuthUi {
-            store: Arc::new(SystemStore::new(&folder)),
+            store: Arc::new(MemoryStore::default()),
             sign_in: Arc::new(AppSignIn::new(prompts)),
             waiting: None,
             tokens: HashMap::new(),
-            loading: HashSet::new(),
-            store_kind: None,
             inputs: OAuthInputs::default(),
             creating: None,
             action: None,
@@ -113,7 +109,6 @@ impl OAuthUi {
     /// Forgets every token read, for a new workspace.
     pub(crate) fn reset(&mut self) {
         self.tokens.clear();
-        self.loading.clear();
         self.waiting = None;
         self.card_error = None;
         self.creating = None;
@@ -212,32 +207,14 @@ impl AppView {
         )
     }
 
-    /// Reads the token of `key` in the background, once, unless it is cached or being read.
-    pub(crate) fn load_oauth_token(&mut self, key: &TokenKey, cx: &mut Context<Self>) {
+    /// Reads the token of `key` from the store, once: a load test or another tab's send may
+    /// have left one there.
+    pub(crate) fn load_oauth_token(&mut self, key: &TokenKey) {
         let uri = key.to_uri();
-        if self.oauth.tokens.contains_key(&uri) || !self.oauth.loading.insert(uri.clone()) {
-            return;
+        if !self.oauth.tokens.contains_key(&uri) {
+            let token = self.oauth.store.get(key);
+            self.oauth.tokens.insert(uri, token);
         }
-        let store = self.oauth.store.clone();
-        let key = key.clone();
-        cx.spawn(async move |this, cx| {
-            let (token, kind) = cx
-                .background_spawn(async move {
-                    let token = store.get(&key).unwrap_or_else(|error| {
-                        log::warn!("oauth: cannot read the stored token: {error}");
-                        None
-                    });
-                    (token, store.kind())
-                })
-                .await;
-            let _ = this.update(cx, |view, cx| {
-                view.oauth.loading.remove(&uri);
-                view.oauth.tokens.insert(uri, token);
-                view.oauth.store_kind = Some(kind);
-                cx.notify();
-            });
-        })
-        .detach();
     }
 
     /// Records the token a send or a card button left under `key`.
@@ -382,24 +359,10 @@ impl AppView {
 
     /// "Clear": forgets the token of `key`.
     pub(crate) fn clear_oauth_token(&mut self, key: TokenKey, cx: &mut Context<Self>) {
-        let store = self.oauth.store.clone();
-        let removed = key.clone();
-        cx.spawn(async move |this, cx| {
-            let result = cx
-                .background_spawn(async move { store.remove(&removed) })
-                .await;
-            let _ = this.update(cx, |view, cx| {
-                match result {
-                    Ok(()) => {
-                        log::info!("oauth: token cleared");
-                        view.remember_oauth_token(&key, None);
-                    }
-                    Err(error) => view.oauth.card_error = Some(error.to_string()),
-                }
-                cx.notify();
-            });
-        })
-        .detach();
+        self.oauth.store.remove(&key);
+        log::info!("oauth: token cleared");
+        self.remember_oauth_token(&key, None);
+        cx.notify();
     }
 
     /// Cancels the sign-in in progress: "Cancel" or Esc in the waiting panel.

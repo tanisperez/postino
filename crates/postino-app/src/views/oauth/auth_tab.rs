@@ -12,7 +12,7 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use postino_core::{OAuthGrant, OAuthProfile, Request};
-use postino_oauth::{Force, StoreKind};
+use postino_oauth::Force;
 use rust_i18n::t;
 
 use crate::state::oauth::{self, CardState};
@@ -347,13 +347,7 @@ impl AppView {
         let token = self.oauth.token(&key).flatten();
         let environment = self.state.active_environment.clone().unwrap_or_default();
         let now = SystemTime::now();
-        let card = oauth::token_card(
-            profile,
-            &environment,
-            token,
-            self.oauth.store_kind.unwrap_or(StoreKind::System),
-            now,
-        );
+        let card = oauth::token_card(profile, &environment, token, now);
         let busy = self.oauth.is_busy();
         let (dot, border, head_bg) = match card.state {
             CardState::Valid => (palette.success, palette.border, palette.surface),
@@ -618,7 +612,6 @@ impl AppView {
             profile,
             self.state.active_environment.as_deref().unwrap_or_default(),
             self.oauth.token(&key).flatten(),
-            StoreKind::System,
             SystemTime::now(),
         );
         h_flex()

@@ -302,7 +302,6 @@ fn error_kind(error: &OAuthError) -> &'static str {
         OAuthError::NoCode => "no_code",
         OAuthError::Listen { .. } => "listen_failed",
         OAuthError::InvalidRedirectUrl => "invalid_redirect_url",
-        OAuthError::Store(_) => "store_failed",
     }
 }
 
@@ -316,13 +315,7 @@ fn obtain(
     steps: &mut Vec<OAuthStep>,
 ) -> Result<(TokenSet, TokenEvent), OAuthError> {
     let resolved = resolve_profile(profile, scope_override, vars)?;
-    let stored = match env.store.get(key) {
-        Ok(stored) => stored,
-        Err(error) => {
-            log::warn!("oauth: cannot read the stored token: {error}");
-            None
-        }
-    };
+    let stored = env.store.get(key);
     let now = SystemTime::now();
     let note = |steps: &mut Vec<OAuthStep>, note: OAuthNote| {
         steps.push(OAuthStep::Note {
@@ -389,7 +382,7 @@ fn obtain(
                         if new.id_token.is_none() {
                             new.id_token = token.id_token.clone();
                         }
-                        store_new(env, profile, key, &new, "refresh_token", steps)?;
+                        store_new(env, profile, key, &new, "refresh_token", steps);
                         return Ok((new, TokenEvent::Renewed));
                     }
                     Err(error) if error.is_invalid_grant() => {
@@ -404,7 +397,7 @@ fn obtain(
     }
 
     let token = run_grant(env, &resolved, steps)?;
-    store_new(env, profile, key, &token, profile.grant.as_str(), steps)?;
+    store_new(env, profile, key, &token, profile.grant.as_str(), steps);
     let event = if renewing {
         TokenEvent::Renewed
     } else {
@@ -421,8 +414,8 @@ fn store_new(
     token: &TokenSet,
     grant: &str,
     steps: &mut Vec<OAuthStep>,
-) -> Result<(), OAuthError> {
-    env.store.set(key, token)?;
+) {
+    env.store.set(key, token);
     let expires_in = token
         .expires_at
         .map(|expires_at| expires_at.saturating_sub(token.obtained_at).to_string())
@@ -438,7 +431,6 @@ fn store_new(
             expires_at: token.expires_at_time(),
         },
     });
-    Ok(())
 }
 
 /// Runs the profile's grant from the start.

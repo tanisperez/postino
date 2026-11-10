@@ -4,8 +4,6 @@ use std::io;
 
 use postino_http::HttpError;
 
-use crate::store::StoreError;
-
 /// A field of a profile, named in errors so the UI can point at it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ProfileField {
@@ -123,9 +121,6 @@ pub enum OAuthError {
         "the redirect URL must be http://localhost:<port>/<path> or http://127.0.0.1:<port>/<path>"
     )]
     InvalidRedirectUrl,
-    /// The token could not be read or saved.
-    #[error(transparent)]
-    Store(#[from] StoreError),
 }
 
 fn detail_suffix(detail: &str) -> String {

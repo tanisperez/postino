@@ -55,7 +55,7 @@ impl AppView {
         let profile = self.state.oauth_profile(tab_id, name);
         if let Some(profile) = &profile {
             let key = self.oauth_key(profile, scope);
-            self.load_oauth_token(&key, cx);
+            self.load_oauth_token(&key);
             if let Some((_, input)) = self
                 .request_editor
                 .auth

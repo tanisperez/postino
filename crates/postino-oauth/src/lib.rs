@@ -5,8 +5,8 @@
 //! - [`ensure_token`] reuses a valid stored token, refreshes an expired one, or runs the
 //!   profile's grant (client credentials, password, or authorization code with PKCE in the
 //!   system browser), and records every step for the console.
-//! - [`TokenStore`] keeps tokens outside the workspace: [`SystemStore`] in the system credential
-//!   store, or in a file only the user can read when there is none.
+//! - [`TokenStore`] keeps tokens outside the workspace: [`MemoryStore`], in memory until the
+//!   process ends.
 //!
 //! No `gpui`: the browser part of the authorization code grant reaches the UI through
 //! [`SignInHandler`]. Token requests go through `postino-http`, with the same TLS options as the
@@ -32,8 +32,5 @@ pub use manager::{
     TokenEvent, ensure_token, token_key,
 };
 pub use resolve::{ResolvedProfile, resolve_profile};
-pub use store::{
-    CachedStore, FileStore, MemoryStore, StoreError, StoreKind, SystemStore, TOKENS_FILE, TokenKey,
-    TokenStore, workspace_id,
-};
+pub use store::{MemoryStore, TokenKey, TokenStore, workspace_id};
 pub use token::{EXPIRY_MARGIN, TokenSet, from_unix_seconds, jwt_claims, unix_seconds};

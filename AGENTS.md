@@ -66,8 +66,8 @@ Expo/React Native conventions here.
 - HTTP client: `ureq` 3 (blocking, rustls), run on GPUI's background executor.
 - OAuth 2.0 (#225, #226, #227): named profiles in `.postino/project.toml` (`[oauth.<name>]`),
   referenced by requests with `::: auth oauth2`. The token is obtained or renewed on Send, per
-  workspace + profile + environment (+ overridden scope), stored in the system credential store
-  (`keyring`) or a 0600 file, never in the workspace. Authorization code uses PKCE and the system
+  workspace + profile + environment (+ overridden scope), kept in memory only (#228): never in
+  the workspace, on disk or in a credential store. Authorization code uses PKCE and the system
   browser with a loopback listener (RFC 8252); implicit is not offered. See `docs/oauth.md`.
 - License: Apache-2.0 (`LICENSE`, `license` in `[workspace.package]`). Permissive, compatible with
   GPUI, includes a patent grant and does not grant trademark rights. Contributor terms (CLA or
@@ -113,7 +113,7 @@ in `state/git_sync.rs` and the `postino-auto:` prefix of automatic stashes in
 - `postino-script`: the `ScriptEngine` trait and its QuickJS implementation.
 - `postino-http`: sends a resolved request with `ureq`, measures timing.
 - `postino-oauth`: OAuth 2.0 tokens: grants, refresh, PKCE and the loopback listener, the token
-  store (`keyring` or a 0600 file), masked token requests for the console. No `gpui`.
+  store (in memory), masked token requests for the console. No `gpui`.
 - `postino-runner`: the pipeline, OAuth token, vars, pre script, interpolate, send, post script.
 - `postino-load`: the load test engine, live metrics, run comparison and run history.
 - `postino-cli`: the terminal commands that print and exit without opening the window

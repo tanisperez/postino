@@ -5,7 +5,7 @@
 use std::time::{Duration, SystemTime};
 
 use postino_core::{Auth, OAuthGrant, OAuthProfile, TokenPlacement, VariableKind, variable_spans};
-use postino_oauth::{OAuthError, StoreKind, TokenEvent, TokenSet};
+use postino_oauth::{OAuthError, TokenEvent, TokenSet};
 use postino_workspace::{EnvLayers, Node};
 use rust_i18n::t;
 
@@ -427,7 +427,6 @@ pub fn token_card(
     profile: &OAuthProfile,
     environment: &str,
     token: Option<&TokenSet>,
-    store: StoreKind,
     now: SystemTime,
 ) -> TokenCard {
     let interactive = profile.grant.is_interactive();
@@ -485,10 +484,9 @@ pub fn token_card(
         t!("oauth.get_new_token")
     }
     .into_owned();
-    let foot = match (state, store) {
-        (CardState::None, _) => t!("oauth.same_token", profile = profile.name).into_owned(),
-        (_, StoreKind::System) => t!("oauth.stored_keychain").into_owned(),
-        (_, _) => t!("oauth.stored_file").into_owned(),
+    let foot = match state {
+        CardState::None => t!("oauth.same_token", profile = profile.name).into_owned(),
+        _ => t!("oauth.stored_memory").into_owned(),
     };
     let value = match (state, token) {
         (CardState::Valid, Some(token)) => abbreviate(&token.access_token, 10),
@@ -1066,13 +1064,7 @@ mod tests {
     fn the_card_follows_the_token() {
         let now = postino_oauth::from_unix_seconds(10_000);
         let profile = OAuthProfile::new("acme-sso", OAuthGrant::AuthorizationCode);
-        let valid = token_card(
-            &profile,
-            "dev",
-            Some(&token(Some(12_520), true)),
-            StoreKind::System,
-            now,
-        );
+        let valid = token_card(&profile, "dev", Some(&token(Some(12_520), true)), now);
         assert_eq!(valid.state, CardState::Valid);
         assert_eq!(valid.title, "Token valid");
         assert_eq!(
@@ -1081,16 +1073,10 @@ mod tests {
         );
         assert_eq!(valid.primary, "Refresh now");
         assert_eq!(valid.again, "Sign in again");
-        assert_eq!(valid.foot, "Stored in the system keychain");
+        assert_eq!(valid.foot, "Kept in memory until Postino closes");
         assert_eq!(valid.sends, "Authorization: Bearer eyJhbGciOi…");
 
-        let expired = token_card(
-            &profile,
-            "dev",
-            Some(&token(Some(9_280), true)),
-            StoreKind::System,
-            now,
-        );
+        let expired = token_card(&profile, "dev", Some(&token(Some(9_280), true)), now);
         assert_eq!(expired.title, "Token expired 12 min ago");
         assert_eq!(
             expired.subtitle,
@@ -1098,7 +1084,7 @@ mod tests {
         );
         assert_eq!(expired.sends, "Authorization: Bearer (renewed on Send)");
 
-        let none = token_card(&profile, "dev", None, StoreKind::System, now);
+        let none = token_card(&profile, "dev", None, now);
         assert_eq!(none.title, "No token for dev yet");
         assert_eq!(
             none.subtitle,
@@ -1109,7 +1095,7 @@ mod tests {
         assert_eq!(none.sends, "Authorization: Bearer (obtained on Send)");
 
         let machine = OAuthProfile::new("machine", OAuthGrant::ClientCredentials);
-        let none = token_card(&machine, "dev", None, StoreKind::File, now);
+        let none = token_card(&machine, "dev", None, now);
         assert_eq!(none.primary, "Get token now");
         assert_eq!(none.again, "Get new token");
         assert_eq!(none.subtitle, "Send gets one first, then sends the request");
