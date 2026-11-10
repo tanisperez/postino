@@ -23,8 +23,8 @@ use rust_i18n::t;
 use postino_core::ConsoleLevel;
 
 use crate::state::console::{
-    ConsoleEntry, ConsoleFilter, ConsoleTimeline, CopyPart, EntrySource, NetworkDetail, TreeKey,
-    TreeRow, ValueTone, copy_text, format_clock, tree_as_json,
+    ConsoleEntry, ConsoleFilter, ConsoleTimeline, CopyPart, EntrySource, NetworkDetail, OAuthTone,
+    TreeKey, TreeRow, ValueTone, copy_text, format_clock, tree_as_json,
 };
 use crate::state::response_render::{format_duration, format_size};
 use crate::theme::metrics::{INPUT_PADDING_X, RADIUS_MD, RADIUS_SM};
@@ -87,6 +87,9 @@ impl AppView {
             for (index, entry) in visible.into_iter().enumerate() {
                 list = list.child(match entry {
                     ConsoleEntry::Network { .. } => self.render_network_entry(entry, &timeline, cx),
+                    ConsoleEntry::OAuth { time, tone, text } => {
+                        render_oauth_entry(index, *time, *tone, text, &palette)
+                    }
                     _ => render_plain_entry(index, entry, &palette),
                 });
             }
@@ -234,23 +237,26 @@ impl AppView {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let ConsoleEntry::Network {
+            detail: detail_index,
             time,
             method,
             url,
             status,
             duration,
             size,
+            note,
         } = entry
         else {
             return div().into_any_element();
         };
+        let detail_index = *detail_index;
         let palette = cx.palette();
         let weak = cx.weak_entity();
-        let open = self.console_view.network_open;
+        let open = self.console_view.network_open() == Some(detail_index);
         let status_color = palette.status_colors(*status).0;
 
         let summary = h_flex()
-            .id("console-network")
+            .id(("console-network", detail_index))
             .h(px(ENTRY_HEIGHT))
             .items_center()
             .gap(px(COLUMN_GAP))
@@ -291,7 +297,10 @@ impl AppView {
                             .min_w_0()
                             .truncate()
                             .text_color(palette.fg)
-                            .child(url.clone()),
+                            .child(match note {
+                                Some(note) => format!("{url}   {note}"),
+                                None => url.clone(),
+                            }),
                     ),
             )
             .when_some(*status, |row, status| {
@@ -309,13 +318,16 @@ impl AppView {
             })
             .on_click(move |_, _, cx| {
                 let _ = weak.update(cx, |view, cx| {
-                    view.console_view.network_open = !view.console_view.network_open;
+                    view.console_view
+                        .open_network((!open).then_some(detail_index));
                     cx.notify();
                 });
             });
 
-        let detail = match (&timeline.network, open) {
-            (Some(detail), true) => Some(self.render_network_detail(detail, timeline, cx)),
+        let detail = match (timeline.network(Some(detail_index)), open) {
+            (Some(detail), true) => {
+                Some(self.render_network_detail(detail, detail_index, timeline, cx))
+            }
             _ => None,
         };
         v_flex()
@@ -331,6 +343,7 @@ impl AppView {
     fn render_network_detail(
         &mut self,
         detail: &NetworkDetail,
+        detail_index: usize,
         timeline: &Arc<ConsoleTimeline>,
         cx: &mut Context<Self>,
     ) -> AnyElement {
@@ -338,7 +351,7 @@ impl AppView {
         let weak = cx.weak_entity();
         let raw = self.console_view.raw;
 
-        let switch = SegmentedControl::new("console-view-switch")
+        let switch = SegmentedControl::new(("console-view-switch", detail_index))
             .item(
                 SegmentedItem::new(t!("response.console.tree"))
                     .selected(!raw)
@@ -383,7 +396,7 @@ impl AppView {
                     .icon(Icon::new(Lucide::ChevronsUpDown))
                     .height(BAR_CONTROL_HEIGHT)
                     .on_click(move |_, _, cx| {
-                        let Some(detail) = expand_timeline.network.as_ref() else {
+                        let Some(detail) = expand_timeline.network(Some(detail_index)) else {
                             return;
                         };
                         let _ = expand_weak.update(cx, |view, cx| {
@@ -408,7 +421,7 @@ impl AppView {
                     .icon(Icon::new(Lucide::Copy))
                     .height(BAR_CONTROL_HEIGHT)
                     .on_click(move |_, _, cx| {
-                        let Some(detail) = copy_timeline.network.as_ref() else {
+                        let Some(detail) = copy_timeline.network(Some(detail_index)) else {
                             return;
                         };
                         let text = if raw {
@@ -433,6 +446,7 @@ impl AppView {
                 });
                 tree = tree.child(render_tree_row(
                     index,
+                    detail_index,
                     row,
                     reveal,
                     timeline.clone(),
@@ -452,7 +466,9 @@ impl AppView {
                 }))
                 .on_action(cx.listener(move |view, _: &Copy, _, cx| {
                     match view.console_view.selected.as_deref() {
-                        Some(path) => copy_row(&copy_timeline, path, CopyPart::Value, cx),
+                        Some(path) => {
+                            copy_row(&copy_timeline, detail_index, path, CopyPart::Value, cx)
+                        }
                         // Nothing selected: the window's text selection, as everywhere else.
                         None => cx.propagate(),
                     }
@@ -505,7 +521,7 @@ impl AppView {
             "end" => TreeKey::End,
             _ => return,
         };
-        let Some(detail) = timeline.network.as_ref() else {
+        let Some(detail) = timeline.network(self.console_view.network_open()) else {
             return;
         };
         cx.stop_propagation();
@@ -517,10 +533,15 @@ impl AppView {
 }
 
 /// Writes `part` of the tree row at `path` to the clipboard.
-fn copy_row(timeline: &ConsoleTimeline, path: &str, part: CopyPart, cx: &mut App) {
+fn copy_row(
+    timeline: &ConsoleTimeline,
+    detail_index: usize,
+    path: &str,
+    part: CopyPart,
+    cx: &mut App,
+) {
     let text = timeline
-        .network
-        .as_ref()
+        .network(Some(detail_index))
         .and_then(|detail| copy_text(&detail.tree, path, part));
     if let Some(text) = text {
         cx.write_to_clipboard(ClipboardItem::new_string(text));
@@ -599,6 +620,7 @@ fn source_name(source: EntrySource) -> &'static str {
         EntrySource::Pre => "pre-request",
         EntrySource::Post => "post-response",
         EntrySource::Network => "network",
+        EntrySource::OAuth => "oauth",
     }
 }
 
@@ -632,7 +654,9 @@ fn render_plain_entry(index: usize, entry: &ConsoleEntry, palette: &Palette) -> 
             message,
             line,
         } => (*time, *source, message, *line, palette.danger, true),
-        ConsoleEntry::Network { .. } => return div().into_any_element(),
+        ConsoleEntry::Network { .. } | ConsoleEntry::OAuth { .. } => {
+            return div().into_any_element();
+        }
     };
     let is_failure = matches!(entry, ConsoleEntry::Error { .. });
     let location = line
@@ -682,10 +706,64 @@ fn render_plain_entry(index: usize, entry: &ConsoleEntry, palette: &Palette) -> 
         .into_any_element()
 }
 
+/// An `oauth` row (design 3b): a key while the token is renewed, a check for a new token, a
+/// cross when it failed, and the text in the same color.
+fn render_oauth_entry(
+    index: usize,
+    time: Option<std::time::SystemTime>,
+    tone: OAuthTone,
+    text: &str,
+    palette: &Palette,
+) -> AnyElement {
+    let (icon, color) = match tone {
+        OAuthTone::Progress => (Lucide::KeyRound, palette.warning),
+        OAuthTone::Success => (Lucide::CircleCheck, palette.success),
+        OAuthTone::Failure => (Lucide::CircleX, palette.danger),
+    };
+    h_flex()
+        .id(("console-oauth", index))
+        .min_h(px(ENTRY_HEIGHT))
+        .items_center()
+        .gap(px(COLUMN_GAP))
+        .px(px(PADDING_X))
+        .py(px(4.0))
+        .border_b_1()
+        .border_color(palette.border.opacity(0.5))
+        .when(tone == OAuthTone::Failure, |row| {
+            row.bg(palette.danger_subtle)
+        })
+        .child(
+            div()
+                .w(px(ICON_COLUMN_WIDTH))
+                .flex_none()
+                .text_color(color)
+                .child(Icon::new(icon).with_size(px(12.0))),
+        )
+        .child(time_cell(time, palette))
+        .child(
+            div()
+                .w(px(SOURCE_COLUMN_WIDTH))
+                .flex_none()
+                .text_color(palette.accent_text)
+                .child(source_name(EntrySource::OAuth)),
+        )
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .truncate()
+                .text_color(color)
+                .child(text.to_string()),
+        )
+        .into_any_element()
+}
+
 /// One row of the network tree. A click selects it, and opens or closes a branch; a right click
 /// selects it and opens the Copy menu. `reveal` is set on the selected row only.
+#[allow(clippy::too_many_arguments)]
 fn render_tree_row(
     index: usize,
+    detail_index: usize,
     row: &TreeRow,
     reveal: Option<Reveal>,
     timeline: Arc<ConsoleTimeline>,
@@ -778,7 +856,7 @@ fn render_tree_row(
             let item = |label: SharedString, part: CopyPart| {
                 let (timeline, path) = (timeline.clone(), menu_path.clone());
                 PopupMenuItem::new(label)
-                    .on_click(move |_, _, cx| copy_row(&timeline, &path, part, cx))
+                    .on_click(move |_, _, cx| copy_row(&timeline, detail_index, &path, part, cx))
             };
             menu.item(item(
                 t!("response.console.copy_value").into_owned().into(),

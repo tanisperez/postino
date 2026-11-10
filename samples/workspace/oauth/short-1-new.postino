@@ -1,0 +1,15 @@
+GET {{baseUrl}}/oauth/me
+
+::: auth oauth2
+profile = sample-short
+
+::: post
+test("a new token from the password grant", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().grant).toBe("password");
+  expect(res.json().user).toBe("demo");
+});
+
+::: docs
+`sample-short` asks for tokens that live 5 seconds, less than the 30 second margin, so the next
+send finds it expired.

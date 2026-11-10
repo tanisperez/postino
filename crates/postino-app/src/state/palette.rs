@@ -444,6 +444,7 @@ mod tests {
             name: name.to_string(),
             broken: broken.then(|| "broken".to_string()),
             method,
+            oauth_profile: None,
         })
     }
 

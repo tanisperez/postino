@@ -45,7 +45,31 @@ local = "teal"</code></pre>
 </ul>
 <p>Runs saved by older versions of Postino have only the <code>.json</code> file. They still open, but without per request detail, see <a href="load-testing.html#history">Run history</a>. Deleting a <code>.samples.csv.gz</code> file does the same to a newer run, and deleting both files removes the run.</p>
 
-<h2>On your system</h2>
+<h3 id="oauth-profiles">OAuth profiles</h3>
+<p>Each <a href="oauth.html">OAuth 2.0 profile</a> is a table <code>[oauth.&lt;name&gt;]</code>. The name has only letters, digits, <code>-</code> and <code>_</code>. Every text value takes <code>{{ }}</code> variables. Postino writes only the keys that differ from their default, except <code>grant</code>, and <code>pkce</code> and <code>redirect</code> for the authorization code grant.</p>
+<div class="table"><table>
+    <thead><tr><th>Key</th><th>Value</th></tr></thead>
+    <tbody>
+        <tr><td><code>grant</code></td><td><code>authorization_code</code> (default), <code>client_credentials</code> or <code>password</code></td></tr>
+        <tr><td><code>auth_url</code></td><td>The authorization URL, for <code>authorization_code</code></td></tr>
+        <tr><td><code>token_url</code></td><td>The token URL</td></tr>
+        <tr><td><code>client_id</code>, <code>client_secret</code></td><td>The client. Keep the secret in a <code>.local.env</code> variable</td></tr>
+        <tr><td><code>scope</code></td><td>The scopes, separated by spaces</td></tr>
+        <tr><td><code>username</code>, <code>password</code></td><td>For <code>password</code></td></tr>
+        <tr><td><code>pkce</code></td><td><code>true</code> (default) or <code>false</code></td></tr>
+        <tr><td><code>redirect</code></td><td><code>loopback</code> (default), <code>fixed</code> or <code>manual</code></td></tr>
+        <tr><td><code>redirect_url</code></td><td>The URL of <code>fixed</code> and <code>manual</code></td></tr>
+        <tr><td><code>client_auth</code></td><td><code>basic</code> (default) or <code>body</code></td></tr>
+        <tr><td><code>token_in</code></td><td><code>header</code> (default) or <code>query</code></td></tr>
+        <tr><td><code>token_prefix</code></td><td>The scheme of the header, <code>Bearer</code> by default</td></tr>
+        <tr><td><code>token_param</code></td><td>The query parameter, <code>access_token</code> by default</td></tr>
+        <tr><td><code>[oauth.&lt;name&gt;.token_params]</code></td><td>Extra parameters of every token request</td></tr>
+        <tr><td><code>[oauth.&lt;name&gt;.auth_params]</code></td><td>Extra parameters of the authorization URL</td></tr>
+    </tbody>
+</table></div>
+<p>A missing or unknown <code>grant</code> reads as <code>authorization_code</code>. Keys Postino does not know are kept when it saves a profile.</p>
+
+<h2 id="on-your-system">On your system</h2>
 <p>Postino's own state lives in the standard folders of each system.</p>
 <h3>Configuration</h3>
 <div class="table"><table>
@@ -63,6 +87,7 @@ local = "teal"</code></pre>
         <tr><td><code>recent-workspaces.txt</code></td><td>The last ten workspaces you opened, one absolute path per line, most recent first.</td></tr>
         <tr><td><code>last-environments.toml</code></td><td>The active environment of each recent workspace, so it is selected again when you reopen it.</td></tr>
         <tr><td><code>last-version.txt</code></td><td>The last stable version that ran, so the <a href="interface.html#whats-new">What's new</a> tab opens once after an update. Delete it to see the tab again on the next start.</td></tr>
+        <tr><td><code>oauth-tokens.json</code></td><td>The <a href="oauth.html#where-tokens-live">OAuth tokens</a>, only when the system has no credential store (a Linux desktop without a Secret Service). Readable only by you. Delete it to sign out of every profile.</td></tr>
         <tr><td><code>window.toml</code></td><td>The size of the window and whether it was maximized, saved when it closes. Postino opens with them the next time, centered and fitted to the display. Delete it to go back to the default size.</td></tr>
     </tbody>
 </table></div>

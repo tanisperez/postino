@@ -315,6 +315,7 @@ fn parse_auth_section(
         "basic" => &["username", "password"],
         "bearer" => &["token"],
         "apikey" => &["name", "value", "in"],
+        "oauth2" => &["profile", "scope"],
         other => {
             return Err(ParseError {
                 line: marker_line,
@@ -375,6 +376,10 @@ fn parse_auth_section(
         },
         "bearer" => Auth::Bearer {
             token: take("token"),
+        },
+        "oauth2" => Auth::OAuth2 {
+            profile: take("profile"),
+            scope: take("scope"),
         },
         _ => Auth::ApiKey {
             name: take("name"),
@@ -529,6 +534,10 @@ pub(crate) fn build_sections(request: &Request) -> Vec<(String, Vec<String>)> {
                 auth_lines(&[("name", name), ("value", value), ("in", location)]),
             ))
         }
+        Auth::OAuth2 { profile, scope } => Some((
+            "oauth2",
+            auth_lines(&[("profile", profile), ("scope", scope)]),
+        )),
     };
     if let Some((type_name, content)) = auth_section {
         sections.push((format!("::: auth {type_name}"), content));
@@ -1027,6 +1036,26 @@ env.set(\"userId\", res.json().id);\n";
         let text = serialize(&request);
         assert_eq!(text, "GET https://a.test\n\n::: auth bearer\n");
         assert_eq!(parse(&text).expect("valid auth section"), request);
+    }
+
+    #[test]
+    fn oauth2_auth_round_trips() {
+        let text = "GET {{baseUrl}}/v2/charges\n\n::: auth oauth2\nprofile = acme-sso\nscope = payments:write\n";
+        let request = parse(text).expect("parse");
+        assert_eq!(
+            request.auth,
+            Auth::OAuth2 {
+                profile: "acme-sso".to_string(),
+                scope: "payments:write".to_string(),
+            }
+        );
+        assert_eq!(serialize(&request), text);
+        let bare = parse("GET /x\n\n::: auth oauth2\nprofile = acme-sso\n").expect("parse");
+        assert_eq!(
+            serialize(&bare),
+            "GET /x\n\n::: auth oauth2\nprofile = acme-sso\n"
+        );
+        assert!(parse("GET /x\n\n::: auth oauth2\nclient_id = a\n").is_err());
     }
 
     #[test]

@@ -33,6 +33,8 @@ pub mod load_test;
 pub mod locale;
 pub mod navigation;
 pub mod new_workspace;
+pub mod oauth;
+pub mod oauth_sign_in;
 pub use telaio_app::number;
 pub mod open_queue;
 pub mod openapi_import;
@@ -95,6 +97,9 @@ pub struct AppState {
     /// The colors the user chose for the environments (#217), read with the environment list
     /// (`AppView::refresh_environments`), never in render.
     pub env_colors: env_color::EnvColors,
+    /// The OAuth 2.0 profiles of the workspace's `project.toml` (#225), sorted by name. Read when
+    /// the workspace opens and after Postino writes the file, never in render.
+    pub oauth_profiles: Arc<Vec<postino_core::OAuthProfile>>,
 }
 
 impl AppState {
@@ -115,6 +120,39 @@ impl AppState {
         self.environment = Arc::default();
         self.session_env = SessionEnv::new();
         self.env_colors = env_color::EnvColors::default();
+        self.reload_oauth_profiles();
+    }
+
+    /// Reads the OAuth profiles from `project.toml` again. A file that cannot be read leaves no
+    /// profiles, logged.
+    pub fn reload_oauth_profiles(&mut self) {
+        let profiles = match self.workspace.as_ref().map(Workspace::load_project) {
+            Some(Ok(config)) => config.oauth_profiles(),
+            Some(Err(error)) => {
+                log::warn!("oauth: cannot read the profiles: {error}");
+                Vec::new()
+            }
+            None => Vec::new(),
+        };
+        self.oauth_profiles = Arc::new(profiles);
+    }
+
+    /// The profile `name` as the tab `tab_id` sees it: its unsaved draft, or the saved one.
+    pub fn oauth_profile(&self, tab_id: &str, name: &str) -> Option<postino_core::OAuthProfile> {
+        if let Some(draft) = self
+            .tabs
+            .open_tabs()
+            .iter()
+            .find(|tab| tab.id == tab_id)
+            .and_then(|tab| tab.profile_draft.as_ref())
+            .filter(|draft| draft.name == name)
+        {
+            return Some(draft.clone());
+        }
+        self.oauth_profiles
+            .iter()
+            .find(|profile| profile.name == name)
+            .cloned()
     }
 
     /// Makes `name` the active environment (`None` for "No environment") and loads its variables.

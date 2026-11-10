@@ -35,7 +35,7 @@ description: Frequently asked questions about Postino: accounts, cloud sync, pri
 <p>Not yet. Postino sends HTTP requests with JSON, XML, text, URL-encoded form or <a href="requests.html#multipart-bodies">multipart</a> bodies. A GraphQL query can be sent as a JSON body to the GraphQL endpoint. WebSockets and gRPC are not supported.</p>
 
 <h2>Is there an OAuth 2.0 helper?</h2>
-<p>Not yet. Get a token with a request to the token endpoint (a <code>::: body form</code> with <code>grant_type</code>, <code>client_id</code> and <code>client_secret</code>), save it with <code>env.set()</code> in the post-response script and send it with the <a href="requests.html#authentication">Auth tab</a> set to <strong>Bearer</strong> and <code>{{token}}</code>.</p>
+<p>Yes. Write the settings once as a profile of the workspace and choose <strong>OAuth 2.0</strong> in the Auth tab: Postino gets and renews the token on Send, with client credentials, password, or authorization code with PKCE in your browser. See <a href="oauth.html">OAuth 2.0</a>.</p>
 
 <h2>Can I run my requests in CI?</h2>
 <p>Not yet: Postino is a desktop app and has no headless runner.</p>

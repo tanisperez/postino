@@ -204,6 +204,9 @@ pub struct AppView {
     /// The scroll position of the response Headers, Tests and Console tabs, shared by the area
     /// and its scrollbar.
     pub(crate) response_scroll: ScrollHandle,
+    /// The scroll position of the request's Params, Headers and Auth tabs, shared by the area
+    /// and its scrollbar.
+    pub(crate) request_scroll: ScrollHandle,
     /// The latency distribution bar under the pointer, for its crosshair and tooltip. Only the
     /// active tab shows a distribution, so one slot is enough.
     pub(crate) latency_hover: Option<usize>,
@@ -251,6 +254,9 @@ pub struct AppView {
     /// The workspace folder being scanned in the background, `None` once it is open or failed
     /// to open. The sidebar shows it as loading meanwhile.
     pub(crate) opening: Option<OpeningWorkspace>,
+    /// OAuth 2.0: the token store, the browser sign-in, the cached tokens and the inputs of
+    /// Profile settings (`views/oauth`).
+    pub(crate) oauth: crate::views::oauth::OAuthUi,
     /// How many times [`Render::render`] ran, logged at Trace. A count that keeps growing while
     /// nobody touches the app means something keeps calling `cx.notify()`.
     render_count: u64,
@@ -277,6 +283,7 @@ impl AppView {
         cx: &mut Context<Self>,
     ) -> Self {
         let tree_state = cx.new(|cx| TreeState::new(cx));
+        let (sign_in_sender, sign_in_receiver) = async_channel::unbounded();
         let sidebar_filter_input =
             cx.new(|cx| InputState::new(window, cx).placeholder(t!("shell.sidebar.filter")));
         let console_filter_input =
@@ -415,6 +422,7 @@ impl AppView {
             whats_new_text: None,
             whats_new_scroll: ScrollHandle::new(),
             response_scroll: ScrollHandle::new(),
+            request_scroll: ScrollHandle::new(),
             export_job: None,
             load_result_tasks: HashMap::new(),
             nav: state::navigation::NavState::default(),
@@ -432,8 +440,10 @@ impl AppView {
             recent_workspaces: state::config::recent_workspaces(),
             workspace_path: None,
             opening: None,
+            oauth: crate::views::oauth::OAuthUi::new(sign_in_sender),
             render_count: 0,
         };
+        view.listen_for_sign_in(sign_in_receiver, cx);
         // Once per launch: `git --version`, then the workspace's repository once it opens.
         view.detect_git(cx);
         if let Some(root) = initial_workspace {
@@ -673,6 +683,7 @@ impl AppView {
         match result {
             Ok(workspace) => {
                 self.state.set_workspace(workspace);
+                self.on_oauth_workspace_opened();
                 self.log_opened_workspace(root, elapsed);
                 self.workspace_error = None;
                 // Remember an absolute path: a relative one (as given on the command line, for
@@ -969,6 +980,11 @@ impl AppView {
             return;
         };
 
+        // The profile edited in Profile settings is saved with the request (design OAuth 3a·2).
+        if !self.save_profile_draft(active_index) {
+            cx.notify();
+            return;
+        }
         let Some(workspace) = self.state.workspace.as_mut() else {
             return;
         };
@@ -1873,6 +1889,13 @@ impl Render for AppView {
             .size_full()
             .bg(background)
             .track_focus(&self.focus_handle)
+            // Esc cancels a browser sign-in in progress, wherever the focus is (design OAuth 3c).
+            .capture_key_down(cx.listener(|view, event: &KeyDownEvent, _, cx| {
+                if event.keystroke.key == "escape" && view.oauth.waiting.is_some() {
+                    view.cancel_sign_in(cx);
+                    cx.stop_propagation();
+                }
+            }))
             // A file dropped anywhere opens the import wizard (design Import Flow, 4e).
             .on_drop({
                 // Not a listener: the wizard reads `AppView` while it opens.

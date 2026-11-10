@@ -35,11 +35,12 @@ description: The Postino response pane: status, time and size, pretty and raw bo
 <p>The <strong>Tests</strong> tab lists every <code>test()</code> of the post-response script, in order, each with a pass or fail mark and, for a failure, the error message. The tab label shows <code>passed/total</code>, green when all passed and red otherwise. The header summarizes the result, for example <strong>3 of 4 tests passed</strong>.</p>
 <p>A failing test does not stop the script: the remaining tests still run. See <a href="scripting.html#writing-tests">writing tests</a>.</p>
 
-<h2>Console</h2>
+<h2 id="console">Console</h2>
 <p>The <strong>Console</strong> tab lists everything that happened during the last send, in order. The tab label shows the number of errors, in red, when there are any.</p>
 <ul>
     <li><strong>Script lines.</strong> One row per <code>console.log()</code>, <code>console.info()</code>, <code>console.warn()</code> or <code>console.error()</code> call, with its time (hours, minutes, seconds and milliseconds, in local time), the script it came from (<code>pre-request</code> or <code>post-response</code>), the text and the script line that logged it, such as <code>post-response.js:4</code>. Objects are printed as JSON. Warnings are amber, errors red.</li>
     <li><strong>The network entry.</strong> The request as it was sent: time, method, URL, then the status, time and size of the response. Click it to open its detail.</li>
+    <li><strong>The OAuth token.</strong> For a request that uses an <a href="oauth.html">OAuth 2.0 profile</a>, before everything else: one network entry per token request, with its <code>grant_type</code> after the URL and its secrets masked, and <code>oauth</code> rows that tell what happened, such as <em>token expired 12 min ago, refreshing it</em> in amber and <em>new token, expires at 11:42 (60 min)</em> in green. A token that could not be obtained is a red row and counts as an error. Only one network entry is open at a time.</li>
     <li><strong>Errors.</strong> When a script throws, hits its time or memory limit, or the request cannot be sent, a red row with the error message, and the script line when it is known.</li>
 </ul>
 <p>The detail of the network entry has two views:</p>
@@ -49,7 +50,7 @@ description: The Postino response pane: status, time and size, pretty and raw bo
     <li><strong>Raw</strong> shows the request and the response as HTTP/1.1 text: the request line, <code>Host</code>, the headers and the body, then the status line, the headers and the body. Headers the HTTP client adds by itself, such as <code>User-Agent</code>, are not listed. <strong>Copy</strong> copies both.</li>
 </ul>
 <p>Bodies larger than 128 KB are left to the <strong>Body</strong> tab: the tree shows their size, and the raw text shows their first 128 KB.</p>
-<p>The bar above the list filters it: <strong>All</strong>, <strong>Network</strong>, <strong>Logs</strong> or <strong>Errors</strong> (script errors plus <code>console.error()</code> lines, with their count), and <strong>Filter console</strong> keeps the rows whose text or URL contains what you type, ignoring case. <strong>Clear</strong> empties the list until the next send.</p>
+<p>The bar above the list filters it: <strong>All</strong>, <strong>Network</strong>, <strong>Logs</strong> (script lines and <code>oauth</code> rows) or <strong>Errors</strong> (script errors plus <code>console.error()</code> lines, with their count), and <strong>Filter console</strong> keeps the rows whose text or URL contains what you type, ignoring case. <strong>Clear</strong> empties the list until the next send.</p>
 ```js
 console.log("received", res.size, "bytes in", res.timeMs, "ms");
 console.warn("rate limit left:", res.headers.get("X-RateLimit-Remaining"));
@@ -75,6 +76,7 @@ console.log({ id: res.json().id, status: res.status });
         <tr><td>Pre-request script failed</td><td>The pre-request script threw an error or ran out of time or memory</td><td>The error. Nothing was sent.</td></tr>
         <tr><td>Sending failed</td><td>No response at all: invalid URL, DNS error, connection refused, timeout, too many redirects, rejected certificate</td><td>The error.</td></tr>
         <tr><td>Post-response script failed</td><td>The post-response script threw outside a <code>test()</code></td><td>The error, plus the response and every test and console line that ran before the error.</td></tr>
+        <tr><td>Couldn't get a token</td><td>The <a href="oauth.html#errors">OAuth 2.0</a> token of the request's profile could not be obtained, or the sign-in was cancelled</td><td>A card with the reason and what to do. Nothing was sent.</td></tr>
         <tr><td>Response larger than the limit</td><td>The body is bigger than the <a href="settings.html#responses">maximum size</a></td><td>The limit. Raise it in Settings, Requests, Responses.</td></tr>
     </tbody>
 </table></div>

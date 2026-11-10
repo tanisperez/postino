@@ -119,6 +119,9 @@ impl AppView {
         };
         let tab_id = tab.id.clone();
 
+        if self.shows_sign_in(&tab_id) {
+            return self.render_sign_in_panel(cx);
+        }
         if self.is_sending(&tab_id) {
             let palette = cx.palette();
             return v_flex()
@@ -210,6 +213,7 @@ impl AppView {
         let mut row = h_flex()
             .items_center()
             .gap(px(14.0))
+            .children(self.render_token_chip(tab_id, cx))
             .child(status_badge(&state));
         if let Some(response) = &result.response {
             row = row
@@ -486,12 +490,15 @@ impl AppView {
             );
         }
 
-        if let Some(stage) = &result.failed_stage {
+        if let Some(stage) = &result.failed_stage
+            && !matches!(stage, FailedStage::Auth)
+        {
             messages.push(
                 InlineMessage::new(InlineMessageKind::Danger, stage_message(stage))
                     .into_any_element(),
             );
         }
+        messages.extend(self.render_oauth_messages(tab_id, cx));
 
         if messages.is_empty() {
             return None;
@@ -526,6 +533,7 @@ fn stage_message(stage: &FailedStage) -> String {
         FailedStage::Post(error) => {
             t!("response.stage.post_failed", error = error.to_string()).into_owned()
         }
+        FailedStage::Auth => t!("oauth.stage_failed").into_owned(),
     }
 }
 

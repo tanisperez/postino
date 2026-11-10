@@ -1,0 +1,14 @@
+GET {{baseUrl}}/oauth/me
+
+::: auth oauth2
+profile = sample-short
+
+::: post
+test("the expired token was renewed with the refresh token", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().grant).toBe("refresh_token");
+});
+
+::: docs
+Run after `short-1-new`: the stored token has expired, so Postino refreshes it before sending.
+The response bar shows "Token renewed".

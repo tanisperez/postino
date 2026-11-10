@@ -57,6 +57,7 @@ mod tests {
             name: name.to_string(),
             broken: None,
             method: Some(postino_core::Method::Get),
+            oauth_profile: None,
         })
     }
 

@@ -37,6 +37,12 @@ tempfile = "3"
 flate2 = "1.1"
 zip = { version = "9", default-features = false, features = ["deflate"] }
 tiny_http = "0.12"
+# OAuth 2.0 (postino-oauth): tokens in the system credential store (Keychain, Credential Manager,
+# Secret Service through zbus, already built by gpui), PKCE challenges and their random verifiers.
+# sha2 and getrandom are already built by other dependencies, same versions.
+keyring = "4.2"
+sha2 = "0.10"
+getrandom = "0.3"
 dirs = "7"
 dunce = "1"
 toml = "0.8"

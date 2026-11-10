@@ -19,6 +19,7 @@ pub fn summary(result: &RunResult, elapsed: Duration) -> String {
     };
     let outcome = match (&result.response, &result.failed_stage) {
         (_, Some(FailedStage::Pre(_))) => "not sent: the pre-request script failed".to_string(),
+        (_, Some(FailedStage::Auth)) => "not sent: no OAuth token".to_string(),
         (_, Some(FailedStage::Send(error))) => format!("failed: {error}"),
         (Some(response), failed) => {
             let mut outcome = format!(
@@ -106,6 +107,7 @@ mod tests {
             started_at: std::time::UNIX_EPOCH,
             sent_at: None,
             finished_at: std::time::UNIX_EPOCH,
+            oauth: None,
         }
     }
 

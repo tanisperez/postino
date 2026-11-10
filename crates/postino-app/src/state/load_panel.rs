@@ -281,6 +281,7 @@ mod tests {
             name: name.to_string(),
             broken: broken.then(|| "broken".to_string()),
             method: (!broken).then_some(Method::Get),
+            oauth_profile: None,
         })
     }
 

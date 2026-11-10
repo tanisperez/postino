@@ -1,0 +1,15 @@
+GET {{baseUrl}}/oauth/me
+
+::: auth oauth2
+profile = sample-machine
+scope = users:write
+
+::: post
+test("the request asks for its own scope", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().scope).toBe("users:write");
+});
+
+::: docs
+Overrides the scope of `sample-machine`: it gets a token of its own, stored apart from the
+profile's.

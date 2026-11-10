@@ -15,8 +15,10 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use postino_core::{ConsoleLevel, Method, ResolvedBody, ResolvedRequest, Response, ScriptStage};
+use postino_oauth::{OAuthNote, OAuthStep};
 use postino_runner::{FailedStage, RunResult};
 use postino_script::ScriptError;
+use rust_i18n::t;
 use serde::de::{Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 
 use super::response_render::reason_phrase;
@@ -38,6 +40,8 @@ pub enum EntrySource {
     Post,
     /// The HTTP exchange itself.
     Network,
+    /// Getting the OAuth 2.0 token before the request (#225).
+    OAuth,
 }
 
 impl From<ScriptStage> for EntrySource {
@@ -60,14 +64,25 @@ pub enum ConsoleEntry {
         text: String,
         line: Option<u32>,
     },
-    /// The request that was sent, and its response when one arrived.
+    /// The request that was sent, and its response when one arrived. `detail` indexes
+    /// [`ConsoleTimeline::networks`].
     Network {
+        detail: usize,
         time: Option<SystemTime>,
         method: Method,
         url: String,
         status: Option<u16>,
         duration: Option<Duration>,
         size: Option<usize>,
+        /// Shown after the URL, muted: the `grant_type` of a token request.
+        note: Option<String>,
+    },
+    /// A step of getting the OAuth 2.0 token (design 3b): "token expired, refreshing it", "new
+    /// token, expires at 11:42".
+    OAuth {
+        time: Option<SystemTime>,
+        tone: OAuthTone,
+        text: String,
     },
     /// The error that stopped a stage: a script exception, a script limit or a failed send.
     Error {
@@ -88,6 +103,10 @@ impl ConsoleEntry {
                     level: ConsoleLevel::Error,
                     ..
                 }
+                | ConsoleEntry::OAuth {
+                    tone: OAuthTone::Failure,
+                    ..
+                }
         )
     }
 
@@ -96,9 +115,21 @@ impl ConsoleEntry {
         match self {
             ConsoleEntry::Log { text, .. } => text,
             ConsoleEntry::Network { url, .. } => url,
+            ConsoleEntry::OAuth { text, .. } => text,
             ConsoleEntry::Error { message, .. } => message,
         }
     }
+}
+
+/// How an [`ConsoleEntry::OAuth`] row is colored and which icon it has.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OAuthTone {
+    /// The token is being renewed or requested: amber, a key.
+    Progress,
+    /// A new token: green, a check.
+    Success,
+    /// It failed: red, counts as an error.
+    Failure,
 }
 
 /// The chips of the Console's filter bar.
@@ -125,7 +156,9 @@ impl ConsoleFilter {
         match self {
             ConsoleFilter::All => true,
             ConsoleFilter::Network => matches!(entry, ConsoleEntry::Network { .. }),
-            ConsoleFilter::Logs => matches!(entry, ConsoleEntry::Log { .. }),
+            ConsoleFilter::Logs => {
+                matches!(entry, ConsoleEntry::Log { .. } | ConsoleEntry::OAuth { .. })
+            }
             ConsoleFilter::Errors => entry.is_error(),
         }
     }
@@ -264,7 +297,11 @@ pub struct NetworkDetail {
 pub struct ConsoleTimeline {
     pub entries: Vec<ConsoleEntry>,
     pub error_count: usize,
-    pub network: Option<NetworkDetail>,
+    /// The detail of every network entry: the token requests first, then the request itself.
+    pub networks: Vec<NetworkDetail>,
+    /// The index in `networks` of the token request that renewed or obtained the token, which the
+    /// "Token renewed" chip opens.
+    pub token_network: Option<usize>,
 }
 
 impl ConsoleTimeline {
@@ -293,6 +330,38 @@ impl ConsoleTimeline {
                 line,
             };
 
+        let mut networks = Vec::new();
+        let mut token_network = None;
+        if let Some(run) = &result.oauth {
+            for step in &run.steps {
+                match step {
+                    OAuthStep::Note { time, note } => {
+                        let (tone, text) = oauth_note_text(&run.profile, &run.environment, note);
+                        entries.push(ConsoleEntry::OAuth {
+                            time: Some(*time),
+                            tone,
+                            text,
+                        });
+                    }
+                    OAuthStep::Exchange(exchange) => {
+                        let response = exchange.response.as_ref();
+                        token_network = Some(networks.len());
+                        entries.push(ConsoleEntry::Network {
+                            detail: networks.len(),
+                            time: Some(exchange.sent_at),
+                            method: exchange.request.method.clone(),
+                            url: exchange.request.url.clone(),
+                            status: response.map(|response| response.status),
+                            duration: response.map(|response| response.time),
+                            size: response.map(|response| response.size),
+                            note: Some(format!("grant_type={}", exchange.grant_type)),
+                        });
+                        networks.push(network_detail(&exchange.request, response, environment));
+                    }
+                }
+            }
+        }
+
         entries.extend(logs(ScriptStage::Pre));
         if let Some(FailedStage::Pre(error)) = &result.failed_stage {
             let (message, line) = script_error_parts(error);
@@ -303,13 +372,16 @@ impl ConsoleTimeline {
         {
             let response = result.response.as_ref();
             entries.push(ConsoleEntry::Network {
+                detail: networks.len(),
                 time: result.sent_at,
                 method: request.method.clone(),
                 url: request.url.clone(),
                 status: response.map(|response| response.status),
                 duration: response.map(|response| response.time),
                 size: response.map(|response| response.size),
+                note: None,
             });
+            networks.push(network_detail(request, response, environment));
         }
         if let Some(FailedStage::Send(error)) = &result.failed_stage {
             entries.push(failure(EntrySource::Network, error.to_string(), None));
@@ -320,25 +392,81 @@ impl ConsoleTimeline {
             entries.push(failure(EntrySource::Post, message, line));
         }
 
-        let network = result
-            .resolved_request
-            .as_ref()
-            .filter(|_| result.sent_at.is_some())
-            .map(|request| NetworkDetail {
-                tree: network_tree(request, result.response.as_ref(), environment),
-                raw_request: Arc::from(raw_request(request)),
-                raw_response: result
-                    .response
-                    .as_ref()
-                    .map(|response| Arc::from(raw_response(response))),
-            });
         let error_count = entries.iter().filter(|entry| entry.is_error()).count();
         ConsoleTimeline {
             entries,
             error_count,
-            network,
+            networks,
+            token_network,
         }
     }
+
+    /// The detail of the network entry `index`.
+    pub fn network(&self, index: Option<usize>) -> Option<&NetworkDetail> {
+        self.networks.get(index?)
+    }
+}
+
+/// The detail of one network entry.
+fn network_detail(
+    request: &ResolvedRequest,
+    response: Option<&Response>,
+    environment: Option<&str>,
+) -> NetworkDetail {
+    NetworkDetail {
+        tree: network_tree(request, response, environment),
+        raw_request: Arc::from(raw_request(request)),
+        raw_response: response.map(|response| Arc::from(raw_response(response))),
+    }
+}
+
+/// The text and tone of an `oauth` row (design 3b): "acme-sso · dev: token expired 12 min ago,
+/// refreshing it".
+fn oauth_note_text(profile: &str, environment: &str, note: &OAuthNote) -> (OAuthTone, String) {
+    let who = if environment.is_empty() {
+        profile.to_string()
+    } else {
+        format!("{profile} · {environment}")
+    };
+    let (tone, text) = match note {
+        OAuthNote::Expired {
+            expired_for,
+            has_refresh,
+        } => {
+            let ago = super::oauth::format_ago(*expired_for);
+            let text = if *has_refresh {
+                t!("oauth.console_expired_refresh", ago = ago)
+            } else {
+                t!("oauth.console_expired_regrant", ago = ago)
+            };
+            (OAuthTone::Progress, text.into_owned())
+        }
+        OAuthNote::NoToken => (
+            OAuthTone::Progress,
+            t!("oauth.console_no_token").into_owned(),
+        ),
+        OAuthNote::RefreshRejected => (
+            OAuthTone::Progress,
+            t!("oauth.console_refresh_rejected").into_owned(),
+        ),
+        OAuthNote::SigningIn => (
+            OAuthTone::Progress,
+            t!("oauth.console_signing_in").into_owned(),
+        ),
+        OAuthNote::NewToken { expires_at } => {
+            let text = match expires_at {
+                Some(at) => t!(
+                    "oauth.console_new_token",
+                    at = super::oauth::format_clock_short(*at),
+                    minutes = super::oauth::minutes_until(*at)
+                ),
+                None => t!("oauth.console_new_token_no_expiry"),
+            };
+            (OAuthTone::Success, text.into_owned())
+        }
+        OAuthNote::Failed { message } => (OAuthTone::Failure, message.clone()),
+    };
+    (tone, format!("{who}: {text}"))
 }
 
 /// The message and script line of a script error. A runtime error's line comes from its stack.
@@ -801,7 +929,8 @@ pub struct ConsoleView {
     query: String,
     /// Whether "Clear" hid the entries of this response.
     pub cleared: bool,
-    pub network_open: bool,
+    /// The network entry open, an index of [`ConsoleTimeline::networks`].
+    network_open: Option<usize>,
     pub raw: bool,
     open: HashSet<String>,
     /// The path of the selected tree row (#197), for Copy and the arrow keys. When a branch
@@ -823,11 +952,27 @@ impl ConsoleView {
         if !same {
             self.key = Some((tab_id.to_string(), generation));
             self.cleared = false;
-            self.network_open = false;
+            self.network_open = None;
             self.raw = false;
             self.open.clear();
             self.selected = None;
             self.rows = Arc::default();
+            self.rows_built = false;
+        }
+    }
+
+    /// The network entry open, if any.
+    pub fn network_open(&self) -> Option<usize> {
+        self.network_open
+    }
+
+    /// Opens the network entry `index`, closing the one that was open, or closes it with `None`.
+    /// Each entry has its own tree, so the open branches and the selection start over.
+    pub fn open_network(&mut self, index: Option<usize>) {
+        if self.network_open != index {
+            self.network_open = index;
+            self.open.clear();
+            self.selected = None;
             self.rows_built = false;
         }
     }
@@ -1012,6 +1157,7 @@ mod tests {
             started_at: SystemTime::UNIX_EPOCH,
             sent_at: Some(SystemTime::UNIX_EPOCH),
             finished_at: SystemTime::UNIX_EPOCH,
+            oauth: None,
         }
     }
 
@@ -1029,6 +1175,7 @@ mod tests {
             .map(|entry| match entry {
                 ConsoleEntry::Log { text, .. } => text.as_str(),
                 ConsoleEntry::Network { .. } => "network",
+                ConsoleEntry::OAuth { .. } => "oauth",
                 ConsoleEntry::Error { .. } => "error",
             })
             .collect();
@@ -1060,8 +1207,7 @@ mod tests {
         ));
         assert!(
             timeline
-                .network
-                .as_ref()
+                .network(Some(0))
                 .expect("detail")
                 .raw_response
                 .is_none()
@@ -1092,7 +1238,7 @@ mod tests {
     #[test]
     fn the_tree_starts_with_the_top_level_closed_and_keeps_json_key_order() {
         let timeline = ConsoleTimeline::build(&result(None, true), Some("dev"));
-        let detail = timeline.network.expect("detail");
+        let detail = timeline.network(Some(0)).cloned().expect("detail");
         let mut view = ConsoleView::default();
         view.sync("t", 1);
 
@@ -1152,7 +1298,7 @@ mod tests {
     #[test]
     fn raw_text_has_the_request_line_host_headers_and_bodies() {
         let timeline = ConsoleTimeline::build(&result(None, true), None);
-        let detail = timeline.network.expect("detail");
+        let detail = timeline.network(Some(0)).cloned().expect("detail");
         assert_eq!(
             &*detail.raw_request,
             "GET /v1/users?page=2 HTTP/1.1\nHost: api.acme.dev\nAccept: application/json"

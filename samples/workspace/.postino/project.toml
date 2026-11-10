@@ -8,3 +8,44 @@ order = ["local", "secure"]
 
 [environments.colors]
 secure = "red"
+
+[oauth.sample-browser]
+auth_url = "{{baseUrl}}/oauth/authorize"
+client_id = "postino-public"
+grant = "authorization_code"
+pkce = true
+redirect = "loopback"
+scope = "openid profile"
+token_url = "{{baseUrl}}/oauth/token"
+
+[oauth.sample-machine]
+client_id = "{{oauthClientId}}"
+client_secret = "{{oauthClientSecret}}"
+grant = "client_credentials"
+scope = "users:read"
+token_url = "{{baseUrl}}/oauth/token"
+
+[oauth.sample-query]
+client_auth = "body"
+client_id = "{{oauthClientId}}"
+client_secret = "{{oauthClientSecret}}"
+grant = "client_credentials"
+token_in = "query"
+token_url = "{{baseUrl}}/oauth/token"
+
+[oauth.sample-short]
+client_id = "{{oauthClientId}}"
+client_secret = "{{oauthClientSecret}}"
+grant = "password"
+password = "{{password}}"
+token_url = "{{baseUrl}}/oauth/token"
+username = "{{username}}"
+
+[oauth.sample-short.token_params]
+expires_in = "5"
+
+[oauth.sample-wrong-secret]
+client_id = "{{oauthClientId}}"
+client_secret = "not-the-secret"
+grant = "client_credentials"
+token_url = "{{baseUrl}}/oauth/token"

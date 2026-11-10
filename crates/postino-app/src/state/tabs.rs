@@ -64,6 +64,10 @@ pub struct OpenTab {
     pub show_auth_secrets: bool,
     /// Undo and redo of the request's edits (#109). `None` for every other kind of tab.
     pub history: Option<EditHistory>,
+    /// The OAuth profile edited in this tab's Profile settings panel and not saved yet (#225):
+    /// Ctrl+S writes it to `project.toml` together with the request. `None` when the panel
+    /// changed nothing.
+    pub profile_draft: Option<postino_core::OAuthProfile>,
 }
 
 impl OpenTab {
@@ -160,7 +164,8 @@ impl OpenTab {
             self.body_stash = snapshot.body_stash;
             self.auth_stash = snapshot.auth_stash;
         }
-        self.dirty = self.history.as_ref().is_some_and(EditHistory::is_dirty);
+        self.dirty = self.history.as_ref().is_some_and(EditHistory::is_dirty)
+            || self.profile_draft.is_some();
         true
     }
 
@@ -441,6 +446,7 @@ impl TabsState {
             auth_stash: AuthStash::default(),
             show_auth_secrets: false,
             history,
+            profile_draft: None,
         });
         let index = self.open.len() - 1;
         self.active = Some(index);
@@ -514,6 +520,7 @@ impl TabsState {
     pub fn mark_saved(&mut self, index: usize) {
         if let Some(tab) = self.open.get_mut(index) {
             tab.dirty = false;
+            tab.profile_draft = None;
             if let Some(history) = &mut tab.history {
                 history.mark_saved();
             }

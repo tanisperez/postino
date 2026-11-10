@@ -1,0 +1,15 @@
+GET {{baseUrl}}/oauth/me
+
+::: auth oauth2
+profile = sample-browser
+
+::: post
+test("signed in through the browser", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().grant).toBe("authorization_code");
+});
+
+::: docs
+The authorization code grant with PKCE. The sample provider signs the demo user in at once, so
+the browser tab closes the loop by itself. The automated suite has no browser and expects
+"sign in from the Postino app first".

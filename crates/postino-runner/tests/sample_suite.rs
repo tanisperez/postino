@@ -14,7 +14,8 @@ use std::sync::Arc;
 
 use postino_core::{Environment, KeyValue};
 use postino_http::{HttpError, InvalidCertificates, SendOptions};
-use postino_runner::{FailedStage, RunResult, Runner, SessionEnv};
+use postino_oauth::{MemoryStore, NoSignIn, OAuthError};
+use postino_runner::{FailedStage, OAuthConfig, RunResult, Runner, SessionEnv};
 use postino_script::QuickJsEngine;
 use postino_workspace::{Node, RequestEntry, Workspace};
 
@@ -124,7 +125,13 @@ macro_rules! server_or_skip {
     };
 }
 
+/// A runner with the sample workspace's OAuth profiles, its tokens in memory (one store per
+/// runner, so every run of the suite starts without tokens) and no browser.
 fn runner(invalid_certificates: InvalidCertificates) -> Runner {
+    let profiles = open_workspace()
+        .load_project()
+        .expect("sample project.toml")
+        .oauth_profiles();
     Runner::new(
         Arc::new(QuickJsEngine),
         SendOptions {
@@ -133,6 +140,12 @@ fn runner(invalid_certificates: InvalidCertificates) -> Runner {
         },
     )
     .with_base_dir(Some(samples_dir().join("workspace")))
+    .with_oauth(OAuthConfig {
+        workspace: "samples-000000".to_string(),
+        profiles: Arc::new(profiles),
+        store: Arc::new(MemoryStore::default()),
+        sign_in: Arc::new(NoSignIn),
+    })
 }
 
 /// Every request of the tree in sidebar order, folders first.
@@ -165,6 +178,8 @@ enum Expect {
     SendFails,
     /// The post script throws, the response is kept.
     PostFails,
+    /// The OAuth token cannot be obtained, nothing is sent: the error's text contains this.
+    AuthFails(&'static str),
 }
 
 fn expectation(id: &str) -> Expect {
@@ -188,6 +203,12 @@ fn expectation(id: &str) -> Expect {
         "expected-failures/post-script-throws.postino"
         | "expected-failures/post-json-parse.postino"
         | "expected-failures/post-readonly-req.postino" => Expect::PostFails,
+        "expected-failures/oauth-wrong-secret.postino" => Expect::AuthFails("invalid_client"),
+        "expected-failures/oauth-unknown-profile.postino" => {
+            Expect::AuthFails("no OAuth profile named \"no-such-profile\"")
+        }
+        // No browser here: the app signs in, the suite only checks it asks for that.
+        "oauth/browser-sign-in.postino" => Expect::AuthFails("sign in from the Postino app"),
         _ => Expect::Pass,
     }
 }
@@ -236,6 +257,13 @@ fn mismatch(expect: &Expect, result: &RunResult) -> Option<String> {
         Expect::PostFails => (!matches!(result.failed_stage, Some(FailedStage::Post(_)))
             || result.response.is_none())
         .then(|| format!("expected a post failure, got {:?}", result.failed_stage)),
+        Expect::AuthFails(text) => {
+            let error = result.oauth_error().map(OAuthError::to_string);
+            (!matches!(result.failed_stage, Some(FailedStage::Auth))
+                || result.resolved_request.is_some()
+                || !error.as_deref().is_some_and(|error| error.contains(text)))
+            .then(|| format!("expected an OAuth failure with {text:?}, got {error:?}"))
+        }
     }
 }
 

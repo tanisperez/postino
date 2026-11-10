@@ -106,7 +106,7 @@ line starting with `::: ` (three colons and a space): `::: <kind> [argument]`.
   `section "pre" does not take an argument`.
 - `body` requires exactly one argument, its type: `json`, `text`, `xml`, `form` or `multipart`. No argument at
   all is `missing body type`; any other word is `unknown body type`.
-- `auth` requires exactly one argument, its type: `basic`, `bearer` or `apikey`. No argument at
+- `auth` requires exactly one argument, its type: `basic`, `bearer`, `apikey` or `oauth2`. No argument at
   all is `missing auth type`; any other word is `unknown auth type`.
 - The content of a section is every line after its marker, up to the next `::: ` marker or end of
   file. **Trailing blank lines of that content are dropped** (interior blank lines are kept, so a
@@ -132,6 +132,7 @@ value may hold `{{ }}` markers and template functions.
 | `basic` | `username`, `password` |
 | `bearer` | `token` |
 | `apikey` | `name` (the header or query parameter name), `value`, `in` (`header` or `query`) |
+| `oauth2` | `profile` (the name of an `[oauth.<name>]` table of `.postino/project.toml`), `scope` (asks for another scope than the profile's) |
 
 - A field the type does not have is `unknown field "<field>" for auth "<type>"`; the same field
   twice is `duplicated auth field`; a line without `=` is `invalid auth line`; an `in` other than
@@ -161,6 +162,10 @@ so a pre script's `vars.set()` reaches it:
 - An enabled header of the same name (ignoring case), or for `in = query` an enabled `::: query`
   entry of the same name (case sensitive), wins: the auth adds nothing. Names are compared after
   their markers are replaced.
+- `oauth2`: the token of the profile for the active environment, obtained or renewed before the
+  pre script (see `docs/oauth.md`), as `Authorization: <prefix> <token>` (`Bearer` by default)
+  or as a query parameter, following the same rule of an enabled header or entry winning.
+  Nothing is sent when the token cannot be obtained.
 - The pre script's `req` does not include what the auth adds; the post script's `req`, which is
   the request as sent, does.
 

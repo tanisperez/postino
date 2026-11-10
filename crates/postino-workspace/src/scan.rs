@@ -143,12 +143,13 @@ fn scan_folder(
                 continue;
             };
             let id = path_to_id(root, &path);
-            let (broken, method) = read_and_parse(&path);
+            let parsed = read_and_parse(&path);
             nodes.push(Node::Request(RequestEntry {
                 id,
                 name: stem.to_string(),
-                broken,
-                method,
+                broken: parsed.broken,
+                method: parsed.method,
+                oauth_profile: parsed.oauth_profile,
             }));
         }
         // Symlinks and other special file types are neither a folder nor a request, so they are
@@ -159,18 +160,36 @@ fn scan_folder(
     Ok(Scanned { nodes, has_entries })
 }
 
-/// Reads and parses a `.postino` file once, for both [`RequestEntry::broken`] and
-/// [`RequestEntry::method`], so a broken or valid file is never read or parsed twice.
-///
-/// Returns `(None, Some(method))` when the file is valid, or `(Some(message), None)` describing
-/// why it is not: either an IO error (an unreadable file) or a [`postino_format::ParseError`].
-fn read_and_parse(path: &Path) -> (Option<String>, Option<Method>) {
+/// What the scan keeps of one `.postino` file.
+struct Parsed {
+    broken: Option<String>,
+    method: Option<Method>,
+    oauth_profile: Option<String>,
+}
+
+/// Reads and parses a `.postino` file once, for [`RequestEntry::broken`],
+/// [`RequestEntry::method`] and [`RequestEntry::oauth_profile`], so a broken or valid file is
+/// never read or parsed twice. A file that cannot be read or is not a valid request is `broken`,
+/// with a message saying why: an IO error or a [`postino_format::ParseError`].
+fn read_and_parse(path: &Path) -> Parsed {
+    let broken = |message: String| Parsed {
+        broken: Some(message),
+        method: None,
+        oauth_profile: None,
+    };
     match fs::read_to_string(path) {
         Ok(text) => match postino_format::parse(&text) {
-            Ok(request) => (None, Some(request.method)),
-            Err(error) => (Some(error.to_string()), None),
+            Ok(request) => Parsed {
+                broken: None,
+                method: Some(request.method),
+                oauth_profile: match request.auth {
+                    postino_core::Auth::OAuth2 { profile, .. } => Some(profile),
+                    _ => None,
+                },
+            },
+            Err(error) => broken(error.to_string()),
         },
-        Err(error) => (Some(error.to_string()), None),
+        Err(error) => broken(error.to_string()),
     }
 }
 

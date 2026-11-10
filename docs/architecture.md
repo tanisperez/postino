@@ -25,9 +25,11 @@ executed and are kept in git history under the `plans-archive` tag
 
 ```
 postino-app ──> postino-load ──> postino-runner ──> postino-script ──> postino-core
-     │               │                  └─────────> postino-http ────> postino-core
+     │               │                  ├─────────> postino-http ────> postino-core
+     │               │                  └─────────> postino-oauth ───> postino-http, postino-core
      │               └──> postino-http, postino-script, postino-core
      ├──────> postino-runner
+     ├──────> postino-oauth (the token store and the browser sign-in)
      ├──────> postino-script
      ├──────> postino-workspace ─> postino-format ─> postino-core
      ├──────> postino-format
@@ -48,7 +50,8 @@ window bootstrap and the About header), all shared with the other apps. `postino
 | `postino-workspace` | Filesystem access: creates new workspace folders (with the example request), scans a folder, loads and saves requests and environments, writes environment variables, detects the git branch, imports Postman collections to disk. |
 | `postino-script` | The `ScriptEngine` trait and its QuickJS implementation (`rquickjs`). |
 | `postino-http` | Sends a resolved request with `ureq` 3 (blocking, rustls) and measures timing. |
-| `postino-runner` | The pipeline: variables, pre script, interpolate, send, post script. Also `preview`, which resolves a request without scripts or network. |
+| `postino-oauth` | OAuth 2.0: gets, renews and stores the token of a workspace profile (client credentials, password, refresh, authorization code with PKCE through a loopback listener), the token store (system credential store with the `keyring` crate, or a 0600 file), and the masked copy of every token request for the console. The browser part reaches the UI through the `SignInHandler` trait. No `gpui`. See `docs/oauth.md`. |
+| `postino-runner` | The pipeline: OAuth token, variables, pre script, interpolate, send, post script. Also `preview`, which resolves a request without scripts or network. |
 | `postino-load` | The load test engine, live metrics aggregation, the per request sample log, thresholds, time window statistics, run comparison, run history and the report exports (Markdown, PDF, CSV, JSON). |
 | `postino-cli` | The terminal commands that print and exit without opening the window (`--help`, `--version`; later load tests and reports from the terminal). No `gpui` code of its own. The shared plumbing (version line, help header and footer, exit codes, console attach) is `telaio_app::cli`; this crate also holds Postino's `IDENTITY` (the bare version) and the version label shown to people, which adds the commit captured by `build.rs` to a `-dev` version. |
 | `postino-app` | The `gpui` binary (`postino`). Only UI and glue. |
@@ -61,6 +64,9 @@ workspace crate would need a `workspace -> load -> runner` dependency edge.
 
 `Runner::run(&Request, &Environment, &mut SessionEnv) -> RunResult`:
 
+0. For an `oauth2` auth, get the token of its profile (`postino_oauth::ensure_token`): reuse a
+   valid one, refresh an expired one, or run the grant. A failure stops the run
+   (`FailedStage::Auth`) before the pre script, which has no network.
 1. Build the variable scope (request variables, session overrides, active environment).
 2. Run the pre script, if any, and apply its mutations to the request.
 3. Interpolate into a `ResolvedRequest`: only enabled entries, final URL with the query appended.
@@ -134,6 +140,7 @@ Results v2 (#155 to #158) added these pieces to `postino-load`:
 | --- | --- |
 | `<config dir>/postino/settings.toml` | User settings, applied live, no Save button. On Linux `~/.config/postino/settings.toml`. |
 | `<config dir>/postino/recent-workspaces.txt` | One absolute path per line, most recent first, at most 10. |
+| `<config dir>/postino/oauth-tokens.json` | OAuth tokens, only when there is no system credential store; mode 0600. Otherwise they are in the Keychain, the Credential Manager or the Secret Service, service `postino`. |
 | `<workspace>/.postino/runs/<NNNN>.json` | Load test history: configuration, thresholds and metrics of a run. |
 | `<workspace>/.postino/runs/<NNNN>.samples.csv.gz` | Every request of that run, gzipped CSV. Absent for runs saved by older versions. |
 | `<workspace>/environments/<name>.env` | Versioned environment values. |

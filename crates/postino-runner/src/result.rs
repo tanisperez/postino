@@ -5,6 +5,7 @@ use std::time::SystemTime;
 
 use postino_core::{ConsoleLine, ResolvedRequest, Response, TemplateWarning, TestResult};
 use postino_http::HttpError;
+use postino_oauth::OAuthRun;
 use postino_script::ScriptError;
 
 /// The complete outcome of running a request through [`crate::Runner::run`].
@@ -35,6 +36,9 @@ pub struct RunResult {
     pub sent_at: Option<SystemTime>,
     /// When the run ended, after the post script or the stage that failed.
     pub finished_at: SystemTime,
+    /// What getting the OAuth 2.0 token did, for a request whose auth is a profile. `None` for
+    /// any other auth.
+    pub oauth: Option<OAuthRun>,
 }
 
 /// The pipeline stage that stopped a run from completing normally.
@@ -43,6 +47,10 @@ pub struct RunResult {
 /// on [`RunResult::warnings`] instead, and the run continues.
 #[derive(Debug, thiserror::Error)]
 pub enum FailedStage {
+    /// The OAuth 2.0 token of the request's profile could not be obtained. Nothing ran: the
+    /// token is resolved before the pre script. The error is in [`RunResult::oauth`]'s result.
+    #[error("getting the OAuth token failed")]
+    Auth,
     /// The `::: pre` script raised an uncaught exception, or the script engine itself failed.
     /// The request was never sent.
     #[error("pre-request script failed: {0}")]
@@ -54,4 +62,11 @@ pub enum FailedStage {
     /// The response was already received and is still reported on [`RunResult::response`].
     #[error("post-response script failed: {0}")]
     Post(#[source] ScriptError),
+}
+
+impl RunResult {
+    /// The OAuth error that stopped the run, when [`FailedStage::Auth`] did.
+    pub fn oauth_error(&self) -> Option<&postino_oauth::OAuthError> {
+        self.oauth.as_ref()?.result.as_ref().err()
+    }
 }

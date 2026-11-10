@@ -145,8 +145,9 @@ impl AppView {
         let move_weak = weak.clone();
         let drop_weak = weak.clone();
         let mut methods_by_id = HashMap::new();
+        let mut oauth_ids = std::collections::HashSet::new();
         if let Some(workspace) = self.state.workspace.as_ref() {
-            collect_methods(workspace.tree(), &mut methods_by_id);
+            collect_methods(workspace.tree(), &mut methods_by_id, &mut oauth_ids);
         }
 
         v_flex()
@@ -203,6 +204,7 @@ impl AppView {
                                     entry,
                                     selected,
                                     methods_by_id.get(entry.item().id.as_ref()),
+                                    oauth_ids.contains(entry.item().id.as_ref()),
                                     &row_palette,
                                     &row_drop,
                                 )
@@ -461,14 +463,22 @@ fn request_label(request: &RequestEntry) -> String {
 /// Collects every request's method by id, for [`render_tree_row`] to look up: `TreeItem` (built by
 /// [`build_tree_item`]/[`build_filtered_item`]) has no field for it, so the tree row renderer
 /// looks it up from this side map instead (the method
-/// label is 34 px wide for requests).
-fn collect_methods(nodes: &[Node], into: &mut HashMap<String, Method>) {
+/// label is 34 px wide for requests). The ids of the requests that use an OAuth profile go in
+/// `oauth`, for their lock (design OAuth 3a).
+fn collect_methods(
+    nodes: &[Node],
+    into: &mut HashMap<String, Method>,
+    oauth: &mut std::collections::HashSet<String>,
+) {
     for node in nodes {
         match node {
-            Node::Folder(folder) => collect_methods(&folder.children, into),
+            Node::Folder(folder) => collect_methods(&folder.children, into, oauth),
             Node::Request(request) => {
                 if let Some(method) = &request.method {
                     into.insert(request.id.clone(), method.clone());
+                }
+                if request.oauth_profile.is_some() {
+                    oauth.insert(request.id.clone());
                 }
             }
         }
@@ -499,6 +509,7 @@ fn render_tree_row(
     entry: &TreeEntry,
     selected: bool,
     method: Option<&Method>,
+    oauth: bool,
     palette: &crate::theme::Palette,
     drop: &RowDrop,
 ) -> ListItem {
@@ -547,12 +558,24 @@ fn render_tree_row(
     } else {
         palette.fg
     };
+    let locked = oauth && is_request;
     row = row.child(
         div()
             .text_sm()
             .text_color(label_color)
+            // With the lock at the end, a long name gives way to it.
+            .when(locked, |label| label.flex_1().min_w_0().truncate())
             .child(item.label.clone()),
     );
+    if locked {
+        row = row.child(
+            div().flex_none().pl_1().child(
+                Icon::new(gpui_kit::assets::IconName::Lock)
+                    .with_size(px(11.0))
+                    .text_color(palette.fg_subtle),
+            ),
+        );
+    }
 
     let id = item.id.to_string();
     let in_target = drop

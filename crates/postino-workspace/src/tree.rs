@@ -61,6 +61,9 @@ pub struct RequestEntry {
     /// The request's HTTP method, read from the same parse that fills [`Self::broken`] (no
     /// second read of the file). `None` when the file is broken.
     pub method: Option<Method>,
+    /// The OAuth 2.0 profile the request's auth uses (`::: auth oauth2`), from the same parse.
+    /// `None` for any other auth, and when the file is broken.
+    pub oauth_profile: Option<String>,
 }
 
 /// Sorts a list of nodes in place: folders before requests, then natural sort by name within
@@ -152,6 +155,7 @@ mod tests {
             name: name.to_string(),
             broken: None,
             method: Some(Method::Get),
+            oauth_profile: None,
         })
     }
 

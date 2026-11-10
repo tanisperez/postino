@@ -1,0 +1,129 @@
+title: OAuth 2.0
+description: Use OAuth 2.0 in Postino with named profiles: client credentials, password and authorization code with PKCE in the system browser, tokens per environment renewed on Send.
+---
+<h1>OAuth 2.0</h1>
+<p class="lead">Write the OAuth settings once, as a named <strong>profile</strong> of the workspace, and let every request that needs them pick the profile. When you press Send, Postino gets or renews the token of that profile for the active environment, and signs you in in your browser when it has to. The token is never written in the workspace.</p>
+
+<h2 id="how-it-works">How it works</h2>
+<ol>
+    <li>A profile holds the authorization server and the client: the grant type, the token URL, the client ID and secret, the scope and a few options. It lives in <code>.postino/project.toml</code>, so it is shared through git with the workspace. See <a href="#profile-file">Profiles in the file</a>.</li>
+    <li>A request uses it with the <strong>OAuth 2.0</strong> type of the <a href="requests.html#authentication">Auth tab</a>. In the request file that is a <code>::: auth oauth2</code> section with one line, <code>profile = acme-sso</code>.</li>
+    <li>On Send, before the pre-request script, Postino looks for a token of that profile for the active environment:
+        <ul>
+            <li>A token that does not expire in the next 30 seconds is sent as it is.</li>
+            <li>An expired token is renewed with its refresh token. When there is none, or the server rejects it (<code>invalid_grant</code>), the grant of the profile runs again.</li>
+            <li>With no token, the grant runs. For <strong>Client credentials</strong> and <strong>Password</strong> it is one request to the token URL. For <strong>Authorization code</strong> your browser opens to sign in, see <a href="#browser-sign-in">Signing in in the browser</a>.</li>
+        </ul>
+    </li>
+    <li>The token is added as <code>Authorization: Bearer &lt;token&gt;</code>, or where the profile says (see <a href="#advanced">Advanced</a>), and the request is sent.</li>
+</ol>
+<p>Each profile has one token per environment: switching from <code>dev</code> to <code>prod</code> never sends the token of <code>dev</code>. All the requests that use a profile share its token. A request that writes its own <strong>Scope</strong> gets a token of its own.</p>
+
+<h2 id="first-profile">Creating a profile</h2>
+<p>In the Auth tab, choose <strong>OAuth 2.0</strong>. With no profile in the workspace yet, the tab shows <strong>No OAuth profiles in this workspace</strong> and a <strong>Create profile</strong> button. Type a <strong>Name</strong> (letters, digits, <code>-</code> and <code>_</code>), pick the <strong>Grant type</strong> and press <strong>Create</strong> or <kbd>Enter</kbd>. The new profile is saved to <code>.postino/project.toml</code> at once, chosen for the request, and its settings open.</p>
+<p>Once there are profiles, the <strong>Profile</strong> picker lists them with their grant type and how many requests use each. At its end, <strong>New profile…</strong> creates another one and <strong>New profile from acme-sso…</strong> copies the current one under a new name. Choosing another profile only changes this request.</p>
+<p>The <a href="postman-import.html">Postman</a>, <a href="bruno-import.html">Bruno</a> and <a href="openapi-import.html">OpenAPI</a> imports do not create profiles yet.</p>
+
+<h2 id="profile-settings">Profile settings</h2>
+<p><strong>Profile settings</strong>, next to the picker, unfolds the profile inside the Auth tab, between the picker and the token card. The panel stays open or closed for every request until you press it again.</p>
+<ul>
+    <li>The header shows the profile name, a pencil to rename it, and <strong>Used by N requests</strong>, which lists them; click one to open it.</li>
+    <li>The profile is shared: a change applies to every request that uses it. Changes mark the request's tab as unsaved, and <kbd>Ctrl</kbd> <kbd>S</kbd> (<kbd>⌘</kbd> <kbd>S</kbd> on macOS) saves the request and the profile together.</li>
+    <li>Fields take <code>{{ }}</code> variables, as everywhere else. Use them for what changes per environment, such as <code>{{authBaseUrl}}/oauth/token</code> or <code>{{clientId}}</code>. When a field is just one variable, the column on its right names the file of the active environment it comes from, in green when it is the <code>.local.env</code> file.</li>
+    <li>A secret written in clear in <strong>Client secret</strong> or <strong>Password</strong> shows <strong>Move to .local.env</strong> in orange: the profile is shared through git. Clicking it saves the value as a variable in the active environment's <code>.local.env</code> file (the name is offered, such as <code>acmeSsoPassword</code>, and can be changed) and writes <code>{{acmeSsoPassword}}</code> in the field instead.</li>
+    <li><strong>Duplicate</strong> copies the profile under a new name. <strong>Delete…</strong> asks first, listing the requests that use it; they keep naming the deleted profile, in red, until another one is chosen.</li>
+    <li><strong>Sign in (dev)</strong> or <strong>Get token (dev)</strong> gets a new token right away with the current settings, for the active environment.</li>
+    <li>Renaming with the pencil happens at once: the profile and the <code>profile =</code> line of every request that uses it are rewritten. The stored tokens of the old name are not kept.</li>
+</ul>
+
+<h3 id="grant-types">Grant types and fields</h3>
+<div class="table"><table>
+    <thead><tr><th>Grant type</th><th>Fields</th><th>Who signs in</th></tr></thead>
+    <tbody>
+        <tr><td>Authorization code</td><td>Authorization URL, Token URL, Client ID, Client secret (optional with PKCE), Scope, PKCE, Redirect</td><td>You, in the system browser</td></tr>
+        <tr><td>Client credentials</td><td>Token URL, Client ID, Client secret, Scope</td><td>Nobody: the client itself</td></tr>
+        <tr><td>Password</td><td>Token URL, Client ID, Client secret, Username, Password, Scope</td><td>Nobody: the user name and password go to the token URL</td></tr>
+    </tbody>
+</table></div>
+<p>The implicit grant is not offered: OAuth 2.1 removes it. With <strong>Authorization code</strong>:</p>
+<ul>
+    <li><strong>PKCE</strong> is on by default and uses SHA-256, with a new verifier on each sign-in. A public client, with no secret, needs it.</li>
+    <li><strong>Redirect</strong> is where the provider sends the browser back after you sign in:
+        <ul>
+            <li><strong>Loopback</strong> (default): <code>http://127.0.0.1:{port}/callback</code>, on a free port chosen on each sign-in, as RFC 8252 recommends. Providers such as Google or Microsoft accept it without registering the port.</li>
+            <li><strong>Fixed URL</strong>: for providers that require the exact URL, port included, such as <code>http://localhost:8765/callback</code>. Postino listens on that port while it waits.</li>
+            <li><strong>Paste manually</strong>: when the provider only allows a web URL. Postino opens the browser, and you paste the URL it ended at, with the code.</li>
+        </ul>
+    </li>
+</ul>
+
+<h3 id="advanced">Advanced</h3>
+<ul>
+    <li><strong>Client auth</strong>: how the client authenticates to the token URL. <strong>Basic header</strong> (default) sends <code>Authorization: Basic</code> with the client ID and secret; <strong>In body</strong> sends <code>client_id</code> and <code>client_secret</code> in the form. A client with no secret always sends its ID in the body.</li>
+    <li><strong>Send token as</strong>: <strong>Header</strong> (default), <code>Authorization</code> with a <strong>Prefix</strong> (<code>Bearer</code> by default), or <strong>Query param</strong>, with its <strong>Name</strong> (<code>access_token</code> by default).</li>
+    <li><strong>Extra params</strong>: parameters the provider needs beyond the standard ones, such as <code>audience</code>. Each one goes in every <strong>Token request</strong> or in the <strong>Auth request</strong>, the URL opened in the browser. Type in the empty last row to add one; a row with no key is left out.</li>
+</ul>
+<p>As with the other auth types, an enabled <code>Authorization</code> header written in the Headers tab is sent instead of the token.</p>
+
+<h2 id="token-card">The token card</h2>
+<p>Under the profile, a card shows the token of the active environment, with the environment's name and color on its right:</p>
+<ul>
+    <li><strong>Token valid</strong>, with how long until it expires and how it will be renewed. <strong>Refresh now</strong> renews it.</li>
+    <li><strong>Token expired 12 min ago</strong>, in amber: Send will renew it first. <strong>Refresh now</strong> does it right away.</li>
+    <li><strong>No token for dev yet</strong>: Send gets one, signing you in if needed. <strong>Sign in now</strong> (or <strong>Get token now</strong>) does it right away.</li>
+</ul>
+<p>With a token, the card shows the start of the access token with <strong>Copy</strong>, when it was obtained and whether there is a refresh token and an id token, and the <code>sub</code>, <code>aud</code> and <code>exp</code> claims when the token is a JWT. <strong>All claims</strong> shows every claim as JSON, with the times in local time. <strong>Sign in again</strong> (or <strong>Get new token</strong>) runs the grant from the start, and <strong>Clear</strong> forgets the token. The line under the card shows what Send adds, such as <code>Authorization: Bearer eyJhbGciOi…</code>.</p>
+<p>In the sidebar, a lock marks the requests that use a profile.</p>
+
+<h2 id="browser-sign-in">Signing in in the browser</h2>
+<p>When Send needs a sign-in for the authorization code grant, your system browser opens on the provider's page, and the response panel shows <strong>Sign in to acme-sso in your browser</strong>. Postino does not show the page inside the app: your browser already has your sessions and your password manager.</p>
+<ol>
+    <li>Sign in as usual. The provider redirects the browser to Postino, which answers with a page that says <strong>Signed in to acme-sso</strong>. You can close that tab.</li>
+    <li>Postino exchanges the code for a token, stores it, and sends the request.</li>
+</ol>
+<ul>
+    <li><strong>Open browser again</strong> opens the page again, and <strong>Copy sign-in link</strong> copies it, to open it in another browser.</li>
+    <li><strong>Paste redirect URL</strong> takes the URL the browser ended at, with the code, when the provider cannot redirect to 127.0.0.1.</li>
+    <li><strong>Cancel</strong> or <kbd>Esc</kbd> stops waiting. Postino only listens on 127.0.0.1, only while it waits, and gives up after 5 minutes. Nothing is sent then.</li>
+</ul>
+<p>Client credentials and password never open the browser: the token is requested silently.</p>
+
+<h2 id="response">In the response</h2>
+<ul>
+    <li>When the token was obtained for the first time, a green line above the body says <strong>New token for acme-sso · dev · expires in 60 min</strong>.</li>
+    <li>When an expired token was renewed, a <strong>Token renewed</strong> chip shows next to the status. Hover it for the profile, the environment and the new expiry, click it to open the console on the token request.</li>
+    <li>Each token request appears in the <a href="responses.html#console">Console</a> as a <code>POST</code> entry of its own, before the request, with its <code>grant_type</code>. <code>oauth</code> rows tell what happened: <em>token expired 12 min ago, refreshing it</em>, <em>new token, expires at 11:42 (60 min)</em>. The client secret, the code, the tokens and the passwords are always masked.</li>
+</ul>
+<h3 id="errors">When it fails</h3>
+<ul>
+    <li><strong>Couldn't get a token for acme-sso</strong>: the token URL answered with an error, such as <code>invalid_client: the client ID or secret is wrong for dev.</code>, or a variable of the profile is missing in the environment. Nothing is sent. <strong>Edit profile</strong> opens Profile settings and <strong>Open in Console</strong> shows the token request.</li>
+    <li><strong>The provider rejected the redirect URL</strong>: register <code>http://127.0.0.1</code> (any port) in the provider, or switch the profile to <strong>Fixed URL</strong>. <strong>Copy redirect URL</strong> copies what to register.</li>
+    <li><strong>The API rejected the token</strong>: the API answered <code>401</code>, so the token may have been revoked, or lack a scope. The response is shown as it came, and Postino never retries by itself, since a 401 can also mean missing permissions. <strong>Get new token and resend</strong> renews it and sends again; <strong>Dismiss</strong> hides the card.</li>
+</ul>
+
+<h2 id="where-tokens-live">Where tokens are stored</h2>
+<p>Tokens are stored per workspace, profile and environment, in the system credential store: the Keychain on macOS, the Credential Manager on Windows, and the Secret Service (KWallet, GNOME Keyring) on Linux. When there is none, they go to <code>oauth-tokens.json</code> in Postino's <a href="files-and-folders.html#on-your-system">configuration folder</a>, readable only by you. The token card says which one is used. Moving or renaming the workspace folder means signing in again.</p>
+<p>Postino logs that a token expired or was obtained, with the profile, the environment and the grant, never a token, a secret or a code.</p>
+
+<h2 id="profile-file">Profiles in the file</h2>
+<p>Each profile is an <code>[oauth.&lt;name&gt;]</code> table of <code>.postino/project.toml</code>:</p>
+<pre><code>[oauth.acme-sso]
+auth_url = "{{authBaseUrl}}/authorize"
+client_id = "{{clientId}}"
+grant = "authorization_code"
+pkce = true
+redirect = "loopback"
+scope = "openid profile payments:read"
+token_url = "{{authBaseUrl}}/oauth/token"
+
+[oauth.acme-sso.token_params]
+audience = "https://api.acme.dev"</code></pre>
+<p>Every key is listed in <a href="files-and-folders.html#oauth-profiles">Files and folders</a>. A request that uses it:</p>
+```postino title="charges/list-charges.postino"
+GET {{baseUrl}}/v2/charges
+Accept: application/json
+
+::: auth oauth2
+profile = acme-sso
+```
+<p>Only <code>profile</code> is required. <code>scope = payments:write</code> asks for another scope than the profile's, with a token of its own.</p>

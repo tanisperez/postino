@@ -59,13 +59,14 @@ Authorization: Bearer {{token}}
 </ul>
 
 <h2 id="authentication">Authentication</h2>
-<p>The <strong>Auth</strong> tab starts with a selector: <strong>None</strong>, <strong>Basic</strong>, <strong>Bearer</strong> or <strong>API key</strong>. Each type shows its own fields, and Postino builds the header for you when the request is sent:</p>
+<p>The <strong>Auth</strong> tab starts with a selector: <strong>None</strong>, <strong>Basic</strong>, <strong>Bearer</strong>, <strong>API key</strong> or <strong>OAuth 2.0</strong>. Each type shows its own fields, and Postino builds the header for you when the request is sent:</p>
 <div class="table"><table>
     <thead><tr><th>Type</th><th>Fields</th><th>Sent as</th></tr></thead>
     <tbody>
         <tr><td>Basic</td><td><strong>Username</strong>, <strong>Password</strong></td><td><code>Authorization: Basic</code> and the Base64 of <code>username:password</code></td></tr>
         <tr><td>Bearer</td><td><strong>Token</strong></td><td><code>Authorization: Bearer &lt;token&gt;</code></td></tr>
         <tr><td>API key</td><td><strong>Name</strong>, <strong>Value</strong>, <strong>Add to</strong> (<strong>Header</strong> or <strong>Query param</strong>)</td><td>A header, or a query parameter added after the Params entries</td></tr>
+        <tr><td>OAuth 2.0</td><td><strong>Profile</strong>, <strong>Scope</strong></td><td>The token of the profile for the active environment, obtained or renewed on Send, see <a href="oauth.html">OAuth 2.0</a></td></tr>
         <tr><td>None</td><td>Nothing</td><td>Nothing</td></tr>
     </tbody>
 </table></div>
@@ -94,7 +95,7 @@ name = api_key
 value = {{apiKey}}
 in = query
 ```
-<p>A plain <code>Authorization: Bearer {{token}}</code> header still works the same. To log in once and reuse the token, see <a href="scripting.html#log-in-once-reuse-the-token">log in once, reuse the token</a>. OAuth 2.0 is not built in yet, see the <a href="faq.html">FAQ</a>.</p>
+<p>A plain <code>Authorization: Bearer {{token}}</code> header still works the same. To log in once and reuse the token, see <a href="scripting.html#log-in-once-reuse-the-token">log in once, reuse the token</a>. For OAuth 2.0, see <a href="oauth.html">OAuth 2.0</a>.</p>
 
 <h2>Body</h2>
 <p>The <strong>Body</strong> tab starts with a selector: <strong>JSON</strong>, <strong>Text</strong>, <strong>XML</strong>, <strong>Form</strong> or <strong>None</strong>.</p>

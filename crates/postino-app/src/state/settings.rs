@@ -327,6 +327,9 @@ pub struct Settings {
     /// shows them (`main`, `origin/main`), shared by every repository. Absent when empty.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub git_favorite_branches: Vec<String>,
+    /// Whether the Auth tab shows an OAuth profile's settings unfolded (#225), remembered from
+    /// its "Profile settings" button.
+    pub oauth_profile_settings_open: bool,
 }
 
 impl Default for Settings {
@@ -354,6 +357,7 @@ impl Default for Settings {
             git_confirm_discard: true,
             git_diff_mode: GitDiffMode::default(),
             git_favorite_branches: Vec::new(),
+            oauth_profile_settings_open: false,
         }
     }
 }
@@ -526,6 +530,10 @@ fn parse_settings(content: &str) -> Settings {
         .and_then(|table| table.get("git_confirm_discard"))
         .and_then(toml::Value::as_bool)
         .unwrap_or(defaults.git_confirm_discard);
+    let oauth_profile_settings_open = table
+        .and_then(|table| table.get("oauth_profile_settings_open"))
+        .and_then(toml::Value::as_bool)
+        .unwrap_or(defaults.oauth_profile_settings_open);
     let git_diff_mode = table
         .and_then(|table| table.get("git_diff_mode"))
         .and_then(toml::Value::as_str)
@@ -565,6 +573,7 @@ fn parse_settings(content: &str) -> Settings {
         git_commit_action,
         git_block_secrets,
         git_confirm_discard,
+        oauth_profile_settings_open,
         git_diff_mode,
         git_favorite_branches,
     }
@@ -697,6 +706,7 @@ mod tests {
             git_confirm_discard: false,
             git_diff_mode: GitDiffMode::Unified,
             git_favorite_branches: vec!["main".to_string(), "origin/release/0.4".to_string()],
+            oauth_profile_settings_open: true,
         };
 
         write_settings(dir.path(), &settings);

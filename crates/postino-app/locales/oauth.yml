@@ -1,0 +1,822 @@
+# OAuth 2.0: the Auth tab's OAuth type, Profile settings, token card, sign-in and errors (#225, #226). Glossary and rules: docs/i18n.md
+_version: 2
+"oauth.profile":
+  en: "Profile"
+  es: "Perfil"
+  gl: "Perfil"
+  it: "Profilo"
+"oauth.choose_profile":
+  en: "Choose a profile"
+  es: "Elegir un perfil"
+  gl: "Escoller un perfil"
+  it: "Scegli un profilo"
+"oauth.profile_not_found":
+  en: "Profile not found"
+  es: "Perfil no encontrado"
+  gl: "Perfil non atopado"
+  it: "Profilo non trovato"
+"oauth.unknown_profile":
+  en: "The workspace has no OAuth profile named %{profile}. Choose another one."
+  es: "El espacio de trabajo no tiene ningún perfil OAuth llamado %{profile}. Elige otro."
+  gl: "O espazo de traballo non ten ningún perfil OAuth chamado %{profile}. Escolle outro."
+  it: "Lo spazio di lavoro non ha alcun profilo OAuth chiamato %{profile}. Scegline un altro."
+"oauth.profile_settings":
+  en: "Profile settings"
+  es: "Ajustes del perfil"
+  gl: "Axustes do perfil"
+  it: "Impostazioni del profilo"
+"oauth.scope":
+  en: "Scope"
+  es: "Scope"
+  gl: "Scope"
+  it: "Scope"
+"oauth.from_profile":
+  en: "from profile"
+  es: "del perfil"
+  gl: "do perfil"
+  it: "dal profilo"
+"oauth.new_profile":
+  en: "New profile…"
+  es: "Nuevo perfil…"
+  gl: "Novo perfil…"
+  it: "Nuovo profilo…"
+"oauth.new_profile_from":
+  en: "New profile from %{profile}…"
+  es: "Nuevo perfil a partir de %{profile}…"
+  gl: "Novo perfil a partir de %{profile}…"
+  it: "Nuovo profilo da %{profile}…"
+"oauth.new_profile_title":
+  en: "New OAuth profile"
+  es: "Nuevo perfil OAuth"
+  gl: "Novo perfil OAuth"
+  it: "Nuovo profilo OAuth"
+"oauth.new_profile_from_title":
+  en: "New profile from %{profile}"
+  es: "Nuevo perfil a partir de %{profile}"
+  gl: "Novo perfil a partir de %{profile}"
+  it: "Nuovo profilo da %{profile}"
+"oauth.request_count.one":
+  en: "%{count} request"
+  es: "%{count} petición"
+  gl: "%{count} petición"
+  it: "%{count} richiesta"
+"oauth.request_count.other":
+  en: "%{count} requests"
+  es: "%{count} peticiones"
+  gl: "%{count} peticións"
+  it: "%{count} richieste"
+"oauth.used_by.one":
+  en: "Used by %{count} request"
+  es: "Usado por %{count} petición"
+  gl: "Usado por %{count} petición"
+  it: "Usato da %{count} richiesta"
+"oauth.used_by.other":
+  en: "Used by %{count} requests"
+  es: "Usado por %{count} peticiones"
+  gl: "Usado por %{count} peticións"
+  it: "Usato da %{count} richieste"
+"oauth.used_by_none":
+  en: "No request uses this profile yet."
+  es: "Ninguna petición usa este perfil todavía."
+  gl: "Ningunha petición usa este perfil aínda."
+  it: "Nessuna richiesta usa ancora questo profilo."
+"oauth.shared_profile.one":
+  en: "Shared profile: changes apply to the %{count} request that uses it. Saved to .postino/project.toml with Ctrl+S."
+  es: "Perfil compartido: los cambios se aplican a la %{count} petición que lo usa. Se guarda en .postino/project.toml con Ctrl+S."
+  gl: "Perfil compartido: os cambios aplícanse á %{count} petición que o usa. Gárdase en .postino/project.toml con Ctrl+S."
+  it: "Profilo condiviso: le modifiche valgono per la %{count} richiesta che lo usa. Si salva in .postino/project.toml con Ctrl+S."
+"oauth.shared_profile.other":
+  en: "Shared profile: changes apply to all %{count} requests that use it. Saved to .postino/project.toml with Ctrl+S."
+  es: "Perfil compartido: los cambios se aplican a las %{count} peticiones que lo usan. Se guarda en .postino/project.toml con Ctrl+S."
+  gl: "Perfil compartido: os cambios aplícanse ás %{count} peticións que o usan. Gárdase en .postino/project.toml con Ctrl+S."
+  it: "Profilo condiviso: le modifiche valgono per tutte le %{count} richieste che lo usano. Si salva in .postino/project.toml con Ctrl+S."
+"oauth.grant_type":
+  en: "Grant type"
+  es: "Tipo de concesión"
+  gl: "Tipo de concesión"
+  it: "Tipo di concessione"
+"oauth.grant_code":
+  en: "Authorization code"
+  es: "Código de autorización"
+  gl: "Código de autorización"
+  it: "Codice di autorizzazione"
+"oauth.grant_code_pkce":
+  en: "Authorization code + PKCE"
+  es: "Código de autorización + PKCE"
+  gl: "Código de autorización + PKCE"
+  it: "Codice di autorizzazione + PKCE"
+"oauth.grant_client_credentials":
+  en: "Client credentials"
+  es: "Credenciales de cliente"
+  gl: "Credenciais de cliente"
+  it: "Credenziali client"
+"oauth.grant_password":
+  en: "Password"
+  es: "Contraseña"
+  gl: "Contrasinal"
+  it: "Password"
+"oauth.field_auth_url":
+  en: "Authorization URL"
+  es: "URL de autorización"
+  gl: "URL de autorización"
+  it: "URL di autorizzazione"
+"oauth.field_token_url":
+  en: "Token URL"
+  es: "URL del token"
+  gl: "URL do token"
+  it: "URL del token"
+"oauth.field_client_id":
+  en: "Client ID"
+  es: "Client ID"
+  gl: "Client ID"
+  it: "Client ID"
+"oauth.field_client_secret":
+  en: "Client secret"
+  es: "Client secret"
+  gl: "Client secret"
+  it: "Client secret"
+"oauth.field_redirect_url":
+  en: "Redirect URL"
+  es: "URL de redirección"
+  gl: "URL de redirección"
+  it: "URL di reindirizzamento"
+"oauth.field_token_name":
+  en: "Token name"
+  es: "Nombre del token"
+  gl: "Nome do token"
+  it: "Nome del token"
+"oauth.optional_with_pkce":
+  en: "Optional with PKCE"
+  es: "Opcional con PKCE"
+  gl: "Opcional con PKCE"
+  it: "Facoltativo con PKCE"
+"oauth.public_client":
+  en: "public client"
+  es: "cliente público"
+  gl: "cliente público"
+  it: "client pubblico"
+"oauth.move_to_local_env":
+  en: "Move to .local.env"
+  es: "Mover a .local.env"
+  gl: "Mover a .local.env"
+  it: "Sposta in .local.env"
+"oauth.move_to_local_env_tooltip":
+  en: "A secret written here is shared through git with the workspace"
+  es: "Un secreto escrito aquí se comparte por git con el espacio de trabajo"
+  gl: "Un segredo escrito aquí compártese por git co espazo de traballo"
+  it: "Un segreto scritto qui viene condiviso via git con lo spazio di lavoro"
+"oauth.move_title":
+  en: "Move the secret to .local.env"
+  es: "Mover el secreto a .local.env"
+  gl: "Mover o segredo a .local.env"
+  it: "Sposta il segreto in .local.env"
+"oauth.move_text":
+  en: "The value is saved as a variable in %{file}, which git ignores, and the profile uses the variable instead."
+  es: "El valor se guarda como variable en %{file}, que git ignora, y el perfil usa la variable en su lugar."
+  gl: "O valor gárdase como variable en %{file}, que git ignora, e o perfil usa a variable no seu lugar."
+  it: "Il valore viene salvato come variabile in %{file}, ignorato da git, e il profilo usa la variabile al suo posto."
+"oauth.move_confirm":
+  en: "Move"
+  es: "Mover"
+  gl: "Mover"
+  it: "Sposta"
+"oauth.move_needs_environment":
+  en: "Choose an environment first: the secret goes to its .local.env file."
+  es: "Elige antes un entorno: el secreto va a su fichero .local.env."
+  gl: "Escolle antes un contorno: o segredo vai ao seu ficheiro .local.env."
+  it: "Scegli prima un ambiente: il segreto va nel suo file .local.env."
+"oauth.pkce_note":
+  en: "· new verifier on each sign-in"
+  es: "· verificador nuevo en cada inicio de sesión"
+  gl: "· verificador novo en cada inicio de sesión"
+  it: "· nuovo verifier a ogni accesso"
+"oauth.redirect":
+  en: "Redirect"
+  es: "Redirección"
+  gl: "Redirección"
+  it: "Reindirizzamento"
+"oauth.redirect_loopback":
+  en: "Loopback"
+  es: "Loopback"
+  gl: "Loopback"
+  it: "Loopback"
+"oauth.redirect_fixed":
+  en: "Fixed URL"
+  es: "URL fija"
+  gl: "URL fixa"
+  it: "URL fisso"
+"oauth.redirect_manual":
+  en: "Paste manually"
+  es: "Pegar a mano"
+  gl: "Pegar a man"
+  it: "Incolla a mano"
+"oauth.redirect_loopback_note":
+  en: "A free port is chosen on each sign-in. This is what RFC 8252 recommends; providers such as Google or Microsoft accept it without registering the port."
+  es: "Se elige un puerto libre en cada inicio de sesión. Es lo que recomienda RFC 8252; proveedores como Google o Microsoft lo aceptan sin registrar el puerto."
+  gl: "Escóllese un porto libre en cada inicio de sesión. É o que recomenda RFC 8252; provedores como Google ou Microsoft acéptano sen rexistrar o porto."
+  it: "A ogni accesso si sceglie una porta libera. È quanto raccomanda la RFC 8252; provider come Google o Microsoft lo accettano senza registrare la porta."
+"oauth.redirect_fixed_note":
+  en: "For providers that require the exact URL, port included. Postino listens on that port while it waits."
+  es: "Para proveedores que exigen la URL exacta, puerto incluido. Postino escucha en ese puerto mientras espera."
+  gl: "Para provedores que esixen a URL exacta, porto incluído. Postino escoita nese porto mentres agarda."
+  it: "Per i provider che richiedono l'URL esatto, porta inclusa. Postino resta in ascolto su quella porta mentre attende."
+"oauth.redirect_manual_note":
+  en: "When only a web URL is allowed: Postino opens the browser and asks you to paste the URL it ended at, with the code."
+  es: "Cuando solo se admite una URL web: Postino abre el navegador y pide pegar la URL a la que acabó redirigiendo, con el código."
+  gl: "Cando só se admite unha URL web: Postino abre o navegador e pide pegar a URL á que acabou redirixindo, co código."
+  it: "Quando è ammesso solo un URL web: Postino apre il browser e chiede di incollare l'URL di arrivo, con il codice."
+"oauth.advanced":
+  en: "Advanced"
+  es: "Avanzado"
+  gl: "Avanzado"
+  it: "Avanzate"
+"oauth.client_auth":
+  en: "Client auth"
+  es: "Auth. cliente"
+  gl: "Auth. cliente"
+  it: "Auth client"
+"oauth.client_auth_basic":
+  en: "Basic header"
+  es: "Cabecera Basic"
+  gl: "Cabeceira Basic"
+  it: "Intestazione Basic"
+"oauth.client_auth_body":
+  en: "In body"
+  es: "En el cuerpo"
+  gl: "No corpo"
+  it: "Nel corpo"
+"oauth.send_token_as":
+  en: "Send token as"
+  es: "Token en"
+  gl: "Token en"
+  it: "Token in"
+"oauth.token_in_header":
+  en: "Header"
+  es: "Cabecera"
+  gl: "Cabeceira"
+  it: "Intestazione"
+"oauth.token_in_query":
+  en: "Query param"
+  es: "Parámetro de consulta"
+  gl: "Parámetro de consulta"
+  it: "Parametro di query"
+"oauth.prefix":
+  en: "Prefix"
+  es: "Prefijo"
+  gl: "Prefixo"
+  it: "Prefisso"
+"oauth.param_name":
+  en: "Name"
+  es: "Nombre"
+  gl: "Nome"
+  it: "Nome"
+"oauth.header_suffix":
+  en: "header"
+  es: "en cabecera"
+  gl: "en cabeceira"
+  it: "nell'intestazione"
+"oauth.query_suffix":
+  en: "query"
+  es: "en la consulta"
+  gl: "na consulta"
+  it: "nella query"
+"oauth.extra_params.one":
+  en: "%{count} extra param"
+  es: "%{count} parámetro extra"
+  gl: "%{count} parámetro extra"
+  it: "%{count} parametro extra"
+"oauth.extra_params.other":
+  en: "%{count} extra params"
+  es: "%{count} parámetros extra"
+  gl: "%{count} parámetros extra"
+  it: "%{count} parametri extra"
+"oauth.extra_params_label":
+  en: "Extra params"
+  es: "Parám. extra"
+  gl: "Parám. extra"
+  it: "Param. extra"
+"oauth.param_token_request":
+  en: "Token request"
+  es: "Petición de token"
+  gl: "Petición de token"
+  it: "Richiesta del token"
+"oauth.param_auth_request":
+  en: "Auth request"
+  es: "Petición de autorización"
+  gl: "Petición de autorización"
+  it: "Richiesta di autorizzazione"
+"oauth.duplicate":
+  en: "Duplicate"
+  es: "Duplicar"
+  gl: "Duplicar"
+  it: "Duplica"
+"oauth.delete":
+  en: "Delete…"
+  es: "Eliminar…"
+  gl: "Eliminar…"
+  it: "Elimina…"
+"oauth.delete_title":
+  en: "Delete the profile %{profile}?"
+  es: "¿Eliminar el perfil %{profile}?"
+  gl: "Eliminar o perfil %{profile}?"
+  it: "Eliminare il profilo %{profile}?"
+"oauth.delete_text.one":
+  en: "%{count} request uses %{profile}. It keeps naming it, marked in red, until another profile is chosen:"
+  es: "%{count} petición usa %{profile}. Lo seguirá nombrando, marcado en rojo, hasta que se elija otro perfil:"
+  gl: "%{count} petición usa %{profile}. Seguirao nomeando, marcado en vermello, ata que se escolla outro perfil:"
+  it: "%{count} richiesta usa %{profile}. Continuerà a nominarlo, segnato in rosso, finché non si sceglie un altro profilo:"
+"oauth.delete_text.other":
+  en: "%{count} requests use %{profile}. They keep naming it, marked in red, until another profile is chosen:"
+  es: "%{count} peticiones usan %{profile}. Lo seguirán nombrando, marcado en rojo, hasta que se elija otro perfil:"
+  gl: "%{count} peticións usan %{profile}. Seguirano nomeando, marcado en vermello, ata que se escolla outro perfil:"
+  it: "%{count} richieste usano %{profile}. Continueranno a nominarlo, segnato in rosso, finché non si sceglie un altro profilo:"
+"oauth.delete_text_unused":
+  en: "No request uses %{profile}. It is removed from .postino/project.toml."
+  es: "Ninguna petición usa %{profile}. Se quita de .postino/project.toml."
+  gl: "Ningunha petición usa %{profile}. Quítase de .postino/project.toml."
+  it: "Nessuna richiesta usa %{profile}. Viene rimosso da .postino/project.toml."
+"oauth.rename_profile":
+  en: "Rename profile"
+  es: "Renombrar perfil"
+  gl: "Renomear perfil"
+  it: "Rinomina profilo"
+"oauth.rename_note.one":
+  en: "The %{count} request that uses it is updated now. Its stored tokens are signed out."
+  es: "La %{count} petición que lo usa se actualiza ahora. Sus tokens guardados se descartan."
+  gl: "A %{count} petición que o usa actualízase agora. Os seus tokens gardados descártanse."
+  it: "La %{count} richiesta che lo usa viene aggiornata ora. I suoi token salvati vengono scartati."
+"oauth.rename_note.other":
+  en: "The %{count} requests that use it are updated now. Its stored tokens are signed out."
+  es: "Las %{count} peticiones que lo usan se actualizan ahora. Sus tokens guardados se descartan."
+  gl: "As %{count} peticións que o usan actualízanse agora. Os seus tokens gardados descártanse."
+  it: "Le %{count} richieste che lo usano vengono aggiornate ora. I suoi token salvati vengono scartati."
+"oauth.name":
+  en: "Name"
+  es: "Nombre"
+  gl: "Nome"
+  it: "Nome"
+"oauth.name_empty":
+  en: "The name cannot be empty."
+  es: "El nombre no puede estar vacío."
+  gl: "O nome non pode estar baleiro."
+  it: "Il nome non può essere vuoto."
+"oauth.name_invalid":
+  en: "Use only letters, digits, - and _."
+  es: "Usa solo letras, dígitos, - y _."
+  gl: "Usa só letras, díxitos, - e _."
+  it: "Usa solo lettere, cifre, - e _."
+"oauth.name_taken":
+  en: "There is already a profile named %{name}."
+  es: "Ya hay un perfil llamado %{name}."
+  gl: "Xa hai un perfil chamado %{name}."
+  it: "Esiste già un profilo chiamato %{name}."
+"oauth.create":
+  en: "Create"
+  es: "Crear"
+  gl: "Crear"
+  it: "Crea"
+"oauth.create_profile":
+  en: "Create profile"
+  es: "Crear perfil"
+  gl: "Crear perfil"
+  it: "Crea profilo"
+"oauth.empty_title":
+  en: "No OAuth profiles in this workspace"
+  es: "No hay perfiles OAuth en este espacio de trabajo"
+  gl: "Non hai perfís OAuth neste espazo de traballo"
+  it: "Nessun profilo OAuth in questo spazio di lavoro"
+"oauth.empty_text":
+  en: "A profile holds the OAuth settings once, and every request that needs it just picks it."
+  es: "Un perfil guarda la configuración OAuth una sola vez, y cada petición que la necesita solo lo elige."
+  gl: "Un perfil garda a configuración OAuth unha soa vez, e cada petición que a precisa só o escolle."
+  it: "Un profilo conserva le impostazioni OAuth una sola volta, e ogni richiesta che ne ha bisogno lo sceglie e basta."
+"oauth.create_hint":
+  en: "The fields start empty, with examples as placeholders ({{authBaseUrl}}/oauth/token). Use variables for what changes per environment. The Postman, Bruno and OpenAPI imports create profiles on their own."
+  es: "Los campos empiezan vacíos, con ejemplos como marcador ({{authBaseUrl}}/oauth/token). Usa variables para lo que cambia por entorno. Las importaciones de Postman, Bruno y OpenAPI crean perfiles por su cuenta."
+  gl: "Os campos comezan baleiros, con exemplos como marcador ({{authBaseUrl}}/oauth/token). Usa variables para o que cambia por contorno. As importacións de Postman, Bruno e OpenAPI crean perfís pola súa conta."
+  it: "I campi partono vuoti, con esempi come segnaposto ({{authBaseUrl}}/oauth/token). Usa variabili per ciò che cambia per ambiente. Le importazioni di Postman, Bruno e OpenAPI creano i profili da sole."
+"oauth.copy_hint":
+  en: "The copy keeps every setting of the profile, under the new name."
+  es: "La copia conserva todos los ajustes del perfil con el nombre nuevo."
+  gl: "A copia conserva todos os axustes do perfil co nome novo."
+  it: "La copia conserva tutte le impostazioni del profilo con il nuovo nome."
+"oauth.test_sign_in":
+  en: "Sign in (%{env})"
+  es: "Iniciar sesión (%{env})"
+  gl: "Iniciar sesión (%{env})"
+  it: "Accedi (%{env})"
+"oauth.test_get_token":
+  en: "Get token (%{env})"
+  es: "Obtener token (%{env})"
+  gl: "Obter token (%{env})"
+  it: "Ottieni token (%{env})"
+"oauth.no_environment":
+  en: "No environment"
+  es: "Sin entorno"
+  gl: "Sen contorno"
+  it: "Nessun ambiente"
+"oauth.card_valid":
+  en: "Token valid"
+  es: "Token válido"
+  gl: "Token válido"
+  it: "Token valido"
+"oauth.card_expired":
+  en: "Token expired %{ago} ago"
+  es: "El token caducó hace %{ago}"
+  gl: "O token caducou hai %{ago}"
+  it: "Token scaduto %{ago} fa"
+"oauth.card_none":
+  en: "No token for %{env} yet"
+  es: "Aún no hay token para %{env}"
+  gl: "Aínda non hai token para %{env}"
+  it: "Ancora nessun token per %{env}"
+"oauth.card_none_no_env":
+  en: "No token yet"
+  es: "Aún no hay token"
+  gl: "Aínda non hai token"
+  it: "Ancora nessun token"
+"oauth.expires_in":
+  en: "Expires in %{time}"
+  es: "Caduca en %{time}"
+  gl: "Caduca en %{time}"
+  it: "Scade tra %{time}"
+"oauth.expires_in_minutes":
+  en: "expires in %{minutes} min"
+  es: "caduca en %{minutes} min"
+  gl: "caduca en %{minutes} min"
+  it: "scade tra %{minutes} min"
+"oauth.expires_at":
+  en: "expires at %{time}"
+  es: "caduca a las %{time}"
+  gl: "caduca ás %{time}"
+  it: "scade alle %{time}"
+"oauth.never_expires":
+  en: "does not expire"
+  es: "no caduca"
+  gl: "non caduca"
+  it: "non scade"
+"oauth.renewed_with_refresh":
+  en: "renewed automatically with the refresh token"
+  es: "se renueva solo con el refresh token"
+  gl: "renóvase só co refresh token"
+  it: "rinnovato da solo con il refresh token"
+"oauth.renewed_by_sign_in":
+  en: "Send signs in again when it expires"
+  es: "Send vuelve a iniciar sesión cuando caduque"
+  gl: "Send volve iniciar sesión cando caduque"
+  it: "Send accede di nuovo quando scade"
+"oauth.renewed_by_grant":
+  en: "Send gets a new one when it expires"
+  es: "Send pide otro cuando caduque"
+  gl: "Send pide outro cando caduque"
+  it: "Send ne ottiene uno nuovo quando scade"
+"oauth.expired_refresh_no_browser":
+  en: "Send will renew it first with the refresh token, without opening the browser"
+  es: "Send lo renovará antes con el refresh token, sin abrir el navegador"
+  gl: "Send renovarao antes co refresh token, sen abrir o navegador"
+  it: "Send lo rinnoverà prima con il refresh token, senza aprire il browser"
+"oauth.expired_refresh":
+  en: "Send will renew it first with the refresh token"
+  es: "Send lo renovará antes con el refresh token"
+  gl: "Send renovarao antes co refresh token"
+  it: "Send lo rinnoverà prima con il refresh token"
+"oauth.expired_sign_in":
+  en: "Send will open your browser to sign in again"
+  es: "Send abrirá el navegador para volver a iniciar sesión"
+  gl: "Send abrirá o navegador para volver iniciar sesión"
+  it: "Send aprirà il browser per accedere di nuovo"
+"oauth.expired_grant":
+  en: "Send will get a new one first"
+  es: "Send pedirá otro antes"
+  gl: "Send pedirá outro antes"
+  it: "Send ne otterrà prima uno nuovo"
+"oauth.none_sign_in":
+  en: "Send opens your browser to sign in, then sends the request"
+  es: "Send abre el navegador para iniciar sesión y después envía la petición"
+  gl: "Send abre o navegador para iniciar sesión e despois envía a petición"
+  it: "Send apre il browser per accedere, poi invia la richiesta"
+"oauth.none_grant":
+  en: "Send gets one first, then sends the request"
+  es: "Send obtiene uno antes y después envía la petición"
+  gl: "Send obtén un antes e despois envía a petición"
+  it: "Send ne ottiene uno prima, poi invia la richiesta"
+"oauth.refresh_now":
+  en: "Refresh now"
+  es: "Renovar ahora"
+  gl: "Renovar agora"
+  it: "Rinnova ora"
+"oauth.sign_in_now":
+  en: "Sign in now"
+  es: "Iniciar sesión ahora"
+  gl: "Iniciar sesión agora"
+  it: "Accedi ora"
+"oauth.get_token_now":
+  en: "Get token now"
+  es: "Obtener token ahora"
+  gl: "Obter token agora"
+  it: "Ottieni token ora"
+"oauth.sign_in_again":
+  en: "Sign in again"
+  es: "Volver a iniciar sesión"
+  gl: "Volver iniciar sesión"
+  it: "Accedi di nuovo"
+"oauth.get_new_token":
+  en: "Get new token"
+  es: "Obtener token nuevo"
+  gl: "Obter token novo"
+  it: "Ottieni nuovo token"
+"oauth.clear":
+  en: "Clear"
+  es: "Borrar"
+  gl: "Borrar"
+  it: "Cancella"
+"oauth.stored_keychain":
+  en: "Stored in the system keychain"
+  es: "Guardado en el llavero del sistema"
+  gl: "Gardado no chaveiro do sistema"
+  it: "Salvato nel portachiavi di sistema"
+"oauth.stored_file":
+  en: "Stored in Postino's folder, readable only by you"
+  es: "Guardado en la carpeta de Postino, solo legible por ti"
+  gl: "Gardado no cartafol de Postino, só lexible por ti"
+  it: "Salvato nella cartella di Postino, leggibile solo da te"
+"oauth.same_token":
+  en: "Same token for every request using %{profile}"
+  es: "El mismo token para todas las peticiones que usan %{profile}"
+  gl: "O mesmo token para todas as peticións que usan %{profile}"
+  it: "Lo stesso token per tutte le richieste che usano %{profile}"
+"oauth.access_token":
+  en: "Access token"
+  es: "Access token"
+  gl: "Access token"
+  it: "Access token"
+"oauth.obtained":
+  en: "Obtained"
+  es: "Obtenido"
+  gl: "Obtido"
+  it: "Ottenuto"
+"oauth.claims":
+  en: "Claims"
+  es: "Claims"
+  gl: "Claims"
+  it: "Claim"
+"oauth.all_claims":
+  en: "All claims"
+  es: "Todos los claims"
+  gl: "Todos os claims"
+  it: "Tutti i claim"
+"oauth.today_at":
+  en: "Today %{time}"
+  es: "Hoy %{time}"
+  gl: "Hoxe %{time}"
+  it: "Oggi %{time}"
+"oauth.has_refresh":
+  en: "refresh token ✓"
+  es: "refresh token ✓"
+  gl: "refresh token ✓"
+  it: "refresh token ✓"
+"oauth.no_refresh":
+  en: "no refresh token"
+  es: "sin refresh token"
+  gl: "sen refresh token"
+  it: "nessun refresh token"
+"oauth.has_id_token":
+  en: "id token ✓"
+  es: "id token ✓"
+  gl: "id token ✓"
+  it: "id token ✓"
+"oauth.expired_suffix":
+  en: "(expired)"
+  es: "(caducado)"
+  gl: "(caducado)"
+  it: "(scaduto)"
+"oauth.sends":
+  en: "Sends"
+  es: "Envía"
+  gl: "Envía"
+  it: "Invia"
+"oauth.renewed_on_send":
+  en: "(renewed on Send)"
+  es: "(se renueva al enviar)"
+  gl: "(renóvase ao enviar)"
+  it: "(rinnovato all'invio)"
+"oauth.obtained_on_send":
+  en: "(obtained on Send)"
+  es: "(se obtiene al enviar)"
+  gl: "(obtense ao enviar)"
+  it: "(ottenuto all'invio)"
+"oauth.token_renewed":
+  en: "Token renewed"
+  es: "Token renovado"
+  gl: "Token renovado"
+  it: "Token rinnovato"
+"oauth.new_token_notice":
+  en: "New token for %{who} · %{expiry}"
+  es: "Token nuevo para %{who} · %{expiry}"
+  gl: "Token novo para %{who} · %{expiry}"
+  it: "Nuovo token per %{who} · %{expiry}"
+"oauth.console_expired_refresh":
+  en: "token expired %{ago} ago, refreshing it"
+  es: "el token caducó hace %{ago}, se renueva"
+  gl: "o token caducou hai %{ago}, renóvase"
+  it: "token scaduto %{ago} fa, viene rinnovato"
+"oauth.console_expired_regrant":
+  en: "token expired %{ago} ago and has no refresh token, requesting a new one"
+  es: "el token caducó hace %{ago} y no tiene refresh token, se pide otro"
+  gl: "o token caducou hai %{ago} e non ten refresh token, pídese outro"
+  it: "token scaduto %{ago} fa e senza refresh token, se ne richiede uno nuovo"
+"oauth.console_no_token":
+  en: "no token yet, requesting one"
+  es: "aún no hay token, se pide uno"
+  gl: "aínda non hai token, pídese un"
+  it: "ancora nessun token, se ne richiede uno"
+"oauth.console_refresh_rejected":
+  en: "the refresh token was rejected (invalid_grant), repeating the grant"
+  es: "se rechazó el refresh token (invalid_grant), se repite la concesión"
+  gl: "rexeitouse o refresh token (invalid_grant), repítese a concesión"
+  it: "il refresh token è stato rifiutato (invalid_grant), si ripete la concessione"
+"oauth.console_signing_in":
+  en: "opened the browser to sign in"
+  es: "se abrió el navegador para iniciar sesión"
+  gl: "abriuse o navegador para iniciar sesión"
+  it: "aperto il browser per accedere"
+"oauth.console_new_token":
+  en: "new token, expires at %{at} (%{minutes} min)"
+  es: "token nuevo, caduca a las %{at} (%{minutes} min)"
+  gl: "token novo, caduca ás %{at} (%{minutes} min)"
+  it: "nuovo token, scade alle %{at} (%{minutes} min)"
+"oauth.console_new_token_no_expiry":
+  en: "new token, does not expire"
+  es: "token nuevo, no caduca"
+  gl: "token novo, non caduca"
+  it: "nuovo token, non scade"
+"oauth.sign_in_title":
+  en: "Sign in to %{profile} in your browser"
+  es: "Inicia sesión en %{profile} en el navegador"
+  gl: "Inicia sesión en %{profile} no navegador"
+  it: "Accedi a %{profile} nel browser"
+"oauth.sign_in_text":
+  en: "The request will be sent when you finish."
+  es: "La petición se enviará al terminar."
+  gl: "A petición enviarase ao rematar."
+  it: "La richiesta verrà inviata al termine."
+"oauth.environment_word":
+  en: "Environment"
+  es: "Entorno"
+  gl: "Contorno"
+  it: "Ambiente"
+"oauth.open_browser_again":
+  en: "Open browser again"
+  es: "Abrir el navegador otra vez"
+  gl: "Abrir o navegador outra vez"
+  it: "Riapri il browser"
+"oauth.waiting_on":
+  en: "Waiting on %{address}"
+  es: "Esperando en %{address}"
+  gl: "Agardando en %{address}"
+  it: "In attesa su %{address}"
+"oauth.copy_sign_in_link":
+  en: "Copy sign-in link"
+  es: "Copiar enlace de inicio de sesión"
+  gl: "Copiar ligazón de inicio de sesión"
+  it: "Copia link di accesso"
+"oauth.paste_redirect":
+  en: "Paste redirect URL"
+  es: "Pegar URL de redirección"
+  gl: "Pegar URL de redirección"
+  it: "Incolla URL di reindirizzamento"
+"oauth.paste_title":
+  en: "Paste the redirect URL"
+  es: "Pegar la URL de redirección"
+  gl: "Pegar a URL de redirección"
+  it: "Incolla l'URL di reindirizzamento"
+"oauth.paste_text":
+  en: "After signing in, copy from the browser's address bar the URL it ended at, with the code, and paste it here."
+  es: "Tras iniciar sesión, copia de la barra de direcciones del navegador la URL final, con el código, y pégala aquí."
+  gl: "Tras iniciar sesión, copia da barra de enderezos do navegador a URL final, co código, e pégaa aquí."
+  it: "Dopo l'accesso, copia dalla barra degli indirizzi del browser l'URL finale, con il codice, e incollalo qui."
+"oauth.paste_confirm":
+  en: "Continue"
+  es: "Continuar"
+  gl: "Continuar"
+  it: "Continua"
+"oauth.page_signed_in":
+  en: "Signed in to %{profile}"
+  es: "Sesión iniciada en %{profile}"
+  gl: "Sesión iniciada en %{profile}"
+  it: "Accesso eseguito a %{profile}"
+"oauth.page_close_tab":
+  en: "You can close this tab and go back to Postino."
+  es: "Puedes cerrar esta pestaña y volver a Postino."
+  gl: "Podes pechar esta lapela e volver a Postino."
+  it: "Puoi chiudere questa scheda e tornare a Postino."
+"oauth.page_failed":
+  en: "Couldn't sign in to %{profile}"
+  es: "No se pudo iniciar sesión en %{profile}"
+  gl: "Non se puido iniciar sesión en %{profile}"
+  it: "Impossibile accedere a %{profile}"
+"oauth.couldnt_get_token":
+  en: "Couldn't get a token for %{profile}"
+  es: "No se pudo obtener un token para %{profile}"
+  gl: "Non se puido obter un token para %{profile}"
+  it: "Impossibile ottenere un token per %{profile}"
+"oauth.code_invalid_client":
+  en: "the client ID or secret is wrong for %{env}."
+  es: "el client ID o el secret no son correctos para %{env}."
+  gl: "o client ID ou o secret non son correctos para %{env}."
+  it: "il client ID o il secret non sono corretti per %{env}."
+"oauth.code_invalid_grant":
+  en: "the code, the refresh token or the credentials are not valid or have expired."
+  es: "el código, el refresh token o las credenciales no son válidos o han caducado."
+  gl: "o código, o refresh token ou as credenciais non son válidos ou caducaron."
+  it: "il codice, il refresh token o le credenziali non sono validi o sono scaduti."
+"oauth.code_invalid_scope":
+  en: "the scope asked for is not valid for this client."
+  es: "el scope pedido no es válido para este cliente."
+  gl: "o scope pedido non é válido para este cliente."
+  it: "lo scope richiesto non è valido per questo client."
+"oauth.code_unauthorized_client":
+  en: "this client is not allowed to use this grant type."
+  es: "este cliente no puede usar este tipo de concesión."
+  gl: "este cliente non pode usar este tipo de concesión."
+  it: "questo client non può usare questo tipo di concessione."
+"oauth.code_unsupported_grant_type":
+  en: "the server does not support this grant type."
+  es: "el servidor no admite este tipo de concesión."
+  gl: "o servidor non admite este tipo de concesión."
+  it: "il server non supporta questo tipo di concessione."
+"oauth.code_access_denied":
+  en: "the sign-in was denied."
+  es: "se denegó el inicio de sesión."
+  gl: "denegouse o inicio de sesión."
+  it: "l'accesso è stato negato."
+"oauth.code_invalid_request":
+  en: "the server rejected the request: a parameter is missing or wrong."
+  es: "el servidor rechazó la petición: falta un parámetro o es incorrecto."
+  gl: "o servidor rexeitou a petición: falta un parámetro ou é incorrecto."
+  it: "il server ha rifiutato la richiesta: manca un parametro o è errato."
+"oauth.redirect_rejected":
+  en: "The provider rejected the redirect URL"
+  es: "El proveedor rechazó la URL de redirección"
+  gl: "O provedor rexeitou a URL de redirección"
+  it: "Il provider ha rifiutato l'URL di reindirizzamento"
+"oauth.redirect_rejected_message":
+  en: "Register http://127.0.0.1 (any port) in the provider, or switch the profile to Fixed URL."
+  es: "Registra http://127.0.0.1 (cualquier puerto) en el proveedor o cambia el perfil a URL fija."
+  gl: "Rexistra http://127.0.0.1 (calquera porto) no provedor ou cambia o perfil a URL fixa."
+  it: "Registra http://127.0.0.1 (qualsiasi porta) nel provider o passa il profilo a URL fisso."
+"oauth.api_rejected":
+  en: "The API rejected the token"
+  es: "La API rechazó el token"
+  gl: "A API rexeitou o token"
+  it: "L'API ha rifiutato il token"
+"oauth.api_rejected_message":
+  en: "It may have been revoked, or lack a scope. The response is shown below."
+  es: "Puede que se haya revocado o que le falte un scope. La respuesta se muestra debajo."
+  gl: "Pode que se revogase ou que lle falte un scope. A resposta móstrase debaixo."
+  it: "Potrebbe essere stato revocato o mancare di uno scope. La risposta è mostrata sotto."
+"oauth.cancelled":
+  en: "The sign-in was cancelled. Nothing was sent."
+  es: "Se canceló el inicio de sesión. No se envió nada."
+  gl: "Cancelouse o inicio de sesión. Non se enviou nada."
+  it: "L'accesso è stato annullato. Non è stato inviato nulla."
+"oauth.timed_out":
+  en: "The sign-in did not finish within 5 minutes. Nothing was sent."
+  es: "El inicio de sesión no terminó en 5 minutos. No se envió nada."
+  gl: "O inicio de sesión non rematou en 5 minutos. Non se enviou nada."
+  it: "L'accesso non si è concluso entro 5 minuti. Non è stato inviato nulla."
+"oauth.edit_profile":
+  en: "Edit profile"
+  es: "Editar perfil"
+  gl: "Editar perfil"
+  it: "Modifica profilo"
+"oauth.open_in_console":
+  en: "Open in Console"
+  es: "Abrir en la consola"
+  gl: "Abrir na consola"
+  it: "Apri nella console"
+"oauth.copy_redirect_url":
+  en: "Copy redirect URL"
+  es: "Copiar URL de redirección"
+  gl: "Copiar URL de redirección"
+  it: "Copia URL di reindirizzamento"
+"oauth.new_token_and_resend":
+  en: "Get new token and resend"
+  es: "Obtener token nuevo y reenviar"
+  gl: "Obter token novo e reenviar"
+  it: "Ottieni nuovo token e reinvia"
+"oauth.dismiss":
+  en: "Dismiss"
+  es: "Descartar"
+  gl: "Descartar"
+  it: "Ignora"
+"oauth.try_again":
+  en: "Try again"
+  es: "Reintentar"
+  gl: "Tentar de novo"
+  it: "Riprova"
+"oauth.stage_failed":
+  en: "Not sent: no OAuth token."
+  es: "No enviado: no hay token OAuth."
+  gl: "Non enviado: non hai token OAuth."
+  it: "Non inviata: nessun token OAuth."

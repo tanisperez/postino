@@ -14,6 +14,7 @@ mod interpolate;
 mod key_value;
 pub mod log_safe;
 mod method;
+mod oauth;
 mod request;
 mod response;
 
@@ -27,6 +28,10 @@ pub use interpolate::{
 };
 pub use key_value::KeyValue;
 pub use method::Method;
+pub use oauth::{
+    ClientAuth, DEFAULT_TOKEN_PARAM, DEFAULT_TOKEN_PREFIX, ExtraParam, OAuthGrant, OAuthProfile,
+    OAuthRedirect, ParamTarget, TokenPlacement, valid_profile_name,
+};
 pub use request::Request;
 pub use response::{
     ConsoleLevel, ConsoleLine, ResolvedBody, ResolvedField, ResolvedRequest, Response, ScriptStage,

@@ -77,6 +77,24 @@ pub const COMPLETION_MENU_MAX_ROWS: f32 = 8.0;
 pub const AUTH_FORM_MAX_WIDTH: f32 = 560.0;
 /// Width of the labels in front of the Auth tab's fields.
 pub const AUTH_LABEL_WIDTH: f32 = 96.0;
+/// Maximum width of the Auth tab with the OAuth 2.0 type (design OAuth 3a).
+pub const OAUTH_FORM_MAX_WIDTH: f32 = 680.0;
+/// Width of the labels of the OAuth 2.0 Auth tab: Profile, Scope.
+pub const OAUTH_LABEL_WIDTH: f32 = 110.0;
+/// Width of the labels inside Profile settings (design OAuth 3a·2).
+pub const OAUTH_PANEL_LABEL_WIDTH: f32 = 130.0;
+/// Width of the labels of Profile settings' Advanced part, indented.
+pub const OAUTH_ADVANCED_LABEL_WIDTH: f32 = 108.0;
+/// Width of the column that names where a profile field's variable comes from.
+pub const OAUTH_HINT_WIDTH: f32 = 150.0;
+/// Height of the profile picker and of the token card's buttons.
+pub const OAUTH_PICKER_HEIGHT: f32 = 32.0;
+/// Height of the token card's buttons and of the error cards' buttons.
+pub const OAUTH_BUTTON_HEIGHT: f32 = 28.0;
+/// Width of the label column of the token card's rows.
+pub const OAUTH_CARD_LABEL_WIDTH: f32 = 110.0;
+/// Width of the profile picker's menu.
+pub const OAUTH_MENU_WIDTH: f32 = 480.0;
 
 /// Maximum width of the welcome tab's content column when it fills the window (no workspace
 /// open, so no sidebar).

@@ -115,6 +115,7 @@ fn find_unknown_variables(request: &Request, scope: &VarScope) -> Vec<UnknownVar
             scan(name, VariableLocation::Auth);
             scan(value, VariableLocation::Auth);
         }
+        Auth::OAuth2 { scope, .. } => scan(scope, VariableLocation::Auth),
     }
     match &request.body {
         Body::Json(text) | Body::Text(text) | Body::Xml(text) => {

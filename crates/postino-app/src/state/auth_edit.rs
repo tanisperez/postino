@@ -17,6 +17,8 @@ pub enum AuthKind {
     Bearer,
     /// An API key.
     ApiKey,
+    /// OAuth 2.0 through a workspace profile (#225).
+    OAuth2,
 }
 
 impl AuthKind {
@@ -27,15 +29,17 @@ impl AuthKind {
             Auth::Basic { .. } => AuthKind::Basic,
             Auth::Bearer { .. } => AuthKind::Bearer,
             Auth::ApiKey { .. } => AuthKind::ApiKey,
+            Auth::OAuth2 { .. } => AuthKind::OAuth2,
         }
     }
 
     /// Every kind, in the order the type selector lists them.
-    pub const ALL: [AuthKind; 4] = [
+    pub const ALL: [AuthKind; 5] = [
         AuthKind::None,
         AuthKind::Basic,
         AuthKind::Bearer,
         AuthKind::ApiKey,
+        AuthKind::OAuth2,
     ];
 
     /// The label shown in the type selector.
@@ -45,6 +49,7 @@ impl AuthKind {
             AuthKind::Basic => t!("request.auth.basic"),
             AuthKind::Bearer => t!("request.auth.bearer"),
             AuthKind::ApiKey => t!("request.auth.api_key"),
+            AuthKind::OAuth2 => t!("request.auth.oauth2"),
         }
         .into_owned()
     }
@@ -56,6 +61,7 @@ impl AuthKind {
             AuthKind::Basic => &[AuthField::Username, AuthField::Password],
             AuthKind::Bearer => &[AuthField::Token],
             AuthKind::ApiKey => &[AuthField::KeyName, AuthField::KeyValue],
+            AuthKind::OAuth2 => &[AuthField::Scope],
         }
     }
 }
@@ -73,6 +79,8 @@ pub enum AuthField {
     KeyName,
     /// The API key itself.
     KeyValue,
+    /// The scope an OAuth 2.0 request asks for instead of its profile's.
+    Scope,
 }
 
 impl AuthField {
@@ -84,6 +92,7 @@ impl AuthField {
             AuthField::Token => t!("request.auth.token"),
             AuthField::KeyName => t!("request.auth.name"),
             AuthField::KeyValue => t!("common.value"),
+            AuthField::Scope => t!("oauth.scope"),
         }
         .into_owned()
     }
@@ -105,6 +114,7 @@ pub struct AuthStash {
     basic: Option<Auth>,
     bearer: Option<Auth>,
     api_key: Option<Auth>,
+    oauth2: Option<Auth>,
 }
 
 impl AuthStash {
@@ -114,6 +124,7 @@ impl AuthStash {
             AuthKind::Basic => Some(&mut self.basic),
             AuthKind::Bearer => Some(&mut self.bearer),
             AuthKind::ApiKey => Some(&mut self.api_key),
+            AuthKind::OAuth2 => Some(&mut self.oauth2),
         }
     }
 }
@@ -142,6 +153,10 @@ pub fn set_auth_kind(request: &mut Request, kind: AuthKind, stash: &mut AuthStas
                 value: String::new(),
                 location: ApiKeyLocation::Header,
             },
+            AuthKind::OAuth2 => Auth::OAuth2 {
+                profile: String::new(),
+                scope: String::new(),
+            },
         });
 }
 
@@ -153,6 +168,7 @@ pub fn field_value(auth: &Auth, field: AuthField) -> &str {
         (Auth::Bearer { token }, AuthField::Token) => token,
         (Auth::ApiKey { name, .. }, AuthField::KeyName) => name,
         (Auth::ApiKey { value, .. }, AuthField::KeyValue) => value,
+        (Auth::OAuth2 { scope, .. }, AuthField::Scope) => scope,
         _ => "",
     }
 }
@@ -165,9 +181,17 @@ pub fn set_field(auth: &mut Auth, field: AuthField, text: String) {
         (Auth::Bearer { token }, AuthField::Token) => token,
         (Auth::ApiKey { name, .. }, AuthField::KeyName) => name,
         (Auth::ApiKey { value, .. }, AuthField::KeyValue) => value,
+        (Auth::OAuth2 { scope, .. }, AuthField::Scope) => scope,
         _ => return,
     };
     *target = text;
+}
+
+/// Makes an OAuth 2.0 auth use the profile `name`. Does nothing for another kind of auth.
+pub fn set_oauth_profile(auth: &mut Auth, name: &str) {
+    if let Auth::OAuth2 { profile, .. } = auth {
+        *profile = name.to_string();
+    }
 }
 
 /// Sets where an API key is sent. Does nothing for another kind of auth.
@@ -192,7 +216,11 @@ pub enum Overridden {
 pub fn overridden_by(request: &Request) -> Option<Overridden> {
     let (name, location) = match &request.auth {
         Auth::None => return None,
-        Auth::Basic { .. } | Auth::Bearer { .. } => ("Authorization", ApiKeyLocation::Header),
+        // An OAuth 2.0 token goes in the Authorization header unless its profile sends it in the
+        // query, which is rare enough not to warrant reading the profile here.
+        Auth::Basic { .. } | Auth::Bearer { .. } | Auth::OAuth2 { .. } => {
+            ("Authorization", ApiKeyLocation::Header)
+        }
         Auth::ApiKey { name, location, .. } if !name.is_empty() => (name.as_str(), *location),
         Auth::ApiKey { .. } => return None,
     };

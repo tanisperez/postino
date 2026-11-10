@@ -1,0 +1,10 @@
+POST {{baseUrl}}/oauth/revoke
+
+::: post
+test("every access token is revoked", () => {
+  expect(res.json().revoked).toBe(true);
+});
+
+::: docs
+Revokes every access token the sample provider issued, so the next request sends a stored token
+the API rejects.

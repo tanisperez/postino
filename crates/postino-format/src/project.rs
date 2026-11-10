@@ -1,11 +1,15 @@
 //! The workspace configuration file, `.postino/project.toml` (#215): settings that belong to the
 //! workspace and are shared with it through git, unlike the user's own `settings.toml`. Today the
-//! order of the environments (#216) and their colors (#217).
+//! order of the environments (#216), their colors (#217) and the OAuth 2.0 profiles (#225).
 //!
 //! The file is optional: a workspace without it behaves as if it were empty. [`ProjectConfig`]
 //! keeps the whole TOML table it was parsed from, so keys this version does not know (written by
 //! a newer Postino, or by hand) survive a save.
 
+use postino_core::{
+    ClientAuth, DEFAULT_TOKEN_PARAM, DEFAULT_TOKEN_PREFIX, ExtraParam, OAuthGrant, OAuthProfile,
+    OAuthRedirect, ParamTarget, TokenPlacement,
+};
 use toml::{Table, Value};
 
 /// The path of the file, relative to the workspace root, with `/` separators.
@@ -23,6 +27,29 @@ const ENVIRONMENTS: &str = "environments";
 const ORDER: &str = "order";
 /// The table of the environment colors, inside [`ENVIRONMENTS`].
 const COLORS: &str = "colors";
+
+/// The table of the OAuth 2.0 profiles, one sub-table per profile.
+const OAUTH: &str = "oauth";
+/// The keys of a profile table this version writes. Any other key is kept as it is.
+const PROFILE_KEYS: [&str; 17] = [
+    "auth_params",
+    "auth_url",
+    "client_auth",
+    "client_id",
+    "client_secret",
+    "grant",
+    "password",
+    "pkce",
+    "redirect",
+    "redirect_url",
+    "scope",
+    "token_in",
+    "token_param",
+    "token_params",
+    "token_prefix",
+    "token_url",
+    "username",
+];
 
 /// A `project.toml` that is not valid TOML.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -145,6 +172,65 @@ impl ProjectConfig {
         self.set_environment_color(name, None);
     }
 
+    /// The OAuth 2.0 profiles, sorted by name. A profile whose `grant` is missing or unknown is
+    /// read as authorization code, and values of the wrong type as empty, so a hand edit never
+    /// hides a profile its requests use.
+    pub fn oauth_profiles(&self) -> Vec<OAuthProfile> {
+        let Some(oauth) = self.table.get(OAUTH).and_then(Value::as_table) else {
+            return Vec::new();
+        };
+        oauth
+            .iter()
+            .filter_map(|(name, value)| Some(read_profile(name, value.as_table()?)))
+            .collect()
+    }
+
+    /// The profile named `name`, if there is one.
+    pub fn oauth_profile(&self, name: &str) -> Option<OAuthProfile> {
+        let table = self.table.get(OAUTH)?.as_table()?.get(name)?.as_table()?;
+        Some(read_profile(name, table))
+    }
+
+    /// Writes `profile` under its name, replacing what that name held. Keys this version does not
+    /// know are kept.
+    pub fn set_oauth_profile(&mut self, profile: &OAuthProfile) {
+        let mut oauth = match self.table.remove(OAUTH) {
+            Some(Value::Table(table)) => table,
+            _ => Table::new(),
+        };
+        let mut table = match oauth.remove(&profile.name) {
+            Some(Value::Table(table)) => table,
+            _ => Table::new(),
+        };
+        for key in PROFILE_KEYS {
+            table.remove(key);
+        }
+        write_profile(profile, &mut table);
+        oauth.insert(profile.name.clone(), Value::Table(table));
+        self.table.insert(OAUTH.to_string(), Value::Table(oauth));
+    }
+
+    /// Removes the profile `name`, and the `[oauth]` table when it was the last one.
+    pub fn remove_oauth_profile(&mut self, name: &str) {
+        if let Some(oauth) = self.table.get_mut(OAUTH).and_then(Value::as_table_mut) {
+            oauth.remove(name);
+            if oauth.is_empty() {
+                self.table.remove(OAUTH);
+            }
+        }
+    }
+
+    /// Renames the profile `old` to `new`, keeping every key. Does nothing when `old` does not
+    /// exist.
+    pub fn rename_oauth_profile(&mut self, old: &str, new: &str) {
+        let Some(oauth) = self.table.get_mut(OAUTH).and_then(Value::as_table_mut) else {
+            return;
+        };
+        if let Some(value) = oauth.remove(old) {
+            oauth.insert(new.to_string(), value);
+        }
+    }
+
     fn environments(&self) -> Option<&Table> {
         self.table.get(ENVIRONMENTS)?.as_table()
     }
@@ -160,6 +246,106 @@ impl ProjectConfig {
         if !environments.is_empty() {
             self.table
                 .insert(ENVIRONMENTS.to_string(), Value::Table(environments));
+        }
+    }
+}
+
+/// Reads the profile table `table` named `name`.
+fn read_profile(name: &str, table: &Table) -> OAuthProfile {
+    let text = |key: &str| {
+        table
+            .get(key)
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string()
+    };
+    let grant = OAuthGrant::parse(&text("grant")).unwrap_or_default();
+    let mut profile = OAuthProfile::new(name, grant);
+    profile.auth_url = text("auth_url");
+    profile.token_url = text("token_url");
+    profile.client_id = text("client_id");
+    profile.client_secret = text("client_secret");
+    profile.scope = text("scope");
+    profile.username = text("username");
+    profile.password = text("password");
+    profile.pkce = table.get("pkce").and_then(Value::as_bool).unwrap_or(true);
+    profile.redirect = OAuthRedirect::parse(&text("redirect")).unwrap_or_default();
+    profile.redirect_url = text("redirect_url");
+    profile.client_auth = ClientAuth::parse(&text("client_auth")).unwrap_or_default();
+    profile.token_placement = TokenPlacement::parse(&text("token_in")).unwrap_or_default();
+    let prefix = text("token_prefix");
+    if !prefix.is_empty() {
+        profile.token_prefix = prefix;
+    }
+    let param = text("token_param");
+    if !param.is_empty() {
+        profile.token_param = param;
+    }
+    for (key, target) in [
+        ("token_params", ParamTarget::Token),
+        ("auth_params", ParamTarget::Auth),
+    ] {
+        if let Some(params) = table.get(key).and_then(Value::as_table) {
+            profile
+                .extra_params
+                .extend(params.iter().filter_map(|(key, value)| {
+                    Some(ExtraParam {
+                        key: key.clone(),
+                        value: value.as_str()?.to_string(),
+                        target,
+                    })
+                }));
+        }
+    }
+    profile
+}
+
+/// Writes the keys of `profile` into `table`. Empty texts and default options are left out, so a
+/// profile only shows what it sets; `grant` is always written, and so are `pkce` and `redirect`
+/// for the authorization code grant.
+fn write_profile(profile: &OAuthProfile, table: &mut Table) {
+    let mut put = |key: &str, value: &str| {
+        if !value.is_empty() {
+            table.insert(key.to_string(), Value::String(value.to_string()));
+        }
+    };
+    put("grant", profile.grant.as_str());
+    put("auth_url", &profile.auth_url);
+    put("token_url", &profile.token_url);
+    put("client_id", &profile.client_id);
+    put("client_secret", &profile.client_secret);
+    put("scope", &profile.scope);
+    put("username", &profile.username);
+    put("password", &profile.password);
+    put("redirect_url", &profile.redirect_url);
+    if profile.client_auth != ClientAuth::default() {
+        put("client_auth", profile.client_auth.as_str());
+    }
+    if profile.token_placement != TokenPlacement::default() {
+        put("token_in", profile.token_placement.as_str());
+    }
+    if profile.token_prefix != DEFAULT_TOKEN_PREFIX {
+        put("token_prefix", &profile.token_prefix);
+    }
+    if profile.token_param != DEFAULT_TOKEN_PARAM {
+        put("token_param", &profile.token_param);
+    }
+    if profile.grant == OAuthGrant::AuthorizationCode {
+        put("redirect", profile.redirect.as_str());
+        table.insert("pkce".to_string(), Value::Boolean(profile.pkce));
+    }
+    for (key, target) in [
+        ("token_params", ParamTarget::Token),
+        ("auth_params", ParamTarget::Auth),
+    ] {
+        let params: Table = profile
+            .extra_params
+            .iter()
+            .filter(|param| param.target == target && !param.key.trim().is_empty())
+            .map(|param| (param.key.clone(), Value::String(param.value.clone())))
+            .collect();
+        if !params.is_empty() {
+            table.insert(key.to_string(), Value::Table(params));
         }
     }
 }
@@ -273,5 +459,88 @@ mod tests {
         empty.rename_environment("a", "b");
         empty.remove_environment("a");
         assert_eq!(empty, ProjectConfig::default());
+    }
+
+    fn acme_sso() -> OAuthProfile {
+        let mut profile = OAuthProfile::new("acme-sso", OAuthGrant::AuthorizationCode);
+        profile.auth_url = "{{authBaseUrl}}/authorize".into();
+        profile.token_url = "{{authBaseUrl}}/oauth/token".into();
+        profile.client_id = "{{clientId}}".into();
+        profile.scope = "openid profile payments:read".into();
+        profile.extra_params = vec![ExtraParam {
+            key: "audience".into(),
+            value: "https://api.acme.dev".into(),
+            target: ParamTarget::Token,
+        }];
+        profile
+    }
+
+    #[test]
+    fn a_profile_is_written_as_in_the_design() {
+        let mut config = ProjectConfig::default();
+        config.set_environment_order(&names(&["local", "dev", "staging", "prod"]));
+        config.set_oauth_profile(&acme_sso());
+        let text = config.to_toml();
+        let expected = "version = 1\n\n[environments]\norder = [\"local\", \"dev\", \"staging\", \"prod\"]\n\n[oauth.acme-sso]\nauth_url = \"{{authBaseUrl}}/authorize\"\nclient_id = \"{{clientId}}\"\ngrant = \"authorization_code\"\npkce = true\nredirect = \"loopback\"\nscope = \"openid profile payments:read\"\ntoken_url = \"{{authBaseUrl}}/oauth/token\"\n\n[oauth.acme-sso.token_params]\naudience = \"https://api.acme.dev\"\n";
+        assert!(text.ends_with(expected), "{text}");
+        let parsed = ProjectConfig::parse(&text).expect("parse");
+        assert_eq!(parsed.oauth_profiles(), vec![acme_sso()]);
+        assert_eq!(parsed.oauth_profile("acme-sso"), Some(acme_sso()));
+        assert_eq!(parsed.oauth_profile("other"), None);
+    }
+
+    #[test]
+    fn every_option_of_a_profile_round_trips() {
+        let mut profile = OAuthProfile::new("machine", OAuthGrant::Password);
+        profile.token_url = "https://auth/token".into();
+        profile.client_secret = "{{clientSecret}}".into();
+        profile.username = "{{apiUser}}".into();
+        profile.password = "{{apiPassword}}".into();
+        profile.client_auth = ClientAuth::InBody;
+        profile.token_placement = TokenPlacement::Query;
+        profile.token_prefix = "Token".into();
+        profile.token_param = "token".into();
+        profile.extra_params = vec![ExtraParam {
+            key: "prompt".into(),
+            value: "login".into(),
+            target: ParamTarget::Auth,
+        }];
+        let mut config = ProjectConfig::default();
+        config.set_oauth_profile(&profile);
+        let parsed = ProjectConfig::parse(&config.to_toml()).expect("parse");
+        assert_eq!(parsed.oauth_profile("machine"), Some(profile));
+        // Not the authorization code grant: no pkce nor redirect keys.
+        assert!(!config.to_toml().contains("pkce"));
+    }
+
+    #[test]
+    fn profiles_keep_unknown_keys_and_can_be_renamed_and_removed() {
+        let mut config = ProjectConfig::parse(
+            "[oauth.a]\ngrant = \"client_credentials\"\nfuture = 1\n\n[oauth.b]\ngrant = \"nope\"\n",
+        )
+        .expect("parse");
+        let names_of = |config: &ProjectConfig| {
+            config
+                .oauth_profiles()
+                .into_iter()
+                .map(|profile| profile.name)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(names_of(&config), names(&["a", "b"]));
+        assert_eq!(
+            config.oauth_profile("b").map(|profile| profile.grant),
+            Some(OAuthGrant::AuthorizationCode)
+        );
+        let mut a = config.oauth_profile("a").expect("a");
+        a.scope = "read".into();
+        config.set_oauth_profile(&a);
+        assert!(config.to_toml().contains("future = 1"));
+
+        config.rename_oauth_profile("a", "c");
+        assert_eq!(names_of(&config), names(&["b", "c"]));
+        assert!(config.to_toml().contains("future = 1"));
+        config.remove_oauth_profile("b");
+        config.remove_oauth_profile("c");
+        assert!(!config.to_toml().contains("oauth"));
     }
 }

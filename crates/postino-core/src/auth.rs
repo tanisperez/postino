@@ -31,6 +31,16 @@ pub enum Auth {
         /// Where the key is sent.
         location: ApiKeyLocation,
     },
+    /// OAuth 2.0 through a named profile of the workspace (`[oauth.<name>]` in
+    /// `.postino/project.toml`, see [`crate::OAuthProfile`]). The token is obtained or renewed
+    /// when the request is sent, never written in the request.
+    OAuth2 {
+        /// The name of the profile.
+        profile: String,
+        /// The scope to ask for instead of the profile's, empty to use the profile's. A request
+        /// that overrides it gets a token of its own.
+        scope: String,
+    },
 }
 
 /// Where an [`Auth::ApiKey`] is sent.

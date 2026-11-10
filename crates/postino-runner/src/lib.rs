@@ -17,5 +17,5 @@ pub use postino_http::{Client, HttpError, InvalidCertificates, SendOptions};
 pub use postino_script::ScriptEngine;
 pub use preview::{Preview, UnknownVariable, VariableLocation, preview};
 pub use result::{FailedStage, RunResult};
-pub use runner::Runner;
+pub use runner::{OAuthConfig, Runner};
 pub use session_env::SessionEnv;

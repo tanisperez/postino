@@ -6,8 +6,15 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Instant, SystemTime};
 
-use postino_core::{Environment, KeyValue, Request, ResolvedRequest, Response, VarScope};
+use postino_core::{
+    ApiKeyLocation, Auth, Environment, KeyValue, OAuthProfile, Request, ResolvedRequest, Response,
+    TokenPlacement, VarScope,
+};
 use postino_http::{Client, HttpError, SendOptions};
+use postino_oauth::{
+    Force, MemoryStore, NoSignIn, OAuthEnv, OAuthError, OAuthRun, SignInHandler, TokenStore,
+    ensure_token, token_key,
+};
 use postino_script::{PostContext, PreContext, ScriptEngine};
 
 use crate::resolve::{MultipartFiles, resolve};
@@ -27,6 +34,61 @@ pub struct Runner {
     options: SendOptions,
     /// Where the relative paths of multipart files start: the workspace.
     base_dir: Option<PathBuf>,
+    /// The workspace's OAuth 2.0 profiles and where their tokens live.
+    oauth: OAuthConfig,
+}
+
+/// What [`Runner`] needs to send a request whose auth is an OAuth 2.0 profile (#225).
+#[derive(Clone)]
+pub struct OAuthConfig {
+    /// The workspace id of the token keys, see [`postino_oauth::workspace_id`].
+    pub workspace: String,
+    /// The profiles of the workspace's `project.toml`.
+    pub profiles: Arc<Vec<OAuthProfile>>,
+    /// Where tokens are kept.
+    pub store: Arc<dyn TokenStore>,
+    /// The browser sign-in of the authorization code grant.
+    pub sign_in: Arc<dyn SignInHandler>,
+}
+
+impl Default for OAuthConfig {
+    /// No profiles, tokens in memory, no browser sign-in.
+    fn default() -> Self {
+        OAuthConfig {
+            workspace: String::new(),
+            profiles: Arc::new(Vec::new()),
+            store: Arc::new(MemoryStore::default()),
+            sign_in: Arc::new(NoSignIn),
+        }
+    }
+}
+
+impl OAuthConfig {
+    /// The profile named `name`.
+    pub fn profile(&self, name: &str) -> Option<&OAuthProfile> {
+        self.profiles.iter().find(|profile| profile.name == name)
+    }
+}
+
+/// The auth that carries `token` the way `profile` sends it, so the usual rules apply (an
+/// enabled header or query entry of the same name wins).
+fn token_auth(profile: &OAuthProfile, token: &str) -> Auth {
+    match profile.token_placement {
+        TokenPlacement::Header => Auth::ApiKey {
+            name: "Authorization".to_string(),
+            value: if profile.token_prefix.trim().is_empty() {
+                token.to_string()
+            } else {
+                format!("{} {token}", profile.token_prefix.trim())
+            },
+            location: ApiKeyLocation::Header,
+        },
+        TokenPlacement::Query => Auth::ApiKey {
+            name: profile.token_param.clone(),
+            value: token.to_string(),
+            location: ApiKeyLocation::Query,
+        },
+    }
 }
 
 impl Runner {
@@ -38,6 +100,54 @@ impl Runner {
             engine,
             options,
             base_dir: None,
+            oauth: OAuthConfig::default(),
+        }
+    }
+
+    /// Gives the runner the workspace's OAuth 2.0 profiles and token store.
+    #[must_use]
+    pub fn with_oauth(mut self, oauth: OAuthConfig) -> Self {
+        self.oauth = oauth;
+        self
+    }
+
+    /// Gets the token of the profile `name` for `environment`, as Send does, or with `force` as
+    /// the buttons of the Auth tab do. `scope` overrides the profile's when not empty.
+    pub fn oauth_token(
+        &self,
+        name: &str,
+        scope: &str,
+        environment: &Environment,
+        session_env: &SessionEnv,
+        force: Force,
+    ) -> OAuthRun {
+        let vars = VarScope {
+            request_vars: &[],
+            session_env: session_env.as_slice(),
+            environment: &environment.variables,
+        };
+        match self.oauth.profile(name) {
+            Some(profile) => {
+                let env = OAuthEnv {
+                    workspace: &self.oauth.workspace,
+                    environment: &environment.name,
+                    store: self.oauth.store.as_ref(),
+                    options: &self.options,
+                    sign_in: self.oauth.sign_in.as_ref(),
+                };
+                ensure_token(&env, profile, scope, &vars, force)
+            }
+            None => {
+                let missing = OAuthProfile::new(name, Default::default());
+                OAuthRun {
+                    profile: name.to_string(),
+                    environment: environment.name.clone(),
+                    key: token_key(&self.oauth.workspace, &environment.name, &missing, scope),
+                    steps: Vec::new(),
+                    event: None,
+                    result: Err(OAuthError::UnknownProfile(name.to_string())),
+                }
+            }
         }
     }
 
@@ -98,6 +208,34 @@ impl Runner {
         let mut console = Vec::new();
         let mut tests = Vec::new();
 
+        // 0. The OAuth 2.0 token, before the pre script: scripts have no network, and the token
+        // only depends on the environment.
+        let mut token_auth_value = None;
+        let mut oauth = None;
+        if let Auth::OAuth2 { profile, scope } = &request.auth {
+            let run = self.oauth_token(profile, scope, environment, session_env, Force::None);
+            match (&run.result, self.oauth.profile(profile)) {
+                (Ok(token), Some(profile)) => {
+                    token_auth_value = Some(token_auth(profile, &token.access_token));
+                    oauth = Some(run);
+                }
+                _ => {
+                    return RunResult {
+                        resolved_request: None,
+                        response: None,
+                        tests,
+                        console,
+                        warnings: Vec::new(),
+                        failed_stage: Some(FailedStage::Auth),
+                        started_at,
+                        sent_at: None,
+                        finished_at: SystemTime::now(),
+                        oauth: Some(run),
+                    };
+                }
+            }
+        }
+
         // 1. Pre script, skipped if empty.
         let mut working_request = request.clone();
         let mut request_vars: Vec<KeyValue> = Vec::new();
@@ -126,6 +264,7 @@ impl Runner {
                         started_at,
                         sent_at: None,
                         finished_at: SystemTime::now(),
+                        oauth,
                     };
                 }
                 Ok(outcome) => {
@@ -136,6 +275,10 @@ impl Runner {
                     tests.extend(outcome.tests);
                 }
             }
+        }
+
+        if let Some(auth) = token_auth_value {
+            working_request.auth = auth;
         }
 
         // 2. Interpolate into a ResolvedRequest. Never fatal: unresolved markers become warnings.
@@ -175,6 +318,7 @@ impl Runner {
                     started_at,
                     sent_at: Some(sent_at),
                     finished_at: SystemTime::now(),
+                    oauth,
                 };
             }
         };
@@ -208,6 +352,7 @@ impl Runner {
                         started_at,
                         sent_at: Some(sent_at),
                         finished_at: SystemTime::now(),
+                        oauth,
                     };
                 }
                 Ok(outcome) => {
@@ -227,6 +372,7 @@ impl Runner {
                             started_at,
                             sent_at: Some(sent_at),
                             finished_at: SystemTime::now(),
+                            oauth,
                         };
                     }
                 }
@@ -243,6 +389,7 @@ impl Runner {
             started_at,
             sent_at: Some(sent_at),
             finished_at: SystemTime::now(),
+            oauth,
         }
     }
 }

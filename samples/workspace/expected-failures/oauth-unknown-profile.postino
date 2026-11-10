@@ -1,0 +1,9 @@
+GET {{baseUrl}}/oauth/me
+
+::: auth oauth2
+profile = no-such-profile
+
+::: post
+test("never runs: the workspace has no such profile", () => {
+  expect(res.status).toBe(200);
+});

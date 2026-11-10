@@ -1,0 +1,14 @@
+GET {{baseUrl}}/oauth/me
+
+::: auth oauth2
+profile = sample-query
+
+::: post
+test("the token goes in the query", () => {
+  expect(res.status).toBe(200);
+  expect(res.json().via).toBe("query");
+});
+
+::: docs
+The profile `sample-query` authenticates the client in the body and sends the token as the
+`access_token` query parameter.

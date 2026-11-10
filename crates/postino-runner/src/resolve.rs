@@ -319,6 +319,9 @@ fn resolve_auth(
                 },
             ))
         }
+        // The runner replaces it with the token before resolving (`Runner::run`); a preview has
+        // no token to add.
+        Auth::OAuth2 { .. } => None,
     }
 }
 

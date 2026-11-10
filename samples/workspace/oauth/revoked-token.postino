@@ -1,0 +1,14 @@
+GET {{baseUrl}}/oauth/me
+
+::: auth oauth2
+profile = sample-machine
+
+::: post
+test("a revoked token gets a 401, Postino does not retry on its own", () => {
+  expect(res.status).toBe(401);
+  expect(res.headers.get("www-authenticate")).toContain("invalid_token");
+});
+
+::: docs
+Run after `revoke-all`: the stored token of `sample-machine` is still valid for Postino but the
+API rejects it. The response shows "Get new token and resend".

@@ -18,6 +18,7 @@ use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::input::{
     EditorState, IndentInline, InputEvent, InputState, TextDecoration, TextDecorationCollection,
 };
+use gpui_kit::component::scroll::Scrollbar;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -37,8 +38,8 @@ use crate::state::ui_tabs::RequestTab;
 use crate::state::variable_hint::{self, VariableContext};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
-    AUTH_FORM_MAX_WIDTH, AUTH_LABEL_WIDTH, COMPLETION_MENU_WIDTH, SEND_BUTTON_HEIGHT,
-    SEND_BUTTON_MIN_WIDTH,
+    AUTH_FORM_MAX_WIDTH, AUTH_LABEL_WIDTH, COMPLETION_MENU_WIDTH, OAUTH_FORM_MAX_WIDTH,
+    SEND_BUTTON_HEIGHT, SEND_BUTTON_MIN_WIDTH,
 };
 use crate::views::components::NeutralButtonExt;
 use crate::views::components::variable_chip::highlight_style;
@@ -339,11 +340,11 @@ pub(crate) struct RequestEditorEntities {
     query: KeyValueTableEntities,
     form: KeyValueTableEntities,
     /// The inputs of the Auth tab, one per field of the request's auth kind, in display order.
-    auth: Vec<(AuthField, Entity<InputState>)>,
+    pub(crate) auth: Vec<(AuthField, Entity<InputState>)>,
     body_editor: Option<Entity<EditorState>>,
     /// How the `{{ }}` markers resolve right now, refreshed on every render of the editor. Every
     /// field that shows markers reads it.
-    variable_context: Rc<VariableContext>,
+    pub(crate) variable_context: Rc<VariableContext>,
     /// The body editor's marker styling and hover data, rebuilt together with `body_editor`.
     body_markers: Option<BodyMarkerHandles>,
     /// What `body_markers` was last styled for, so it is recomputed only when the context or
@@ -704,17 +705,35 @@ impl AppView {
         let Some(index) = self.state.tabs.index_of(tab_id) else {
             return;
         };
+        // A request switched to OAuth 2.0 that names no profile yet takes the first one.
+        let first_profile = self
+            .state
+            .oauth_profiles
+            .first()
+            .map(|profile| profile.name.clone());
         let Some(tab) = self.state.tabs.get_mut(index) else {
             return;
         };
         tab.set_auth_kind(kind);
+        if let Some(request) = tab.request_mut()
+            && let Auth::OAuth2 { profile, .. } = &mut request.auth
+            && profile.is_empty()
+            && let Some(first) = first_profile
+        {
+            *profile = first;
+        }
         tab.record_edit(None, Instant::now());
         cx.notify();
     }
 
     /// Shows the secret fields of the Auth tab of `tab_id` in plain text, or masks them again
     /// (the eye button at their end). Per tab and never saved, so the tab is not marked dirty.
-    fn toggle_auth_secrets(&mut self, tab_id: &str, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn toggle_auth_secrets(
+        &mut self,
+        tab_id: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let Some(index) = self.state.tabs.index_of(tab_id) else {
             return;
         };
@@ -928,6 +947,7 @@ impl AppView {
             // of which should leave a stale custom-method editor open.
             self.editing_method = false;
         }
+        self.sync_oauth_inputs(&tab_id, &request, window, cx);
         if let Some((id, row)) = self.request_editor.reveal_line.take()
             && id == tab_id
         {
@@ -968,22 +988,46 @@ impl AppView {
             RequestTab::Pre | RequestTab::Post | RequestTab::Docs => true,
             _ => false,
         };
-        let content = div().id("request-editor-content").flex_1().min_h_0();
+        let tab_content = self.render_request_tab_content(&tab_id, &request, cx);
+        // A list or form that scrolls gets a visible scrollbar over it, like the response's
+        // Headers and Tests tabs; a code editor scrolls and draws its own.
         let content = if uses_code_editor {
-            content
+            div()
+                .id("request-editor-content")
+                .flex_1()
+                .min_h_0()
+                .p_2()
+                .child(tab_content)
+                .into_any_element()
         } else {
-            content.overflow_y_scroll()
+            div()
+                .relative()
+                .flex_1()
+                .min_h_0()
+                .overflow_hidden()
+                .child(
+                    div()
+                        .id("request-editor-content")
+                        .size_full()
+                        .overflow_y_scroll()
+                        .track_scroll(&self.request_scroll)
+                        .p_2()
+                        .child(tab_content),
+                )
+                .child(
+                    div()
+                        .absolute()
+                        .inset_0()
+                        .child(Scrollbar::new(&self.request_scroll)),
+                )
+                .into_any_element()
         };
 
         v_flex()
             .size_full()
             .child(self.render_method_url_bar(&tab_id, &request, cx))
             .child(self.render_request_tab_bar(&request, cx))
-            .child(
-                content
-                    .p_2()
-                    .child(self.render_request_tab_content(&tab_id, &request, cx)),
-            )
+            .child(content)
             .into_any_element()
     }
 
@@ -1227,7 +1271,13 @@ impl AppView {
             .tabs
             .active()
             .is_some_and(|tab| tab.show_auth_secrets);
+        if current_kind == AuthKind::OAuth2 {
+            content = content.child(self.render_oauth_section(tab_id, request, cx));
+        }
         for (field, input) in &self.request_editor.auth {
+            if current_kind == AuthKind::OAuth2 {
+                break;
+            }
             let text = auth_edit::field_value(&request.auth, *field).to_string();
             let mut value = VariableField::new(
                 format!("auth-{field:?}"),
@@ -1285,14 +1335,20 @@ impl AppView {
             )));
         }
 
-        // The selector and the form share one column, centered in the tab.
+        // The selector and the form share one column, centered in the tab. OAuth 2.0's is wider:
+        // its card and Profile settings hold more (design OAuth 3a).
+        let max_width = if current_kind == AuthKind::OAuth2 {
+            OAUTH_FORM_MAX_WIDTH
+        } else {
+            AUTH_FORM_MAX_WIDTH
+        };
         h_flex()
             .w_full()
             .justify_center()
             .child(
                 v_flex()
                     .w_full()
-                    .max_w(px(AUTH_FORM_MAX_WIDTH))
+                    .max_w(px(max_width))
                     .gap_2()
                     .child(h_flex().justify_center().py(px(8.0)).child(type_selector))
                     .child(content),
@@ -1493,7 +1549,7 @@ impl AppView {
 
 /// The handler of a click on a variable chip: takes an unknown variable, or one from the active
 /// environment, to the environment editor (`views/define_variable.rs`).
-fn define_variable_click(
+pub(crate) fn define_variable_click(
     weak: &WeakEntity<AppView>,
     context: &Rc<VariableContext>,
 ) -> impl Fn(String, &mut Window, &mut App) + 'static {

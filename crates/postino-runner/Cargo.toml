@@ -10,6 +10,7 @@ authors.workspace = true
 postino-core = { path = "../postino-core" }
 postino-script = { path = "../postino-script" }
 postino-http = { path = "../postino-http" }
+postino-oauth = { path = "../postino-oauth" }
 thiserror = { workspace = true }
 log = { workspace = true }
 

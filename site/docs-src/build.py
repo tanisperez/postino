@@ -44,6 +44,7 @@ NAV = [
         ("requests.html", "Building requests"),
         ("responses.html", "Reading responses"),
         ("environments.html", "Environments and variables"),
+        ("oauth.html", "OAuth 2.0"),
         ("template-functions.html", "Template functions"),
         ("scripting.html", "Scripts and tests"),
         ("load-testing.html", "Load testing"),

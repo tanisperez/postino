@@ -32,7 +32,7 @@ from email.policy import HTTP
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, parse_qsl, quote, urlsplit
+from urllib.parse import parse_qs, parse_qsl, quote, unquote_plus, urlsplit
 
 HERE = Path(__file__).resolve().parent
 CERTS = HERE / "certs"
@@ -51,6 +51,10 @@ DEMO_USER = "demo"
 DEMO_PASSWORD = "demo-password"
 DEMO_TOKEN = "demo-token-0123456789"
 API_KEY = "sample-api-key"
+# The OAuth 2.0 provider of /oauth (docs/sample-suite.md).
+OAUTH_CLIENT_ID = "postino-sample"
+OAUTH_CLIENT_SECRET = "sample-secret"
+OAUTH_PUBLIC_CLIENT_ID = "postino-public"
 MAX_LARGE = 20 * 1024 * 1024
 
 # A 1x1 transparent PNG.
@@ -85,6 +89,71 @@ class Store:
             }
 
 
+class OAuthStore:
+    """The tokens, refresh tokens and codes the /oauth provider issued. In memory, per run."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.tokens = {}
+        self.refresh = {}
+        self.codes = {}
+        self.counter = 0
+
+    def next(self, prefix):
+        self.counter += 1
+        return f"{prefix}-{self.counter:04d}-{hashlib.sha256(str(time.time()).encode()).hexdigest()[:12]}"
+
+    def issue(self, grant, scope, user, lifetime, with_refresh):
+        with self.lock:
+            access = self.next("at")
+            self.tokens[access] = {"grant": grant, "scope": scope, "user": user,
+                                   "expires": time.time() + lifetime}
+            reply = {"access_token": access, "token_type": "Bearer", "expires_in": lifetime,
+                     "scope": scope}
+            if with_refresh:
+                refresh = self.next("rt")
+                self.refresh[refresh] = {"scope": scope, "user": user, "lifetime": lifetime}
+                reply["refresh_token"] = refresh
+            return reply
+
+    def lookup(self, access):
+        with self.lock:
+            token = self.tokens.get(access or "")
+            if token is None or token["expires"] < time.time():
+                return None
+            return token
+
+    def use_refresh(self, refresh):
+        with self.lock:
+            return self.refresh.pop(refresh, None)
+
+    def new_code(self, redirect_uri, challenge, scope):
+        with self.lock:
+            code = self.next("code")
+            self.codes[code] = {"redirect_uri": redirect_uri, "challenge": challenge,
+                                "scope": scope}
+            return code
+
+    def use_code(self, code):
+        with self.lock:
+            return self.codes.pop(code, None)
+
+    def revoke_all(self):
+        with self.lock:
+            self.tokens.clear()
+
+    @staticmethod
+    def id_token(user, audience):
+        """An unsigned JWT: Postino only reads its claims."""
+        now = int(time.time())
+        def part(value):
+            return base64.urlsafe_b64encode(json.dumps(value).encode()).decode().rstrip("=")
+        claims = {"sub": user, "aud": audience, "iat": now, "exp": now + 3600,
+                  "email": "demo@example.com"}
+        return f"{part({'alg': 'none', 'typ': 'JWT'})}.{part(claims)}.sig"
+
+
+OAUTH = OAuthStore()
 STORE = Store()
 
 
@@ -241,7 +310,7 @@ class Handler(BaseHTTPRequestHandler):
             "redirect": self.r_redirect, "redirect-to": self.r_redirect_to,
             "redirect-loop": self.r_redirect_loop,
             "basic-auth": self.r_basic_auth, "bearer": self.r_bearer, "api-key": self.r_api_key,
-            "auth": self.r_auth, "users": self.r_users,
+            "auth": self.r_auth, "users": self.r_users, "oauth": self.r_oauth,
             "cookies": self.r_cookies, "response-headers": self.r_response_headers,
             "repeated-headers": self.r_repeated_headers, "etag": self.r_etag,
             "json": self.r_json, "invalid-json": self.r_invalid_json, "xml": self.r_xml,
@@ -440,6 +509,116 @@ class Handler(BaseHTTPRequestHandler):
                                    [("WWW-Authenticate", "Bearer")])
             return json_reply({"user": DEMO_USER, "email": "demo@example.com"})
         return error_reply(404, "use /auth/login or /auth/me")
+
+    # ---- oauth -----------------------------------------------------------------------------
+
+    def r_oauth(self, rest):
+        """A small OAuth 2.0 provider: /oauth/token, /oauth/authorize, /oauth/me, /oauth/revoke."""
+        action = rest[0] if rest else ""
+        if action == "token":
+            return self.oauth_token()
+        if action == "authorize":
+            return self.oauth_authorize()
+        if action == "me":
+            token = OAUTH.lookup(self.bearer() or self.query_one("access_token"))
+            if token is None:
+                return error_reply(401, "the access token is missing, expired or revoked",
+                                   [("WWW-Authenticate", 'Bearer error="invalid_token"')])
+            return json_reply({"authenticated": True, "grant": token["grant"],
+                               "scope": token["scope"], "user": token["user"],
+                               "via": "query" if self.query_one("access_token") else "header"})
+        if action == "revoke":
+            if self.command != "POST":
+                return error_reply(405, "use POST", [("Allow", "POST")])
+            OAUTH.revoke_all()
+            return json_reply({"revoked": True})
+        return error_reply(404, "use /oauth/token, /oauth/authorize, /oauth/me or /oauth/revoke")
+
+    def oauth_client(self, form):
+        """The client id the request authenticated as, or None when its credentials are wrong.
+        Accepts a Basic header or client_id/client_secret in the body; the public client has no
+        secret and must use PKCE."""
+        header = self.headers.get("Authorization", "")
+        scheme, _, value = header.partition(" ")
+        if scheme.lower() == "basic":
+            try:
+                pair = base64.b64decode(value.strip(), validate=True).decode()
+            except (binascii.Error, UnicodeDecodeError):
+                return None
+            client_id, _, secret = pair.partition(":")
+            client_id, secret = unquote_plus(client_id), unquote_plus(secret)
+        else:
+            client_id, secret = form.get("client_id", ""), form.get("client_secret", "")
+        if client_id == OAUTH_CLIENT_ID and secret == OAUTH_CLIENT_SECRET:
+            return client_id
+        if client_id == OAUTH_PUBLIC_CLIENT_ID and not secret:
+            return client_id
+        return None
+
+    def oauth_token(self):
+        if self.command != "POST":
+            return error_reply(405, "use POST", [("Allow", "POST")])
+        form = dict(parse_qsl(self.body.decode("utf-8", errors="replace")))
+        oauth_error = lambda status, code: json_reply({"error": code}, status)
+        client = self.oauth_client(form)
+        if client is None:
+            return oauth_error(401, "invalid_client")
+        grant = form.get("grant_type", "")
+        scope = form.get("scope", "")
+        lifetime = int(form.get("expires_in", "3600") or 3600)
+        user = None
+        if grant == "client_credentials":
+            if client == OAUTH_PUBLIC_CLIENT_ID:
+                return oauth_error(400, "unauthorized_client")
+        elif grant == "password":
+            if (form.get("username"), form.get("password")) != (DEMO_USER, DEMO_PASSWORD):
+                return oauth_error(400, "invalid_grant")
+            user = DEMO_USER
+        elif grant == "refresh_token":
+            previous = OAUTH.use_refresh(form.get("refresh_token", ""))
+            if previous is None:
+                return oauth_error(400, "invalid_grant")
+            user, scope = previous["user"], scope or previous["scope"]
+            lifetime = previous["lifetime"]
+        elif grant == "authorization_code":
+            code = OAUTH.use_code(form.get("code", ""))
+            if code is None or code["redirect_uri"] != form.get("redirect_uri"):
+                return oauth_error(400, "invalid_grant")
+            if code["challenge"]:
+                verifier = form.get("code_verifier", "")
+                digest = hashlib.sha256(verifier.encode()).digest()
+                expected = base64.urlsafe_b64encode(digest).decode().rstrip("=")
+                if expected != code["challenge"]:
+                    return oauth_error(400, "invalid_grant")
+            elif client == OAUTH_PUBLIC_CLIENT_ID:
+                return oauth_error(400, "invalid_request")
+            user, scope = DEMO_USER, code["scope"]
+        else:
+            return oauth_error(400, "unsupported_grant_type")
+        reply = OAUTH.issue(grant, scope, user, lifetime, with_refresh=grant != "client_credentials")
+        if grant == "authorization_code" and "openid" in scope.split():
+            reply["id_token"] = OAUTH.id_token(user, client)
+        return json_reply(reply)
+
+    def oauth_authorize(self):
+        """Signs the demo user in at once and redirects back with a code, as a provider whose
+        session is already open would."""
+        redirect_uri = self.query_one("redirect_uri", "")
+        state = self.query_one("state", "")
+        host = urlsplit(redirect_uri).hostname or ""
+        separator = "&" if "?" in redirect_uri else "?"
+        if host not in ("127.0.0.1", "localhost"):
+            return Reply(302, headers=[("Location",
+                f"{redirect_uri}{separator}error=redirect_uri_mismatch&state={quote(state)}")])
+        if self.query_one("client_id") not in (OAUTH_CLIENT_ID, OAUTH_PUBLIC_CLIENT_ID):
+            return Reply(302, headers=[("Location",
+                f"{redirect_uri}{separator}error=unauthorized_client&state={quote(state)}")])
+        challenge = self.query_one("code_challenge", "")
+        if challenge and self.query_one("code_challenge_method") != "S256":
+            return error_reply(400, "only S256 is supported")
+        code = OAUTH.new_code(redirect_uri, challenge, self.query_one("scope", ""))
+        return Reply(302, headers=[("Location",
+            f"{redirect_uri}{separator}code={code}&state={quote(state)}")])
 
     # ---- users (CRUD) ----------------------------------------------------------------------
 

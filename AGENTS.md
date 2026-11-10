@@ -64,6 +64,11 @@ Expo/React Native conventions here.
   from a file, a URL, pasted text, a folder or a shallow clone of a Git repository, plus Backstage
   `catalog-info.yaml`, through a three step wizard. See `docs/openapi-import.md`.
 - HTTP client: `ureq` 3 (blocking, rustls), run on GPUI's background executor.
+- OAuth 2.0 (#225, #226, #227): named profiles in `.postino/project.toml` (`[oauth.<name>]`),
+  referenced by requests with `::: auth oauth2`. The token is obtained or renewed on Send, per
+  workspace + profile + environment (+ overridden scope), stored in the system credential store
+  (`keyring`) or a 0600 file, never in the workspace. Authorization code uses PKCE and the system
+  browser with a loopback listener (RFC 8252); implicit is not offered. See `docs/oauth.md`.
 - License: Apache-2.0 (`LICENSE`, `license` in `[workspace.package]`). Permissive, compatible with
   GPUI, includes a patent grant and does not grant trademark rights. Contributor terms (CLA or
   DCO) are still undecided, ask before accepting external contributions.
@@ -77,15 +82,17 @@ These are to be settled in a dedicated planning session. Do not pick one silentl
 
 ## Architecture
 
-A Cargo workspace of nine small crates, UI kept thin, on top of telaio's crates. The reasons and conventions are in
+A Cargo workspace of ten small crates, UI kept thin, on top of telaio's crates. The reasons and conventions are in
 `docs/architecture.md`; notes on `gpui-kit` pitfalls are in `docs/gpui-notes.md`. Dependency
 direction (arrows mean "depends on"), no cycles, no crate depends on `postino-app`:
 
 ```
 postino-app ──> postino-load ──> postino-runner ──> postino-script ──> postino-core
-     │               │                  └─────────> postino-http ────> postino-core
+     │               │                  ├─────────> postino-http ────> postino-core
+     │               │                  └─────────> postino-oauth ───> postino-http, postino-core
      │               └──> postino-http, postino-script, postino-core
      ├──────> postino-runner
+     ├──────> postino-oauth (the token store and the browser sign-in)
      ├──────> postino-script (the script editors' autocompletion reads `postino_script::api`)
      ├──────> postino-workspace ─> postino-format ─> postino-core
      ├──────> postino-format (the Code snippet dialog renders `render_snippet` directly)
@@ -105,7 +112,9 @@ in `state/git_sync.rs` and the `postino-auto:` prefix of automatic stashes in
 - `postino-workspace`: filesystem access, scans a folder, loads/saves requests and environments.
 - `postino-script`: the `ScriptEngine` trait and its QuickJS implementation.
 - `postino-http`: sends a resolved request with `ureq`, measures timing.
-- `postino-runner`: the pipeline, vars, pre script, interpolate, send, post script.
+- `postino-oauth`: OAuth 2.0 tokens: grants, refresh, PKCE and the loopback listener, the token
+  store (`keyring` or a 0600 file), masked token requests for the console. No `gpui`.
+- `postino-runner`: the pipeline, OAuth token, vars, pre script, interpolate, send, post script.
 - `postino-load`: the load test engine, live metrics, run comparison and run history.
 - `postino-cli`: the terminal commands that print and exit without opening the window
   (`-h/--help`, `-V/--version` today; future commands such as running a load test). No `gpui`.
