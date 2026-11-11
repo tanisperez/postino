@@ -20,7 +20,7 @@ use postino_workspace::{
     EXAMPLE_ENVIRONMENT, EXAMPLE_REQUEST_ID, GITIGNORE, NewWorkspaceContent, WorkspaceError,
     create_workspace,
 };
-use telaio_ui::components::labelled_checkbox;
+use telaio_ui::components::{ScrollbarOverlay, labelled_checkbox};
 
 use crate::state;
 use crate::state::workspace_log::log_workspace_error;
@@ -56,7 +56,20 @@ struct NewWorkspaceForm {
     init_git: bool,
     /// Whether the location is already inside a git repository, which hides the checkbox.
     inside_repo: bool,
+    /// The scroll of the `.gitignore` preview, which shrinks first on a short window.
+    gitignore_scroll: ScrollHandle,
+    /// The scroll of the whole body, for a window too short even for the shrunk preview.
+    body_scroll: ScrollHandle,
 }
+
+/// The least height of the `.gitignore` preview, about two lines, before the body scrolls.
+const GITIGNORE_MIN_HEIGHT: f32 = 64.0;
+/// Gap between the parts of the form.
+const FORM_GAP: f32 = 14.0;
+/// Gap between the lines of the git option, and above the `.gitignore` preview.
+const GITIGNORE_GAP: f32 = 6.0;
+/// Padding around a modal's body, as telaio's `modal_body`.
+const MODAL_PADDING: f32 = 20.0;
 
 /// Opens the dialog.
 pub(crate) fn open_new_workspace_dialog(
@@ -78,6 +91,8 @@ pub(crate) fn open_new_workspace_dialog(
         error: None,
         init_git: git.is_some(),
         git,
+        gitignore_scroll: ScrollHandle::new(),
+        body_scroll: ScrollHandle::new(),
     });
     {
         // Weak, or the subscription would keep the form, and through it the input, alive forever.
@@ -113,11 +128,60 @@ pub(crate) fn open_new_workspace_dialog(
                 let can_create = target_of(&form, cx).is_some();
                 let create_form = form.clone();
                 let create_view = view.clone();
+                // On a short window the dialog's box is capped at the window height and the
+                // header and the footer stay in view. The `.gitignore` preview, outside the
+                // scrolling body so that it can shrink, gives up its height first and scrolls
+                // with its own scrollbar. Only a window too short even for its least height
+                // shrinks and scrolls the rest of the body.
+                let state = form.read(cx);
+                let body_scroll = state.body_scroll.clone();
+                let gitignore = shows_gitignore(state).then(|| render_gitignore(state, cx));
+                let gitignore_shown = gitignore.is_some();
+                let error = state.error.clone().filter(|_| gitignore.is_some());
+                let body = modal_body().child(render_form(&form, &view, cx));
+                // With the preview below, the body's own bottom padding becomes the gap of the
+                // git option's column.
+                let body = if gitignore.is_some() {
+                    body.pb(px(GITIGNORE_GAP))
+                } else {
+                    body
+                };
                 v_flex()
-                    .child(modal_header(t!("shell.new_workspace.title"), cx))
-                    .child(modal_body().child(render_form(&form, &view, cx)))
+                    .flex_1()
+                    .min_h_0()
+                    .child(modal_header(t!("shell.new_workspace.title"), cx).flex_none())
+                    .child(
+                        v_flex()
+                            .relative()
+                            .min_h_0()
+                            .overflow_hidden()
+                            .child(
+                                v_flex()
+                                    .id("new-workspace-body")
+                                    .flex_1()
+                                    .min_h_0()
+                                    .overflow_y_scroll()
+                                    .track_scroll(&body_scroll)
+                                    .child(body),
+                            )
+                            .child(ScrollbarOverlay::new(&body_scroll)),
+                    )
+                    .children(gitignore)
+                    .children(gitignore_shown.then(|| {
+                        v_flex()
+                            .flex_none()
+                            .px(px(MODAL_PADDING))
+                            .pb(px(MODAL_PADDING))
+                            .pt(px(if error.is_some() { FORM_GAP } else { 0.0 }))
+                            .children(
+                                error.map(|error| {
+                                    InlineMessage::new(InlineMessageKind::Danger, error)
+                                }),
+                            )
+                    }))
                     .child(
                         modal_footer(cx)
+                            .flex_none()
                             .child(
                                 SecondaryButton::new("new-workspace-cancel", t!("common.cancel"))
                                     .on_click(|_, window, cx| window.close_dialog(cx)),
@@ -177,7 +241,7 @@ fn render_form(
     };
 
     v_flex()
-        .gap(px(14.0))
+        .gap(px(FORM_GAP))
         .child(div().text_color(palette.fg_muted).child(note))
         .child(
             v_flex()
@@ -238,8 +302,49 @@ fn render_form(
             state
                 .error
                 .clone()
+                .filter(|_| !shows_gitignore(state))
                 .map(|error| InlineMessage::new(InlineMessageKind::Danger, error)),
         )
+        .into_any_element()
+}
+
+/// Whether the form shows the `.gitignore` preview: git available, "Initialize a Git repository"
+/// checked and a location outside any repository.
+fn shows_gitignore(state: &NewWorkspaceForm) -> bool {
+    state.git.is_some() && state.init_git && !state.inside_repo
+}
+
+/// The `.gitignore` the new repository gets, in a box that shrinks down to
+/// [`GITIGNORE_MIN_HEIGHT`] on a short window and then scrolls.
+fn render_gitignore(state: &NewWorkspaceForm, cx: &App) -> AnyElement {
+    let palette = cx.palette();
+    // `flex_1`: it takes the height the rest of the dialog leaves, which is its natural height
+    // on a tall window.
+    v_flex()
+        .relative()
+        .flex_1()
+        .mx(px(MODAL_PADDING))
+        .min_h(px(GITIGNORE_MIN_HEIGHT))
+        .overflow_hidden()
+        .rounded(px(RADIUS_MD))
+        .bg(palette.surface)
+        .border_1()
+        .border_color(palette.border)
+        .child(
+            v_flex()
+                .id("new-workspace-gitignore")
+                .flex_1()
+                .min_h_0()
+                .overflow_y_scroll()
+                .track_scroll(&state.gitignore_scroll)
+                .px(px(10.0))
+                .py(px(8.0))
+                .font_family(cx.theme().mono_font_family.clone())
+                .text_size(px(11.5))
+                .text_color(palette.fg_muted)
+                .children(GITIGNORE.lines().map(|line| div().child(line.to_string()))),
+        )
+        .child(ScrollbarOverlay::new(&state.gitignore_scroll))
         .into_any_element()
 }
 
@@ -356,29 +461,15 @@ fn render_git_option(
             cx.notify();
         });
     });
-    let mut column = v_flex().gap(px(6.0)).child(checkbox);
+    let mut column = v_flex().gap(px(GITIGNORE_GAP)).child(checkbox);
     if available {
         if state.init_git {
-            column = column
-                .child(
-                    div()
-                        .text_size(px(12.0))
-                        .text_color(palette.fg_subtle)
-                        .child(t!("shell.new_workspace.init_git_note")),
-                )
-                .child(
-                    div()
-                        .px(px(10.0))
-                        .py(px(8.0))
-                        .rounded(px(RADIUS_MD))
-                        .bg(palette.surface)
-                        .border_1()
-                        .border_color(palette.border)
-                        .font_family(cx.theme().mono_font_family.clone())
-                        .text_size(px(11.5))
-                        .text_color(palette.fg_muted)
-                        .children(GITIGNORE.lines().map(|line| div().child(line.to_string()))),
-                );
+            column = column.child(
+                div()
+                    .text_size(px(12.0))
+                    .text_color(palette.fg_subtle)
+                    .child(t!("shell.new_workspace.init_git_note")),
+            );
         }
     } else {
         let view = view.clone();
