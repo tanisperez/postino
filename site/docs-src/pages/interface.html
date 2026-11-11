@@ -68,9 +68,19 @@ description: A tour of the Postino window: title bar, activity rail, sidebar, ta
     <li><kbd>Ctrl</kbd> <kbd>W</kbd> closes the active tab.</li>
     <li><kbd>Ctrl</kbd> <kbd>S</kbd> saves the active request or environment.</li>
 </ul>
+
+<h3 id="tab-menu">Tab menu</h3>
+<p>Right click a tab for its menu. Its items act on that tab, which does not need to be the active one, and right clicking does not select it.</p>
+<ul>
+    <li><strong>Close</strong>, <strong>Close others</strong>, <strong>Close to the right</strong>, <strong>Close to the left</strong>, <strong>Close saved</strong> (every tab without unsaved changes) and <strong>Close all</strong>. The ones that would close nothing are disabled, such as <strong>Close to the right</strong> on the last tab.</li>
+    <li>For a request or an environment: <strong>Copy path</strong> (the full path of its file), <strong>Copy relative path</strong> (relative to the workspace folder, such as <code>auth/login.postino</code> or <code>environments/local.env</code>), <strong>Show in file manager</strong> and <strong>Reveal in sidebar</strong>, which opens the Collections or Environments panel with the item selected.</li>
+    <li>For a request: <strong>Rename</strong> and <strong>Duplicate</strong>, as in the sidebar.</li>
+</ul>
+<p>Right click the empty part of the tab bar for <strong>New request</strong> and <strong>Close all</strong>.</p>
+
 <div class="callout warning">
     <span class="title">Unsaved changes</span>
-    <p>An environment tab asks before discarding unsaved changes. A request tab does not: closing it drops its edits. Save first.</p>
+    <p>Closing tabs with unsaved changes, one or several, asks once and lists them: <strong>Save all</strong> saves them and closes, <strong>Don't save</strong> closes them and drops their edits, and <strong>Cancel</strong> closes nothing. <kbd>Enter</kbd> saves. A tab that cannot be saved stays open, with its error in view.</p>
 </div>
 
 <h2>Welcome tab</h2>

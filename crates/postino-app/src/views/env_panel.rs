@@ -25,6 +25,7 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
+use telaio_ui::components::{PathItems, path_items};
 
 use crate::actions::{MoveEnvironmentDown, MoveEnvironmentUp};
 use crate::state::env_color::{EnvColor, auto_color};
@@ -673,14 +674,6 @@ fn env_context_menu(
     let duplicate = item(t!("shell.sidebar.duplicate"), |view, name, _, cx| {
         view.duplicate_environment(&name, cx);
     });
-    let reveal = {
-        let path = target.path.clone();
-        PopupMenuItem::new(t!("environments.menu.reveal")).on_click(move |_, _, cx| {
-            if let Some(path) = &path {
-                cx.reveal_path(path);
-            }
-        })
-    };
     let delete = item(t!("common.delete"), |view, name, window, cx| {
         view.open_env_delete_dialog(name, window, cx);
     });
@@ -688,7 +681,8 @@ fn env_context_menu(
     let color_weak = weak.clone();
     let color_name = target.name.clone();
     let chosen = target.chosen;
-    menu.item(open)
+    let menu = menu
+        .item(open)
         .item(use_it)
         .separator()
         .submenu(
@@ -701,10 +695,16 @@ fn env_context_menu(
         .item(move_down)
         .separator()
         .item(rename)
-        .item(duplicate)
-        .item(reveal)
-        .separator()
-        .item(delete)
+        .item(duplicate);
+    // Copy path, Copy relative path and Show in file manager, telaio's standard items.
+    let menu = match target.path.clone() {
+        Some(path) => path_items(
+            menu.separator(),
+            PathItems::new(path).relative(crate::state::env_edit::status_path(&target.name)),
+        ),
+        None => menu,
+    };
+    menu.separator().item(delete)
 }
 
 /// The Color submenu: "Automatic" and the nine named colors, the current one checked.

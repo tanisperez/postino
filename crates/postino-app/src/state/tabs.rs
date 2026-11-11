@@ -267,22 +267,8 @@ impl OpenTab {
     }
 }
 
-/// Which tabs a "Close" item of a tab's context menu closes, relative to that tab (#230).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CloseScope {
-    /// The tab itself.
-    This,
-    /// Every tab but this one.
-    Others,
-    /// The tabs after it.
-    Right,
-    /// The tabs before it.
-    Left,
-    /// Every tab without unsaved changes, this one included.
-    Saved,
-    /// Every tab.
-    All,
-}
+/// Which tabs a "Close" item of a tab's context menu closes (#230), telaio's standard one.
+pub use telaio_ui::components::CloseScope;
 
 /// The set of open tabs and which one is active, if any.
 #[derive(Debug, Default)]
@@ -473,21 +459,10 @@ impl TabsState {
     /// The ids of the tabs `scope` closes for the tab at `index`, in tab order. Empty when
     /// `index` is out of range.
     pub fn close_targets(&self, index: usize, scope: CloseScope) -> Vec<String> {
-        if index >= self.open.len() {
-            return Vec::new();
-        }
-        self.open
-            .iter()
-            .enumerate()
-            .filter(|(at, tab)| match scope {
-                CloseScope::This => *at == index,
-                CloseScope::Others => *at != index,
-                CloseScope::Right => *at > index,
-                CloseScope::Left => *at < index,
-                CloseScope::Saved => !tab.dirty,
-                CloseScope::All => true,
-            })
-            .map(|(_, tab)| tab.id.clone())
+        let dirty: Vec<bool> = self.open.iter().map(|tab| tab.dirty).collect();
+        telaio_ui::components::close_targets(&dirty, index, scope)
+            .into_iter()
+            .map(|at| self.open[at].id.clone())
             .collect()
     }
 

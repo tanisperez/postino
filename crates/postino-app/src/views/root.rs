@@ -1764,16 +1764,18 @@ impl AppView {
             let select_weak = weak.clone();
             let close_weak = weak.clone();
             let menu_weak = weak.clone();
+            let file = match &tab.kind {
+                state::TabKind::Request(_) => TabFile::Request,
+                state::TabKind::Environment(edit) => TabFile::Environment(edit.name.clone()),
+                _ => TabFile::None,
+            };
             let menu_target = TabMenuTarget {
                 id: tab.id.clone(),
                 index,
                 count,
                 any_saved,
-                file: match &tab.kind {
-                    state::TabKind::Request(_) => TabFile::Request,
-                    state::TabKind::Environment(edit) => TabFile::Environment(edit.name.clone()),
-                    _ => TabFile::None,
-                },
+                path: self.tab_file_path(&tab.id, &file),
+                file,
             };
             let full_id = match &tab.kind {
                 state::TabKind::Environment(edit) => state::env_edit::status_path(&edit.name),
