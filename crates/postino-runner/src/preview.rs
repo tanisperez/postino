@@ -74,20 +74,33 @@ pub fn preview(request: &Request, environment: &Environment, session_env: &Sessi
     }
 }
 
-/// Scans every field of `request` for `{{name}}` markers that do not resolve in `scope`,
-/// deduplicated by (name, location), in order of appearance. Function call markers are skipped:
-/// per the plan, they are never reported as unknown variables.
-fn find_unknown_variables(request: &Request, scope: &VarScope) -> Vec<UnknownVariable> {
+/// A `{{name}}` variable marker of a request and where it was found, see [`used_variables`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UsedVariable {
+    /// The variable name, as written inside the braces.
+    pub name: String,
+    /// Where it was found.
+    pub location: VariableLocation,
+}
+
+/// Every variable marker in the fields of `request` that are sent (the URL, the enabled query
+/// entries and headers, the auth fields and the body), deduplicated by (name, location), in
+/// order of appearance. Template function calls (`{{ uuid() }}`) are left out.
+#[must_use]
+pub fn used_variables(request: &Request) -> Vec<UsedVariable> {
     let mut found = Vec::new();
     let mut seen = HashSet::new();
 
     let mut scan = |text: &str, location: VariableLocation| {
+        if !text.contains("{{") {
+            return;
+        }
         for span in variable_spans(text) {
-            if span.kind != VariableKind::Variable || scope.lookup(&span.name).is_some() {
+            if span.kind != VariableKind::Variable {
                 continue;
             }
             if seen.insert((span.name.clone(), location.clone())) {
-                found.push(UnknownVariable {
+                found.push(UsedVariable {
                     name: span.name,
                     location: location.clone(),
                 });
@@ -131,6 +144,19 @@ fn find_unknown_variables(request: &Request, scope: &VarScope) -> Vec<UnknownVar
     }
 
     found
+}
+
+/// The [`used_variables`] of `request` that do not resolve in `scope`. Function call markers are
+/// skipped: per the plan, they are never reported as unknown variables.
+fn find_unknown_variables(request: &Request, scope: &VarScope) -> Vec<UnknownVariable> {
+    used_variables(request)
+        .into_iter()
+        .filter(|used| scope.lookup(&used.name).is_none())
+        .map(|used| UnknownVariable {
+            name: used.name,
+            location: used.location,
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -275,5 +301,35 @@ mod tests {
         let preview = preview(&request, &Environment::default(), &SessionEnv::new());
         assert_eq!(preview.resolved.url, "http://example.com");
         assert!(preview.warnings.is_empty());
+    }
+
+    #[test]
+    fn used_variables_lists_each_variable_once_per_place_in_order() {
+        let mut request = base_request("{{baseUrl}}/users/{{id}}?x={{ uuid() }}");
+        request.headers = vec![
+            KeyValue::new("Authorization", "Bearer {{token}}"),
+            KeyValue::new("X-Id", "{{id}}"),
+        ];
+        request.body = Body::Json(r#"{"id": "{{id}}", "id2": "{{id}}"}"#.to_string());
+        let used: Vec<(String, VariableLocation)> = used_variables(&request)
+            .into_iter()
+            .map(|used| (used.name, used.location))
+            .collect();
+        assert_eq!(
+            used,
+            [
+                ("baseUrl".to_string(), VariableLocation::Url),
+                ("id".to_string(), VariableLocation::Url),
+                (
+                    "token".to_string(),
+                    VariableLocation::Header("Authorization".to_string())
+                ),
+                (
+                    "id".to_string(),
+                    VariableLocation::Header("X-Id".to_string())
+                ),
+                ("id".to_string(), VariableLocation::Body),
+            ]
+        );
     }
 }

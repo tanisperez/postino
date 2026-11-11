@@ -64,6 +64,10 @@ pub struct OpenTab {
     pub show_auth_secrets: bool,
     /// Undo and redo of the request's edits (#109). `None` for every other kind of tab.
     pub history: Option<EditHistory>,
+    /// Counts the changes to this tab's request: every mutable access, body or auth type switch,
+    /// undo and redo moves it on. A cheap key for what is derived from the request, such as the
+    /// "Will be sent" preview, which is rebuilt only when it changes.
+    pub revision: u64,
     /// The OAuth profile edited in this tab's Profile settings panel and not saved yet (#225):
     /// Ctrl+S writes it to `project.toml` together with the request. `None` when the panel
     /// changed nothing.
@@ -86,6 +90,7 @@ impl OpenTab {
 
     /// This tab's request, mutably, if it is a [`TabKind::Request`].
     pub fn request_mut(&mut self) -> Option<&mut Request> {
+        self.revision += 1;
         match &mut self.kind {
             TabKind::Request(request) => Some(request.as_mut()),
             TabKind::Environment(_)
@@ -100,6 +105,7 @@ impl OpenTab {
     /// Switches this tab's request body to `kind`, keeping what the other body types held (see
     /// [`request_edit::set_body_kind`]). Does nothing for a tab that is not a request.
     pub fn set_body_kind(&mut self, kind: BodyKind) {
+        self.revision += 1;
         if let TabKind::Request(request) = &mut self.kind {
             request_edit::set_body_kind(request, kind, &mut self.body_stash);
         }
@@ -108,6 +114,7 @@ impl OpenTab {
     /// Switches this tab's request auth to `kind`, keeping what the other auth types held (see
     /// [`auth_edit::set_auth_kind`]). Does nothing for a tab that is not a request.
     pub fn set_auth_kind(&mut self, kind: AuthKind) {
+        self.revision += 1;
         if let TabKind::Request(request) = &mut self.kind {
             auth_edit::set_auth_kind(request, kind, &mut self.auth_stash);
         }
@@ -159,6 +166,7 @@ impl OpenTab {
         let Some(snapshot) = snapshot else {
             return false;
         };
+        self.revision += 1;
         if let TabKind::Request(request) = &mut self.kind {
             **request = snapshot.request;
             self.body_stash = snapshot.body_stash;
@@ -449,6 +457,7 @@ impl TabsState {
             auth_stash: AuthStash::default(),
             show_auth_secrets: false,
             history,
+            revision: 0,
             profile_draft: None,
         });
         let index = self.open.len() - 1;

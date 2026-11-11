@@ -1,8 +1,17 @@
 title: Reading responses
-description: The Postino response pane: status, time and size, pretty and raw bodies, search, headers, test results, console output, warnings and errors.
+description: The Postino response pane: what will be sent, status, time and size, pretty and raw bodies, search, headers, test results, console output, warnings and errors.
 ---
 <h1>Reading responses</h1>
 <p class="lead">After a send, the bottom half of the request tab shows what came back: a summary, the body, the headers, the results of your tests and the console output of your scripts.</p>
+
+<h2 id="will-be-sent">Before the first send</h2>
+<p>Until a request is sent for the first time, its response pane shows <strong>Will be sent</strong>: the request resolved with the active environment, as Postino would send it. It follows your edits as you type, and it never runs a script or touches the network.</p>
+<ul>
+    <li>The method and the final URL, with the query string. A URL without a scheme gets <code>http://</code>, as when it is sent.</li>
+    <li>A row of chips: the active environment (or <strong>No environment</strong>), how many headers go out, the authorization type, the body type and whether the request has a pre-request or a post-response script.</li>
+    <li><strong>Variables</strong>: every variable the request uses, once each, with its value and where it comes from: the environment file (<code>local.env</code> or <code>local.local.env</code>), <strong>this session</strong> for a value a script set with <code>env.set</code>, or the <strong>pre-request script</strong> for one it sets with <code>vars.set</code>, which is only known when it runs. Template functions such as <code>{{ uuid() }}</code> are not listed. Values used in the authorization or in a header such as <code>Authorization</code>, and values whose names look secret (containing token, key, secret, password, auth or session), are masked.</li>
+</ul>
+<p>A variable that nothing defines shows as <strong>undefined</strong>, with the files it was looked for in, and turns the card red. A banner then names it, with <strong>Define in</strong> the active environment, which opens the environment's tab on a new row for it, and <strong>Change environment</strong>, which opens the Environments panel. With no environment active, the button is <strong>Choose environment</strong>. Press <kbd>Ctrl</kbd> <kbd>Enter</kbd> (<kbd>⌘</kbd> <kbd>Enter</kbd> on macOS) to send; from then on the pane shows the response.</p>
 
 <h2>Summary</h2>
 <p>At the right of the response tab bar:</p>

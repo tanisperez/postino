@@ -131,6 +131,8 @@ pub struct AppView {
     pub(crate) sending: Option<SendingTask>,
     /// The last [`RunResult`] for each tab id that has been sent at least once.
     pub(crate) responses: HashMap<String, RunResult>,
+    /// The "Will be sent" panel of the response pane before a request's first send.
+    pub(crate) send_preview: crate::views::send_preview::SendPreviewCache,
     /// Which response is stored per tab, so the Body tab can tell a new response from a re-render.
     pub(crate) response_generations: crate::state::response_render::ResponseGenerations,
     /// The keys of each tab's last response body, for the post script's `res.json()`
@@ -398,6 +400,7 @@ impl AppView {
             response_raw: false,
             sending: None,
             responses: HashMap::new(),
+            send_preview: Default::default(),
             response_generations: Default::default(),
             response_shapes: HashMap::new(),
             response_consoles: HashMap::new(),

@@ -44,6 +44,7 @@ pub mod response_render;
 pub mod run_log;
 pub mod script_completion;
 pub mod script_heuristics;
+pub mod send_preview;
 pub mod settings;
 pub mod shortcuts;
 pub mod sidebar_filter;
@@ -62,6 +63,7 @@ pub mod workspace_log;
 
 pub use tabs::{CloseScope, TabKind, TabsState};
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use postino_core::Environment;
@@ -84,6 +86,9 @@ pub struct AppState {
     /// environment". Render reads this, never the files. Only [`Self::set_active_environment`]
     /// and [`Self::reload_environment`] change it. An `Arc`, so a clone is O(1).
     pub(crate) environment: Arc<Environment>,
+    /// The names the active environment's `.local.env` defines, read with [`Self::environment`],
+    /// so the "Will be sent" preview can name the file a value comes from without reading it.
+    pub(crate) environment_local_names: Arc<HashSet<String>>,
     /// Environment overrides scripts have set during this session (the second
     /// variable layer in `docs/format.md`). Carried across requests so, for example, a login token a post script sets with
     /// `env.set` is visible to the next request. The MVP never writes this to disk.
@@ -118,6 +123,7 @@ impl AppState {
         self.tabs = TabsState::default();
         self.active_environment = None;
         self.environment = Arc::default();
+        self.environment_local_names = Arc::default();
         self.session_env = SessionEnv::new();
         self.env_colors = env_color::EnvColors::default();
         self.reload_oauth_profiles();
@@ -165,11 +171,26 @@ impl AppState {
     /// changed: the environment editor saved, an import wrote one, a request is about to run.
     /// Never from render. A file that cannot be read loads as an empty environment, as it sends.
     pub fn reload_environment(&mut self) {
-        let environment = match (self.workspace.as_ref(), self.active_environment.as_deref()) {
-            (Some(workspace), Some(name)) => workspace.load_environment(name).unwrap_or_default(),
-            _ => Environment::default(),
-        };
+        let (environment, local_names) =
+            match (self.workspace.as_ref(), self.active_environment.as_deref()) {
+                (Some(workspace), Some(name)) => {
+                    let local_names = workspace
+                        .load_environment_layers(name)
+                        .ok()
+                        .and_then(|layers| layers.local)
+                        .unwrap_or_default()
+                        .into_iter()
+                        .map(|entry| entry.key)
+                        .collect();
+                    (
+                        workspace.load_environment(name).unwrap_or_default(),
+                        local_names,
+                    )
+                }
+                _ => (Environment::default(), HashSet::new()),
+            };
         self.environment = Arc::new(environment);
+        self.environment_local_names = Arc::new(local_names);
     }
 }
 

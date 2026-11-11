@@ -139,6 +139,10 @@ impl AppView {
         }
 
         if !self.responses.contains_key(&tab_id) {
+            // A request shows what it will send (#235); any other tab the plain placeholder.
+            if let Some(preview) = self.render_send_preview(&tab_id, SEND_KEY_HINT, cx) {
+                return preview;
+            }
             return EmptyState::new(t!("response.placeholder.not_sent"))
                 .hint(SEND_KEY_HINT)
                 .into_any_element();

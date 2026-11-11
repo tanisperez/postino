@@ -27,6 +27,7 @@ pub mod response_view;
 pub mod root;
 pub mod script_completion;
 pub mod send;
+pub mod send_preview;
 pub mod settings;
 pub mod sidebar;
 pub mod snippet_dialog;

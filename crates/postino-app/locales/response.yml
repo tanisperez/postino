@@ -200,3 +200,138 @@ _version: 2
   es: "Falló el script posterior: %{error}"
   gl: "Fallou o script posterior: %{error}"
   it: "Script post non riuscito: %{error}"
+"response.preview.title":
+  en: "Will be sent"
+  es: "Se enviará"
+  gl: "Enviarase"
+  it: "Verrà inviato"
+"response.preview.send_hint":
+  en: "Press %{key} to send"
+  es: "Pulsa %{key} para enviar"
+  gl: "Preme %{key} para enviar"
+  it: "Premi %{key} per inviare"
+"response.preview.no_headers":
+  en: "No headers"
+  es: "Sin cabeceras"
+  gl: "Sen cabeceiras"
+  it: "Nessuna intestazione"
+"response.preview.headers.one":
+  en: "%{count} header"
+  es: "%{count} cabecera"
+  gl: "%{count} cabeceira"
+  it: "%{count} intestazione"
+"response.preview.headers.other":
+  en: "%{count} headers"
+  es: "%{count} cabeceras"
+  gl: "%{count} cabeceiras"
+  it: "%{count} intestazioni"
+"response.preview.no_auth":
+  en: "No authorization"
+  es: "Sin autenticación"
+  gl: "Sen autenticación"
+  it: "Nessuna autenticazione"
+"response.preview.auth":
+  en: "%{kind} authorization"
+  es: "Autenticación %{kind}"
+  gl: "Autenticación %{kind}"
+  it: "Autenticazione %{kind}"
+"response.preview.no_body":
+  en: "No body"
+  es: "Sin cuerpo"
+  gl: "Sen corpo"
+  it: "Nessun corpo"
+"response.preview.body":
+  en: "%{kind} body"
+  es: "Cuerpo %{kind}"
+  gl: "Corpo %{kind}"
+  it: "Corpo %{kind}"
+"response.preview.no_scripts":
+  en: "No scripts"
+  es: "Sin scripts"
+  gl: "Sen scripts"
+  it: "Nessuno script"
+"response.preview.pre_script":
+  en: "Pre-request script"
+  es: "Script previo"
+  gl: "Script previo"
+  it: "Script pre-richiesta"
+"response.preview.post_script":
+  en: "Post-response script"
+  es: "Script posterior"
+  gl: "Script posterior"
+  it: "Script post-risposta"
+"response.preview.both_scripts":
+  en: "Pre and post scripts"
+  es: "Scripts previo y posterior"
+  gl: "Scripts previo e posterior"
+  it: "Script pre e post"
+"response.preview.variables":
+  en: "Variables"
+  es: "Variables"
+  gl: "Variables"
+  it: "Variabili"
+"response.preview.value_undefined":
+  en: "undefined"
+  es: "sin definir"
+  gl: "sen definir"
+  it: "non definita"
+"response.preview.value_script":
+  en: "set when the pre-request script runs"
+  es: "la define el script previo al ejecutarse"
+  gl: "defínea o script previo ao executarse"
+  it: "la imposta lo script pre-richiesta"
+"response.preview.source_session":
+  en: "this session"
+  es: "esta sesión"
+  gl: "esta sesión"
+  it: "questa sessione"
+"response.preview.source_script":
+  en: "pre-request script"
+  es: "script previo"
+  gl: "script previo"
+  it: "script pre-richiesta"
+"response.preview.source_missing":
+  en: "not in %{base} or %{local}"
+  es: "ni en %{base} ni en %{local}"
+  gl: "nin en %{base} nin en %{local}"
+  it: "né in %{base} né in %{local}"
+"response.preview.source_no_environment":
+  en: "no environment active"
+  es: "ningún entorno activo"
+  gl: "ningún contorno activo"
+  it: "nessun ambiente attivo"
+"response.preview.undefined.one":
+  en: "%{name} is not defined in %{environment}."
+  es: "%{name} no está definida en «%{environment}»."
+  gl: "%{name} non está definida en «%{environment}»."
+  it: "%{name} non è definita in «%{environment}»."
+"response.preview.undefined.other":
+  en: "%{names} are not defined in %{environment}."
+  es: "%{names} no están definidas en «%{environment}»."
+  gl: "%{names} non están definidas en «%{environment}»."
+  it: "%{names} non sono definite in «%{environment}»."
+"response.preview.undefined_no_env.one":
+  en: "%{name} is not defined: no environment is active."
+  es: "%{name} no está definida: no hay ningún entorno activo."
+  gl: "%{name} non está definida: non hai ningún contorno activo."
+  it: "%{name} non è definita: nessun ambiente è attivo."
+"response.preview.undefined_no_env.other":
+  en: "%{names} are not defined: no environment is active."
+  es: "%{names} no están definidas: no hay ningún entorno activo."
+  gl: "%{names} non están definidas: non hai ningún contorno activo."
+  it: "%{names} non sono definite: nessun ambiente è attivo."
+"response.preview.define_in":
+  en: "Define in %{environment}"
+  es: "Definir en %{environment}"
+  gl: "Definir en %{environment}"
+  it: "Definisci in %{environment}"
+"response.preview.choose_environment":
+  en: "Choose environment"
+  es: "Elegir entorno"
+  gl: "Escoller contorno"
+  it: "Scegli ambiente"
+"response.preview.change_environment":
+  en: "Change environment"
+  es: "Cambiar de entorno"
+  gl: "Cambiar de contorno"
+  it: "Cambia ambiente"
