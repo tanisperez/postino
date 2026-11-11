@@ -1,0 +1,52 @@
+# The launcher: the main area of a workspace with no tab open. Glossary and rules: docs/i18n.md
+_version: 2
+"launcher.requests.one":
+  en: "%{count} request"
+  es: "%{count} petición"
+  gl: "%{count} petición"
+  it: "%{count} richiesta"
+"launcher.requests.other":
+  en: "%{count} requests"
+  es: "%{count} peticiones"
+  gl: "%{count} peticións"
+  it: "%{count} richieste"
+"launcher.folders.one":
+  en: "in %{count} folder"
+  es: "en %{count} carpeta"
+  gl: "en %{count} cartafol"
+  it: "in %{count} cartella"
+"launcher.folders.other":
+  en: "in %{count} folders"
+  es: "en %{count} carpetas"
+  gl: "en %{count} cartafoles"
+  it: "in %{count} cartelle"
+"launcher.environment":
+  en: "environment"
+  es: "entorno"
+  gl: "contorno"
+  it: "ambiente"
+"launcher.branch":
+  en: "branch %{branch}"
+  es: "rama %{branch}"
+  gl: "rama %{branch}"
+  it: "branch %{branch}"
+"launcher.search":
+  en: "Search for a request or action"
+  es: "Buscar petición o acción"
+  gl: "Buscar petición ou acción"
+  it: "Cerca una richiesta o un'azione"
+"launcher.import":
+  en: "Import OpenAPI, Postman or Bruno"
+  es: "Importar OpenAPI, Postman o Bruno"
+  gl: "Importar OpenAPI, Postman ou Bruno"
+  it: "Importa OpenAPI, Postman o Bruno"
+"launcher.open_workspace":
+  en: "Open another workspace"
+  es: "Abrir otro espacio de trabajo"
+  gl: "Abrir outro espazo de traballo"
+  it: "Apri un altro spazio di lavoro"
+"launcher.drop":
+  en: "Drop an OpenAPI, Postman or Bruno file here to import it"
+  es: "Suelta aquí un fichero de OpenAPI, Postman o Bruno para importarlo"
+  gl: "Solta aquí un ficheiro de OpenAPI, Postman ou Bruno para importalo"
+  it: "Trascina qui un file OpenAPI, Postman o Bruno per importarlo"

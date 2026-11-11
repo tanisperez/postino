@@ -69,18 +69,12 @@ fn recent_entries(
         .collect()
 }
 
-/// Whether the welcome tab opens at startup.
-///
-/// - Never when Postino was started with a path (a command line argument, or a file the OS
-///   opened with it): the user asked for something specific.
-/// - Always when there is no workspace to open (the first start, or every remembered folder is
-///   gone), whatever `show_welcome` says, so closing it never leads back to an empty window.
-/// - Otherwise as `show_welcome` (the setting) says, next to the reopened workspace.
-pub fn show_at_startup(launched_with_path: bool, has_workspace: bool, show_welcome: bool) -> bool {
-    if launched_with_path {
-        return false;
-    }
-    !has_workspace || show_welcome
+/// Whether the welcome tab opens at startup: only when there is no workspace to open (the first
+/// start, or every remembered folder is gone), and never when Postino was started with a path (a
+/// command line argument, or a file the OS opened with it), where the user asked for something
+/// specific. With a workspace open, the launcher (`views/launcher.rs`) takes its place.
+pub fn show_at_startup(launched_with_path: bool, has_workspace: bool) -> bool {
+    !launched_with_path && !has_workspace
 }
 
 #[cfg(test)]
@@ -90,21 +84,14 @@ mod tests {
 
     #[test]
     fn startup_with_a_path_never_shows_it() {
-        assert!(!show_at_startup(true, true, true));
-        assert!(!show_at_startup(true, false, true));
-        assert!(!show_at_startup(true, true, false));
+        assert!(!show_at_startup(true, true));
+        assert!(!show_at_startup(true, false));
     }
 
     #[test]
-    fn startup_without_a_workspace_always_shows_it() {
-        assert!(show_at_startup(false, false, false));
-        assert!(show_at_startup(false, false, true));
-    }
-
-    #[test]
-    fn startup_with_a_remembered_workspace_follows_the_setting() {
-        assert!(show_at_startup(false, true, true));
-        assert!(!show_at_startup(false, true, false));
+    fn startup_shows_it_only_without_a_workspace() {
+        assert!(show_at_startup(false, false));
+        assert!(!show_at_startup(false, true));
     }
 
     #[test]

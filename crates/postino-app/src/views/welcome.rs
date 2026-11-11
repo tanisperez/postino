@@ -1,6 +1,8 @@
 //! The welcome tab (GitHub #90): what Postino is, how it stores requests, how to start (New
 //! workspace, Open folder, Import from Postman), the recent workspaces, links to the quick
-//! start, the shortcuts and the command palette, and the "show at startup" checkbox.
+//! start, the shortcuts and the command palette. It only exists while no workspace is open: it is
+//! the only tab then and has no close button. With a workspace open and no tab, the launcher
+//! (`views/launcher.rs`) takes its place.
 //!
 //! The recent workspaces come from the tab's own [`WelcomeTab`], read when it opens, so render
 //! touches no file. The layout follows the "Welcome tab" section of `docs/design-system.md`.
@@ -11,7 +13,7 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
-use telaio_ui::components::{MODIFIER_KEY, labelled_checkbox, open_hint};
+use telaio_ui::components::{MODIFIER_KEY, open_hint};
 
 use crate::state::settings::ThemeChoice;
 use crate::state::welcome::{QUICK_START_URL, RecentWorkspace, WelcomeTab};
@@ -33,7 +35,8 @@ type ClickHandler = Box<dyn Fn(&mut Window, &mut App)>;
 
 impl AppView {
     /// Opens the welcome tab, or brings it to the front with its recent workspaces read again.
-    /// Also the command palette's "Show welcome" action.
+    /// Only while no workspace is open (`state::welcome::show_at_startup`, or a workspace that
+    /// failed to open).
     pub(crate) fn open_welcome_tab(&mut self, cx: &mut Context<Self>) {
         let welcome = WelcomeTab::load(&self.recent_workspaces, dirs::home_dir().as_deref());
         self.state.tabs.open_welcome(welcome);
@@ -91,12 +94,7 @@ impl AppView {
             )
             .child(render_theme(weak.clone(), self.state.settings.theme))
             .child(div().flex_1().min_h(px(24.0)))
-            .child(render_footer(
-                weak,
-                self.state.settings.show_welcome,
-                &palette,
-                &mono_font,
-            ));
+            .child(render_footer(weak, &palette, &mono_font));
 
         let area = div()
             .id("welcome-tab")
@@ -431,7 +429,6 @@ fn list_row(id: impl Into<ElementId>, palette: &Palette) -> Stateful<Div> {
         .active(|style| style.bg(palette.pressed))
 }
 
-/// The links (quick start, shortcuts, command palette) and the "show at startup" checkbox.
 /// The Theme row: the three theme cards of Settings, Appearance, so the look can be picked on the
 /// first start without opening Settings (GitHub #98).
 fn render_theme(weak: WeakEntity<AppView>, current: ThemeChoice) -> impl IntoElement {
@@ -453,36 +450,12 @@ fn render_theme(weak: WeakEntity<AppView>, current: ThemeChoice) -> impl IntoEle
         )
 }
 
+/// The links of the welcome tab's footer.
 fn render_footer(
     weak: WeakEntity<AppView>,
-    show_welcome: bool,
     palette: &Palette,
     mono_font: &SharedString,
 ) -> impl IntoElement {
-    let shortcuts_weak = weak.clone();
-    let search_weak = weak.clone();
-    let link =
-        |id: &'static str, label: SharedString, keys: Option<String>, on_click: ClickHandler| {
-            let hover_color = palette.fg;
-            h_flex()
-                .id(id)
-                .gap(px(4.0))
-                .cursor_pointer()
-                .text_color(palette.accent_text)
-                .hover(move |style| style.text_color(hover_color))
-                .child(label)
-                .children(keys.map(|keys| {
-                    div()
-                        .font_family(mono_font.clone())
-                        .text_size(px(11.0))
-                        .child(format!("({keys})"))
-                }))
-                .on_click(move |_, window, cx| on_click(window, cx))
-        };
-    let dot = || separator_dot(palette);
-
-    let checkbox_weak = weak;
-
     h_flex()
         .flex_wrap()
         .items_center()
@@ -491,49 +464,65 @@ fn render_footer(
         .border_t_1()
         .border_color(palette.border)
         .text_size(px(12.5))
-        .child(
-            h_flex()
-                .items_center()
-                .gap(px(10.0))
-                .child(link(
-                    "welcome-quick-start",
-                    t!("welcome.quick_start").into(),
-                    None,
-                    Box::new(|_, cx| cx.open_url(QUICK_START_URL)),
-                ))
-                .child(dot())
-                .child(link(
-                    "welcome-shortcuts",
-                    t!("welcome.shortcuts").into(),
-                    Some(open_hint()),
-                    Box::new(move |window, cx| {
-                        let _ =
-                            shortcuts_weak.update(cx, |view, cx| view.open_shortcuts(window, cx));
-                    }),
-                ))
-                .child(dot())
-                .child(link(
-                    "welcome-search",
-                    t!("welcome.search").into(),
-                    Some(format!("{MODIFIER_KEY}+K")),
-                    Box::new(move |window, cx| {
-                        let _ = search_weak
-                            .update(cx, |view, cx| view.open_command_palette(window, cx));
-                    }),
-                )),
-        )
-        .child(div().flex_1())
-        .child(
-            labelled_checkbox(
-                "welcome-show-on-start",
-                show_welcome,
-                t!("welcome.show_on_start"),
-                palette,
-            )
-            .on_change(move |checked, window, cx| {
-                let checked = *checked;
-                let _ =
-                    checkbox_weak.update(cx, |view, cx| view.set_show_welcome(checked, window, cx));
+        .child(help_links("welcome", weak, palette, mono_font))
+}
+
+/// Quick start guide · Shortcuts (F1) · Search (Ctrl+K): the links the welcome tab and the
+/// launcher (`views/launcher.rs`) end with. `id_prefix` keeps their element ids apart.
+pub(crate) fn help_links(
+    id_prefix: &'static str,
+    weak: WeakEntity<AppView>,
+    palette: &Palette,
+    mono_font: &SharedString,
+) -> impl IntoElement {
+    let shortcuts_weak = weak.clone();
+    let search_weak = weak;
+    let link = |id: (&'static str, &'static str),
+                label: SharedString,
+                keys: Option<String>,
+                on_click: ClickHandler| {
+        let hover_color = palette.fg;
+        h_flex()
+            .id(ElementId::Name(format!("{}-{}", id.0, id.1).into()))
+            .gap(px(4.0))
+            .cursor_pointer()
+            .text_color(palette.accent_text)
+            .hover(move |style| style.text_color(hover_color))
+            .child(label)
+            .children(keys.map(|keys| {
+                div()
+                    .font_family(mono_font.clone())
+                    .text_size(px(11.0))
+                    .child(format!("({keys})"))
+            }))
+            .on_click(move |_, window, cx| on_click(window, cx))
+    };
+    let dot = || separator_dot(palette);
+    h_flex()
+        .items_center()
+        .gap(px(10.0))
+        .child(link(
+            (id_prefix, "quick-start"),
+            t!("welcome.quick_start").into(),
+            None,
+            Box::new(|_, cx| cx.open_url(QUICK_START_URL)),
+        ))
+        .child(dot())
+        .child(link(
+            (id_prefix, "shortcuts"),
+            t!("welcome.shortcuts").into(),
+            Some(open_hint()),
+            Box::new(move |window, cx| {
+                let _ = shortcuts_weak.update(cx, |view, cx| view.open_shortcuts(window, cx));
             }),
-        )
+        ))
+        .child(dot())
+        .child(link(
+            (id_prefix, "search"),
+            t!("welcome.search").into(),
+            Some(format!("{MODIFIER_KEY}+K")),
+            Box::new(move |window, cx| {
+                let _ = search_weak.update(cx, |view, cx| view.open_command_palette(window, cx));
+            }),
+        ))
 }

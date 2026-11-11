@@ -6645,8 +6645,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-app"
-version = "0.18.0"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.18.0#0c9b983ca4c4d1f52feb3a73b96df0e595a8e712"
+version = "0.18.1"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.18.1#3100edb017e7e9c7280b1139c7099f7a3b868a32"
 dependencies = [
  "chrono",
  "dirs 7.0.0",
@@ -6663,8 +6663,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-git"
-version = "0.18.0"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.18.0#0c9b983ca4c4d1f52feb3a73b96df0e595a8e712"
+version = "0.18.1"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.18.1#3100edb017e7e9c7280b1139c7099f7a3b868a32"
 dependencies = [
  "dunce",
  "log",
@@ -6673,8 +6673,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-ui"
-version = "0.18.0"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.18.0#0c9b983ca4c4d1f52feb3a73b96df0e595a8e712"
+version = "0.18.1"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.18.1#3100edb017e7e9c7280b1139c7099f7a3b868a32"
 dependencies = [
  "gpui-kit",
  "rust-i18n",
@@ -6683,8 +6683,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-update"
-version = "0.18.0"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.18.0#0c9b983ca4c4d1f52feb3a73b96df0e595a8e712"
+version = "0.18.1"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.18.1#3100edb017e7e9c7280b1139c7099f7a3b868a32"
 dependencies = [
  "dirs 7.0.0",
  "log",

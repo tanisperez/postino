@@ -24,13 +24,13 @@ use telaio_app::{logging, window};
 use actions::{
     CloseActiveTab, CommitFromMessage, ConfirmCompletion, CopyLoadTestSummary, DeleteLine,
     DeleteSelectedEntry, DismissCompletion, ImportOpenApi, MoveEnvironmentDown, MoveEnvironmentUp,
-    NextCompletion, NextDiffChange, NextTab, OpenCommandPalette, OpenDiffFile, OpenSettings,
-    OpenShortcuts, OpenWorkspace, PreviousCompletion, PreviousDiffChange, PreviousTab,
-    RedoRequestEdit, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1, SelectEnvironment2,
-    SelectEnvironment3, SelectEnvironment4, SelectEnvironment5, SelectEnvironment6,
-    SelectEnvironment7, SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
-    ShowCompletion, ToggleCollections, ToggleEnvironments, ToggleLoadTests, ToggleSourceControl,
-    UndoRequestEdit,
+    NewRequest, NextCompletion, NextDiffChange, NextTab, OpenCommandPalette, OpenDiffFile,
+    OpenSettings, OpenShortcuts, OpenWorkspace, PreviousCompletion, PreviousDiffChange,
+    PreviousTab, RedoRequestEdit, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1,
+    SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
+    SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
+    SelectNoEnvironment, SendActiveTab, ShowCompletion, ToggleCollections, ToggleEnvironments,
+    ToggleLoadTests, ToggleSourceControl, UndoRequestEdit,
 };
 use state::settings::ThemeChoice;
 use state::window::WindowState;
@@ -82,8 +82,7 @@ fn main() -> ExitCode {
         arg.as_deref(),
         state::config::load_last_workspace().as_deref(),
     );
-    let show_welcome =
-        state::welcome::show_at_startup(arg.is_some(), launch.is_some(), settings.show_welcome);
+    let show_welcome = state::welcome::show_at_startup(arg.is_some(), launch.is_some());
     // The What's new tab, once after an update (#189). The version that ran is recorded here,
     // before the window opens, so a crash or a second window never shows it twice.
     let last_seen = state::config::last_seen_version();
@@ -306,6 +305,7 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-,", OpenSettings, None),
         KeyBinding::new("cmd-k", OpenCommandPalette, None),
         KeyBinding::new("cmd-o", OpenWorkspace, None),
+        KeyBinding::new("cmd-n", NewRequest, None),
         KeyBinding::new("cmd-shift-o", ImportOpenApi, None),
         KeyBinding::new("cmd-w", CloseActiveTab, None),
         KeyBinding::new("cmd-shift-c", CopyLoadTestSummary, None),
@@ -332,6 +332,7 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-,", OpenSettings, None),
         KeyBinding::new("ctrl-k", OpenCommandPalette, None),
         KeyBinding::new("ctrl-o", OpenWorkspace, None),
+        KeyBinding::new("ctrl-n", NewRequest, None),
         KeyBinding::new("ctrl-shift-o", ImportOpenApi, None),
         KeyBinding::new("ctrl-w", CloseActiveTab, None),
         KeyBinding::new("ctrl-shift-c", CopyLoadTestSummary, None),

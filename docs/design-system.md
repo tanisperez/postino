@@ -372,12 +372,26 @@ Top to bottom (px unless said otherwise):
    - Links, gap 10, separated by the same faint `·`: "Quick start", "Shortcuts" with "(F1)" and
      "Search" with "(Ctrl+K)". Text `accent_text`, `fg` on hover, no underline, pointer cursor. The
      hint in parentheses is mono, 11, in the link's color, and follows the label with a gap of 4.
-     On macOS the hints read "(Cmd+Shift+/)" and "(Cmd+K)".
-   - A flexible gap, then telaio's `labelled_checkbox` "Show the welcome tab when Postino
-     starts", with the standard checkbox halo on hover over the box or the label. Clicking either
-     flips `show_welcome`, the same setting as Settings, Appearance, Interface.
+     On macOS the hints read "(Cmd+Shift+/)" and "(Cmd+K)". The launcher ends with the same links
+     (`views::welcome::help_links`).
 
-**Empty main area.** With no workspace and no tab (the welcome tab was closed), the area is `bg`
+The welcome tab has no close button and no context menu: it only exists while no workspace is
+open (Welcome 5a), and goes away when one opens. Its `DocumentTab` has no `on_close`, which telaio
+draws without the close button.
+
+**Launcher** (Empty States 1a, `views/launcher.rs`). With a workspace open and no tab, the main
+area is one scrolling panel with no tab bar and no request and response split: a column of at most
+580 wide, centered, padding top 72, gap 26. A header (a 44 square "P" in `accent_subtle` and
+`accent_text`, radius 11, then the workspace name at 20 semibold over a `fg_subtle` line with the
+request and folder counts, the environment in its color and the branch), Start (`SectionLabel`
+"Start", five 34 high rows: an `accent_text` icon, the label and the key in a mono 11 `fg_muted`
+box with a `border_strong` border), Recent (the last five requests opened in the workspace, 32
+high rows: the method in its color, mono 10.5 semibold in a 46 wide column, the name, the folder in
+mono 11.5 `fg_subtle`, when in 12 `fg_subtle`) and a footer over a `raised` top border: the drop
+hint with an `upload` icon, then the help links. Every row has the hover and pressed backgrounds.
+The design's "new" badges mark what the design added and are not drawn.
+
+**Empty main area.** A fallback for a window with no workspace and no tab, which the unclosable welcome tab should prevent: the area is `bg`
 with a centered column, gap 16: "Create a workspace or open a folder to get started." in
 `fg_muted`, then a row with gap 8 of a primary button with a `plus` icon ("New workspace...") and
 a secondary button with a `folder-open` icon ("Open folder..."). The mockup did not cover it.
@@ -391,8 +405,7 @@ Where the code differs from `Welcome.dc.html`:
 - The mockup only styles `hover` on the rows; the code adds `pressed`.
 - The mockup draws the `·` separators and the unchecked box border in a fixed `#4a4d57`; the
   code uses `fg_subtle` at 60% and `border_strong`, so both themes follow the palette.
-- The mockup is static: it shows a hover state only, a checkbox that toggles locally, and Spanish
-  text. The strings are in `locales/welcome.yml` in four languages.
+- The mockup is static: it shows a hover state only and Spanish text. The strings are in `locales/welcome.yml` in four languages.
 
 ## Components (`views/components/`)
 

@@ -109,8 +109,6 @@ pub enum ActionId {
     NewWorkspace,
     /// Opens the "Open folder" picker.
     OpenWorkspace,
-    /// Opens the welcome tab, or brings it to the front.
-    ShowWelcome,
     /// Opens the What's new tab, or brings it to the front.
     ShowWhatsNew,
     /// Starts creating a new load test tab.
@@ -301,7 +299,6 @@ pub fn action_items() -> Vec<PaletteItem> {
             t!("common.open_folder"),
             Some(format!("{MODIFIER_KEY}+O")),
         ),
-        action_item(ActionId::ShowWelcome, t!("welcome.palette_action"), None),
         action_item(ActionId::ShowWhatsNew, t!("whats_new.palette_action"), None),
         action_item(
             ActionId::NewLoadTest,
@@ -523,7 +520,7 @@ mod tests {
     #[test]
     fn action_items_cover_every_action_id() {
         let items = action_items();
-        assert_eq!(items.len(), 20);
+        assert_eq!(items.len(), 19);
         assert!(
             items
                 .iter()

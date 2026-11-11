@@ -399,7 +399,6 @@ fn action_icon(action: ActionId) -> gpui_kit::assets::IconName {
         ActionId::OpenShortcuts => Lucide::Keyboard,
         ActionId::NewWorkspace => Lucide::FolderPlus,
         ActionId::OpenWorkspace => Lucide::Folder,
-        ActionId::ShowWelcome => Lucide::House,
         ActionId::ShowWhatsNew => Lucide::Sparkles,
         ActionId::NewLoadTest => Lucide::Gauge,
         ActionId::ToggleTheme => Lucide::Palette,
@@ -497,9 +496,6 @@ fn execute_action(weak: WeakEntity<AppView>, action: ActionId, window: &mut Wind
         }
         ActionId::NewWorkspace => new_workspace::open_new_workspace_dialog(weak, window, cx),
         ActionId::OpenWorkspace => sidebar::pick_workspace_folder(weak, window, cx),
-        ActionId::ShowWelcome => {
-            let _ = weak.update(cx, |view, cx| view.open_welcome_tab(cx));
-        }
         ActionId::ShowWhatsNew => {
             let _ = weak.update(cx, |view, cx| view.open_whats_new_tab(cx));
         }

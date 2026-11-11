@@ -71,11 +71,17 @@ impl AppView {
     /// all, close without saving, or cancel and close none.
     pub(crate) fn request_close_tabs(
         &mut self,
-        ids: Vec<String>,
+        mut ids: Vec<String>,
         keep: Option<String>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        // The welcome tab is never closed: it only exists without a workspace, and goes away by
+        // itself when one opens.
+        ids.retain(|id| id != state::welcome::TAB_ID);
+        if ids.is_empty() {
+            return;
+        }
         let unsaved: Vec<SharedString> = self
             .state
             .tabs

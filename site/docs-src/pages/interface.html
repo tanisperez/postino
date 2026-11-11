@@ -1,5 +1,5 @@
 title: The interface
-description: A tour of the Postino window: title bar, activity rail, sidebar, tabs, welcome tab, request editor, response pane, status bar and command palette.
+description: A tour of the Postino window: title bar, activity rail, sidebar, tabs, welcome tab, launcher, request editor, response pane, status bar and command palette.
 ---
 <h1>The interface</h1>
 <p class="lead">Postino uses the layout you probably know from other API clients: collections on the left, the request on top and the response below. This page names every part of the window, so the rest of the documentation can refer to them.</p>
@@ -84,7 +84,7 @@ description: A tour of the Postino window: title bar, activity rail, sidebar, ta
 </div>
 
 <h2>Welcome tab</h2>
-<p>The welcome tab is where Postino starts when it has nothing to show yet. From top to bottom it has:</p>
+<p>The welcome tab is where Postino starts when there is no workspace to open. It only exists while no workspace is open, where it is the only tab, so it has no close button and <kbd>Ctrl</kbd> <kbd>W</kbd> leaves it open. With a workspace open, the <a href="#launcher">launcher</a> takes its place. From top to bottom it has:</p>
 <ul>
     <li>The Postino logo and a line on what it is: a native, lightweight HTTP client, with no account and no cloud.</li>
     <li>A card that says how Postino stores things, so you do not have to guess: a <code>folder</code> is a workspace, a <code>subfolder</code> is a collection and a <code>.postino</code> file is a request. See <a href="workspaces.html">Workspaces and collections</a>.</li>
@@ -99,16 +99,25 @@ description: A tour of the Postino window: title bar, activity rail, sidebar, ta
     <li><strong>Recent</strong>, the four most recent workspaces whose folder still exists, each with its name and its shortened path. One click opens it. The list is hidden when there are none.</li>
     <li><strong>Theme</strong>, the same three cards as <strong>Theme</strong> in <a href="settings.html">Settings</a>, Appearance: System, Light and Dark. A click switches the theme at once and saves the choice.</li>
     <li>Links to the <strong>Quick start</strong> (it opens the quick start guide in your browser), the <strong>Shortcuts</strong> cheat sheet (<kbd>F1</kbd>) and <strong>Search</strong>, the <a href="#command-palette">command palette</a> (<kbd>Ctrl</kbd> <kbd>K</kbd>).</li>
-    <li>A checkbox, <strong>Show the welcome tab when Postino starts</strong>. It is the same setting as <strong>Welcome tab at startup</strong> in <a href="settings.html">Settings</a>, Appearance.</li>
 </ul>
-<p>The welcome tab opens:</p>
+<p>The welcome tab opens when Postino starts and there is no workspace to open: the first time you run it, or when none of your recent workspaces exists any more, or the one it tries to reopen cannot be opened. It never opens when you start Postino with a path or open a <code>.postino</code> file from your file manager. See <a href="command-line.html">Command line</a>. Opening or creating a workspace, from the welcome tab or anywhere else, makes it go away.</p>
+
+<h2 id="launcher">Launcher</h2>
+<p>With a workspace open and no tab, the main area is the launcher, in one panel with no tab bar. It shows every time Postino starts with the last workspace, since tabs are not reopened, and every time you close the last tab. After an update, the <a href="#whats-new">What's new</a> tab opens first, and the launcher shows when you close it.</p>
 <ul>
-    <li>When Postino starts and there is no workspace to open: the first time you run it, or when none of your recent workspaces exists any more (or the one it tries to reopen cannot be opened). It does this whatever the setting says, so Postino never starts in an empty window.</li>
-    <li>When Postino starts with <strong>Welcome tab at startup</strong> on, next to the workspace it reopens. The setting is on by default.</li>
-    <li>Whenever you choose <strong>Show welcome</strong> in the command palette.</li>
+    <li>The workspace's name, how many requests and folders it has, the active environment and, in a git repository, the branch.</li>
+    <li><strong>Start</strong>, each entry with its key:
+        <ul>
+            <li><strong>New request</strong> (<kbd>Ctrl</kbd> <kbd>N</kbd>) opens the New request dialog, in the folder selected in the sidebar (or the folder of the selected request), otherwise at the root of the workspace. The key works anywhere in the window.</li>
+            <li><strong>Search for a request or action</strong> (<kbd>Ctrl</kbd> <kbd>K</kbd>) opens the <a href="#command-palette">command palette</a>.</li>
+            <li><strong>Import OpenAPI, Postman or Bruno</strong> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>O</kbd>) opens the import wizard. See <a href="openapi-import.html">Importing OpenAPI</a>.</li>
+            <li><strong>Environments</strong> (<kbd>Alt</kbd> <kbd>3</kbd>, <kbd>Ctrl</kbd> <kbd>3</kbd> on macOS) shows the Environments panel.</li>
+            <li><strong>Open another workspace</strong> (<kbd>Ctrl</kbd> <kbd>O</kbd>) opens the folder picker.</li>
+        </ul>
+    </li>
+    <li><strong>Recent</strong>, the last five requests you opened in this workspace, with their method, folder and when. One click opens it. A request renamed or deleted since is left out, and the list is hidden when there are none. They are remembered per workspace in Postino's <a href="files-and-folders.html">config folder</a>, never in the workspace.</li>
+    <li>A reminder that dropping an OpenAPI, Postman or Bruno file on the window imports it, and the links to the <strong>Quick start</strong>, the <strong>Shortcuts</strong> cheat sheet (<kbd>F1</kbd>) and <strong>Search</strong> (<kbd>Ctrl</kbd> <kbd>K</kbd>).</li>
 </ul>
-<p>It does not open when you start Postino with a path or open a <code>.postino</code> file from your file manager. See <a href="command-line.html">Command line</a>. On macOS, with <strong>Welcome tab at startup</strong> on, a file opened from the Finder while Postino is closed still gets the welcome tab next to it.</p>
-<p>Close it like any tab, with its close button or <kbd>Ctrl</kbd> <kbd>W</kbd>. Opening a workspace, from the welcome tab or anywhere else, also closes it, because a workspace always opens with fresh tabs. If you close it while no workspace is open, the main area says <strong>Create a workspace or open a folder to get started.</strong> and offers the <strong>New workspace…</strong> and <strong>Open folder…</strong> buttons.</p>
 
 <h2 id="whats-new">What's new tab</h2>
 <p>After an update, the first time the new version starts, Postino opens a <strong>What's new</strong> tab with the release notes of that version, next to the workspace it reopens. It opens once: the next start does not show it again. The notes are part of Postino itself, so the tab works offline and Postino makes no request to show it. They are in English, like the release on GitHub.</p>
@@ -164,7 +173,7 @@ description: A tour of the Postino window: title bar, activity rail, sidebar, ta
     <dt>Environments</dt>
     <dd><strong>No environment</strong> and every environment, with their shortcuts. Choosing one makes it active.</dd>
     <dt>Actions</dt>
-    <dd>Send request, Save, New request, New folder, Refresh collections, Import Postman collection…, Import Postman environment…, Import Bruno collection…, Update collection from Postman…, Update collection from Bruno…, Open Settings, Keyboard shortcuts, New workspace…, Open folder…, Show welcome, Show what's new, New load test, Toggle theme and, in builds with an updater, Check for updates. When the workspace is in a git repository it also lists the <a href="git.html#git-palette">Git actions</a>, such as <strong>Git: Commit</strong> and <strong>Git: Show log</strong>.</dd>
+    <dd>Send request, Save, New request, New folder, Refresh collections, Import Postman collection…, Import Postman environment…, Import Bruno collection…, Update collection from Postman…, Update collection from Bruno…, Open Settings, Keyboard shortcuts, New workspace…, Open folder…, Show what's new, New load test, Toggle theme and, in builds with an updater, Check for updates. When the workspace is in a git repository it also lists the <a href="git.html#git-palette">Git actions</a>, such as <strong>Git: Commit</strong> and <strong>Git: Show log</strong>.</dd>
 </dl>
 
 <h2>Keyboard shortcuts cheat sheet</h2>

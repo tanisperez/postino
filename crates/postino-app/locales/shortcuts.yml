@@ -175,3 +175,8 @@ _version: 2
   es: "Copiar el resumen de resultados como Markdown"
   gl: "Copiar o resumo de resultados como Markdown"
   it: "Copia il riepilogo dei risultati come Markdown"
+"shortcuts.action.new_request":
+  en: "New request"
+  es: "Nueva petición"
+  gl: "Nova petición"
+  it: "Nuova richiesta"

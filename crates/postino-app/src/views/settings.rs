@@ -172,17 +172,6 @@ impl AppView {
         self.apply_settings_live(window, cx);
     }
 
-    /// Turns the welcome tab at startup on or off, from Settings or the tab's own checkbox.
-    pub(crate) fn set_show_welcome(
-        &mut self,
-        enabled: bool,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.state.settings.show_welcome = enabled;
-        self.apply_settings_live(window, cx);
-    }
-
     /// Turns the What's new tab after an update on or off, from Settings or the tab's checkbox.
     pub(crate) fn set_show_whats_new(
         &mut self,
@@ -485,27 +474,6 @@ fn render_interface_section(
                 |view, size, window, cx| view.set_ui_font_size(size, window, cx),
             ),
         ))
-        .child(
-            LabeledRow::new(
-                t!("settings.interface.welcome"),
-                switch_halo(
-                    "settings-show-welcome-halo",
-                    Switch::new("settings-show-welcome")
-                        .checked(settings.show_welcome)
-                        .on_click({
-                            let weak = weak.clone();
-                            move |checked, window, cx| {
-                                let checked = *checked;
-                                let _ = weak.update(cx, |view, cx| {
-                                    view.set_show_welcome(checked, window, cx)
-                                });
-                            }
-                        }),
-                    palette,
-                ),
-            )
-            .description(t!("settings.interface.welcome_description")),
-        )
         .child(
             LabeledRow::new(
                 t!("settings.interface.whats_new"),

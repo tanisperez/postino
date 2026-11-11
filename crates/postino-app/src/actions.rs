@@ -60,6 +60,9 @@ actions!(
         /// Opens the native folder picker to open a workspace (`Ctrl O` / `Cmd O`), like the
         /// workspace switcher's "Open folder..." item.
         OpenWorkspace,
+        /// Opens the new request dialog (`Ctrl N` / `Cmd N`), in the folder selected in the
+        /// sidebar, or the folder of the selected request, or the workspace root.
+        NewRequest,
         /// Opens the OpenAPI import wizard (`Ctrl+Shift+O` / `Cmd+Shift+O`), like the Import
         /// menu's "OpenAPI / Swagger..." item.
         ImportOpenApi,

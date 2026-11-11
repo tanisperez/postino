@@ -75,16 +75,6 @@ _version: 2
   es: "Buscador"
   gl: "Buscador"
   it: "Ricerca"
-"welcome.show_on_start":
-  en: "Show the welcome tab when Postino starts"
-  es: "Mostrar la bienvenida al abrir Postino"
-  gl: "Amosar a benvida ao abrir Postino"
-  it: "Mostra il benvenuto all'avvio di Postino"
-"welcome.palette_action":
-  en: "Show welcome"
-  es: "Mostrar bienvenida"
-  gl: "Amosar a benvida"
-  it: "Mostra il benvenuto"
 "welcome.no_workspace":
   en: "Create a workspace or open a folder to get started."
   es: "Crea un espacio de trabajo o abre una carpeta para empezar."

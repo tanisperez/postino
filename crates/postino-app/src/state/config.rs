@@ -33,6 +33,15 @@ const LEGACY_LAST_WORKSPACE_FILE: &str = "last-workspace.txt";
 /// workspace's git diff.
 const LAST_ENVIRONMENTS_FILE: &str = "last-environments.toml";
 
+/// The path, relative to the config directory ([`config_dir`]), of the file holding each recent
+/// workspace's last opened requests, for the launcher (`state::launcher`). Here, not in the
+/// workspace, so opening a request never shows up in its git diff.
+const RECENT_REQUESTS_FILE: &str = "recent-requests.toml";
+
+/// How many requests are remembered per workspace. The launcher shows fewer: a request that was
+/// renamed or deleted since is skipped, and the next one takes its place.
+const MAX_RECENT_REQUESTS: usize = 10;
+
 /// The path, relative to the config directory ([`config_dir`]), of the file holding the last
 /// stable version that ran, one line.
 const LAST_VERSION_FILE: &str = "last-version.txt";
@@ -220,6 +229,100 @@ fn write_last_environments(base: &Path, environments: &BTreeMap<String, String>)
     };
     if let Err(error) = fs::write(&path, content) {
         log::warn!("could not save {}: {error}", path.display());
+    }
+}
+
+/// A request opened in a workspace, for the launcher's Recent list.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct RecentRequest {
+    /// The request id, its path relative to the workspace root.
+    pub id: String,
+    /// When it was last opened, in Unix seconds.
+    pub opened: i64,
+}
+
+/// The requests last opened in the workspace at `root`, most recent first. Read when the
+/// workspace opens, never while rendering.
+pub fn recent_requests(root: &Path) -> Vec<RecentRequest> {
+    match config_dir() {
+        Some(base) => recent_requests_at(&base, &workspace_key(root)),
+        None => Vec::new(),
+    }
+}
+
+/// Remembers that the request `id` of the workspace at `root` was opened at `now` (Unix seconds)
+/// and returns the workspace's new list. Like [`record_workspace`], failing to persist it is
+/// only logged.
+pub fn record_request(root: &Path, id: &str, now: i64) -> Vec<RecentRequest> {
+    match config_dir() {
+        Some(base) => record_request_at(&base, &workspace_key(root), id, now),
+        None => Vec::new(),
+    }
+}
+
+/// `recent` with `id` moved to the front, opened at `now`, at most [`MAX_RECENT_REQUESTS`] long.
+pub fn with_recent_request(
+    mut recent: Vec<RecentRequest>,
+    id: &str,
+    now: i64,
+) -> Vec<RecentRequest> {
+    recent.retain(|entry| entry.id != id);
+    recent.insert(
+        0,
+        RecentRequest {
+            id: id.to_string(),
+            opened: now,
+        },
+    );
+    recent.truncate(MAX_RECENT_REQUESTS);
+    recent
+}
+
+/// The testable core of [`recent_requests`], taking the config base directory explicitly.
+fn recent_requests_at(base: &Path, root: &Path) -> Vec<RecentRequest> {
+    read_recent_requests(base)
+        .remove(&root.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
+
+/// The testable core of [`record_request`]. Drops the entries of workspaces no longer in the
+/// recent list, so the file never outgrows it.
+fn record_request_at(base: &Path, root: &Path, id: &str, now: i64) -> Vec<RecentRequest> {
+    let mut all = read_recent_requests(base);
+    let key = root.to_string_lossy().into_owned();
+    let list = with_recent_request(all.remove(&key).unwrap_or_default(), id, now);
+    all.insert(key, list.clone());
+    let recent: HashSet<String> = read_recent_workspaces(base)
+        .iter()
+        .map(|path| path.to_string_lossy().into_owned())
+        .collect();
+    all.retain(|workspace, _| recent.contains(workspace));
+    write_toml(base, RECENT_REQUESTS_FILE, &all);
+    list
+}
+
+/// Reads `<base>/recent-requests.toml`. A missing or unreadable file reads as empty.
+fn read_recent_requests(base: &Path) -> BTreeMap<String, Vec<RecentRequest>> {
+    fs::read_to_string(base.join(RECENT_REQUESTS_FILE))
+        .ok()
+        .and_then(|content| toml::from_str(&content).ok())
+        .unwrap_or_default()
+}
+
+/// Writes `value` as TOML to `<base>/<file>`, creating the folder if needed. Errors are logged.
+fn write_toml(base: &Path, file: &str, value: &impl serde::Serialize) {
+    let path = base.join(file);
+    if let Err(error) = fs::create_dir_all(base) {
+        log::warn!("could not create {}: {error}", base.display());
+        return;
+    }
+    match toml::to_string(value) {
+        Ok(content) => {
+            if let Err(error) = fs::write(&path, content) {
+                log::warn!("could not save {}: {error}", path.display());
+            }
+        }
+        Err(error) => log::warn!("could not serialize {}: {error}", path.display()),
     }
 }
 
@@ -436,6 +539,44 @@ mod tests {
             Some(real)
         );
         assert_eq!(first_existing(vec![missing]), None);
+    }
+
+    #[test]
+    fn recent_requests_round_trip_per_workspace_most_recent_first() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let base = dir.path();
+        let (a, b) = (base.join("a"), base.join("b"));
+        record_workspace_at(base, &a);
+        record_workspace_at(base, &b);
+
+        assert!(recent_requests_at(base, &a).is_empty());
+        record_request_at(base, &a, "index.postino", 10);
+        record_request_at(base, &a, "auth/login.postino", 20);
+        let list = record_request_at(base, &a, "index.postino", 30);
+        record_request_at(base, &b, "health.postino", 40);
+
+        let ids = |list: &[RecentRequest]| -> Vec<String> {
+            list.iter().map(|entry| entry.id.clone()).collect()
+        };
+        assert_eq!(ids(&list), ["index.postino", "auth/login.postino"]);
+        assert_eq!(recent_requests_at(base, &a), list);
+        assert_eq!(recent_requests_at(base, &a)[0].opened, 30);
+        assert_eq!(ids(&recent_requests_at(base, &b)), ["health.postino"]);
+
+        // A workspace that left the recent list loses its requests on the next write.
+        forget_workspace_at(base, &b);
+        record_request_at(base, &a, "x.postino", 50);
+        assert!(recent_requests_at(base, &b).is_empty());
+    }
+
+    #[test]
+    fn the_recent_request_list_is_capped() {
+        let mut list = Vec::new();
+        for n in 0..15 {
+            list = with_recent_request(list, &format!("{n}.postino"), n);
+        }
+        assert_eq!(list.len(), MAX_RECENT_REQUESTS);
+        assert_eq!(list[0].id, "14.postino");
     }
 
     #[test]

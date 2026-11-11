@@ -302,9 +302,6 @@ pub struct Settings {
     /// Whether to check for a new version once at startup. Only used by builds that have an
     /// updater (`state::update::updater_enabled`).
     pub check_updates: bool,
-    /// Whether the welcome tab opens at startup next to the reopened workspace. Without a
-    /// workspace to open it always does (`state::welcome::show_at_startup`).
-    pub show_welcome: bool,
     /// Whether the What's new tab opens once after an update (`state::whats_new`).
     pub show_whats_new: bool,
     /// The git executable to use, `None` to search the `PATH`. Stored as `git_executable`, absent
@@ -347,7 +344,6 @@ impl Default for Settings {
             max_response_mb: 20,
             log_level: LogLevel::default(),
             check_updates: true,
-            show_welcome: true,
             show_whats_new: true,
             git_executable: None,
             git_fetch_automatically: true,
@@ -495,10 +491,6 @@ fn parse_settings(content: &str) -> Settings {
         .and_then(|table| table.get("check_updates"))
         .and_then(toml::Value::as_bool)
         .unwrap_or(defaults.check_updates);
-    let show_welcome = table
-        .and_then(|table| table.get("show_welcome"))
-        .and_then(toml::Value::as_bool)
-        .unwrap_or(defaults.show_welcome);
     let show_whats_new = table
         .and_then(|table| table.get("show_whats_new"))
         .and_then(toml::Value::as_bool)
@@ -565,7 +557,6 @@ fn parse_settings(content: &str) -> Settings {
         max_response_mb,
         log_level,
         check_updates,
-        show_welcome,
         show_whats_new,
         git_executable,
         git_fetch_automatically,
@@ -634,7 +625,6 @@ mod tests {
         assert_eq!(settings.max_response_mb, 20);
         assert_eq!(settings.log_level, LogLevel::Info);
         assert!(settings.check_updates);
-        assert!(settings.show_welcome);
         assert_eq!(settings.git_executable, None);
         assert!(settings.git_fetch_automatically);
         assert_eq!(settings.git_pull, GitPull::FollowConfig);
@@ -696,7 +686,6 @@ mod tests {
             max_response_mb: 100,
             log_level: LogLevel::Trace,
             check_updates: false,
-            show_welcome: true,
             show_whats_new: false,
             git_executable: Some(PathBuf::from("/usr/local/bin/git")),
             git_fetch_automatically: false,
@@ -898,17 +887,6 @@ mod tests {
         let settings = parse_settings("theme = \"dark\"\ncheck_updates = 3\n");
         assert_eq!(settings.theme, ThemeChoice::Dark);
         assert!(settings.check_updates);
-    }
-
-    #[test]
-    fn show_welcome_defaults_to_on_and_falls_back_per_field() {
-        let parse = |text: &str| parse_settings(text).show_welcome;
-        assert!(parse(""));
-        assert!(!parse("show_welcome = false\n"));
-        assert!(parse("show_welcome = \"no\"\n"));
-        let settings = parse_settings("show_welcome = 0\ntheme = \"light\"\n");
-        assert_eq!(settings.theme, ThemeChoice::Light);
-        assert!(settings.show_welcome);
     }
 
     #[test]

@@ -26,11 +26,11 @@ use postino_workspace::{Workspace, WorkspaceError};
 
 use crate::actions::{
     CloseActiveTab, DeleteSelectedEntry, ImportOpenApi, MoveEnvironmentDown, MoveEnvironmentUp,
-    NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, OpenWorkspace, PreviousTab,
-    RenameSelectedEntry, SaveActiveTab, SelectEnvironment1, SelectEnvironment2, SelectEnvironment3,
-    SelectEnvironment4, SelectEnvironment5, SelectEnvironment6, SelectEnvironment7,
-    SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab, ToggleCollections,
-    ToggleEnvironments, ToggleLoadTests, ToggleSourceControl,
+    NewRequest, NextTab, OpenCommandPalette, OpenSettings, OpenShortcuts, OpenWorkspace,
+    PreviousTab, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1, SelectEnvironment2,
+    SelectEnvironment3, SelectEnvironment4, SelectEnvironment5, SelectEnvironment6,
+    SelectEnvironment7, SelectEnvironment8, SelectEnvironment9, SelectNoEnvironment, SendActiveTab,
+    ToggleCollections, ToggleEnvironments, ToggleLoadTests, ToggleSourceControl,
 };
 use crate::state::about::AboutInfo;
 use crate::state::debug_open::{self, DebugOpenTarget};
@@ -252,6 +252,11 @@ pub struct AppView {
     /// switcher. Read from the config file at startup and after opening a workspace
     /// ([`Self::open_workspace_at`]), so render never reads it.
     pub(crate) recent_workspaces: Vec<PathBuf>,
+    /// The requests last opened in the open workspace, most recent first, read when it opens and
+    /// updated on every open (`state::config::record_request`), for the launcher.
+    pub(crate) recent_requests: Vec<state::config::RecentRequest>,
+    /// The launcher's model and scroll (`views/launcher.rs`).
+    pub(crate) launcher: crate::views::launcher::LauncherCache,
     /// The open workspace's absolute path, the form [`Self::recent_workspaces`] holds, so the
     /// switcher can tick the open one without canonicalizing a path on every render.
     pub(crate) workspace_path: Option<PathBuf>,
@@ -268,8 +273,8 @@ pub struct AppView {
 
 impl AppView {
     /// Creates a fresh view, opening `initial_workspace` right away if one was given (the CLI
-    /// argument or the remembered last workspace, see `main.rs`), and the welcome tab when
-    /// `show_welcome` says so (`state::welcome::show_at_startup`), after that workspace, then the
+    /// argument or the remembered last workspace, see `main.rs`), or the welcome tab when there
+    /// is none (`show_welcome`, `state::welcome::show_at_startup`), then the
     /// What's new tab when `show_whats_new` says so (`state::whats_new::opens_at_startup`).
     /// `settings` is whatever `main.rs`
     /// loaded from `settings.toml` (or its defaults) before opening the window; the theme and
@@ -443,6 +448,8 @@ impl AppView {
             new_env_input: None,
             load_targets: state::load_panel::TargetTree::default(),
             recent_workspaces: state::config::recent_workspaces(),
+            recent_requests: Vec::new(),
+            launcher: Default::default(),
             workspace_path: None,
             opening: None,
             oauth: crate::views::oauth::OAuthUi::new(sign_in_sender),
@@ -699,6 +706,7 @@ impl AppView {
                 state::config::record_workspace(&absolute);
                 self.recent_workspaces = state::config::recent_workspaces();
                 self.workspace_path = Some(absolute.clone());
+                self.recent_requests = state::config::recent_requests(&absolute);
                 self.restore_last_environment(&absolute);
                 self.refresh_environments();
                 self.refresh_git_branch();
@@ -826,6 +834,8 @@ impl AppView {
         }
         self.tree_state
             .update(cx, |state, cx| state.set_items(items, cx));
+        // The launcher counts the tree's requests and names its recent ones.
+        self.launcher.invalidate();
         let nodes = self
             .state
             .workspace
@@ -931,6 +941,7 @@ impl AppView {
                     log::debug!("opened tab {id}");
                 }
                 self.state.tabs.open(id.clone(), request);
+                self.record_recent_request(&id);
                 self.workspace_error = None;
                 self.reveal_in_tree(&id, cx);
                 if is_new_tab {
@@ -1276,6 +1287,29 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         sidebar::pick_workspace_folder(cx.weak_entity(), window, cx);
+    }
+
+    /// Handles the `Ctrl N` / `Cmd N` key binding (see `main.rs`'s `bind_keys`), and the
+    /// launcher's "New request": the new request dialog.
+    fn on_new_request_action(
+        &mut self,
+        _: &NewRequest,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.new_request(window, cx);
+    }
+
+    /// Opens the new request dialog in the folder selected in the sidebar, the folder of the
+    /// selected request, or the workspace root. A no-op without a workspace.
+    pub(crate) fn new_request(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.state.workspace.is_none() {
+            return;
+        }
+        let parent = self
+            .selected_tree_entry(cx)
+            .and_then(|(id, _)| state::launcher::new_request_folder(&id));
+        sidebar::open_new_request_dialog(cx.weak_entity(), parent, window, cx);
     }
 
     /// Handles the `Ctrl+Shift+O` / `Cmd+Shift+O` key binding (see `main.rs`'s `bind_keys`): the
@@ -1666,6 +1700,15 @@ impl AppView {
             return self.render_no_workspace(weak, cx);
         }
 
+        // A workspace with no tab: the launcher takes the whole area, with no tab bar and no
+        // request and response split.
+        if self.state.tabs.open_tabs().is_empty()
+            && self.state.workspace.is_some()
+            && self.opening.is_none()
+        {
+            return self.render_launcher(cx);
+        }
+
         let tabs_bar = self.render_tabs_bar(weak, cx);
         let welcome = self
             .state
@@ -1829,14 +1872,19 @@ impl AppView {
                         view.state.tabs.set_active(index);
                         cx.notify();
                     });
-                })
-                .on_close(move |window, cx| {
-                    let _ =
-                        close_weak.update(cx, |view, cx| view.request_close_tab(index, window, cx));
-                })
-                .context_menu(move |menu, _, _| {
-                    tab_context_menu(menu_weak.clone(), &menu_target, menu)
                 });
+            // The welcome tab only exists without a workspace, where it is all there is: it has
+            // no close button and no menu.
+            if tab.welcome().is_none() {
+                doc_tab = doc_tab
+                    .on_close(move |window, cx| {
+                        let _ = close_weak
+                            .update(cx, |view, cx| view.request_close_tab(index, window, cx));
+                    })
+                    .context_menu(move |menu, _, _| {
+                        tab_context_menu(menu_weak.clone(), &menu_target, menu)
+                    });
+            }
             tabs = tabs.item(doc_tab);
         }
 
@@ -1953,6 +2001,7 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_open_settings_action))
             .on_action(cx.listener(Self::on_open_command_palette_action))
             .on_action(cx.listener(Self::on_open_workspace_action))
+            .on_action(cx.listener(Self::on_new_request_action))
             .on_action(cx.listener(Self::on_import_openapi_action))
             .on_action(cx.listener(Self::on_open_shortcuts_action))
             .on_action(cx.listener(Self::on_close_tab_action))
