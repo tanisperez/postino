@@ -69,6 +69,8 @@ done
 install -m644 "$root/LICENSE" "$top/LICENSE"
 install -m644 "$root/NOTICE" "$top/NOTICE"
 install -m644 "$root/README.md" "$top/README.md"
+# The in-app updater installs a downloaded tarball with the install script it ships (#234).
+install -m755 "$root/site/install.sh" "$top/install.sh"
 tar --sort=name --owner=0 --group=0 --numeric-owner --mtime='UTC 2020-01-01' \
     -C "$stage" -czf "$out_dir/$name.tar.gz" "$name"
 

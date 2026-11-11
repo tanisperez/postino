@@ -9,11 +9,6 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 script=$root/site/install.sh
 app_id=codes.tanis.postino
 
-[[ ! -e /usr/bin/postino ]] || {
-    echo "skipped: /usr/bin/postino exists, the script refuses to install next to it" >&2
-    exit 0
-}
-
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 releases=$tmp/releases
@@ -50,6 +45,7 @@ make_release() {
     install -Dm644 "$root/packaging/linux/$app_id.xml" "$top/share/mime/packages/$app_id.xml"
     install -Dm644 "$root/packaging/icons/postino.svg" \
         "$top/share/icons/hicolor/scalable/apps/$app_id.svg"
+    install -m755 "$script" "$top/install.sh"
     local extra
     for extra in "$@"; do
         install -Dm644 /dev/null "$top/share/$extra"
@@ -68,7 +64,7 @@ publish_latest() {
 run() {
     env -i PATH=/usr/bin:/bin HOME="$tmp/home" XDG_CONFIG_HOME="$tmp/home/.config" \
         XDG_STATE_HOME="$tmp/home/.local/state" POSTINO_RELEASES_URL="file://$releases" \
-        bash "$script" "$@"
+        POSTINO_PACKAGED_BINARY="$tmp/usr/bin/postino" bash "$script" "$@"
 }
 
 prefix=$tmp/home/.local
@@ -113,6 +109,31 @@ echo corrupt >>"$releases/download/v0.9.2/postino-0.9.2-linux-x86_64.tar.gz"
 check "bad checksum is refused" refused run --version 0.9.2
 check "bad checksum keeps 0.9.1" grep -q 0.9.1 "$prefix/bin/postino"
 
+# The in-app updater: the install.sh of a downloaded tarball, with --tarball and --prefix.
+check "install --version 0.9.0 before the local update" run --version 0.9.0 >/dev/null 2>&1
+local_dir=$tmp/updates
+mkdir -p "$local_dir"
+cp "$releases/download/v0.9.1/postino-0.9.1-linux-x86_64.tar.gz" "$local_dir/"
+tar -xzf "$local_dir/postino-0.9.1-linux-x86_64.tar.gz" -C "$local_dir"
+shipped=$local_dir/postino-0.9.1-linux-x86_64/install.sh
+check "the tarball ships install.sh" test -x "$shipped"
+out=$(env -i PATH=/usr/bin:/bin HOME="$tmp/home" \
+    POSTINO_PACKAGED_BINARY="$tmp/usr/bin/postino" bash "$shipped" \
+    --tarball "$local_dir/postino-0.9.1-linux-x86_64.tar.gz" --prefix "$prefix" 2>&1) ||
+    fail "update from a local tarball ($out)"
+check "local update message" grep -q "updating Postino 0.9.0 to 0.9.1" <<<"$out"
+check "local update installed 0.9.1" grep -q 0.9.1 "$prefix/bin/postino"
+check "local update dropped the 0.9.0 file" test ! -e "$prefix/share/$old_icon"
+check "local update rewrote the manifest" grep -qx "# Postino 0.9.1" "$manifest"
+check "local update keeps the absolute Exec" grep -q "^Exec=$prefix/bin/postino %f" \
+    "$prefix/share/applications/$app_id.desktop"
+check "a missing tarball is refused" refused run --tarball "$tmp/nope.tar.gz"
+check "--tarball with --version is refused" \
+    refused run --tarball "$local_dir/postino-0.9.1-linux-x86_64.tar.gz" --version 0.9.1
+echo "not a tarball" >"$tmp/bad.tar.gz"
+check "a broken tarball is refused" refused run --tarball "$tmp/bad.tar.gz"
+check "a broken tarball keeps 0.9.1" grep -q 0.9.1 "$prefix/bin/postino"
+
 # Uninstall keeps settings and logs, --purge removes them.
 mkdir -p "$tmp/home/.config/postino" "$tmp/home/.local/state/postino"
 touch "$tmp/home/.config/postino/settings.toml" "$tmp/home/.local/state/postino/postino.log"
@@ -129,6 +150,12 @@ check "uninstall twice is fine" run --uninstall >/dev/null
 check "purge" run --uninstall --purge >/dev/null
 check "settings purged" test ! -e "$tmp/home/.config/postino"
 check "logs purged" test ! -e "$tmp/home/.local/state/postino"
+
+# A copy owned by a package manager blocks the script.
+mkdir -p "$tmp/usr/bin"
+touch "$tmp/usr/bin/postino"
+check "a packaged copy is refused" refused run
+rm -rf "$tmp/usr"
 
 # Another prefix.
 check "install --prefix" run --prefix "$tmp/opt" >/dev/null 2>&1

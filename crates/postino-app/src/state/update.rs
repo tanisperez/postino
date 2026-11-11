@@ -5,9 +5,11 @@
 //! result.
 //!
 //! The feature exists only in builds made with `POSTINO_UPDATER=github` (the release CI sets it
-//! for macOS, Windows and Linux) on a platform `telaio-update` knows. On Linux it only announces
-//! new versions, and only in a manual install (the tarball, the install script, the AppImage):
-//! a package managed copy (deb, rpm, Arch, Flatpak) shows nothing. Everything compiles
+//! for macOS, Windows and Linux) on a platform `telaio-update` knows. On Linux, a copy the install
+//! script installed in a prefix the user can write (`~/.local` by default) downloads and installs
+//! updates like macOS and Windows (#234); the other manual installs (the tarball, the AppImage, a
+//! script install under `/usr/local`) only announce new versions, and a package managed copy
+//! (deb, rpm, Arch, Flatpak) shows nothing. Everything compiles
 //! everywhere; [`updater_enabled`] is the one switch the setting row, the palette command and the
 //! startup check consult.
 
@@ -18,7 +20,7 @@ use telaio_update::{Platform, UpdateError, UpdaterConfig, flow};
 
 pub use telaio_update::flow::{
     CheckOutcome, CheckStatus, InstallOutcome, ReadyUpdate, STARTUP_DELAY, UpdateState,
-    is_portable, should_check_at_startup,
+    should_check_at_startup,
 };
 
 use super::TabsState;
@@ -52,6 +54,13 @@ pub fn updater_enabled() -> bool {
     })
 }
 
+/// Whether this copy only announces new versions instead of downloading and installing them:
+/// a portable Windows copy, or a Linux copy other than a script install in a writable prefix
+/// ([`flow::announces_only`]). Reads the filesystem, so call it once.
+pub fn announces_only(platform: Option<Platform>, exe: Option<&Path>) -> bool {
+    flow::announces_only(&UPDATER, platform, exe)
+}
+
 /// How a copy that downloads nothing ([`ReadyUpdate::is_manual_download`]) gets a new version.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ManualUpdate {
@@ -59,7 +68,8 @@ pub enum ManualUpdate {
     PortableZip,
     /// A Linux tarball or AppImage: the new one from the release page.
     Download,
-    /// Installed by the install script: run [`INSTALL_COMMAND`] again.
+    /// Installed by the install script in a prefix that needs root (`/usr/local`): run
+    /// [`INSTALL_COMMAND`] again. A script install the user can write updates itself.
     InstallScript,
 }
 
@@ -76,10 +86,7 @@ pub fn manual_update(platform: Option<Platform>, install_script: bool) -> Manual
 /// `<prefix>/share/postino/installed-files`, and the binary is `<prefix>/bin/postino`. Reads the
 /// filesystem, so call it once.
 pub fn installed_by_script(exe: &Path) -> bool {
-    exe.parent()
-        .filter(|bin| bin.ends_with("bin"))
-        .and_then(Path::parent)
-        .is_some_and(|prefix| prefix.join("share/postino/installed-files").is_file())
+    telaio_update::install::linux_script_prefix(&UPDATER, exe).is_some()
 }
 
 /// Where updates are downloaded: `postino/updates` under the OS cache folder.

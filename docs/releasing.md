@@ -261,24 +261,36 @@ and DNF repos, served by GitHub Pages.
 
 telaio's `telaio-update` crate (no UI, tested against a local `tiny_http` server, configured by
 `state::update::UPDATER`) plus the glue in `state/update.rs` and `views/update.rs`. It installs updates on macOS and
-Windows. On Linux it only announces them, and only in a manual install, since package managers
-own updates there (see "Linux notices" below).
+Windows, and on Linux in a copy installed by the install script in a prefix the user can write.
+Other manual Linux installs only announce them, and package managed copies show nothing, since
+package managers own updates there (see "Linux" below).
 
 - **Compiled in only with `POSTINO_UPDATER=github`** at build time (`option_env!`), set on the
   macOS `.app`, the Windows installer and portable zip (the same `postino.exe`) and the one Linux
   binary shared by every Linux asset. Otherwise the whole feature, its setting and its menu entries
   are absent (local builds, distro builds from source).
-- **Linux notices:** `Platform::LinuxX86_64` in `telaio-update` never downloads (it counts as
-  portable). `state::update::updater_enabled` also turns the feature off, at runtime and once,
+- **Linux:** `state::update::announces_only` (`telaio_update::flow::announces_only`, read once
+  in `AboutInfo::detect`) is `false` only for a copy installed by the install script
+  (`<prefix>/share/postino/installed-files` next to `<prefix>/bin/postino`) whose `bin` and
+  `share` folders the user can write (#234, telaio#48). That copy downloads the tarball of
+  `latest.json`, verifies it, and on "Restart to update" runs the `install.sh` the tarball ships
+  in its top folder (`packaging/linux/package.sh` puts it there) as
+  `bash install.sh --tarball <file> --prefix <prefix>`, then starts `<prefix>/bin/postino` again
+  once the app has quit. Every other Linux copy downloads nothing.
+  `state::update::updater_enabled` also turns the feature off, at runtime and once,
   when `telaio_update::flow::is_package_managed` says a package manager owns the copy: an
   executable under `/usr` (not `/usr/local`), `/bin`, `/sbin`, `/app` or `/snap`, an unknown
   executable path, or a Flatpak or Snap sandbox. So the deb, rpm, Arch and AUR packages announce
-  nothing, while the tarball, the install script and the AppImage show "Update X available". A
-  copy installed by the install script (`<prefix>/share/postino/installed-files` next to
-  `<prefix>/bin/postino`, `state::update::installed_by_script`, read once in
-  `AboutInfo::detect`) offers to copy the install command instead of opening the release page.
-  `latest.json` has a `linux-x86_64` entry (the tarball) only so the check finds the platform;
-  nothing downloads it.
+  nothing, while the tarball, the AppImage and a script install under a root prefix show
+  "Update X available". The last one (`state::update::installed_by_script`) offers to copy the
+  install command instead of opening the release page. `latest.json` has a `linux-x86_64` entry,
+  the tarball, which script installs download.
+- **Testing a Linux update by hand:** build with `POSTINO_UPDATER=github`, make two tarballs with
+  the layout of `package.sh` (the older version and the newer one, each with `install.sh`),
+  install the older one into a temporary prefix with `install.sh --tarball`, serve the newer one
+  and a `latest.json` from a local HTTP server, and start the installed copy with
+  `POSTINO_UPDATE_URL` pointing at it. On a machine with Postino in `/usr/bin`, set
+  `POSTINO_PACKAGED_BINARY` to a missing path, or the script refuses to install next to it.
 - **Setting and command:** Settings, Advanced, "Check for updates automatically" (on by
   default), and a command palette entry "Check for updates".
 - **Check:** once, 10 s after startup, on the background executor. No timer and no polling, so

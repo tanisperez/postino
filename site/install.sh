@@ -8,7 +8,11 @@
 # MIME type of .postino files and the icons. A manifest of the installed files makes updates and
 # --uninstall exact. Run it again to update. Options: see usage below, or pass --help.
 #
-# POSTINO_RELEASES_URL replaces https://github.com/tanisperez/postino/releases, for tests.
+# The release tarball ships this script too, in its top folder: Postino's in-app updater runs
+# it with --tarball on the tarball it downloaded and verified, and --prefix of the running copy.
+#
+# POSTINO_RELEASES_URL replaces https://github.com/tanisperez/postino/releases, and
+# POSTINO_PACKAGED_BINARY replaces /usr/bin/postino (the copy of a package manager), for tests.
 
 # Everything runs from main, called on the last line, so a download cut short by the network
 # never runs half a script.
@@ -30,6 +34,8 @@ Usage:
 Options:
   --version X.Y.Z  Install that release instead of the latest one
   --prefix DIR     Install under DIR instead of ~/.local (for example /usr/local, with sudo)
+  --tarball FILE   Install from a release tarball already downloaded, without checking it
+                   (Postino's updater uses it, after verifying the file)
   --uninstall      Remove Postino. Your settings and logs stay
   --purge          With --uninstall, also remove your settings and logs
   -h, --help       Show this help
@@ -102,7 +108,7 @@ uninstall() {
 # another prefix would never be updated by it, and which one runs would depend on PATH.
 check_no_package() {
     local manifest=$1
-    local packaged=/usr/bin/$name
+    local packaged=${POSTINO_PACKAGED_BINARY:-/usr/bin/$name}
     [[ -e $packaged ]] || return 0
     if [[ -f $manifest ]] && grep -Fxq "$packaged" "$manifest"; then
         return 0
@@ -112,47 +118,10 @@ It keeps that copy up to date. To use this script instead, remove it first
 (sudo apt remove postino, sudo dnf remove postino or sudo pacman -R postino)."
 }
 
-install_release() {
-    local prefix=$1 version=$2 manifest=$3 releases=$4
-    local arch
-    arch=$(uname -m)
-    [[ $arch == x86_64 ]] || die "there are Linux builds for x86_64 only, not for $arch"
-    local tool
-    for tool in curl tar sha256sum; do
-        command -v "$tool" >/dev/null || die "$tool not found, install it and try again"
-    done
-    check_no_package "$manifest"
-
-    local work
-    work=$(mktemp -d)
-    # shellcheck disable=SC2064 # expand $work now, it is local to this function.
-    trap "rm -rf '$work'" EXIT
-
-    # The latest release: GitHub's releases/latest is never a pre-release or a draft. Its
-    # SHA256SUMS names the tarball, and so the version, without calling the rate limited API.
-    local base
-    if [[ -n $version ]]; then
-        base=$releases/download/v$version
-    else
-        base=$releases/latest/download
-    fi
-    curl -fsSL -o "$work/SHA256SUMS" "$base/SHA256SUMS" ||
-        if [[ -n $version ]]; then
-            die "no release $version found ($releases)"
-        else
-            die "no published release found ($releases)"
-        fi
-    local tarball
-    tarball=$(awk -v suffix="-linux-$arch.tar.gz" \
-        'substr($2, length($2) - length(suffix) + 1) == suffix && $2 ~ /^postino-/ { print $2 }' \
-        "$work/SHA256SUMS" | head -n 1)
-    [[ -n $tarball ]] || die "the release has no Linux tarball for $arch"
-    if [[ -z $version ]]; then
-        version=${tarball#"$name-"}
-        version=${version%"-linux-$arch.tar.gz"}
-        base=$releases/download/v$version
-    fi
-
+# Says what is about to happen: an install, a reinstall or an update from the version in the
+# manifest.
+announce() {
+    local prefix=$1 version=$2 manifest=$3
     local previous
     previous=$(installed_version "$manifest")
     if [[ -z $previous ]]; then
@@ -162,16 +131,74 @@ install_release() {
     else
         say "updating Postino $previous to $version in $prefix"
     fi
+}
 
-    curl -fL --progress-bar -o "$work/$tarball" "$base/$tarball" ||
-        die "could not download $tarball"
-    (cd "$work" && awk -v file="$tarball" '$2 == file' SHA256SUMS |
-        sha256sum --check --quiet --strict) ||
-        die "$tarball does not match its checksum, nothing was installed"
+install_release() {
+    local prefix=$1 version=$2 manifest=$3 releases=$4 local_tarball=$5
+    local arch
+    arch=$(uname -m)
+    [[ $arch == x86_64 ]] || die "there are Linux builds for x86_64 only, not for $arch"
+    local tool tools=(tar)
+    [[ -n $local_tarball ]] || tools+=(curl sha256sum)
+    for tool in "${tools[@]}"; do
+        command -v "$tool" >/dev/null || die "$tool not found, install it and try again"
+    done
+    check_no_package "$manifest"
 
-    tar -xzf "$work/$tarball" -C "$work"
-    local src=$work/$name-$version-linux-$arch
-    [[ -x $src/bin/$name ]] || die "$tarball has an unexpected layout"
+    local work
+    work=$(mktemp -d)
+    # shellcheck disable=SC2064 # expand $work now, it is local to this function.
+    trap "rm -rf '$work'" EXIT
+
+    local src
+    if [[ -n $local_tarball ]]; then
+        # A tarball already downloaded and verified, by Postino's updater: its top folder names
+        # the version.
+        [[ -f $local_tarball ]] || die "$local_tarball not found"
+        tar -xzf "$local_tarball" -C "$work" || die "could not unpack $local_tarball"
+        local found=("$work/$name"-*-linux-"$arch")
+        src=${found[0]}
+        [[ -x $src/bin/$name ]] || die "$local_tarball has an unexpected layout"
+        version=${src##*/"$name"-}
+        version=${version%"-linux-$arch"}
+        announce "$prefix" "$version" "$manifest"
+    else
+        # The latest release: GitHub's releases/latest is never a pre-release or a draft. Its
+        # SHA256SUMS names the tarball, and so the version, without calling the rate limited API.
+        local base
+        if [[ -n $version ]]; then
+            base=$releases/download/v$version
+        else
+            base=$releases/latest/download
+        fi
+        curl -fsSL -o "$work/SHA256SUMS" "$base/SHA256SUMS" ||
+            if [[ -n $version ]]; then
+                die "no release $version found ($releases)"
+            else
+                die "no published release found ($releases)"
+            fi
+        local tarball
+        tarball=$(awk -v suffix="-linux-$arch.tar.gz" \
+            'substr($2, length($2) - length(suffix) + 1) == suffix && $2 ~ /^postino-/ { print $2 }' \
+            "$work/SHA256SUMS" | head -n 1)
+        [[ -n $tarball ]] || die "the release has no Linux tarball for $arch"
+        if [[ -z $version ]]; then
+            version=${tarball#"$name-"}
+            version=${version%"-linux-$arch.tar.gz"}
+            base=$releases/download/v$version
+        fi
+        announce "$prefix" "$version" "$manifest"
+
+        curl -fL --progress-bar -o "$work/$tarball" "$base/$tarball" ||
+            die "could not download $tarball"
+        (cd "$work" && awk -v file="$tarball" '$2 == file' SHA256SUMS |
+            sha256sum --check --quiet --strict) ||
+            die "$tarball does not match its checksum, nothing was installed"
+
+        tar -xzf "$work/$tarball" -C "$work"
+        src=$work/$name-$version-linux-$arch
+        [[ -x $src/bin/$name ]] || die "$tarball has an unexpected layout"
+    fi
 
     mkdir -p "$prefix" 2>/dev/null || true
     [[ -w $prefix ]] || die "cannot write to $prefix, run it with sudo for a system prefix"
@@ -220,7 +247,7 @@ install_release() {
 }
 
 main() {
-    local prefix='' version='' uninstall=0 purge=0
+    local prefix='' version='' tarball='' uninstall=0 purge=0
     while [[ $# -gt 0 ]]; do
         case $1 in
         -h | --help)
@@ -242,6 +269,12 @@ main() {
             shift
             ;;
         --prefix=*) prefix=${1#--prefix=} ;;
+        --tarball)
+            [[ $# -ge 2 && -n $2 ]] || die "--tarball needs a file"
+            tarball=$2
+            shift
+            ;;
+        --tarball=*) tarball=${1#--tarball=} ;;
         --uninstall) uninstall=1 ;;
         --purge) purge=1 ;;
         *) die "unknown option '$1', see --help" ;;
@@ -252,6 +285,9 @@ main() {
     [[ $(uname -s) == Linux ]] || die "this script is for Linux, see $site/install.html"
     [[ $purge == 0 || $uninstall == 1 ]] || die "--purge only goes with --uninstall"
     [[ $uninstall == 0 || -z $version ]] || die "--version does not go with --uninstall"
+    [[ $uninstall == 0 || -z $tarball ]] || die "--tarball does not go with --uninstall"
+    [[ -z $version || -z $tarball ]] || die "--version does not go with --tarball"
+    [[ -z $tarball || $tarball == /* ]] || tarball=$PWD/$tarball
     if [[ -z $prefix ]]; then
         # curl ... | sudo bash would install into root's home, where nobody finds it.
         [[ $EUID -ne 0 ]] ||
@@ -267,7 +303,7 @@ main() {
     if [[ $uninstall == 1 ]]; then
         uninstall "$prefix" "$purge" "$manifest"
     else
-        install_release "$prefix" "$version" "$manifest" "$releases"
+        install_release "$prefix" "$version" "$manifest" "$releases" "$tarball"
     fi
 }
 

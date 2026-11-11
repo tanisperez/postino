@@ -207,7 +207,7 @@ jobs:
           base="https://github.com/$GH_REPO/releases/download/$TAG"
           mac=$(ls Postino-*-macos-arm64.app.tar.gz 2>/dev/null | head -n 1)
           win=$(ls Postino-*-windows-x86_64-setup.exe 2>/dev/null | head -n 1)
-          # Linux only announces new versions; the tarball is listed so the entry exists.
+          # Linux: a copy installed by the install script updates with this tarball and its install.sh.
           linux=$(ls postino-*-linux-x86_64.tar.gz 2>/dev/null | head -n 1)
           if [ -z "$mac" ] || [ -z "$win" ] || [ -z "$linux" ]; then
             echo "::error::Missing the macOS app archive, the Windows installer or the Linux tarball in dist"
