@@ -162,6 +162,19 @@ impl ProjectConfig {
         }
     }
 
+    /// Follows the copy of the environment `original` as `copy`: right after it in the order,
+    /// when there is one, and with its color, when it has one.
+    pub fn duplicate_environment(&mut self, original: &str, copy: &str) {
+        let mut order = self.environment_order();
+        if let Some(at) = order.iter().position(|name| name == original) {
+            order.insert(at + 1, copy.to_string());
+            self.set_environment_order(&order);
+        }
+        if let Some(color) = self.environment_color(original).map(str::to_string) {
+            self.set_environment_color(copy, Some(&color));
+        }
+    }
+
     /// Forgets a deleted environment: its place in the order and its color.
     pub fn remove_environment(&mut self, name: &str) {
         let order = self.environment_order();
@@ -458,6 +471,26 @@ mod tests {
         let mut empty = ProjectConfig::default();
         empty.rename_environment("a", "b");
         empty.remove_environment("a");
+        assert_eq!(empty, ProjectConfig::default());
+    }
+
+    #[test]
+    fn duplicate_follows_the_order_and_the_color() {
+        let mut config = ProjectConfig::default();
+        config.set_environment_order(&names(&["local", "dev", "prod"]));
+        config.set_environment_color("dev", Some("blue"));
+
+        config.duplicate_environment("dev", "dev copy");
+        assert_eq!(
+            config.environment_order(),
+            names(&["local", "dev", "dev copy", "prod"])
+        );
+        assert_eq!(config.environment_color("dev copy"), Some("blue"));
+        assert_eq!(config.environment_color("dev"), Some("blue"));
+
+        // No order and no color: nothing is written.
+        let mut empty = ProjectConfig::default();
+        empty.duplicate_environment("a", "a copy");
         assert_eq!(empty, ProjectConfig::default());
     }
 

@@ -201,6 +201,50 @@ impl Workspace {
         Ok(())
     }
 
+    /// Copies both files of the environment `name`, secrets included, and returns the name of
+    /// the copy: the original plus `suffix` (`staging copy` for `suffix` "copy"), or plus a number
+    /// from 2 up when that name is taken. The files are copied byte for byte. Fails with
+    /// [`WorkspaceError::EnvironmentNotFound`] when neither file exists.
+    pub fn duplicate_environment(
+        &self,
+        name: &str,
+        suffix: &str,
+    ) -> Result<String, WorkspaceError> {
+        validate_relative_path(name)?;
+        let sources: Vec<EnvLayer> = [EnvLayer::Base, EnvLayer::Local]
+            .into_iter()
+            .filter(|layer| self.env_path(name, *layer).is_file())
+            .collect();
+        if sources.is_empty() {
+            return Err(WorkspaceError::EnvironmentNotFound(name.to_string()));
+        }
+        let mut number = 1;
+        let copy = loop {
+            let candidate = if number == 1 {
+                format!("{name} {suffix}")
+            } else {
+                format!("{name} {suffix} {number}")
+            };
+            let candidate = sanitize_file_name(&candidate);
+            let taken = [EnvLayer::Base, EnvLayer::Local]
+                .into_iter()
+                .any(|layer| self.env_path(&candidate, layer).exists());
+            if !taken {
+                break candidate;
+            }
+            number += 1;
+        };
+        for layer in sources {
+            let target = self.env_path(&copy, layer);
+            fs::copy(self.env_path(name, layer), &target).map_err(|source| WorkspaceError::Io {
+                path: target.clone(),
+                source,
+            })?;
+        }
+        self.follow_in_project(|config| config.duplicate_environment(name, &copy));
+        Ok(copy)
+    }
+
     /// Deletes both files of the environment `name`. Fails with
     /// [`WorkspaceError::EnvironmentNotFound`] when neither exists.
     pub fn delete_environment(&self, name: &str) -> Result<(), WorkspaceError> {

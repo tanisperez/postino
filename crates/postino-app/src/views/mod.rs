@@ -31,6 +31,7 @@ pub mod settings;
 pub mod sidebar;
 pub mod snippet_dialog;
 pub mod status_bar;
+pub mod tab_menu;
 pub mod title_bar;
 pub mod update;
 pub mod variable_hover;

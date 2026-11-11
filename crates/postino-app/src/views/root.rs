@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use gpui_kit::component::input::{InputEvent, InputState, TextareaState};
+use gpui_kit::component::menu::ContextMenuExt;
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::tree::TreeState;
 use gpui_kit::component::*;
@@ -49,6 +50,7 @@ use crate::views::request_editor::RequestEditorEntities;
 use crate::views::response_view::ResponseEditorEntities;
 use crate::views::send::SendingTask;
 use crate::views::settings::SettingsSelects;
+use crate::views::tab_menu::{TabFile, TabMenuTarget, tab_bar_context_menu, tab_context_menu};
 use telaio_ui::components::open_shortcuts_dialog;
 
 use super::sidebar;
@@ -965,14 +967,19 @@ impl AppView {
     /// the active tab is a load test: dirty state and saving only apply to requests, so `Ctrl+S` on
     /// that tab does nothing harmful.
     pub(crate) fn save_active_tab(&mut self, cx: &mut Context<Self>) {
-        let Some(active_index) = self.state.tabs.active_index() else {
-            return;
-        };
-        let Some(tab) = self.state.tabs.active() else {
+        if let Some(active_index) = self.state.tabs.active_index() {
+            self.save_tab(active_index, cx);
+        }
+    }
+
+    /// Saves the tab at `index`, a request or an environment. A tab that could not be saved
+    /// stays marked as unsaved. Tabs of any other kind have nothing to save.
+    pub(crate) fn save_tab(&mut self, index: usize, cx: &mut Context<Self>) {
+        let Some(tab) = self.state.tabs.get(index) else {
             return;
         };
         if tab.environment().is_some() {
-            self.save_env_tab(active_index, cx);
+            self.save_env_tab(index, cx);
             return;
         }
         let id = tab.id.clone();
@@ -981,7 +988,7 @@ impl AppView {
         };
 
         // The profile edited in Profile settings is saved with the request (design OAuth 3a·2).
-        if !self.save_profile_draft(active_index) {
+        if !self.save_profile_draft(index) {
             cx.notify();
             return;
         }
@@ -991,7 +998,7 @@ impl AppView {
         match workspace.save_request(&id, &request) {
             Ok(()) => {
                 log::debug!("saved {id}");
-                self.state.tabs.mark_saved(active_index);
+                self.state.tabs.mark_saved(index);
                 self.workspace_error = None;
                 self.refresh_tree(cx);
             }
@@ -1751,9 +1758,23 @@ impl AppView {
                 cx.notify();
             });
         });
+        let count = self.state.tabs.open_tabs().len();
+        let any_saved = self.state.tabs.open_tabs().iter().any(|tab| !tab.dirty);
         for (index, tab) in self.state.tabs.open_tabs().iter().enumerate() {
             let select_weak = weak.clone();
             let close_weak = weak.clone();
+            let menu_weak = weak.clone();
+            let menu_target = TabMenuTarget {
+                id: tab.id.clone(),
+                index,
+                count,
+                any_saved,
+                file: match &tab.kind {
+                    state::TabKind::Request(_) => TabFile::Request,
+                    state::TabKind::Environment(edit) => TabFile::Environment(edit.name.clone()),
+                    _ => TabFile::None,
+                },
+            };
             let full_id = match &tab.kind {
                 state::TabKind::Environment(edit) => state::env_edit::status_path(&edit.name),
                 state::TabKind::Welcome(_) => t!("welcome.tab").into_owned(),
@@ -1807,6 +1828,9 @@ impl AppView {
                 .on_close(move |window, cx| {
                     let _ =
                         close_weak.update(cx, |view, cx| view.request_close_tab(index, window, cx));
+                })
+                .context_menu(move |menu, _, _| {
+                    tab_context_menu(menu_weak.clone(), &menu_target, menu)
                 });
             tabs = tabs.item(doc_tab);
         }
@@ -1815,6 +1839,7 @@ impl AppView {
         if self.state.workspace.is_none() {
             return tabs.into_any_element();
         }
+        let bar_weak = weak.clone();
         // A large hover area around a small icon (an `IconButton`'s large size also scales its
         // icon up); the bar pads it off the last tab.
         let palette = cx.palette();
@@ -1837,7 +1862,12 @@ impl AppView {
                     sidebar::open_new_request_dialog(weak.clone(), None, window, cx);
                 }),
         );
-        tabs.into_any_element()
+        // The menu of the bar's empty part. A tab's own menu wins over it.
+        div()
+            .id("open-tabs-bar")
+            .child(tabs)
+            .context_menu(move |menu, _, _| tab_bar_context_menu(bar_weak.clone(), menu))
+            .into_any_element()
     }
 }
 

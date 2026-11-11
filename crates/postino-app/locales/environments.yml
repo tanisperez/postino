@@ -245,18 +245,8 @@ _version: 2
   es: "Renombrar entorno"
   gl: "Renomear contorno"
   it: "Rinomina ambiente"
-"environments.discard.title":
-  en: "Discard unsaved changes?"
-  es: "¿Descartar los cambios sin guardar?"
-  gl: "Descartar os cambios sen gardar?"
-  it: "Scartare le modifiche non salvate?"
-"environments.discard.text":
-  en: "%{name} has changes that are not saved yet. Closing the tab loses them."
-  es: "%{name} tiene cambios sin guardar. Al cerrar la pestaña se pierden."
-  gl: "%{name} ten cambios sen gardar. Ao pechar a lapela perdense."
-  it: "%{name} ha modifiche non ancora salvate. Chiudendo la scheda andranno perse."
-"environments.discard.confirm":
-  en: "Discard"
-  es: "Descartar"
-  gl: "Descartar"
-  it: "Scarta"
+"environments.menu.color_submenu":
+  en: "Color"
+  es: "Color"
+  gl: "Cor"
+  it: "Colore"

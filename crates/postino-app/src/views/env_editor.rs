@@ -446,41 +446,17 @@ impl AppView {
         cx.notify();
     }
 
-    /// Closes the tab at `index`, asking first when it is an environment tab with unsaved edits.
+    /// Closes the tab at `index`, asking first when it has unsaved changes.
     pub(crate) fn request_close_tab(
         &mut self,
         index: usize,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some(tab) = self.state.tabs.get(index) else {
-            return;
-        };
-        let Some(edit) = tab.environment().filter(|_| tab.dirty) else {
-            self.close_tab(index, cx);
-            return;
-        };
-        let name = edit.name.clone();
-        let tab_id = tab.id.clone();
-        let weak = cx.weak_entity();
-        open_confirm_dialog(
-            window,
-            cx,
-            ConfirmDialog {
-                title: t!("environments.discard.title").into(),
-                text: t!("environments.discard.text", name = name.as_str()).into(),
-                confirm_label: t!("environments.discard.confirm").into(),
-                destructive: true,
-                show_cancel: true,
-                on_confirm: Rc::new(move |_, cx| {
-                    let _ = weak.update(cx, |view, cx| {
-                        if let Some(index) = view.state.tabs.index_of(&tab_id) {
-                            view.close_tab(index, cx);
-                        }
-                    });
-                }),
-            },
-        );
+        if let Some(tab) = self.state.tabs.get(index) {
+            let id = tab.id.clone();
+            self.request_close_tabs(vec![id], None, window, cx);
+        }
     }
 
     /// Renames the environment `old` to `new` on disk and everywhere the app remembers it.
@@ -549,7 +525,7 @@ impl AppView {
         cx.notify();
     }
 
-    fn open_env_rename_dialog(
+    pub(crate) fn open_env_rename_dialog(
         &mut self,
         name: String,
         window: &mut Window,
@@ -635,7 +611,7 @@ impl AppView {
         });
     }
 
-    fn open_env_delete_dialog(
+    pub(crate) fn open_env_delete_dialog(
         &mut self,
         name: String,
         window: &mut Window,
@@ -891,6 +867,13 @@ fn render_header(
                             .update(cx, |view, cx| view.open_env_delete_dialog(name, window, cx));
                     })
                 };
+                let duplicate = {
+                    let weak = weak.clone();
+                    let name = name.clone();
+                    PopupMenuItem::new(t!("shell.sidebar.duplicate")).on_click(move |_, _, cx| {
+                        let _ = weak.update(cx, |view, cx| view.duplicate_environment(&name, cx));
+                    })
+                };
                 let move_item = |label: &str, up: bool, enabled: bool| {
                     let weak = weak.clone();
                     let name = name.clone();
@@ -915,6 +898,7 @@ fn render_header(
                     .item(move_down)
                     .separator()
                     .item(rename)
+                    .item(duplicate)
                     .item(reveal)
                     .separator()
                     .item(delete)

@@ -1218,6 +1218,57 @@ fn rename_environment_moves_both_files() {
 }
 
 #[test]
+fn duplicate_environment_copies_both_files_under_a_free_name() {
+    let temp = TempDir::new().expect("temp dir");
+    write_file(&env_dir(&temp).join("dev.env"), "# base\nA=1\n");
+    write_file(&env_dir(&temp).join("dev.local.env"), "SECRET=2\n");
+    write_file(&env_dir(&temp).join("only-local.local.env"), "S=x\n");
+    let workspace = Workspace::open(temp.path()).expect("open");
+
+    assert_eq!(
+        workspace
+            .duplicate_environment("dev", "copy")
+            .expect("copy"),
+        "dev copy"
+    );
+    assert_eq!(
+        workspace
+            .duplicate_environment("dev", "copy")
+            .expect("copy"),
+        "dev copy 2"
+    );
+    assert_eq!(
+        fs::read_to_string(env_dir(&temp).join("dev copy.env")).unwrap(),
+        "# base\nA=1\n"
+    );
+    assert_eq!(
+        fs::read_to_string(env_dir(&temp).join("dev copy.local.env")).unwrap(),
+        "SECRET=2\n"
+    );
+    assert!(env_dir(&temp).join("dev copy 2.local.env").is_file());
+    // The original is untouched.
+    assert_eq!(
+        fs::read_to_string(env_dir(&temp).join("dev.env")).unwrap(),
+        "# base\nA=1\n"
+    );
+
+    // An environment with only its local file gets only that file.
+    assert_eq!(
+        workspace
+            .duplicate_environment("only-local", "copy")
+            .expect("copy"),
+        "only-local copy"
+    );
+    assert!(!env_dir(&temp).join("only-local copy.env").exists());
+    assert!(env_dir(&temp).join("only-local copy.local.env").is_file());
+
+    assert!(matches!(
+        workspace.duplicate_environment("missing", "copy"),
+        Err(WorkspaceError::EnvironmentNotFound(_))
+    ));
+}
+
+#[test]
 fn delete_environment_removes_both_files() {
     let temp = TempDir::new().expect("temp dir");
     write_file(&env_dir(&temp).join("dev.env"), "A=1\n");

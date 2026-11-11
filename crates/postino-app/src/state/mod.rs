@@ -60,7 +60,7 @@ pub mod whats_new;
 pub mod window;
 pub mod workspace_log;
 
-pub use tabs::{TabKind, TabsState};
+pub use tabs::{CloseScope, TabKind, TabsState};
 
 use std::sync::Arc;
 

@@ -267,6 +267,23 @@ impl OpenTab {
     }
 }
 
+/// Which tabs a "Close" item of a tab's context menu closes, relative to that tab (#230).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CloseScope {
+    /// The tab itself.
+    This,
+    /// Every tab but this one.
+    Others,
+    /// The tabs after it.
+    Right,
+    /// The tabs before it.
+    Left,
+    /// Every tab without unsaved changes, this one included.
+    Saved,
+    /// Every tab.
+    All,
+}
+
 /// The set of open tabs and which one is active, if any.
 #[derive(Debug, Default)]
 pub struct TabsState {
@@ -453,6 +470,35 @@ impl TabsState {
         index
     }
 
+    /// The ids of the tabs `scope` closes for the tab at `index`, in tab order. Empty when
+    /// `index` is out of range.
+    pub fn close_targets(&self, index: usize, scope: CloseScope) -> Vec<String> {
+        if index >= self.open.len() {
+            return Vec::new();
+        }
+        self.open
+            .iter()
+            .enumerate()
+            .filter(|(at, tab)| match scope {
+                CloseScope::This => *at == index,
+                CloseScope::Others => *at != index,
+                CloseScope::Right => *at > index,
+                CloseScope::Left => *at < index,
+                CloseScope::Saved => !tab.dirty,
+                CloseScope::All => true,
+            })
+            .map(|(_, tab)| tab.id.clone())
+            .collect()
+    }
+
+    /// The tabs among `ids` that have unsaved changes, in tab order.
+    pub fn unsaved_among(&self, ids: &[String]) -> Vec<&OpenTab> {
+        self.open
+            .iter()
+            .filter(|tab| tab.dirty && ids.contains(&tab.id))
+            .collect()
+    }
+
     /// Closes the tab at `index`. If it was the active tab, the tab that takes its place (the
     /// next one, or the previous one if the closed tab was last) becomes active. Does nothing if
     /// `index` is out of range.
@@ -615,6 +661,42 @@ mod tests {
 
     fn ids(tabs: &TabsState) -> Vec<&str> {
         tabs.open_tabs().iter().map(|tab| tab.id.as_str()).collect()
+    }
+
+    #[test]
+    fn close_targets_follow_the_scope() {
+        let mut tabs = three_tabs();
+        tabs.set_dirty(2, true);
+        let targets = |index, scope| tabs.close_targets(index, scope);
+        assert_eq!(targets(1, CloseScope::This), ["b.postino"]);
+        assert_eq!(targets(1, CloseScope::Others), ["a.postino", "c.postino"]);
+        assert_eq!(targets(1, CloseScope::Right), ["c.postino"]);
+        assert_eq!(targets(1, CloseScope::Left), ["a.postino"]);
+        assert_eq!(targets(2, CloseScope::Right), Vec::<String>::new());
+        assert_eq!(targets(0, CloseScope::Left), Vec::<String>::new());
+        assert_eq!(targets(2, CloseScope::Saved), ["a.postino", "b.postino"]);
+        assert_eq!(
+            targets(0, CloseScope::All),
+            ["a.postino", "b.postino", "c.postino"]
+        );
+        assert_eq!(targets(3, CloseScope::All), Vec::<String>::new());
+    }
+
+    #[test]
+    fn unsaved_among_keeps_only_the_dirty_tabs_asked_for() {
+        let mut tabs = three_tabs();
+        tabs.set_dirty(0, true);
+        tabs.set_dirty(2, true);
+        let all = tabs.close_targets(0, CloseScope::All);
+        let unsaved: Vec<&str> = tabs
+            .unsaved_among(&all)
+            .into_iter()
+            .map(|tab| tab.id.as_str())
+            .collect();
+        assert_eq!(unsaved, ["a.postino", "c.postino"]);
+        let right = tabs.close_targets(0, CloseScope::Right);
+        assert_eq!(tabs.unsaved_among(&right).len(), 1);
+        assert!(tabs.unsaved_among(&["b.postino".to_string()]).is_empty());
     }
 
     fn three_tabs() -> TabsState {

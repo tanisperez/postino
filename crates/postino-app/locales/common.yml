@@ -120,3 +120,8 @@ _version: 2
   es: "Cerrar"
   gl: "Pechar"
   it: "Chiudi"
+"common.open":
+  en: "Open"
+  es: "Abrir"
+  gl: "Abrir"
+  it: "Apri"

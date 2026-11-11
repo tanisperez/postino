@@ -12,14 +12,22 @@
 //! accent line shows where the dragged one lands. Dropping it on "No environment" makes it the
 //! first, on the space below the list the last. "Move up" and "Move down" in the editor's menu
 //! do the same from the keyboard. The order is saved to `.postino/project.toml` (#216).
+//!
+//! A right click on an environment opens its menu (#231, the design's "Context Menus" page):
+//! open, use, color, move, rename, duplicate, reveal and delete, all acting on that row. The
+//! empty part of the panel offers "New environment".
+
+use std::path::PathBuf;
 
 use gpui_kit::component::input::{Input, InputEvent, InputState};
+use gpui_kit::component::menu::{ContextMenuExt, PopupMenu, PopupMenuItem};
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
 
-use crate::state::env_color::EnvColor;
+use crate::actions::{MoveEnvironmentDown, MoveEnvironmentUp};
+use crate::state::env_color::{EnvColor, auto_color};
 use crate::state::env_panel::{load_env_rows, moved_by, moved_order};
 use crate::state::number::format_integer;
 use crate::state::workspace_log::log_workspace_error;
@@ -196,6 +204,26 @@ impl AppView {
         }
     }
 
+    /// Copies the environment `name`, both files, as "<name> copy" right after it, with its
+    /// color. The copy is what is on disk: unsaved edits of an open tab stay in that tab.
+    pub(crate) fn duplicate_environment(&mut self, name: &str, cx: &mut Context<Self>) {
+        let Some(workspace) = self.state.workspace.as_ref() else {
+            return;
+        };
+        match workspace.duplicate_environment(name, &t!("shell.sidebar.copy_suffix")) {
+            Ok(copy) => {
+                log::debug!("duplicated environment {name} as {copy}");
+                self.workspace_error = None;
+                self.refresh_environments();
+            }
+            Err(error) => {
+                log_workspace_error(&format!("duplicate environment {name:?}"), &error);
+                self.workspace_error = Some(error.to_string());
+            }
+        }
+        cx.notify();
+    }
+
     /// Writes `order` to `.postino/project.toml` (created if needed) and reloads the rows.
     fn save_environment_order(&mut self, order: &[String], cx: &mut Context<Self>) {
         let Some(workspace) = self.state.workspace.as_ref() else {
@@ -263,9 +291,11 @@ impl AppView {
                 active.is_none() && selected.is_none(),
                 active.is_none(),
                 None,
+                None,
                 &palette,
                 &mono_font,
             ));
+            let last = self.env_rows.len().saturating_sub(1);
             for (index, row) in self.env_rows.iter().enumerate() {
                 rows = rows.child(env_row(
                     ("env-row", index),
@@ -275,6 +305,16 @@ impl AppView {
                     selected.as_deref() == Some(row.name.as_str()),
                     active.as_deref() == Some(row.name.as_str()),
                     Some(row.var_count),
+                    Some(EnvMenuTarget {
+                        name: row.name.clone(),
+                        is_active: active.as_deref() == Some(row.name.as_str()),
+                        can_move_up: index > 0,
+                        can_move_down: index < last,
+                        chosen: self.state.env_colors.chosen(&row.name),
+                        path: self.state.workspace.as_ref().map(|workspace| {
+                            workspace.environment_path(&row.name, postino_workspace::EnvLayer::Base)
+                        }),
+                    }),
                     &palette,
                     &mono_font,
                 ));
@@ -293,31 +333,46 @@ impl AppView {
             );
         }
 
+        let list = div()
+            .id("env-panel-rows")
+            .flex_1()
+            .min_h_0()
+            .px(px(6.0))
+            .overflow_y_scroll()
+            // Below the rows (and on "New environment"): the last place.
+            .on_drop({
+                let weak = weak.clone();
+                move |dragged: &DraggedEnvironment, _window, cx| {
+                    let from = dragged.index;
+                    let _ = weak.update(cx, |view, cx| {
+                        view.reorder_environment(from, usize::MAX, cx);
+                    });
+                }
+            })
+            .child(rows);
+        // The menu of the panel's empty part. A row's own menu wins over it.
+        let list = if has_workspace {
+            let weak = weak.clone();
+            list.context_menu(move |menu, _, _| {
+                let weak = weak.clone();
+                menu.item(PopupMenuItem::new(t!("navigation.env.new")).on_click(
+                    move |_, window, cx| {
+                        let _ = weak.update(cx, |view, cx| view.begin_new_environment(window, cx));
+                    },
+                ))
+            })
+            .into_any_element()
+        } else {
+            list.into_any_element()
+        };
+
         v_flex()
             .size_full()
             .bg(palette.surface)
             .border_r_1()
             .border_color(palette.border)
             .child(header)
-            .child(
-                div()
-                    .id("env-panel-rows")
-                    .flex_1()
-                    .min_h_0()
-                    .px(px(6.0))
-                    .overflow_y_scroll()
-                    // Below the rows (and on "New environment"): the last place.
-                    .on_drop({
-                        let weak = weak.clone();
-                        move |dragged: &DraggedEnvironment, _window, cx| {
-                            let from = dragged.index;
-                            let _ = weak.update(cx, |view, cx| {
-                                view.reorder_environment(from, usize::MAX, cx);
-                            });
-                        }
-                    })
-                    .child(rows),
-            )
+            .child(list)
             .child(self.render_env_footer(&palette, &mono_font))
             .into_any_element()
     }
@@ -440,9 +495,11 @@ fn env_row(
     selected: bool,
     active: bool,
     var_count: Option<usize>,
+    menu: Option<EnvMenuTarget>,
     palette: &Palette,
     mono_font: &SharedString,
 ) -> AnyElement {
+    let menu_weak = weak.clone();
     let dot = div().flex_none().size(px(7.0)).rounded_full();
     let dot = match &name {
         Some((_, color)) => dot.bg(palette.env_color(*color)),
@@ -478,7 +535,7 @@ fn env_row(
         None => grip_spacer(),
     };
 
-    h_flex()
+    let row = h_flex()
         .id(id)
         .group(ROW_GROUP)
         .h(px(ENV_ROW_HEIGHT))
@@ -547,8 +604,148 @@ fn env_row(
                 Some(name) => view.open_environment_tab(name, cx),
                 None => view.select_environment(None, cx),
             });
+        });
+    match menu {
+        Some(target) => row
+            .context_menu(move |menu, window, cx| {
+                env_context_menu(menu_weak.clone(), &target, menu, window, cx)
+            })
+            .into_any_element(),
+        None => row.into_any_element(),
+    }
+}
+
+/// What the menu of one environment row needs, read when the panel is rendered.
+#[derive(Debug, Clone)]
+struct EnvMenuTarget {
+    name: String,
+    /// Whether it is the active environment.
+    is_active: bool,
+    can_move_up: bool,
+    can_move_down: bool,
+    /// The color the user chose, `None` when it is automatic.
+    chosen: Option<EnvColor>,
+    /// Its `.env` file.
+    path: Option<PathBuf>,
+}
+
+/// Builds the context menu of the environment `target`: text only rows, with the key of the ones
+/// that have one. Every item acts on that environment, whatever tab is active.
+fn env_context_menu(
+    weak: WeakEntity<AppView>,
+    target: &EnvMenuTarget,
+    menu: PopupMenu,
+    window: &mut Window,
+    cx: &mut Context<PopupMenu>,
+) -> PopupMenu {
+    // An item that runs `run` on the view with the environment's name.
+    let item = |label: std::borrow::Cow<'static, str>,
+                run: fn(&mut AppView, String, &mut Window, &mut Context<AppView>)| {
+        let weak = weak.clone();
+        let name = target.name.clone();
+        PopupMenuItem::new(label.into_owned()).on_click(move |_, window, cx| {
+            let name = name.clone();
+            let _ = weak.update(cx, |view, cx| run(view, name, window, cx));
         })
-        .into_any_element()
+    };
+    let open = item(t!("common.open"), |view, name, _, cx| {
+        view.open_environment_tab(name, cx);
+    });
+    let use_it = item(t!("environments.use"), |view, name, _, cx| {
+        view.select_environment(Some(name), cx);
+    })
+    .disabled(target.is_active);
+    // The actions only show their keys: the click handlers move the right-clicked environment,
+    // which need not be the one of the active tab the keys act on.
+    let move_up = item(t!("environments.menu.move_up"), |view, name, _, cx| {
+        view.move_environment(&name, true, cx);
+    })
+    .action(Box::new(MoveEnvironmentUp))
+    .disabled(!target.can_move_up);
+    let move_down = item(t!("environments.menu.move_down"), |view, name, _, cx| {
+        view.move_environment(&name, false, cx);
+    })
+    .action(Box::new(MoveEnvironmentDown))
+    .disabled(!target.can_move_down);
+    let rename = item(t!("common.rename"), |view, name, window, cx| {
+        view.open_env_rename_dialog(name, window, cx);
+    });
+    let duplicate = item(t!("shell.sidebar.duplicate"), |view, name, _, cx| {
+        view.duplicate_environment(&name, cx);
+    });
+    let reveal = {
+        let path = target.path.clone();
+        PopupMenuItem::new(t!("environments.menu.reveal")).on_click(move |_, _, cx| {
+            if let Some(path) = &path {
+                cx.reveal_path(path);
+            }
+        })
+    };
+    let delete = item(t!("common.delete"), |view, name, window, cx| {
+        view.open_env_delete_dialog(name, window, cx);
+    });
+
+    let color_weak = weak.clone();
+    let color_name = target.name.clone();
+    let chosen = target.chosen;
+    menu.item(open)
+        .item(use_it)
+        .separator()
+        .submenu(
+            t!("environments.menu.color_submenu"),
+            window,
+            cx,
+            move |menu, _, _| color_menu(color_weak.clone(), &color_name, chosen, menu),
+        )
+        .item(move_up)
+        .item(move_down)
+        .separator()
+        .item(rename)
+        .item(duplicate)
+        .item(reveal)
+        .separator()
+        .item(delete)
+}
+
+/// The Color submenu: "Automatic" and the nine named colors, the current one checked.
+fn color_menu(
+    weak: WeakEntity<AppView>,
+    name: &str,
+    chosen: Option<EnvColor>,
+    menu: PopupMenu,
+) -> PopupMenu {
+    let item = |label: String, shown: EnvColor, color: Option<EnvColor>| {
+        let weak = weak.clone();
+        let name = name.to_string();
+        PopupMenuItem::element(move |_, cx| {
+            h_flex()
+                .gap_2()
+                .items_center()
+                .child(
+                    div()
+                        .flex_none()
+                        .size(px(8.0))
+                        .rounded_full()
+                        .bg(cx.palette().env_color(shown)),
+                )
+                .child(label.clone())
+        })
+        .checked(chosen == color)
+        .on_click(move |_, _, cx| {
+            let _ = weak.update(cx, |view, cx| view.set_environment_color(&name, color, cx));
+        })
+    };
+    let mut menu = menu
+        .item(item(
+            t!("environments.color.automatic").into_owned(),
+            auto_color(name),
+            None,
+        ))
+        .separator();
+    for color in EnvColor::ALL {
+        menu = menu.item(item(t!(color.label_key()).into_owned(), color, Some(color)));
+    }
+    menu
 }
 
 /// The muted "+ New environment" row at the end of the list.
