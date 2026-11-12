@@ -20,7 +20,8 @@ use crate::theme::metrics::{INPUT_PADDING_X, RADIUS_MD};
 use crate::theme::{PaletteExt, PostinoColors};
 use crate::views::components::{
     ConfirmDialog, HoverInput, MODAL_INNER_RADIUS, ModalPlacement, PrimaryButton, SecondaryButton,
-    edit_menu, framed_dialog, modal_body, modal_footer, modal_header, open_confirm_dialog,
+    edit_menu, framed_dialog, modal_body, modal_footer, modal_header_with_icon,
+    open_confirm_dialog,
 };
 
 use super::super::root::AppView;
@@ -184,7 +185,12 @@ impl AppView {
                     let blocked =
                         oauth::name_problem(&name, &view.state.oauth_profiles, None).is_some();
                     v_flex()
-                        .child(modal_header(title.clone(), cx))
+                        .child(modal_header_with_icon(
+                            Lucide::KeyRound,
+                            cx.palette().accent_text,
+                            title.clone(),
+                            cx,
+                        ))
                         .child(modal_body().child(form))
                         .child(
                             modal_footer(cx)
@@ -275,7 +281,12 @@ impl AppView {
                         })
                         .unwrap_or((None, 0));
                     v_flex()
-                        .child(modal_header(t!("oauth.rename_profile"), cx))
+                        .child(modal_header_with_icon(
+                            Lucide::Pencil,
+                            cx.palette().accent_text,
+                            t!("oauth.rename_profile"),
+                            cx,
+                        ))
                         .child(
                             modal_body()
                                 .gap(px(10.0))
@@ -400,7 +411,12 @@ impl AppView {
                 window,
                 move |_, cx| {
                     v_flex()
-                        .child(modal_header(title.clone(), cx))
+                        .child(modal_header_with_icon(
+                            Lucide::Users,
+                            cx.palette().accent_text,
+                            title.clone(),
+                            cx,
+                        ))
                         .child(modal_body().child(request_list(&users, Some(&weak), cx)))
                         .child(
                             modal_footer(cx).child(
@@ -454,6 +470,7 @@ impl AppView {
                 text: text.into(),
                 confirm_label: t!("common.delete").into(),
                 destructive: true,
+                icon: None,
                 show_cancel: true,
                 on_confirm: Rc::new(move |_, cx| {
                     let name = name.clone();
@@ -560,7 +577,12 @@ impl AppView {
                     let submit = submit.clone();
                     let palette = cx.palette();
                     v_flex()
-                        .child(modal_header(t!("oauth.move_title"), cx))
+                        .child(modal_header_with_icon(
+                            Lucide::FolderInput,
+                            cx.palette().accent_text,
+                            t!("oauth.move_title"),
+                            cx,
+                        ))
                         .child(
                             modal_body()
                                 .gap(px(10.0))
@@ -647,7 +669,12 @@ impl AppView {
                     let palette = cx.palette();
                     let copy = text.clone();
                     v_flex()
-                        .child(modal_header(t!("oauth.all_claims"), cx))
+                        .child(modal_header_with_icon(
+                            Lucide::ScrollText,
+                            cx.palette().accent_text,
+                            t!("oauth.all_claims"),
+                            cx,
+                        ))
                         .child(
                             modal_body().child(
                                 div()
@@ -729,7 +756,12 @@ impl AppView {
                     let submit = submit.clone();
                     let palette = cx.palette();
                     v_flex()
-                        .child(modal_header(t!("oauth.paste_title"), cx))
+                        .child(modal_header_with_icon(
+                            Lucide::ClipboardPaste,
+                            cx.palette().accent_text,
+                            t!("oauth.paste_title"),
+                            cx,
+                        ))
                         .child(
                             modal_body()
                                 .gap(px(10.0))

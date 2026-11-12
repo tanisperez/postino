@@ -21,7 +21,7 @@ use crate::state::settings::save_settings;
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{
     ConfirmDialog, ModalPlacement, PrimaryButton, SecondaryButton, framed_dialog, modal_body,
-    modal_footer, modal_header, open_confirm_dialog,
+    modal_footer, modal_header_with_icon, open_confirm_dialog,
 };
 use crate::views::sidebar::{NameSubmit, open_name_dialog};
 
@@ -153,7 +153,9 @@ impl AppView {
                             })
                     };
                     v_flex()
-                        .child(modal_header(
+                        .child(modal_header_with_icon(
+                            gpui_kit::assets::IconName::GitBranch,
+                            cx.palette().accent_text,
                             t!("git.checkout.title", name = target.label()),
                             cx,
                         ))
@@ -261,6 +263,7 @@ impl AppView {
             let _ = weak.update(cx, |view, cx| view.create_branch(name, start, cx));
         });
         open_name_dialog(
+            gpui_kit::assets::IconName::GitBranchPlus,
             title.into(),
             t!("common.create").into(),
             input,
@@ -315,6 +318,7 @@ impl AppView {
             });
         });
         open_name_dialog(
+            gpui_kit::assets::IconName::Pencil,
             t!("git.branch.rename").into(),
             t!("common.rename").into(),
             input,
@@ -341,6 +345,7 @@ impl AppView {
                 text: t!("git.branch.delete_text", name = name.as_str()).into(),
                 confirm_label: t!("common.delete").into(),
                 destructive: true,
+                icon: None,
                 show_cancel: true,
                 on_confirm: Rc::new(move |window, cx| {
                     let name = name.clone();
@@ -404,6 +409,7 @@ impl AppView {
                 text: t!("git.branch.force_text", name = name.as_str()).into(),
                 confirm_label: t!("git.branch.force_confirm").into(),
                 destructive: true,
+                icon: None,
                 show_cancel: true,
                 on_confirm: Rc::new(move |window, cx| {
                     let name = name.clone();

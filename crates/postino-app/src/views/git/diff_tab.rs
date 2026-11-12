@@ -577,6 +577,7 @@ impl AppView {
                 text: t!("git.diff.revert_text").into(),
                 confirm_label: t!("git.diff.revert_hunk").into(),
                 destructive: true,
+                icon: None,
                 show_cancel: true,
                 on_confirm: Rc::new(move |_, cx| {
                     let (repo, block) = (repo.clone(), block.clone());

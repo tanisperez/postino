@@ -34,7 +34,7 @@ use crate::theme::metrics::{
 };
 use crate::views::components::{
     ConfirmDialog, IconButton, MethodBadge, ModalPlacement, PrimaryButton, SecondaryButton,
-    SectionLabel, edit_menu, framed_dialog, modal_body, modal_footer, modal_header,
+    SectionLabel, edit_menu, framed_dialog, modal_body, modal_footer, modal_header_with_icon,
     open_confirm_dialog, text_field,
 };
 
@@ -808,8 +808,10 @@ pub(crate) type NameSubmit = Rc<dyn Fn(String, &mut App)>;
 type NameConfirm = Rc<dyn Fn(&mut Window, &mut App)>;
 
 /// Opens an in-app dialog (never a native blocking one) with a name field, a Cancel button and
-/// `ok_label`. Enter in the field and the button confirm it; an empty name keeps the dialog open.
+/// `ok_label`, with `icon` before the title. Enter in the field and the button confirm it; an
+/// empty name keeps the dialog open.
 pub(crate) fn open_name_dialog(
+    icon: gpui_kit::assets::IconName,
     title: SharedString,
     ok_label: SharedString,
     input: Entity<InputState>,
@@ -854,7 +856,12 @@ pub(crate) fn open_name_dialog(
             move |_, cx| {
                 let confirm = confirm.clone();
                 v_flex()
-                    .child(modal_header(title.clone(), cx))
+                    .child(modal_header_with_icon(
+                        icon,
+                        cx.palette().accent_text,
+                        title.clone(),
+                        cx,
+                    ))
                     .child(modal_body().child(text_field(&input, cx)))
                     .child(
                         modal_footer(cx)
@@ -894,6 +901,7 @@ pub(crate) fn open_new_request_dialog(
         let _ = view.update(cx, |view, cx| view.create_request(parent.clone(), name, cx));
     });
     open_name_dialog(
+        gpui_kit::assets::IconName::FilePlus,
         t!("common.new_request").into(),
         t!("common.create").into(),
         input,
@@ -917,6 +925,7 @@ pub(crate) fn open_new_folder_dialog(
         let _ = view.update(cx, |view, cx| view.create_folder(parent.clone(), name, cx));
     });
     open_name_dialog(
+        gpui_kit::assets::IconName::FolderPlus,
         t!("common.new_folder").into(),
         t!("common.create").into(),
         input,
@@ -943,6 +952,7 @@ pub(crate) fn open_rename_dialog(
         let _ = view.update(cx, |view, cx| view.rename(id.clone(), name, cx));
     });
     open_name_dialog(
+        gpui_kit::assets::IconName::Pencil,
         t!("common.rename").into(),
         t!("common.rename").into(),
         input,
@@ -969,6 +979,7 @@ pub(crate) fn open_delete_confirmation(
             text: t!("shell.sidebar.delete_text", name = name.as_str()).into(),
             confirm_label: t!("common.delete").into(),
             destructive: true,
+            icon: None,
             show_cancel: true,
             on_confirm: Rc::new(move |_, cx| {
                 let _ = view.update(cx, |view, cx| view.delete(id.clone(), cx));

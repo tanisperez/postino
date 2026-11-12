@@ -18,7 +18,7 @@ use crate::theme::metrics::RADIUS_MD;
 
 use super::components::{
     IconButton, ModalPlacement, SegmentedControl, SegmentedItem, framed_dialog, modal_body,
-    modal_footer, modal_header,
+    modal_footer, modal_header_with_icon,
 };
 use super::root::AppView;
 
@@ -62,7 +62,12 @@ impl AppView {
                 window,
                 move |window, cx| {
                     v_flex()
-                        .child(modal_header(t!("common.code"), cx))
+                        .child(modal_header_with_icon(
+                            gpui_kit::assets::IconName::CodeXml,
+                            cx.palette().accent_text,
+                            t!("common.code"),
+                            cx,
+                        ))
                         .child(modal_body().child(render_snippet_body(
                             weak.clone(),
                             &resolved,

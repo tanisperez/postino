@@ -145,6 +145,21 @@ _version: 2
   es: "«%{name}» se eliminará de forma permanente. Esta acción no se puede deshacer."
   gl: "«%{name}» eliminarase de forma permanente. Esta acción non se pode desfacer."
   it: "Eliminazione definitiva di «%{name}». L'operazione non può essere annullata."
+"shell.palette.hint_navigate":
+  en: "navigate"
+  es: "navegar"
+  gl: "navegar"
+  it: "naviga"
+"shell.palette.hint_open":
+  en: "open"
+  es: "abrir"
+  gl: "abrir"
+  it: "apri"
+"shell.palette.hint_close":
+  en: "close"
+  es: "cerrar"
+  gl: "pechar"
+  it: "chiudi"
 "shell.palette.environments":
   en: "Environments"
   es: "Entornos"

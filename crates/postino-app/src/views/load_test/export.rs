@@ -44,7 +44,7 @@ use crate::state::load_results::{ChartData, Shared, SummaryData};
 use crate::state::load_test::{LoadTestStatus, LoadTestTab};
 use crate::state::number::format_integer;
 use crate::theme::PaletteExt;
-use crate::theme::metrics::{MODAL_HEADER_HEIGHT, MODAL_WIDTH_DEFAULT};
+use crate::theme::metrics::{MODAL_HEADER_HEIGHT, MODAL_PADDING, MODAL_WIDTH_DEFAULT};
 use crate::views::components::{
     ModalPlacement, ProgressBar, SecondaryButton, framed_dialog, modal_body, modal_footer,
 };
@@ -588,11 +588,15 @@ fn open_export_dialog(
                             .h(px(MODAL_HEADER_HEIGHT))
                             .flex_none()
                             .items_center()
-                            .px(px(20.0))
-                            .border_b_1()
-                            .border_color(palette.border)
-                            .text_size(px(15.0))
+                            .gap(px(10.0))
+                            .px(px(MODAL_PADDING))
+                            .text_size(px(14.0))
                             .font_weight(FontWeight::SEMIBOLD)
+                            .child(
+                                Icon::new(gpui_kit::assets::IconName::Download)
+                                    .size(px(15.0))
+                                    .text_color(palette.accent_text),
+                            )
                             .child(t!(
                                 "load_test.export.progress.title",
                                 format = format.title()

@@ -13,12 +13,12 @@ authors = ["Estanislao Pérez Nartallo <tanisperez@gmail.com>"]
 [workspace.dependencies]
 gpui-kit = "0.8.0"
 # The design system and standard components shared with Vano and Nastro. Same gpui-kit pin.
-telaio-ui = { git = "https://github.com/tanisperez/telaio", tag = "v0.18.1" }
-telaio-update = { git = "https://github.com/tanisperez/telaio", tag = "v0.18.1" }
+telaio-ui = { git = "https://github.com/tanisperez/telaio", tag = "v0.19.0" }
+telaio-update = { git = "https://github.com/tanisperez/telaio", tag = "v0.19.0" }
 # The application shell: logging, command line pieces, language, numbers, paths, window bootstrap.
-telaio-app = { git = "https://github.com/tanisperez/telaio", tag = "v0.18.1" }
+telaio-app = { git = "https://github.com/tanisperez/telaio", tag = "v0.19.0" }
 # The git client shared with ted, it drives the `git` executable.
-telaio-git = { git = "https://github.com/tanisperez/telaio", tag = "v0.18.1" }
+telaio-git = { git = "https://github.com/tanisperez/telaio", tag = "v0.19.0" }
 rquickjs = "0.14"
 ureq = "3.4"
 serde = "1"

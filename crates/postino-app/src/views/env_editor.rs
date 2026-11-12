@@ -37,7 +37,7 @@ use crate::views::components::{
     ConfirmDialog, EditableCell, EditableColumn, EditableRow, EditableTable, GhostButton,
     HoverInput, IconButton, InlineMessage, InlineMessageKind, ModalPlacement, PrimaryButton,
     SecondaryButton, SegmentedControl, SegmentedItem, edit_menu, framed_dialog, modal_body,
-    modal_footer, modal_header, open_confirm_dialog,
+    modal_footer, modal_header_with_icon, open_confirm_dialog,
 };
 use crate::views::env_color_picker::color_picker;
 
@@ -577,7 +577,12 @@ impl AppView {
                 move |_, cx| {
                     let submit = submit.clone();
                     v_flex()
-                        .child(modal_header(t!("environments.rename.title"), cx))
+                        .child(modal_header_with_icon(
+                            gpui_kit::assets::IconName::Pencil,
+                            cx.palette().accent_text,
+                            t!("environments.rename.title"),
+                            cx,
+                        ))
                         .child(
                             modal_body().child(HoverInput::new(
                                 "env-rename-input",
@@ -626,6 +631,7 @@ impl AppView {
                 text: t!("environments.delete.text", name = name.as_str()).into(),
                 confirm_label: t!("common.delete").into(),
                 destructive: true,
+                icon: None,
                 show_cancel: true,
                 on_confirm: Rc::new(move |_, cx| {
                     let target = name.clone();

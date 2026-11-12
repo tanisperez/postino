@@ -21,7 +21,7 @@ use crate::state::settings::GitPull;
 use crate::theme::PaletteExt;
 use crate::views::components::{
     ConfirmDialog, ModalPlacement, NeutralButtonExt, PrimaryButton, framed_dialog, modal_body,
-    modal_footer, modal_header, open_confirm_dialog,
+    modal_footer, modal_header_with_icon, open_confirm_dialog,
 };
 
 use super::super::root::AppView;
@@ -257,6 +257,7 @@ impl AppView {
                 text: format!("{intro}\n\n{}", lines.join("\n")).into(),
                 confirm_label: t!("git.push.confirm").into(),
                 destructive: false,
+                icon: Some(gpui_kit::assets::IconName::Upload),
                 show_cancel: true,
                 on_confirm: Rc::new(move |window, cx| {
                     let target = target.clone();
@@ -424,7 +425,12 @@ pub(crate) fn open_git_output(output: SharedString, window: &mut Window, cx: &mu
                 let palette = cx.palette();
                 let mono = cx.theme().mono_font_family.clone();
                 v_flex()
-                    .child(modal_header(t!("git.failure.output_title"), cx))
+                    .child(modal_header_with_icon(
+                        gpui_kit::assets::IconName::SquareTerminal,
+                        cx.palette().accent_text,
+                        t!("git.failure.output_title"),
+                        cx,
+                    ))
                     .child(
                         modal_body().child(
                             div()

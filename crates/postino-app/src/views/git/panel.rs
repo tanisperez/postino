@@ -123,6 +123,7 @@ impl AppView {
                 text: t!("git.discard.text", name = label).into(),
                 confirm_label: t!("git.discard.confirm").into(),
                 destructive: true,
+                icon: None,
                 show_cancel: true,
                 on_confirm: Rc::new(move |_, cx| {
                     let repo = repo.clone();

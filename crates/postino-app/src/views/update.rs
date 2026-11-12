@@ -176,6 +176,7 @@ impl AppView {
                 text: t!("update.confirm.text").into(),
                 confirm_label: t!("update.confirm.restart").into(),
                 destructive: true,
+                icon: None,
                 show_cancel: true,
                 on_confirm: Rc::new(move |window, cx| {
                     let _ = weak.update(cx, |view, cx| view.install_update(window, cx));

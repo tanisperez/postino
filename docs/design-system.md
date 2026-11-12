@@ -30,8 +30,9 @@ default tokens are telaio's defaults. The rest is under `crates/postino-app/src/
   literals are written once: the shared tokens in telaio's `Tokens::DEFAULT_LIGHT` and
   `DEFAULT_DARK`, the method colors in `LIGHT` and `DARK` in `theme/palette.rs`. Add a token
   there, not in a second place.
-- Panels are flat (border only). Inputs and cards use `raised` plus a border. Menus, popovers and
-  modals use `overlay` plus the shadow token. No shadows on fixed panels.
+- Panels are flat (border only). Inputs and cards use `raised` plus a border. Menus and popovers
+  use `overlay` plus the shadow token; modals use `modal`, a `border_strong` border and the
+  modal shadow. No shadows on fixed panels.
 - A single-line input's text sits 9 px from its border (`INPUT_PADDING_X`, 1 px less than
   gpui-component's default), and so does the text of a `VariableField`'s row of chips, so
   focusing a field does not move its text. The URL bar keeps its own 8 px.
@@ -84,8 +85,10 @@ Hex values copied from telaio's `src/palette.rs` and, for the methods, `theme/pa
 | `bg` | `#fcfcfd` | `#15161a` | Editor and content panels |
 | `surface` | `#f4f5f7` | `#1b1c21` | Sidebar, title bar, tab bars, status bar |
 | `raised` | `#ffffff` | `#23252c` | Inputs, cards, code editor |
-| `overlay` | `#ffffff` | `#262830` | Menus, popovers, modals (fill) |
-| `scrim` | `#0a0b1073` | `#0a0b1073` | Dimmed backdrop behind a modal (same in both) |
+| `overlay` | `#ffffff` | `#262830` | Menus, popovers (fill) |
+| `modal` | `#ffffff` | `#1d1e23` | Modal card (fill) |
+| `scrim` | `#0a0b1073` | `#08090cb3` | Dimmed backdrop behind a modal |
+| `keycap` | `#eceef2` | `#2f313a` | Key caps of the shortcuts cheat sheet and the hints bars |
 | `border` | `#e3e5ea` | `#2c2e36` | Default separator and border |
 | `border_strong` | `#cdd0d8` | `#3b3e48` | Control borders (buttons, hovered inputs) |
 | `fg` | `#1b1c22` | `#e9eaee` | Primary text |
@@ -93,7 +96,10 @@ Hex values copied from telaio's `src/palette.rs` and, for the methods, `theme/pa
 | `fg_subtle` | `#8b8e9a` | `#6f7280` | Placeholders, icons, line numbers, counts |
 | `hover` | `#1b1c2213` | `#ffffff0d` | Hover background, a translucent layer (`fg` at 7.5%, white at 5%) |
 
-Derived at runtime (not hex literals): `pressed` is the `hover` layer at 2.2 times its alpha. `list_active` is `accent_subtle` at alpha 0.2, the selected row background gpui-component's `ListItem` draws, for rows that paint their selection themselves.
+Derived at runtime (not hex literals): `modal_footer` is a translucent layer under a modal's
+footer and hints bar (`rgba(20,22,40,0.03)` light, `rgba(0,0,0,0.14)` dark), and `keycap_edge` the
+darker bottom edge of a key cap (`rgba(20,22,40,0.18)` light, `rgba(0,0,0,0.45)` dark).
+`pressed` is the `hover` layer at 2.2 times its alpha. `list_active` is `accent_subtle` at alpha 0.2, the selected row background gpui-component's `ListItem` draws, for rows that paint their selection themselves.
 `accent_hover` and `danger_hover` shift the base color one step (0.07 lightness) toward black in
 light and toward white in dark. `accent_pressed` and `danger_pressed` shift two steps.
 
@@ -150,12 +156,15 @@ The bundled Geist Mono has no italic face, so comments show upright.
 
 ### Shadow (menus, popovers, modals)
 
-Two layers, horizontal offset always 0.
+Menus and popovers: two layers, horizontal offset always 0.
 
 | Layer | Light | Dark |
 | --- | --- | --- |
 | 1 | y 12, blur 32, spread 0, `rgba(20,22,40,0.14)` | y 12, blur 32, spread 0, `rgba(0,0,0,0.45)` |
 | 2 | y 0, blur 0, spread 1, `rgba(20,22,40,0.06)` | y 0, blur 0, spread 1, `rgba(255,255,255,0.04)` |
+
+Modals (`modal_shadow`): one short layer, y 8, blur 24, spread 0, `rgba(20,22,40,0.16)` light and
+`rgba(0,0,0,0.35)` dark.
 
 The values are CSS. gpui's `blur_radius` is the gaussian's standard deviation, half a CSS blur, so
 `Palette::shadow` passes half the blur to gpui.
@@ -244,7 +253,7 @@ The welcome tab has its own `WELCOME_*` constants, listed in its section below.
 
 Radii (px): 4 chips and checkboxes (`RADIUS_XS`), 6 segmented items, tree rows and badges
 (`RADIUS_SM`), 8 inputs, buttons and editor cards (`RADIUS_MD`), 10 menus, popovers and dashboard
-cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 general and 14 large.
+cards (`RADIUS_LG`), 10 modals too (`RADIUS_MODAL`). gpui-kit's own widgets get 8 general and 10 large.
 
 ## Layout, top to bottom
 
@@ -302,13 +311,22 @@ cards (`RADIUS_LG`), 14 modals (`RADIUS_MODAL`). gpui-kit's own widgets get 8 ge
    the active tab is dirty, "UTF-8".
 
 Every dialog (Settings, Keyboard shortcuts, Code, New workspace, the name and confirmation
-dialogs, the command palette) is a modal card drawn by `components::modal`: `overlay` fill, radius
-14, a 1 px `border` border and the shadow token, `scrim` behind. gpui-component's `Dialog` box
+dialogs, the command palette) is a modal card drawn by `components::modal`, design D "flat with
+hints" of the Modals page of the design artifact: `modal` fill, radius 10, a 1 px
+`border_strong` border and the modal shadow, `scrim` behind. gpui-component's `Dialog` box
 around it is transparent and larger than the card, so the shadow has room to show
-(`docs/gpui-notes.md`, "Dialogs"). A dialog has a 52 px header (title 15/600 and a close icon
-button, bottom border), a body with 20 px padding and, when it has buttons, a 52 px footer with
-a top border and the buttons at the end. A child that paints its own background into the card's
-corners rounds them with `MODAL_INNER_RADIUS` (13, inside the border).
+(`docs/gpui-notes.md`, "Dialogs"). A dialog has a 46 px header with no bottom border: an icon
+(15 px, `accent_text`, `danger` on a destructive confirmation), the title 14/600 and a 24 px close
+button on a `hover` fill. The body has 18 px side padding, 16 below and none above. When it has
+buttons, a 50 px footer on `modal_footer` with a top `border` holds them at the end. A navigable
+modal (the command palette, the shortcuts cheat sheet) ends with a 34 px hints bar on
+`modal_footer`: key caps (18 px, `keycap` with a `keycap_edge` bottom edge, mono 10.5) and what
+each key does, 12 px `fg_subtle`. A child that paints its own background into the card's corners
+rounds them with `MODAL_INNER_RADIUS` (9, inside the border).
+
+The command palette's search row is 50 px with a 15 px field and no bottom border. The shortcuts
+cheat sheet has a filter field under the header, group titles as section labels and 36 px rows
+with one 20 px key cap per key.
 
 Settings, Appearance, Theme (and the welcome tab): three `ThemeCard`s, each a 92 px frame (radius 10, `surface`, 1 px
 `border_strong`; selected: `accent_subtle`, 2 px `accent`) with 8 px of padding around a mini

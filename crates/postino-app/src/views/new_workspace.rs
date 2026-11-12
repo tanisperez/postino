@@ -28,7 +28,7 @@ use crate::theme::PaletteExt;
 use crate::theme::metrics::RADIUS_MD;
 use crate::views::components::{
     InlineMessage, InlineMessageKind, ModalPlacement, PrimaryButton, SecondaryButton,
-    framed_dialog, modal_body, modal_footer, modal_header, text_field,
+    framed_dialog, modal_body, modal_footer, modal_header_with_icon, text_field,
 };
 use telaio_ui::components::text_field::FIELD_HEIGHT;
 
@@ -69,7 +69,7 @@ const FORM_GAP: f32 = 14.0;
 /// Gap between the lines of the git option, and above the `.gitignore` preview.
 const GITIGNORE_GAP: f32 = 6.0;
 /// Padding around a modal's body, as telaio's `modal_body`.
-const MODAL_PADDING: f32 = 20.0;
+const MODAL_PADDING: f32 = telaio_ui::metrics::MODAL_PADDING;
 
 /// Opens the dialog.
 pub(crate) fn open_new_workspace_dialog(
@@ -149,7 +149,15 @@ pub(crate) fn open_new_workspace_dialog(
                 v_flex()
                     .flex_1()
                     .min_h_0()
-                    .child(modal_header(t!("shell.new_workspace.title"), cx).flex_none())
+                    .child(
+                        modal_header_with_icon(
+                            gpui_kit::assets::IconName::FolderPlus,
+                            cx.palette().accent_text,
+                            t!("shell.new_workspace.title"),
+                            cx,
+                        )
+                        .flex_none(),
+                    )
                     .child(
                         v_flex()
                             .relative()

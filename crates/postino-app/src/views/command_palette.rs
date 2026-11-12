@@ -26,7 +26,7 @@ use crate::state::palette::{self, ActionId, PaletteItem, PaletteItemKind};
 use crate::theme::Palette;
 use crate::theme::{PaletteExt, PostinoColors};
 use crate::views::components::{
-    MODAL_INNER_RADIUS, MethodBadge, ModalPlacement, edit_menu, framed_dialog,
+    MODAL_INNER_RADIUS, MethodBadge, ModalPlacement, edit_menu, framed_dialog, modal_hints,
 };
 
 use super::root::AppView;
@@ -48,7 +48,9 @@ const PALETTE_LIST_HEIGHT: f32 = 480.0;
 const PALETTE_BOTTOM_PADDING: f32 = 8.0;
 /// Height of the search row. `Command`'s own search field is `h_8` (2rem, so 26px at the 13px
 /// UI font) and cannot be resized, so the palette draws its own (see [`render_search_row`]).
-const SEARCH_ROW_HEIGHT: f32 = 36.0;
+const SEARCH_ROW_HEIGHT: f32 = 50.0;
+/// Text size of the search field, larger than the UI font: it is the palette's main control.
+const SEARCH_TEXT_SIZE: f32 = 15.0;
 /// The three group headings, in the fixed order they are always shown (`Requests` first even
 /// when empty, matching `IndexPath.section` 0/1/2, see the module doc comment). Built on every
 /// repaint, so they follow the current language.
@@ -102,12 +104,29 @@ impl AppView {
                 },
                 window,
                 move |_window, cx| {
-                    div()
-                        .pb(px(PALETTE_BOTTOM_PADDING))
-                        .child(render_palette_content(
-                            weak.clone(),
-                            command_state.clone(),
-                            search_input.clone(),
+                    // On a short window the dialog caps the card's height: the list gives up
+                    // the room, never the hints bar.
+                    v_flex()
+                        .flex_1()
+                        .min_h_0()
+                        .child(
+                            v_flex()
+                                .flex_1()
+                                .min_h_0()
+                                .pb(px(PALETTE_BOTTOM_PADDING))
+                                .child(render_palette_content(
+                                    weak.clone(),
+                                    command_state.clone(),
+                                    search_input.clone(),
+                                    cx,
+                                )),
+                        )
+                        .child(modal_hints(
+                            [
+                                ("↑↓", t!("shell.palette.hint_navigate")),
+                                ("↵", t!("shell.palette.hint_open")),
+                                ("Esc", t!("shell.palette.hint_close")),
+                            ],
                             cx,
                         ))
                         .into_any_element()
@@ -175,6 +194,10 @@ fn render_palette_content(
         .filterable(false)
         .searchable(false)
         .rounded_t(px(MODAL_INNER_RADIUS))
+        // `Command` paints the popover fill; the palette sits on the modal's own.
+        .bg(palette.modal)
+        .flex_1()
+        .min_h_0()
         .max_h(px(PALETTE_LIST_HEIGHT))
         .header(move |_, _, cx| render_search_row(&search_input, cx));
 
@@ -229,16 +252,19 @@ fn render_search_row(search_input: &Entity<InputState>, cx: &App) -> AnyElement 
     h_flex()
         .flex_none()
         .h(px(SEARCH_ROW_HEIGHT))
-        .px_3()
-        .gap_2()
+        .px_4()
+        .gap(px(10.0))
         .items_center()
-        .border_b_1()
-        .border_color(cx.theme().border)
-        .child(Icon::new(IconName::Search).text_color(cx.theme().muted_foreground))
+        .child(
+            Icon::new(IconName::Search)
+                .size(px(15.0))
+                .text_color(cx.palette().fg_subtle),
+        )
         .child(
             Input::new(search_input)
                 .context_menu(edit_menu(search_input, cx))
                 .appearance(false)
+                .text_size(px(SEARCH_TEXT_SIZE))
                 .flex_1()
                 .p_0(),
         )
