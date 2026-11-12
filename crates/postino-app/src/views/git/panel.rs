@@ -491,6 +491,7 @@ impl AppView {
         let commit_and_push = {
             let weak = weak.clone();
             SecondaryButton::new("git-commit-push", t!("git.commit.commit_and_push"))
+                .full_width()
                 .disabled(!enabled)
                 .on_click(move |_, window, cx| {
                     let _ = weak.update(cx, |view, cx| view.commit_from_box(true, window, cx));
@@ -519,10 +520,14 @@ impl AppView {
                         .child(summary),
                 )
                 .child(
+                    // The two buttons always have the same width: halves of the row when both
+                    // labels fit, one under the other at full width on a narrow panel, so
+                    // "Commit and Push…" is never cut.
                     h_flex()
+                        .flex_wrap()
                         .gap(px(6.0))
-                        .child(div().flex_1().min_w_0().child(commit))
-                        .child(div().flex_none().child(commit_and_push)),
+                        .child(commit_button_slot().child(commit))
+                        .child(commit_button_slot().child(commit_and_push)),
                 )
                 .into_any_element(),
         )
@@ -790,4 +795,17 @@ fn render_change_row(
                 .into_any_element()
         }
     }
+}
+
+/// Least width of a commit button, enough for the longest "Commit and Push…" label: below twice
+/// this, the two buttons wrap onto their own rows.
+const COMMIT_BUTTON_MIN_WIDTH: f32 = 140.0;
+
+/// The box of one of the commit buttons: it grows from [`COMMIT_BUTTON_MIN_WIDTH`], so both
+/// share a row equally or each fills its own.
+fn commit_button_slot() -> Div {
+    div()
+        .flex_grow(1.0)
+        .flex_basis(px(COMMIT_BUTTON_MIN_WIDTH))
+        .min_w(px(COMMIT_BUTTON_MIN_WIDTH))
 }
