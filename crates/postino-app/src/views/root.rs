@@ -4,8 +4,10 @@
 //! modules add methods to [`AppView`] (`impl AppView` blocks split across files) so each panel's
 //! rendering code lives next to what it renders, while the overall layout stays here.
 
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -269,6 +271,13 @@ pub struct AppView {
     /// How many times [`Render::render`] ran, logged at Trace. A count that keeps growing while
     /// nobody touches the app means something keeps calling `cx.notify()`.
     render_count: u64,
+    /// The window bounds of the active tab, kept by the tab bar, and of the selected row of the
+    /// Environments panel, kept while that panel is shown: where the keyboard opens their menus
+    /// (`views/keyboard_menu.rs`, #232).
+    pub(crate) tab_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
+    pub(crate) env_row_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
+    /// The context menu opened from the keyboard, while it is open.
+    pub(crate) keyboard_menu: Option<crate::views::keyboard_menu::KeyboardMenu>,
 }
 
 impl AppView {
@@ -454,6 +463,9 @@ impl AppView {
             opening: None,
             oauth: crate::views::oauth::OAuthUi::new(sign_in_sender),
             render_count: 0,
+            tab_bounds: Rc::default(),
+            env_row_bounds: Rc::default(),
+            keyboard_menu: None,
         };
         view.listen_for_sign_in(sign_in_receiver, cx);
         // Once per launch: `git --version`, then the workspace's repository once it opens.
@@ -1329,6 +1341,25 @@ impl AppView {
     }
 
     /// Handles the `F1` / `Cmd+Shift+/` key binding (see `main.rs`'s `bind_keys`).
+    /// What the menu of the tab at `index` acts on, `None` when there is no such tab.
+    pub(crate) fn tab_menu_target(&self, index: usize) -> Option<TabMenuTarget> {
+        let tabs = self.state.tabs.open_tabs();
+        let tab = tabs.get(index)?;
+        let file = match &tab.kind {
+            state::TabKind::Request(_) => TabFile::Request,
+            state::TabKind::Environment(edit) => TabFile::Environment(edit.name.clone()),
+            _ => TabFile::None,
+        };
+        Some(TabMenuTarget {
+            id: tab.id.clone(),
+            index,
+            count: tabs.len(),
+            any_saved: tabs.iter().any(|tab| !tab.dirty),
+            path: self.tab_file_path(&tab.id, &file),
+            file,
+        })
+    }
+
     fn on_open_shortcuts_action(
         &mut self,
         _: &OpenShortcuts,
@@ -1797,31 +1828,21 @@ impl AppView {
 
         let active_index = self.state.tabs.active_index();
         let reorder_weak = weak.clone();
-        let mut tabs = DocumentTabs::new("open-tabs").on_reorder(move |from, to, _, cx| {
+        let tabs = DocumentTabs::new("open-tabs").on_reorder(move |from, to, _, cx| {
             let _ = reorder_weak.update(cx, |view, cx| {
                 log::debug!("moved tab {from} to {to}");
                 view.state.tabs.move_tab(from, to);
                 cx.notify();
             });
         });
-        let count = self.state.tabs.open_tabs().len();
-        let any_saved = self.state.tabs.open_tabs().iter().any(|tab| !tab.dirty);
+        let tabs_bounds = self.tab_bounds.clone();
+        let mut tabs = tabs.selected_bounds(tabs_bounds);
         for (index, tab) in self.state.tabs.open_tabs().iter().enumerate() {
             let select_weak = weak.clone();
             let close_weak = weak.clone();
             let menu_weak = weak.clone();
-            let file = match &tab.kind {
-                state::TabKind::Request(_) => TabFile::Request,
-                state::TabKind::Environment(edit) => TabFile::Environment(edit.name.clone()),
-                _ => TabFile::None,
-            };
-            let menu_target = TabMenuTarget {
-                id: tab.id.clone(),
-                index,
-                count,
-                any_saved,
-                path: self.tab_file_path(&tab.id, &file),
-                file,
+            let Some(menu_target) = self.tab_menu_target(index) else {
+                continue;
             };
             let full_id = match &tab.kind {
                 state::TabKind::Environment(edit) => state::env_edit::status_path(&edit.name),
@@ -1927,6 +1948,8 @@ impl AppView {
 impl Render for AppView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.render_count += 1;
+        // Set again by the Environments panel's selected row while that panel is shown.
+        self.env_row_bounds.set(None);
         log::trace!("render #{}", self.render_count);
 
         // Follow the sidebar's selection: opening a request tab happens here, once per actual
@@ -2004,6 +2027,7 @@ impl Render for AppView {
             .on_action(cx.listener(Self::on_new_request_action))
             .on_action(cx.listener(Self::on_import_openapi_action))
             .on_action(cx.listener(Self::on_open_shortcuts_action))
+            .on_action(cx.listener(Self::on_open_context_menu))
             .on_action(cx.listener(Self::on_close_tab_action))
             .on_action(cx.listener(Self::on_next_tab_action))
             .on_action(cx.listener(Self::on_previous_tab_action))
@@ -2038,6 +2062,7 @@ impl Render for AppView {
             .child(body)
             .child(status_bar)
             .children(completion)
+            .children(self.render_keyboard_menu())
             // The modal backdrop, see `Palette::scrim`. Paints only, so clicks still reach the
             // dialog's own (transparent) backdrop above it, which closes the dialog.
             .when(window.has_active_dialog(cx), |this| {

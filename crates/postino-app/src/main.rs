@@ -24,13 +24,13 @@ use telaio_app::{logging, window};
 use actions::{
     CloseActiveTab, CommitFromMessage, ConfirmCompletion, CopyLoadTestSummary, DeleteLine,
     DeleteSelectedEntry, DismissCompletion, ImportOpenApi, MoveEnvironmentDown, MoveEnvironmentUp,
-    NewRequest, NextCompletion, NextDiffChange, NextTab, OpenCommandPalette, OpenDiffFile,
-    OpenSettings, OpenShortcuts, OpenWorkspace, PreviousCompletion, PreviousDiffChange,
-    PreviousTab, RedoRequestEdit, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1,
-    SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
-    SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
-    SelectNoEnvironment, SendActiveTab, ShowCompletion, ToggleCollections, ToggleEnvironments,
-    ToggleLoadTests, ToggleSourceControl, UndoRequestEdit,
+    NewRequest, NextCompletion, NextDiffChange, NextTab, OpenCommandPalette, OpenContextMenu,
+    OpenDiffFile, OpenSettings, OpenShortcuts, OpenWorkspace, PreviousCompletion,
+    PreviousDiffChange, PreviousTab, RedoRequestEdit, RenameSelectedEntry, SaveActiveTab,
+    SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
+    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
+    SelectEnvironment9, SelectNoEnvironment, SendActiveTab, ShowCompletion, ToggleCollections,
+    ToggleEnvironments, ToggleLoadTests, ToggleSourceControl, UndoRequestEdit,
 };
 use state::settings::ThemeChoice;
 use state::window::WindowState;
@@ -347,6 +347,12 @@ fn bind_keys(cx: &mut App) {
         OpenShortcuts,
         None,
     )]);
+    // Shift+F10 and the menu key open the context menu of the active tab or environment (#232),
+    // as a right click would. gpui names the menu key `menu` on Linux and Windows; Macs have none.
+    cx.bind_keys([
+        KeyBinding::new("shift-f10", OpenContextMenu, None),
+        KeyBinding::new("menu", OpenContextMenu, None),
+    ]);
     // Alt+Up / Alt+Down (Option on macOS) move the environment of the active environment tab
     // (#216). Text inputs that bind them themselves run first.
     cx.bind_keys([

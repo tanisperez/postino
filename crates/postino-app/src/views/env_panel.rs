@@ -17,7 +17,9 @@
 //! open, use, color, move, rename, duplicate, reveal and delete, all acting on that row. The
 //! empty part of the panel offers "New environment".
 
+use std::cell::Cell;
 use std::path::PathBuf;
+use std::rc::Rc;
 
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::menu::{ContextMenuExt, PopupMenu, PopupMenuItem};
@@ -244,6 +246,22 @@ impl AppView {
         cx.notify();
     }
 
+    /// What the menu of the environment at `index` of [`Self::env_rows`] acts on.
+    pub(crate) fn env_menu_target(&self, index: usize) -> Option<EnvMenuTarget> {
+        let row = self.env_rows.get(index)?;
+        let active = self.state.active_environment.as_deref();
+        Some(EnvMenuTarget {
+            name: row.name.clone(),
+            is_active: active == Some(row.name.as_str()),
+            can_move_up: index > 0,
+            can_move_down: index + 1 < self.env_rows.len(),
+            chosen: self.state.env_colors.chosen(&row.name),
+            path: self.state.workspace.as_ref().map(|workspace| {
+                workspace.environment_path(&row.name, postino_workspace::EnvLayer::Base)
+            }),
+        })
+    }
+
     /// Renders the Environments panel.
     pub(crate) fn render_env_panel(
         &mut self,
@@ -293,10 +311,10 @@ impl AppView {
                 active.is_none(),
                 None,
                 None,
+                None,
                 &palette,
                 &mono_font,
             ));
-            let last = self.env_rows.len().saturating_sub(1);
             for (index, row) in self.env_rows.iter().enumerate() {
                 rows = rows.child(env_row(
                     ("env-row", index),
@@ -306,16 +324,9 @@ impl AppView {
                     selected.as_deref() == Some(row.name.as_str()),
                     active.as_deref() == Some(row.name.as_str()),
                     Some(row.var_count),
-                    Some(EnvMenuTarget {
-                        name: row.name.clone(),
-                        is_active: active.as_deref() == Some(row.name.as_str()),
-                        can_move_up: index > 0,
-                        can_move_down: index < last,
-                        chosen: self.state.env_colors.chosen(&row.name),
-                        path: self.state.workspace.as_ref().map(|workspace| {
-                            workspace.environment_path(&row.name, postino_workspace::EnvLayer::Base)
-                        }),
-                    }),
+                    self.env_menu_target(index),
+                    (selected.as_deref() == Some(row.name.as_str()))
+                        .then(|| self.env_row_bounds.clone()),
                     &palette,
                     &mono_font,
                 ));
@@ -497,6 +508,7 @@ fn env_row(
     active: bool,
     var_count: Option<usize>,
     menu: Option<EnvMenuTarget>,
+    bounds: Option<Rc<Cell<Option<Bounds<Pixels>>>>>,
     palette: &Palette,
     mono_font: &SharedString,
 ) -> AnyElement {
@@ -606,6 +618,15 @@ fn env_row(
                 None => view.select_environment(None, cx),
             });
         });
+    // The selected row keeps its bounds for the menu the keyboard opens (#232).
+    let row = match bounds {
+        Some(cell) => row.relative().child(
+            canvas(move |bounds, _, _| cell.set(Some(bounds)), |_, _, _, _| {})
+                .absolute()
+                .inset_0(),
+        ),
+        None => row,
+    };
     match menu {
         Some(target) => row
             .context_menu(move |menu, window, cx| {
@@ -618,7 +639,7 @@ fn env_row(
 
 /// What the menu of one environment row needs, read when the panel is rendered.
 #[derive(Debug, Clone)]
-struct EnvMenuTarget {
+pub(crate) struct EnvMenuTarget {
     name: String,
     /// Whether it is the active environment.
     is_active: bool,
@@ -632,7 +653,7 @@ struct EnvMenuTarget {
 
 /// Builds the context menu of the environment `target`: text only rows, with the key of the ones
 /// that have one. Every item acts on that environment, whatever tab is active.
-fn env_context_menu(
+pub(crate) fn env_context_menu(
     weak: WeakEntity<AppView>,
     target: &EnvMenuTarget,
     menu: PopupMenu,

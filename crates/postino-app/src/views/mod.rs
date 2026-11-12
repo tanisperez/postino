@@ -15,6 +15,7 @@ pub mod env_picker;
 pub mod git;
 mod import_destination;
 mod import_menu;
+pub mod keyboard_menu;
 pub mod launcher;
 pub mod load_panel;
 pub mod load_test;

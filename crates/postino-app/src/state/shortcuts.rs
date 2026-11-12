@@ -46,6 +46,7 @@ pub fn groups() -> Vec<ShortcutGroup> {
                 ),
                 Shortcut::new(t!("shortcuts.action.settings"), &[modifier, ","]),
                 Shortcut::open_sheet(),
+                Shortcut::new(t!("shortcuts.action.context_menu"), &["Shift", "F10"]),
                 Shortcut::new(t!("shortcuts.action.close_tab"), &[modifier, "W"]),
                 Shortcut::new(t!("shortcuts.action.next_tab"), &["Ctrl", "Tab"]),
                 Shortcut::new(

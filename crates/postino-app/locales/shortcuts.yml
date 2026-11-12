@@ -45,6 +45,11 @@ _version: 2
   es: "Abrir ajustes"
   gl: "Abrir axustes"
   it: "Apri impostazioni"
+"shortcuts.action.context_menu":
+  en: "Open the menu of the tab or environment"
+  es: "Abrir el menú de la pestaña o del entorno"
+  gl: "Abrir o menú da pestana ou do contorno"
+  it: "Apri il menu della scheda o dell'ambiente"
 "shortcuts.action.close_tab":
   en: "Close the tab"
   es: "Cerrar la pestaña"

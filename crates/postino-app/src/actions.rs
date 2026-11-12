@@ -68,6 +68,10 @@ actions!(
         ImportOpenApi,
         /// Opens the keyboard shortcuts cheat sheet (`F1`, or `Cmd+Shift+/` on macOS).
         OpenShortcuts,
+        /// Opens a context menu from the keyboard (`Shift+F10`, the menu key, #232): the one of
+        /// the environment selected in the Environments panel while that panel is shown, else
+        /// the one of the active tab.
+        OpenContextMenu,
         /// Closes the active tab (`Ctrl+W` / `Cmd+W`), asking first when it has unsaved
         /// environment edits like the tab's close button.
         CloseActiveTab,
