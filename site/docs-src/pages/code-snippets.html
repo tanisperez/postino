@@ -31,6 +31,9 @@ description: Turn any Postino request into a curl command, a JavaScript fetch ca
     <p>Because variables are resolved, the snippet contains the real values of tokens and passwords from your environment, including <code>.local.env</code>. Check it before pasting it into an issue or a chat.</p>
 </div>
 
+<h2 id="command-line">From the command line</h2>
+<p><code>postino snippet &lt;file&gt; --lang curl|fetch|python</code> prints the same code in a terminal, and <code>postino import curl</code> goes the other way, from a curl command to a request. See the <a href="command-line.html#snippet">command line reference</a>.</p>
+
 <h2>Examples</h2>
 <p>For this request, with <code>baseUrl</code> set to <code>https://api.example.com</code> and <code>token</code> to <code>abc123</code>:</p>
 ```postino title="users/create.postino"

@@ -5,8 +5,8 @@
 
 pub mod dashboard;
 pub mod fail_if;
-mod live;
-mod summary;
+pub mod live;
+pub mod summary;
 
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
@@ -23,7 +23,8 @@ use postino_workspace::{RequestEntry, Workspace};
 use crate::args::LoadArgs;
 use crate::context::{self, WorkspaceLookup};
 use crate::exit::{self, CliError};
-use crate::reports::{self, ReportFormat, ReportRenderer, ReportRun};
+use crate::hooks::AppHooks;
+use crate::reports::{self, ReportFormat, ReportRun};
 use crate::style::Style;
 use live::Live;
 
@@ -113,8 +114,8 @@ fn install_ctrl_c(stop: Arc<AtomicBool>) {
 }
 
 /// Runs `postino load` and returns its exit code.
-pub fn command(args: &LoadArgs, renderer: &dyn ReportRenderer) -> u8 {
-    match execute(args, renderer) {
+pub fn command(args: &LoadArgs, hooks: &dyn AppHooks) -> u8 {
+    match execute(args, hooks) {
         Ok(code) => code,
         Err(error) => {
             eprintln!(
@@ -126,7 +127,7 @@ pub fn command(args: &LoadArgs, renderer: &dyn ReportRenderer) -> u8 {
     }
 }
 
-fn execute(args: &LoadArgs, renderer: &dyn ReportRenderer) -> Result<u8, CliError> {
+pub(crate) fn execute(args: &LoadArgs, hooks: &dyn AppHooks) -> Result<u8, CliError> {
     let report_format = args
         .report
         .as_deref()
@@ -261,7 +262,7 @@ fn execute(args: &LoadArgs, renderer: &dyn ReportRenderer) -> Result<u8, CliErro
                 timeout_secs,
                 root: Some(&root),
             };
-            let bytes = reports::render(format, &run, renderer)?;
+            let bytes = reports::render(format, &run, hooks)?;
             reports::write(&path, &bytes)?;
             Ok(format!("Report saved to {}", path.display()))
         };
@@ -327,8 +328,7 @@ fn execute(args: &LoadArgs, renderer: &dyn ReportRenderer) -> Result<u8, CliErro
             timeout_secs,
             root: Some(&root),
         };
-        match reports::render(format, &run, renderer).and_then(|bytes| reports::write(path, &bytes))
-        {
+        match reports::render(format, &run, hooks).and_then(|bytes| reports::write(path, &bytes)) {
             Ok(()) => eprintln!("Report saved to {}", path.display()),
             Err(error) => {
                 eprintln!(
@@ -396,7 +396,7 @@ fn execute(args: &LoadArgs, renderer: &dyn ReportRenderer) -> Result<u8, CliErro
 mod tests {
     use super::*;
     use crate::args::CommonArgs;
-    use crate::reports::NoRenderer;
+    use crate::hooks::NoHooks;
     use postino_http::test_support::{StubResponse, TestServer};
     use pretty_assertions::assert_eq;
 
@@ -441,7 +441,7 @@ mod tests {
         let dir = workspace(&server.url());
         let report = dir.path().join("out.json");
 
-        let first = execute(&args(dir.path()), &NoRenderer).expect("first run");
+        let first = execute(&args(dir.path()), &NoHooks).expect("first run");
         assert_eq!(first, exit::SUCCESS);
         let second = execute(
             &LoadArgs {
@@ -450,7 +450,7 @@ mod tests {
                 compare: Some("last".to_string()),
                 ..args(dir.path())
             },
-            &NoRenderer,
+            &NoHooks,
         )
         .expect("second run");
         drop(server);
@@ -478,7 +478,7 @@ mod tests {
                 no_save: true,
                 ..args(dir.path())
             },
-            &NoRenderer,
+            &NoHooks,
         )
         .expect("ran");
         assert_eq!(code, exit::NETWORK);
@@ -493,7 +493,7 @@ mod tests {
                 report: Some("r.txt".into()),
                 ..args(dir.path())
             },
-            &NoRenderer,
+            &NoHooks,
         )
         .expect_err("report");
         assert_eq!(error.code, exit::USAGE);
@@ -502,7 +502,7 @@ mod tests {
                 compare: Some("yesterday".into()),
                 ..args(dir.path())
             },
-            &NoRenderer,
+            &NoHooks,
         )
         .expect_err("compare");
         assert_eq!(error.code, exit::USAGE);
@@ -511,7 +511,7 @@ mod tests {
                 compare: Some("last".into()),
                 ..args(dir.path())
             },
-            &NoRenderer,
+            &NoHooks,
         )
         .expect_err("no earlier run");
         assert_eq!(error.code, exit::FILE);

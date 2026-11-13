@@ -22,6 +22,8 @@ serde_json = { workspace = true }
 dunce = { workspace = true }
 ratatui = { workspace = true }
 ctrlc = { workspace = true }
+clap_complete = { workspace = true }
+chrono = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

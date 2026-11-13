@@ -93,6 +93,9 @@ folder "Users": a test script is not imported at the folder level, only per requ
 <h2>Environments</h2>
 <p>A Postman environment export becomes <code>environments/&lt;name&gt;.env</code>. Variables of type <strong>secret</strong> go to <code>environments/&lt;name&gt;.local.env</code> instead, so they stay out of git: a workspace created for the import already ignores them, and in an existing folder you add <code>*.local.env</code> to your <code>.gitignore</code>.</p>
 
+<h2 id="command-line">From the command line</h2>
+<p><code>postino import postman &lt;source&gt;</code> runs this import with the wizard's default choices, from files, a folder or a <code>.zip</code>. See the <a href="command-line.html#import">command line reference</a>.</p>
+
 <h2>After importing</h2>
 <ul>
     <li>Look at the warnings: they list every body, auth and script that needs your attention.</li>

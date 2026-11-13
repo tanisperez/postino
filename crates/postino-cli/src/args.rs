@@ -11,8 +11,26 @@ use crate::units::{parse_duration, parse_size};
 
 /// The names that make Postino run in console mode when they are the first argument. A folder
 /// named like one of them opens in the app with `postino ./name`.
-pub const SUBCOMMANDS: [&str; 11] = [
-    "run", "check", "load", "get", "post", "put", "patch", "delete", "head", "options", "http",
+pub const SUBCOMMANDS: [&str; 19] = [
+    "run",
+    "check",
+    "load",
+    "runs",
+    "report",
+    "list",
+    "env",
+    "import",
+    "snippet",
+    "completions",
+    "get",
+    "post",
+    "put",
+    "patch",
+    "delete",
+    "head",
+    "options",
+    "http",
+    "help",
 ];
 
 /// `postino <command> ...`.
@@ -37,6 +55,21 @@ pub enum ConsoleCommand {
     Check(CheckArgs),
     /// Run a load test on requests or folders, with a live dashboard.
     Load(LoadArgs),
+    /// List, show and compare the saved load test runs.
+    Runs(RunsArgs),
+    /// Write the report of a saved load test run.
+    Report(ReportArgs),
+    /// List the requests of the workspace, with their methods.
+    List(ListArgs),
+    /// List the environments, or the variables of one with --show.
+    Env(EnvArgs),
+    /// Import OpenAPI, Postman or Bruno collections, or a curl command.
+    #[command(subcommand)]
+    Import(ImportCommand),
+    /// Print a request as code: curl, fetch or Python.
+    Snippet(SnippetArgs),
+    /// Print the shell completion script.
+    Completions(CompletionsArgs),
     /// Send a GET request.
     Get(RequestArgs),
     /// Send a POST request.
@@ -91,6 +124,29 @@ pub struct SendArgs {
     /// The proxy, such as http://proxy:3128 or socks5://localhost:1080.
     #[arg(long, value_name = "URL")]
     pub proxy: Option<String>,
+}
+
+/// The workspace options of the commands that send nothing.
+#[derive(Debug, Clone, Default, Args)]
+pub struct WorkspaceArgs {
+    /// The workspace folder. By default, the folder holding `.postino/` above the current
+    /// directory, or the current directory.
+    #[arg(long, value_name = "DIR")]
+    pub workspace: Option<PathBuf>,
+    /// Never print colors. The NO_COLOR environment variable does the same.
+    #[arg(long)]
+    pub no_color: bool,
+}
+
+impl WorkspaceArgs {
+    /// The same options as [`CommonArgs`], without variables.
+    pub fn common(&self) -> CommonArgs {
+        CommonArgs {
+            workspace: self.workspace.clone(),
+            no_color: self.no_color,
+            ..CommonArgs::default()
+        }
+    }
 }
 
 /// The output format of `run` and `check`.
@@ -186,6 +242,187 @@ pub struct LoadArgs {
     pub common: CommonArgs,
     #[command(flatten)]
     pub send: SendArgs,
+}
+
+/// `postino runs [show N | compare A B]`.
+#[derive(Debug, Clone, Args)]
+pub struct RunsArgs {
+    /// What to do; without it, the list of runs.
+    #[command(subcommand)]
+    pub action: Option<RunsAction>,
+    /// The output format of the list: human or json.
+    #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
+    pub output: OutputFormat,
+    #[command(flatten)]
+    pub workspace: WorkspaceArgs,
+}
+
+/// The actions of `postino runs`.
+#[derive(Debug, Clone, Subcommand)]
+pub enum RunsAction {
+    /// The summary of a run.
+    Show {
+        /// A run number, or last.
+        #[arg(value_name = "RUN")]
+        run: String,
+    },
+    /// The changes from one run to another.
+    Compare {
+        /// The earlier run: a number, or last.
+        #[arg(value_name = "BEFORE")]
+        before: String,
+        /// The later run: a number, or last.
+        #[arg(value_name = "AFTER")]
+        after: String,
+    },
+}
+
+/// A report format named by `--format`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum ReportFormatArg {
+    /// The PDF document.
+    Pdf,
+    /// The Markdown document.
+    Md,
+    /// The whole run as JSON.
+    Json,
+    /// One CSV row per request.
+    Csv,
+}
+
+/// `postino report <run>`.
+#[derive(Debug, Clone, Args)]
+pub struct ReportArgs {
+    /// A run number, or last.
+    #[arg(value_name = "RUN")]
+    pub run: String,
+    /// The file to write; its extension sets the format.
+    #[arg(short = 'o', long = "output", value_name = "FILE")]
+    pub output: Option<PathBuf>,
+    /// The format, printed to stdout when there is no -o.
+    #[arg(long, value_enum)]
+    pub format: Option<ReportFormatArg>,
+    /// Compare with another saved run: last (the run before this one of the same target), or a
+    /// run number.
+    #[arg(long, value_name = "RUN")]
+    pub compare: Option<String>,
+    #[command(flatten)]
+    pub workspace: WorkspaceArgs,
+}
+
+/// `postino list [folder]`.
+#[derive(Debug, Clone, Args)]
+pub struct ListArgs {
+    /// A folder of the workspace; without it, the whole workspace.
+    #[arg(value_name = "FOLDER")]
+    pub folder: Option<PathBuf>,
+    /// The output format: human or json.
+    #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
+    pub output: OutputFormat,
+    #[command(flatten)]
+    pub workspace: WorkspaceArgs,
+}
+
+/// `postino env [--show NAME]`.
+#[derive(Debug, Clone, Args)]
+pub struct EnvArgs {
+    /// List the variables of this environment, secret values hidden.
+    #[arg(long, value_name = "NAME")]
+    pub show: Option<String>,
+    /// The output format: human or json.
+    #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
+    pub output: OutputFormat,
+    #[command(flatten)]
+    pub workspace: WorkspaceArgs,
+}
+
+/// `postino import <kind> ...`.
+#[derive(Debug, Clone, Subcommand)]
+pub enum ImportCommand {
+    /// OpenAPI 3.x or Swagger 2.0: a file, a folder, a URL or a catalog-info.yaml.
+    Openapi(ImportArgs),
+    /// Postman collections, environments and globals: files, a folder or a .zip.
+    Postman(ImportArgs),
+    /// A Bruno collection: its folder, a .zip or .bru files.
+    Bruno(ImportArgs),
+    /// A curl command, as a .postino request.
+    Curl(CurlArgs),
+}
+
+/// `postino import openapi|postman|bruno <source>`.
+#[derive(Debug, Clone, Args)]
+pub struct ImportArgs {
+    /// What to import.
+    #[arg(value_name = "SOURCE")]
+    pub source: String,
+    /// The collection folder to create at the workspace root. By default, the collection's name.
+    #[arg(long, value_name = "FOLDER")]
+    pub into: Option<String>,
+    /// Import a new collection even when this source was imported before, instead of updating it.
+    #[arg(long)]
+    pub new: bool,
+    #[command(flatten)]
+    pub workspace: WorkspaceArgs,
+}
+
+/// `postino import curl '<command>'`.
+#[derive(Debug, Clone, Args)]
+pub struct CurlArgs {
+    /// The curl command, quoted, or - to read it from stdin.
+    #[arg(value_name = "COMMAND")]
+    pub command: String,
+    /// Where to save the request; without it, the request is printed.
+    #[arg(long, value_name = "PATH")]
+    pub save: Option<PathBuf>,
+    /// Never print colors. The NO_COLOR environment variable does the same.
+    #[arg(long)]
+    pub no_color: bool,
+}
+
+/// A snippet language.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, ValueEnum)]
+pub enum SnippetLang {
+    /// A curl command line.
+    #[default]
+    Curl,
+    /// JavaScript with fetch.
+    Fetch,
+    /// Python with requests.
+    Python,
+}
+
+/// `postino snippet <file>`.
+#[derive(Debug, Clone, Args)]
+pub struct SnippetArgs {
+    /// The .postino request.
+    #[arg(value_name = "FILE")]
+    pub file: PathBuf,
+    /// The language.
+    #[arg(long, value_enum, default_value_t = SnippetLang::Curl)]
+    pub lang: SnippetLang,
+    #[command(flatten)]
+    pub common: CommonArgs,
+}
+
+/// A shell for `postino completions`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum CompletionShell {
+    /// Bash.
+    Bash,
+    /// Zsh.
+    Zsh,
+    /// Fish.
+    Fish,
+    /// PowerShell.
+    Powershell,
+}
+
+/// `postino completions <shell>`.
+#[derive(Debug, Clone, Args)]
+pub struct CompletionsArgs {
+    /// The shell.
+    #[arg(value_enum)]
+    pub shell: CompletionShell,
 }
 
 /// `5%`, `0.5%` or `5`: a percentage, returned as a fraction.
@@ -413,13 +650,24 @@ mod tests {
     fn every_subcommand_name_is_a_command() {
         for name in SUBCOMMANDS {
             let args: &[&str] = match name {
-                "run" | "check" | "load" => &[],
+                "run" | "check" | "load" | "runs" | "list" | "env" | "help" => &[],
+                "report" => &["last"],
+                "import" => &["curl", "curl x"],
+                "snippet" => &["a.postino"],
+                "completions" => &["bash"],
                 "http" => &["GET", "u"],
                 _ => &["u"],
             };
             let mut all = vec![name];
             all.extend_from_slice(args);
-            assert!(parse(&all).is_ok(), "{name}");
+            match parse(&all) {
+                Ok(_) => {}
+                // `postino help` prints the help, which clap reports as an error to print.
+                Err(error) if name == "help" => {
+                    assert_eq!(error.kind(), clap::error::ErrorKind::DisplayHelp);
+                }
+                Err(error) => panic!("{name}: {error}"),
+            }
         }
     }
 }

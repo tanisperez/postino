@@ -417,7 +417,7 @@ fn manifest_source(kind: SourceKind, input: &LoadInput) -> ManifestSource {
 }
 
 /// Today, as a manifest writes it.
-fn today() -> String {
+pub(crate) fn today() -> String {
     chrono::Local::now().format("%Y-%m-%d").to_string()
 }
 
@@ -800,7 +800,7 @@ fn run_import(wizard: &Entity<ImportWizard>, window: &mut Window, cx: &mut App) 
 
 /// Saves the colors a Bruno import brought for its environments in `.postino/project.toml`
 /// (#217, #222), for the environments the workspace has now. A failure only loses the colors.
-fn write_environment_colors(workspace: &Workspace, colors: &[(String, EnvColor)]) {
+pub(crate) fn write_environment_colors(workspace: &Workspace, colors: &[(String, EnvColor)]) {
     if colors.is_empty() {
         return;
     }
@@ -823,7 +823,7 @@ fn write_environment_colors(workspace: &Workspace, colors: &[(String, EnvColor)]
 }
 
 /// Writes the import report to `.postino/import-report.md`. A failure only loses the report.
-fn write_report(root: &std::path::Path, text: &str) -> Option<PathBuf> {
+pub(crate) fn write_report(root: &std::path::Path, text: &str) -> Option<PathBuf> {
     let folder = root.join(".postino");
     let path = folder.join("import-report.md");
     let written = std::fs::create_dir_all(&folder).and_then(|()| std::fs::write(&path, text));
@@ -837,7 +837,7 @@ fn write_report(root: &std::path::Path, text: &str) -> Option<PathBuf> {
 }
 
 /// The workspace id of the collection folder an import report's first request is in.
-fn collection_folder(report: &ImportReport) -> Option<String> {
+pub(crate) fn collection_folder(report: &ImportReport) -> Option<String> {
     report
         .created_files
         .iter()

@@ -150,7 +150,7 @@ fn decode_form_urlencoded(bytes: &[u8]) -> Vec<(String, String)> {
 /// Percent-decodes a single `application/x-www-form-urlencoded` component: `+` becomes a space,
 /// `%XX` becomes the byte `XX`, everything else is copied verbatim. A malformed `%` sequence is
 /// copied verbatim rather than rejected, since a snippet is best effort by nature.
-fn percent_decode(input: &str) -> String {
+pub(crate) fn percent_decode(input: &str) -> String {
     let bytes = input.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut index = 0;
@@ -160,7 +160,7 @@ fn percent_decode(input: &str) -> String {
                 out.push(b' ');
                 index += 1;
             }
-            b'%' if index + 2 < bytes.len() => {
+            b'%' if index + 3 <= bytes.len() => {
                 let hex = std::str::from_utf8(&bytes[index + 1..index + 3]).unwrap_or("");
                 match u8::from_str_radix(hex, 16) {
                     Ok(byte) => {

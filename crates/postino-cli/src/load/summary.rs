@@ -186,7 +186,7 @@ pub fn summary(summary: &Summary<'_>, style: Style) -> String {
 }
 
 /// `p95          120 ms → 112 ms   -6.7 %`.
-fn delta_line(delta: &Delta, style: Style) -> String {
+pub fn delta_line(delta: &Delta, style: Style) -> String {
     let value = |value: f64| match delta.label {
         "Errors" => format!("{:.1} %", value * 100.0),
         "Requests/s" => format!("{value:.1}"),

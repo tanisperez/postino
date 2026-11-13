@@ -10,6 +10,8 @@
 //! The `openapi` module (OpenAPI and Swagger import, see `docs/openapi-import.md`) reads OpenAPI
 //! 3.1, 3.0 and Swagger 2.0 specs, JSON or YAML, into the same `postino-core` types.
 //!
+//! The `curl` module reads a curl command line into a request (`postino import curl`).
+//!
 //! The `snippet` module turns a resolved request into copyable code (curl, JavaScript `fetch`,
 //! Python `requests`) for the UI's "Code" action.
 //!
@@ -28,6 +30,7 @@ mod script_convert;
 mod semantic_diff;
 
 pub mod bruno;
+pub mod curl;
 pub mod env;
 pub mod highlight;
 pub mod oauth_import;

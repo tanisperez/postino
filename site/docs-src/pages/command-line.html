@@ -2,7 +2,7 @@ title: Command line
 description: Start Postino from a terminal with a workspace folder or a request file, run requests and send one-off requests without the window, the exit codes, and the environment variables it reads at startup.
 ---
 <h1>Command line</h1>
-<p class="lead">The <code>postino</code> binary opens the app on a folder or a request, and it also works without the window: it runs <code>.postino</code> requests and load tests, and sends one-off requests like curl, printing the results in the terminal. That second mode needs no display, so it works on servers and in CI pipelines.</p>
+<p class="lead">The <code>postino</code> binary opens the app on a folder or a request, and it also works without the window: it runs <code>.postino</code> requests and load tests, sends one-off requests like curl, reads the run history, imports collections and prints the workspace, all in the terminal. That second mode needs no display, so it works on servers and in CI pipelines.</p>
 
 <h2>Usage</h2>
 ```shell
@@ -54,11 +54,18 @@ Postino 0.2.0
         <tr><td><a href="#run"><code>run [PATHS]</code></a></td><td>Runs requests, folders or the whole workspace, with their scripts and tests.</td></tr>
         <tr><td><a href="#check"><code>check</code></a></td><td>Checks that every request, environment and the project file of the workspace can be read.</td></tr>
         <tr><td><a href="#load"><code>load [PATHS]</code></a></td><td>Runs a <a href="load-testing.html">load test</a>, with a live dashboard on a terminal.</td></tr>
+        <tr><td><a href="#runs"><code>runs</code></a></td><td>Lists the saved load test runs, shows one, or compares two.</td></tr>
+        <tr><td><a href="#report"><code>report &lt;RUN&gt;</code></a></td><td>Writes the report of a saved run.</td></tr>
+        <tr><td><a href="#list"><code>list [FOLDER]</code></a></td><td>Lists the requests of the workspace, with their methods.</td></tr>
+        <tr><td><a href="#env"><code>env</code></a></td><td>Lists the environments, or the variables of one, with secrets hidden.</td></tr>
+        <tr><td><a href="#import"><code>import</code></a></td><td>Imports OpenAPI, Postman or Bruno collections, or a curl command.</td></tr>
+        <tr><td><a href="#snippet"><code>snippet &lt;FILE&gt;</code></a></td><td>Prints a request as curl, <code>fetch</code> or Python code.</td></tr>
+        <tr><td><a href="#completions"><code>completions &lt;SHELL&gt;</code></a></td><td>Prints the shell completion script.</td></tr>
         <tr><td><a href="#one-off-requests"><code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, <code>delete</code>, <code>head</code>, <code>options</code> <code>&lt;URL&gt;</code></a></td><td>Sends one request with that method, like curl.</td></tr>
         <tr><td><a href="#one-off-requests"><code>http &lt;METHOD&gt; &lt;URL&gt;</code></a></td><td>Sends one request with any method, custom ones included.</td></tr>
     </tbody>
 </table></div>
-<p><code>postino &lt;COMMAND&gt; --help</code> lists the options of a command. The output is always in English. For a step by step setup in a pipeline, see <a href="ci.html">Running in CI</a>.</p>
+<p><code>postino &lt;COMMAND&gt; --help</code>, or <code>postino help &lt;COMMAND&gt;</code>, lists the options of a command. The output is always in English. For a step by step setup in a pipeline, see <a href="ci.html">Running in CI</a>.</p>
 
 <h3 id="workspace-and-variables">Workspace and variables</h3>
 <p>Every command takes these options:</p>
@@ -181,6 +188,76 @@ $ postino load auth/login.postino crud/ --vus 20 --ramp-up 30s --think 200ms
  ✓ p95 > 500 ms   was 1 ms
 ```
 <p>A load test exits with code 1 when a condition holds, when <code>--stop-on-error</code> ended it, or when no request completed, and with code 3 when no request got a response at all. A 4xx or 5xx response counts in the error rate but does not change the exit code by itself: use <code>--fail-if 'errors&gt;0%'</code> for that.</p>
+
+<h3 id="runs">runs</h3>
+```shell
+$ postino runs                       # every saved run, newest first
+$ postino runs show 12               # the summary of run 12
+$ postino runs show last
+$ postino runs compare 11 12         # the changes from run 11 to run 12
+```
+<p>Reads the <a href="load-testing.html#history">run history</a> in <code>.postino/runs/</code>, written by the app and by <code>postino load</code>. The list has the number, the date, the target, the virtual users, the requests, the requests per second, the p95 and the error rate of each run, and marks the runs that were stopped. <code>--output json</code> prints one line per run. <code>runs show</code> prints the same summary as the end of <code>postino load</code>, with the run's thresholds checked; <code>runs compare</code> prints the requests per second, p95, p99 and error rate of both runs and the change. A run is a number or <code>last</code>, the newest one.</p>
+```text title="postino runs"
+  Run  Date              Target        VUs   Requests       RPS       p95   Errors
+    4  2026-11-13 10:20  2 requests     20        774      70.3    301 ms    0.0 %  stopped
+    3  2026-11-13 10:19  health          2       3254    1625.9     <1 ms    0.0 %
+```
+
+<h3 id="report">report</h3>
+```shell
+$ postino report 12 -o report.pdf
+$ postino report last --format md > report.md
+$ postino report last -o report.pdf --compare last
+```
+<p>Writes the report of a saved run, the same files as <a href="load-testing.html#export">Export</a> in the app: <code>-o</code> takes a <code>.pdf</code>, <code>.md</code>, <code>.json</code> or <code>.csv</code> file, and <code>--format pdf|md|json|csv</code> prints it to standard output instead. A PDF is never printed to a terminal. <code>--compare</code> adds the comparison with another run: a number, or <code>last</code>, the run of the same target before this one.</p>
+
+<h3 id="list">list</h3>
+```shell
+$ postino list
+ auth/
+   POST    login
+   GET     me
+ GET     health
+```
+<p>Prints the requests of the workspace, or of one of its folders (<code>postino list auth</code>), in the order of the sidebar with their methods. A file that cannot be read shows <code>?</code> and <em>cannot be read</em>; <a href="#check"><code>postino check</code></a> says why. <code>--output json</code> prints one line per request with its path, name, method and the reason it cannot be read.</p>
+
+<h3 id="env">env</h3>
+```shell
+$ postino env
+ local  16 variables
+$ postino env --show local
+ baseUrl   http://127.0.0.1:8080
+ password  ••••••
+ user      ••••••  (.local.env)
+```
+<p>Lists the <a href="environments.html">environments</a>, or with <code>--show &lt;NAME&gt;</code> the variables of one, its <code>.local.env</code> merged in. A value is hidden when it comes from the <code>.local.env</code> file, which holds the secrets kept out of git, or when the name contains <code>secret</code>, <code>password</code>, <code>passwd</code>, <code>token</code>, <code>apikey</code>, <code>api_key</code>, <code>api-key</code> or <code>credential</code>, in any case. <code>--output json</code> prints one line per variable, with a <code>null</code> value when it is hidden.</p>
+
+<h3 id="import">import</h3>
+```shell
+$ postino import openapi spec.yaml --into api
+$ postino import openapi https://api.example.com/openapi.json
+$ postino import postman collection.json --into legacy
+$ postino import bruno ./bruno-collection
+$ postino import curl 'curl -X POST https://api.example.com/login --json "{}"' --save auth/login.postino
+```
+<p><code>openapi</code>, <code>postman</code> and <code>bruno</code> run the import wizard of the app with the choices it makes by default: every request selected, the default options, and the environments it would create. The source is what the wizard's first step reads: a file, a folder, a <code>.zip</code>, and for OpenAPI also a URL or a <code>catalog-info.yaml</code>. The collection is a new folder at the workspace root, named after the collection or after <code>--into</code>; a folder that already exists is never replaced. When the same source was imported before, the import <a href="openapi-import.html">updates that collection</a> instead, as the wizard does; <code>--new</code> imports a new collection anyway. What could not be converted is printed as a warning, and the requests to review are listed in <code>.postino/import-report.md</code>, as in the app. A source of another kind fails and names the right command.</p>
+<p><code>curl</code> reads a curl command, such as the <em>Copy as cURL</em> of a browser's developer tools, and prints the request as a <code>.postino</code> file, or saves it with <code>--save</code>. <code>-</code> reads the command from standard input. The method, URL and query, headers, body (<code>-d</code>, <code>--data-raw</code>, <code>--data-urlencode</code>, <code>--json</code>, <code>-F</code>), <code>-u</code>, <code>--oauth2-bearer</code>, <code>-A</code>, <code>-e</code>, <code>-b</code>, <code>-G</code> and <code>-I</code> are converted. A body read from a file (<code>-d @file</code>), and options that are settings of the app (<code>-k</code>, timeouts, a proxy), are printed as warnings; options that only change how curl runs, such as <code>-s</code>, <code>-L</code> or <code>--compressed</code>, are skipped.</p>
+
+<h3 id="snippet">snippet</h3>
+```shell
+$ postino snippet auth/login.postino --env local
+$ postino snippet auth/login.postino --lang python
+```
+<p>Prints a request as code, as the <a href="code-snippets.html">Code dialog</a> does: <code>--lang curl</code> (the default), <code>fetch</code> or <code>python</code>. Its variables are resolved with <code>--env</code>, <code>--env-file</code> and <code>--var</code>, without running its scripts; an unknown variable is kept as written and named in a warning on standard error.</p>
+
+<h3 id="completions">completions</h3>
+```shell
+$ postino completions bash > ~/.local/share/bash-completion/completions/postino
+$ postino completions zsh > ~/.zfunc/_postino
+$ postino completions fish > ~/.config/fish/completions/postino.fish
+> postino completions powershell | Out-String | Invoke-Expression
+```
+<p>Prints the completion script of a shell, <code>bash</code>, <code>zsh</code>, <code>fish</code> or <code>powershell</code>, with every command and option.</p>
 
 <h3 id="one-off-requests">One-off requests</h3>
 ```shell

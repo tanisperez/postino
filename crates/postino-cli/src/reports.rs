@@ -1,6 +1,6 @@
 //! Load test reports from the command line: `.json` and `.csv` come from `postino-load`, and the
 //! `.pdf` and `.md` documents from the app's own report builder, which the `postino` binary
-//! hands over as a [`ReportRenderer`] (it needs the app's texts, colors and fonts).
+//! hands over through [`AppHooks`] (it needs the app's texts, colors and fonts).
 
 use std::path::Path;
 
@@ -10,6 +10,7 @@ use postino_load::history::RunRecord;
 use postino_load::{LoadSnapshot, SampleLog, window_stats};
 
 use crate::exit::CliError;
+use crate::hooks::AppHooks;
 
 /// A report format, chosen by the file extension.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,33 +70,16 @@ pub struct ReportRun<'a> {
     pub root: Option<&'a Path>,
 }
 
-/// Builds the PDF and Markdown reports. The `postino` binary passes the app's builder, so a
-/// report from the command line is the same as one exported from the app.
-pub trait ReportRenderer {
-    /// The bytes of the `kind` document of `run`.
-    fn render(&self, kind: DocumentKind, run: &ReportRun<'_>) -> Result<Vec<u8>, String>;
-}
-
-/// No document builder: only JSON and CSV reports.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct NoRenderer;
-
-impl ReportRenderer for NoRenderer {
-    fn render(&self, _kind: DocumentKind, _run: &ReportRun<'_>) -> Result<Vec<u8>, String> {
-        Err("PDF and Markdown reports need the postino binary".to_string())
-    }
-}
-
 /// The bytes of the `format` report of `run`.
 pub fn render(
     format: ReportFormat,
     run: &ReportRun<'_>,
-    renderer: &dyn ReportRenderer,
+    hooks: &dyn AppHooks,
 ) -> Result<Vec<u8>, String> {
     let record = run.record;
     match format {
-        ReportFormat::Pdf => renderer.render(DocumentKind::Pdf, run),
-        ReportFormat::Markdown => renderer.render(DocumentKind::Markdown, run),
+        ReportFormat::Pdf => hooks.render_report(DocumentKind::Pdf, run),
+        ReportFormat::Markdown => hooks.render_report(DocumentKind::Markdown, run),
         ReportFormat::Csv => Ok(requests_csv(run.log, &record.target_labels, None).into_bytes()),
         ReportFormat::Json => {
             let elapsed_secs = record.snapshot.elapsed.as_secs_f64();

@@ -68,11 +68,19 @@ Commands (run in the terminal, without the window):
   run [PATHS]       Run .postino requests, folders or the whole workspace
   check             Check every .postino and .env file of the workspace
   load [PATHS]      Run a load test, with a live dashboard on a terminal
+  runs              List, show and compare the saved load test runs
+  report <RUN>      Write the report of a saved run
+  list [FOLDER]     List the requests of the workspace
+  env               List the environments, or the variables of one
+  import <KIND>     Import openapi, postman or bruno collections, or curl
+  snippet <FILE>    Print a request as curl, fetch or Python code
+  completions <SHELL>
+                    Print the completion script of a shell
   get <URL>         Send a request, like curl; also post, put, patch,
                     delete, head and options
   http <METHOD> <URL>
                     Send a request with any method
-  Run postino <COMMAND> --help for its options.
+  Run postino <COMMAND> --help, or postino help <COMMAND>, for its options.
 
 Options:
   -h, --help     Print this help and exit
@@ -132,6 +140,10 @@ mod tests {
             "run [PATHS]",
             "check",
             "load [PATHS]",
+            "runs",
+            "report <RUN>",
+            "import <KIND>",
+            "completions <SHELL>",
             "http <METHOD> <URL>",
             "-h, --help",
             "-V, --version",

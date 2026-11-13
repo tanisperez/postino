@@ -173,7 +173,7 @@ description: Run load tests against a request or a whole folder in Postino with 
 <p>Whether to commit <code>.postino/runs/</code> is up to you. Committing it keeps a performance history next to the code; ignoring it keeps the repository small. A run keeps one line per request, so a long run can take a lot of space. See <a href="git.html">Working with git</a>.</p>
 
 <h2 id="command-line">From the command line</h2>
-<p><code>postino load</code> runs the same load test in a terminal, with a live dashboard, or with progress lines in a CI pipeline. It saves the run to the same history, so the app shows it, compares it and exports it like any other. <code>--fail-if</code> conditions such as <code>'p95&gt;500ms'</code> make a pipeline fail when a goal is missed, and <code>--report</code> writes the same reports as Export. The options are in the <a href="command-line.html#load">command line reference</a>.</p>
+<p><code>postino load</code> runs the same load test in a terminal, with a live dashboard, or with progress lines in a CI pipeline. It saves the run to the same history, so the app shows it, compares it and exports it like any other. <code>--fail-if</code> conditions such as <code>'p95&gt;500ms'</code> make a pipeline fail when a goal is missed, and <code>--report</code> writes the same reports as Export. The options are in the <a href="command-line.html#load">command line reference</a>. <code>postino runs</code> lists, shows and compares the saved runs, and <code>postino report</code> exports one, from the app's runs as well.</p>
 ```shell
 $ postino load crud/ --env staging --vus 20 --duration 2m --fail-if 'p95>500ms' --report run.pdf
 ```

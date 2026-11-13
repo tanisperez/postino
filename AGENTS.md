@@ -118,11 +118,11 @@ in `state/git_sync.rs` and the `postino-auto:` prefix of automatic stashes in
 - `postino-runner`: the pipeline, OAuth token, vars, pre script, interpolate, send, post script.
 - `postino-load`: the load test engine, live metrics, run comparison and run history.
 - `postino-cli`: the terminal commands that run without opening the window (#220): `-h/--help`,
-  `-V/--version` and the console subcommands parsed with `clap` (`run`, `check`, `load`, `get`/`post`/...
-  and `http`), which go through the same `Runner` pipeline as the app. No `gpui`, no display.
-  `load` draws its dashboard with `ratatui`. Its PDF and Markdown reports come from the app's
-  report builder, which `main.rs` hands over as a `postino_cli::ReportRenderer`
-  (`views/load_test/export.rs`, `CliReports`).
+  `-V/--version` and the console subcommands parsed with `clap` (`run`, `check`, `load`, `runs`, `report`, `list`, `env`, `import`, `snippet`,
+  `completions`, `get`/`post`/... and `http`), which go through the same `Runner` pipeline as the
+  app. No `gpui`, no display. `load` draws its dashboard with `ratatui`. What the console reuses
+  from the app, the PDF and Markdown load test reports and the import wizard, comes through the
+  `postino_cli::AppHooks` trait, which `main.rs` passes in (`cli_hooks.rs`).
   It also defines `IDENTITY`, the `telaio_app::AppIdentity` of Postino (name, `postino` slug, app
   id, version, `POSTINO` prefix, repository) that the app passes to every `telaio-app` piece.
   The version line, help header and footer, exit codes and Windows console attach come from

@@ -453,28 +453,23 @@ impl ExportSource {
     }
 }
 
-/// The PDF and Markdown reports of `postino load --report` (#241), built exactly as the Export
-/// menu builds them, in English (the command line never reads the language setting).
-pub(crate) struct CliReports;
-
-impl postino_cli::ReportRenderer for CliReports {
-    fn render(
-        &self,
-        kind: postino_cli::DocumentKind,
-        run: &postino_cli::ReportRun<'_>,
-    ) -> Result<Vec<u8>, String> {
-        let source = ExportSource::from_cli(run);
-        let progress = Progress::default();
-        let stats = source.covered_stats();
-        let report = source.report(&stats, &progress);
-        let format = match kind {
-            postino_cli::DocumentKind::Pdf => ExportFormat::Pdf,
-            postino_cli::DocumentKind::Markdown => ExportFormat::Markdown,
-        };
-        source
-            .render(format, Some(&report), Some(&stats), &progress)?
-            .ok_or_else(|| "the report was cancelled".to_string())
-    }
+/// A PDF or Markdown report of the command line (#241), built exactly as the Export menu builds
+/// it, in English (the command line never reads the language setting).
+pub(crate) fn render_cli_report(
+    kind: postino_cli::DocumentKind,
+    run: &postino_cli::ReportRun<'_>,
+) -> Result<Vec<u8>, String> {
+    let source = ExportSource::from_cli(run);
+    let progress = Progress::default();
+    let stats = source.covered_stats();
+    let report = source.report(&stats, &progress);
+    let format = match kind {
+        postino_cli::DocumentKind::Pdf => ExportFormat::Pdf,
+        postino_cli::DocumentKind::Markdown => ExportFormat::Markdown,
+    };
+    source
+        .render(format, Some(&report), Some(&stats), &progress)?
+        .ok_or_else(|| "the report was cancelled".to_string())
 }
 
 /// The current time as Unix seconds.

@@ -73,6 +73,9 @@ description: Import Bruno collections, in .bru files or OpenCollection YAML, wit
 <h2>Environments</h2>
 <p>Each Bruno environment becomes <code>environments/&lt;name&gt;.env</code>. An environment that extends another gets the variables it does not set from it. Secret variables become empty entries of <code>environments/&lt;name&gt;.local.env</code>, out of git, and the report names them: fill them in before sending. With <strong>Environment colors</strong> on, each environment keeps a color close to the one it had in Bruno.</p>
 
+<h2 id="command-line">From the command line</h2>
+<p><code>postino import bruno &lt;source&gt;</code> runs this import with the wizard's default choices, from the collection's folder, a <code>.zip</code> or <code>.bru</code> files. See the <a href="command-line.html#import">command line reference</a>.</p>
+
 <h2>After importing</h2>
 <ul>
     <li>Fill in the secrets in the <code>.local.env</code> files.</li>

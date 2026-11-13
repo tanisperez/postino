@@ -32,7 +32,7 @@ pub fn requests(nodes: &[Node]) -> Vec<&RequestEntry> {
 }
 
 /// The workspace id of `path`, `""` for the root itself.
-fn id_of(root: &Path, path: &Path) -> Result<String, CliError> {
+pub(crate) fn id_of(root: &Path, path: &Path) -> Result<String, CliError> {
     let absolute = context::absolute(path);
     // Compare canonical paths when both exist, so links and `..` do not get in the way.
     let canonical = |p: &Path| dunce::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());

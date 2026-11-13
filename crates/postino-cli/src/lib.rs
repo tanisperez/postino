@@ -13,10 +13,13 @@
 //! 3. List it in the help of [`info`] and add its tests next to it.
 
 pub mod args;
+mod browse;
 mod check;
 mod context;
 pub mod exit;
 mod filter;
+pub mod hooks;
+mod import;
 pub mod info;
 mod load;
 mod oauth;
@@ -26,6 +29,7 @@ mod report;
 pub mod reports;
 mod request;
 mod run;
+mod runs;
 mod style;
 mod units;
 
@@ -38,8 +42,9 @@ use postino_core::Method;
 use telaio_app::AppIdentity;
 
 use args::{Cli, ConsoleCommand};
+pub use hooks::{AppHooks, ImportKind, ImportOutcome, ImportRequest, NoHooks};
 pub use info::Info;
-pub use reports::{DocumentKind, NoRenderer, ReportRenderer, ReportRun};
+pub use reports::{DocumentKind, ReportRun};
 
 /// Who Postino is, for every piece of `telaio-app` the app and the command line use: the name,
 /// the lowercase name of folders and files, the application id (Wayland `app_id`, X11 `WM_CLASS`,
@@ -113,19 +118,19 @@ impl Command {
             .then(|| Command::Console(args.to_vec()))
     }
 
-    /// Runs the command and returns the process exit code. `renderer` builds the PDF and
-    /// Markdown load test reports.
-    pub fn run(self, renderer: &dyn ReportRenderer) -> ExitCode {
+    /// Runs the command and returns the process exit code. `hooks` are the app's pieces the
+    /// commands reuse: the load test reports and the import wizard.
+    pub fn run(self, hooks: &dyn AppHooks) -> ExitCode {
         let code = match self {
             Command::Info(info) => info.run(),
-            Command::Console(args) => run_console(&args, renderer),
+            Command::Console(args) => run_console(&args, hooks),
         };
         ExitCode::from(code)
     }
 }
 
 /// Parses and runs a subcommand, returning its exit code.
-fn run_console(args: &[OsString], renderer: &dyn ReportRenderer) -> u8 {
+fn run_console(args: &[OsString], hooks: &dyn AppHooks) -> u8 {
     let all = std::iter::once(OsStr::new("postino").to_os_string()).chain(args.iter().cloned());
     let cli = match Cli::try_parse_from(all) {
         Ok(cli) => cli,
@@ -142,7 +147,14 @@ fn run_console(args: &[OsString], renderer: &dyn ReportRenderer) -> u8 {
     match cli.command {
         ConsoleCommand::Run(args) => run::command(&args),
         ConsoleCommand::Check(args) => check::command(&args),
-        ConsoleCommand::Load(args) => load::command(&args, renderer),
+        ConsoleCommand::Load(args) => load::command(&args, hooks),
+        ConsoleCommand::Runs(args) => runs::runs_command(&args),
+        ConsoleCommand::Report(args) => runs::report_command(&args, hooks),
+        ConsoleCommand::List(args) => browse::list_command(&args),
+        ConsoleCommand::Env(args) => browse::env_command(&args),
+        ConsoleCommand::Import(command) => import::command(&command, hooks),
+        ConsoleCommand::Snippet(args) => browse::snippet_command(&args),
+        ConsoleCommand::Completions(args) => browse::completions_command(&args),
         ConsoleCommand::Get(args) => request::command(Method::Get, &args),
         ConsoleCommand::Post(args) => request::command(Method::Post, &args),
         ConsoleCommand::Put(args) => request::command(Method::Put, &args),
@@ -159,12 +171,12 @@ fn run_console(args: &[OsString], renderer: &dyn ReportRenderer) -> u8 {
 
 /// Handles the command line before anything else is set up. Returns `None` when the arguments
 /// (without the program name) are not a command (the app starts normally), otherwise runs it,
-/// attaching to the parent console first on Windows, and returns the exit code. `renderer`
-/// builds the PDF and Markdown load test reports.
-pub fn run_if_cli(args: &[OsString], renderer: &dyn ReportRenderer) -> Option<ExitCode> {
+/// attaching to the parent console first on Windows, and returns the exit code. `hooks`
+/// are the app's pieces the commands reuse, see [`AppHooks`].
+pub fn run_if_cli(args: &[OsString], hooks: &dyn AppHooks) -> Option<ExitCode> {
     let command = Command::parse(args)?;
     telaio_app::cli::attach_parent_console();
-    Some(command.run(renderer))
+    Some(command.run(hooks))
 }
 
 #[cfg(test)]
@@ -236,16 +248,16 @@ mod tests {
 
     #[test]
     fn usage_errors_exit_with_2() {
-        assert_eq!(run_console(&os(&["get"]), &NoRenderer), exit::USAGE);
+        assert_eq!(run_console(&os(&["get"]), &NoHooks), exit::USAGE);
         assert_eq!(
-            run_console(&os(&["run", "--no-such-flag"]), &NoRenderer),
+            run_console(&os(&["run", "--no-such-flag"]), &NoHooks),
             exit::USAGE
         );
     }
 
     #[test]
     fn run_if_cli_ignores_what_is_not_a_command() {
-        assert!(run_if_cli(&[], &NoRenderer).is_none());
-        assert!(run_if_cli(&os(&["orders"]), &NoRenderer).is_none());
+        assert!(run_if_cli(&[], &NoHooks).is_none());
+        assert!(run_if_cli(&os(&["orders"]), &NoHooks).is_none());
     }
 }

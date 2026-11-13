@@ -99,7 +99,7 @@ fn multipart_value(value: &str) -> String {
 }
 
 /// Writes `request` to `path` as a `.postino` file, refusing to replace one.
-fn save(request: &Request, path: &Path) -> Result<(), CliError> {
+pub(crate) fn save(request: &Request, path: &Path) -> Result<(), CliError> {
     if path.exists() {
         return Err(CliError::file(format!(
             "--save {}: the file already exists",
