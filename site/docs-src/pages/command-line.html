@@ -1,13 +1,17 @@
 title: Command line
-description: Start Postino from a terminal with a workspace folder or a request file, print its help or version, and the environment variables it reads at startup.
+description: Start Postino from a terminal with a workspace folder or a request file, run requests and send one-off requests without the window, the exit codes, and the environment variables it reads at startup.
 ---
 <h1>Command line</h1>
-<p class="lead">Postino is a desktop app, but it can be started from a terminal to open a given folder or request, and a few environment variables change how it starts.</p>
+<p class="lead">The <code>postino</code> binary opens the app on a folder or a request, and it also works without the window: it runs <code>.postino</code> requests and sends one-off requests like curl, printing the results in the terminal. That second mode needs no display, so it works on servers and in CI pipelines.</p>
 
 <h2>Usage</h2>
 ```shell
-$ postino [OPTIONS] [PATH]
+$ postino [OPTIONS] [PATH]        # opens the window
+$ postino <COMMAND> [ARGS]        # runs in the terminal
 ```
+<p>When the first argument is one of the <a href="#commands">commands</a> below, Postino runs in the terminal and exits: no window, no settings read, nothing written to the log. Anything else opens the app. A folder named like a command opens with a path that does not look like one, such as <code>postino ./run</code>.</p>
+
+<h2 id="opening-the-app">Opening the app</h2>
 <p>The binary is <code>postino</code> on Linux (installed to <code>/usr/bin</code> by the packages), <code>postino.exe</code> in <code>%LOCALAPPDATA%\Programs\Postino</code> on Windows, and <code>/Applications/Postino.app/Contents/MacOS/postino</code> on macOS.</p>
 <div class="table"><table>
     <thead><tr><th>PATH is</th><th>Postino opens</th></tr></thead>
@@ -26,7 +30,7 @@ $ postino ~/code/shop/api-requests
 $ postino ~/code/shop/api-requests/orders/create.postino
 ```
 <p>Starting Postino with a path never opens the welcome tab: you asked for something specific. The only exception is the path that cannot be opened, in the table above. Opening a <code>.postino</code> file from your file manager counts as a path.</p>
-<p>Only the first argument is read, so an option and a path are never combined. Postino is not single instance: running it again, or double clicking a <code>.postino</code> file while it runs, starts a second window process.</p>
+<p>Only the first argument is read when opening the app, so an option and a path are never combined. Postino is not single instance: running it again, or double clicking a <code>.postino</code> file while it runs, starts a second window process.</p>
 
 <h2 id="options">Options</h2>
 <p>These print to the terminal and exit with code 0, without opening the window, reading the settings or writing to the log.</p>
@@ -41,7 +45,124 @@ $ postino ~/code/shop/api-requests/orders/create.postino
 $ postino --version
 Postino 0.2.0
 ```
-<p>The output is always in English, whatever the <a href="settings.html">Language</a> setting says. On Windows, run it from a terminal: the output appears after the prompt, because the shell does not wait for a desktop app to finish.</p>
+<p>The output is always in English, whatever the <a href="settings.html">Language</a> setting says. On Windows, see <a href="ci.html#windows">Windows</a> for how to wait for the commands to finish.</p>
+
+<h2 id="commands">Commands</h2>
+<div class="table"><table>
+    <thead><tr><th>Command</th><th>Does</th></tr></thead>
+    <tbody>
+        <tr><td><a href="#run"><code>run [PATHS]</code></a></td><td>Runs requests, folders or the whole workspace, with their scripts and tests.</td></tr>
+        <tr><td><a href="#check"><code>check</code></a></td><td>Checks that every request, environment and the project file of the workspace can be read.</td></tr>
+        <tr><td><a href="#one-off-requests"><code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, <code>delete</code>, <code>head</code>, <code>options</code> <code>&lt;URL&gt;</code></a></td><td>Sends one request with that method, like curl.</td></tr>
+        <tr><td><a href="#one-off-requests"><code>http &lt;METHOD&gt; &lt;URL&gt;</code></a></td><td>Sends one request with any method, custom ones included.</td></tr>
+    </tbody>
+</table></div>
+<p><code>postino &lt;COMMAND&gt; --help</code> lists the options of a command. The output is always in English. For a step by step setup in a pipeline, see <a href="ci.html">Running in CI</a>.</p>
+
+<h3 id="workspace-and-variables">Workspace and variables</h3>
+<p>Every command takes these options:</p>
+<div class="table"><table>
+    <thead><tr><th>Option</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>--workspace &lt;DIR&gt;</code></td><td>The workspace folder. Without it, Postino looks for the nearest folder holding a <code>.postino</code> folder, starting at the first path given to <code>run</code>, or at the current directory. When there is none, <code>run</code> and <code>check</code> use that starting folder itself, and one-off requests use no workspace.</td></tr>
+        <tr><td><code>-e</code>, <code>--env &lt;NAME&gt;</code></td><td>The <a href="environments.html">environment</a> to use, a file name under <code>environments/</code> without <code>.env</code>. Its <code>.local.env</code> is merged in, as in the app. An unknown name exits with code 4 and lists the ones that exist.</td></tr>
+        <tr><td><code>--env-file &lt;FILE&gt;</code></td><td>A <code>.env</code> file whose variables win over the environment's.</td></tr>
+        <tr><td><code>--var &lt;KEY=VALUE&gt;</code></td><td>One variable, repeatable. It wins over the environment and the <code>--env-file</code>.</td></tr>
+        <tr><td><code>--no-color</code></td><td>Never prints colors. Colors are only printed to a terminal, and the <code>NO_COLOR</code> environment variable turns them off too.</td></tr>
+    </tbody>
+</table></div>
+<p>The commands that send requests also take the options of the <a href="settings.html">Network settings</a>. The settings of the app are not read: without these options, the defaults apply.</p>
+<div class="table"><table>
+    <thead><tr><th>Option</th><th>Effect</th><th>Default</th></tr></thead>
+    <tbody>
+        <tr><td><code>-k</code>, <code>--insecure</code></td><td>Accepts any TLS certificate, with no warning.</td><td>An invalid certificate is accepted with a warning, printed under the request.</td></tr>
+        <tr><td><code>--timeout &lt;TIME&gt;</code></td><td>The time limit of a request: <code>500ms</code>, <code>30s</code>, <code>2m</code>, or a number of seconds.</td><td><code>30s</code></td></tr>
+        <tr><td><code>--max-size &lt;SIZE&gt;</code></td><td>The largest response body read: <code>512kB</code>, <code>50MB</code>, <code>1GB</code>, or a number of bytes.</td><td><code>20MB</code>. No limit when <code>-o</code> saves the body to a file.</td></tr>
+        <tr><td><code>--proxy &lt;URL&gt;</code></td><td>The proxy, such as <code>http://proxy:3128</code> or <code>socks5://localhost:1080</code>.</td><td>The <code>HTTPS_PROXY</code> family of <a href="#environment-variables">environment variables</a>.</td></tr>
+    </tbody>
+</table></div>
+
+<h3 id="run">run</h3>
+```shell
+$ postino run auth/login.postino     # one request
+$ postino run auth/ crud/            # folders, recursively
+$ postino run                        # the whole workspace
+```
+<p>Requests go through the same steps as Send in the app: the <a href="oauth.html">OAuth 2.0</a> token, the pre script, the variables, the request, the post script and its <code>test()</code> calls. They run one after the other, in the order the paths are given and, inside a folder, in the order of the sidebar. A request named twice runs once. A value a script stores with <code>env.set()</code> is seen by the requests that follow, as in the app.</p>
+<div class="table"><table>
+    <thead><tr><th>Option</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>--bail</code></td><td>Stops at the first request that fails.</td></tr>
+        <tr><td><code>--filter &lt;PATTERN&gt;</code></td><td>Runs only the requests whose path matches, repeatable. <code>*</code> matches any text, slashes included, and <code>?</code> one character. The <code>.postino</code> extension is optional: <code>'auth/*'</code>, <code>'*login*'</code>.</td></tr>
+        <tr><td><code>--show-body</code></td><td>Prints each response body under its request.</td></tr>
+        <tr><td><code>--output &lt;FORMAT&gt;</code></td><td><code>human</code> (the default), <code>json</code> or <code>junit</code>.</td></tr>
+        <tr><td><code>-o</code>, <code>--output-file &lt;FILE&gt;</code></td><td>Writes the <code>json</code> or <code>junit</code> output to a file, and the readable lines to the terminal.</td></tr>
+    </tbody>
+</table></div>
+```text title="postino run --env local auth/ scripting/"
+ ✓ auth/login                           POST    200    84 ms   2/2 tests
+ ✓ auth/login-wrong                     POST    401    12 ms   1/1 tests
+ ✗ scripting/test-failure-does-not-stop GET     200     3 ms   2/3 tests
+     ✗ this one fails on purpose: expected 200 to be 500
+
+ 3 requests, 1 failed · 5/6 tests passed · 99 ms
+```
+<p>A request fails when a test fails, when its pre or post script throws, when its OAuth token cannot be obtained, or when nothing comes back. The reason is printed under it, followed by the <code>console.log</code> lines of its scripts. A variable that did not resolve and a certificate that was not verified are printed as warnings (<code>!</code>) and do not fail the request.</p>
+<p>With <code>--output json</code>, each request is one line of JSON, and a last line has the totals:</p>
+```json
+{"type":"request","request":"health.postino","method":"GET","url":"http://127.0.0.1:8080/health","status":200,"time_ms":3,"size":42,"passed":true,"tests":[{"name":"server is up","passed":true,"message":null}],"error":null,"warnings":[]}
+{"type":"summary","requests":1,"failed":0,"tests":1,"passed_tests":1,"time_ms":3,"exit_code":0}
+```
+<p>The <code>url</code> leaves out the query string, which may hold secrets. <code>status</code> and <code>size</code> are <code>null</code> when nothing came back. With <code>--output junit</code>, each request is a test suite and each <code>test()</code> a test case. A request that did not run to the end adds a test case named <code>request</code> with an error, and so does a request without tests, passed.</p>
+
+<h3 id="check">check</h3>
+```shell
+$ postino check
+ ✓ 164 requests and 2 environments, all valid
+```
+<p>Reads every <code>.postino</code> file, every environment (with its <code>.local.env</code>) and <code>.postino/project.toml</code>, and prints the ones that cannot be read with the reason. Nothing is sent. It exits with code 4 when there is a problem. <code>--output json</code> prints one line per problem and a last line with the totals.</p>
+
+<h3 id="one-off-requests">One-off requests</h3>
+```shell
+$ postino get https://api.example.com/users
+$ postino post https://api.example.com/login --json '{"user":"ada"}'
+$ postino http PURGE https://cdn.example.com/assets/app.js
+$ postino get https://example.com/big.iso -o big.iso
+```
+<p>The response body goes to standard output untouched, so it can be piped to <code>jq</code> or saved with <code>&gt;</code>. A summary line with the status, the time and the size goes to standard error, with any warning. Inside a workspace, the URL, headers and body take <code>{{variables}}</code> from <code>--env</code>, <code>--env-file</code> and <code>--var</code>, and <a href="template-functions.html">template functions</a> work too.</p>
+<div class="table"><table>
+    <thead><tr><th>Option</th><th>Effect</th></tr></thead>
+    <tbody>
+        <tr><td><code>-H</code>, <code>--header &lt;'Name: Value'&gt;</code></td><td>A header, repeatable.</td></tr>
+        <tr><td><code>-q</code>, <code>--query &lt;KEY=VALUE&gt;</code></td><td>A query parameter, repeatable.</td></tr>
+        <tr><td><code>-d</code>, <code>--data &lt;TEXT&gt;</code></td><td>A raw text body. <code>@file</code> sends the text of a file, and <code>@-</code> reads it from standard input.</td></tr>
+        <tr><td><code>--json &lt;TEXT&gt;</code></td><td>A JSON body, sent with <code>Content-Type: application/json</code>.</td></tr>
+        <tr><td><code>-F</code>, <code>--form &lt;FIELD=VALUE&gt;</code></td><td>A multipart field, repeatable. <code>field=@photo.png</code> sends a file, relative to the current directory, and <code>@@</code> sends a value starting with <code>@</code>.</td></tr>
+        <tr><td><code>-u</code>, <code>--user &lt;USER:PASSWORD&gt;</code></td><td>Basic authorization.</td></tr>
+        <tr><td><code>--bearer &lt;TOKEN&gt;</code></td><td>Bearer authorization.</td></tr>
+        <tr><td><code>-i</code>, <code>--include</code></td><td>Prints the status and the response headers before the body, on standard output.</td></tr>
+        <tr><td><code>-v</code>, <code>--verbose</code></td><td>Prints what was sent to standard error: the method, the URL without its query string, and the headers, with the values of sensitive ones such as <code>Authorization</code> masked.</td></tr>
+        <tr><td><code>-o</code>, <code>--output &lt;FILE&gt;</code></td><td>Saves the body to a file as it arrives, like wget, with a progress bar on a terminal. There is no size limit unless <code>--max-size</code> sets one. When nothing comes back, the file is removed.</td></tr>
+        <tr><td><code>--save &lt;PATH&gt;</code></td><td>Saves the request as a <code>.postino</code> file before sending it, with its <code>{{variables}}</code> as written. Missing folders are created. An existing file is never replaced: the command exits with code 4.</td></tr>
+    </tbody>
+</table></div>
+<p>Only one body option and one authorization option can be given. Any HTTP status, <code>404</code> and <code>500</code> included, exits with code 0: the request was sent and answered. Use <code>run</code> with a <code>test()</code> to fail on a status.</p>
+
+<h3 id="oauth">OAuth 2.0</h3>
+<p>A request whose authorization is an <a href="oauth.html">OAuth 2.0 profile</a> gets its token as in the app. The client credentials and password grants need nothing else. The authorization code grant opens the system browser on the sign-in page and prints its address, in case the browser does not open; Postino waits for the redirect for up to 5 minutes. Tokens are kept in memory only, so every run gets new ones. Without a display, such as an SSH session or a CI runner on Linux, the browser cannot open: the request fails with a message that suggests a profile with the client credentials or password grant.</p>
+
+<h3 id="exit-codes">Exit codes</h3>
+<div class="table"><table>
+    <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+    <tbody>
+        <tr><td><code>0</code></td><td>Everything passed.</td></tr>
+        <tr><td><code>1</code></td><td>A <code>test()</code> failed, a script threw, or an OAuth token could not be obtained.</td></tr>
+        <tr><td><code>2</code></td><td>The command line is wrong: an unknown option, a missing argument, a bad value.</td></tr>
+        <tr><td><code>3</code></td><td>A network or TLS failure: nothing came back, the request timed out, or the body was larger than the limit.</td></tr>
+        <tr><td><code>4</code></td><td>A file problem: a <code>.postino</code> or <code>.env</code> file that cannot be read, an unknown environment, a path that does not exist or is outside the workspace.</td></tr>
+    </tbody>
+</table></div>
+<p>When a run has several kinds of failure, the code is the highest in this order: 4, then 3, then 1.</p>
 
 <h2 id="environment-variables">Environment variables</h2>
 <div class="table"><table>
@@ -55,7 +176,7 @@ Postino 0.2.0
         <tr><td><code>HTTPS_PROXY</code>, <code>HTTP_PROXY</code>, <code>ALL_PROXY</code>, <code>NO_PROXY</code></td><td>A proxy for the requests Postino sends, read at startup. Lowercase names work too.</td></tr>
     </tbody>
 </table></div>
-<p>Each one does nothing when it is not set.</p>
+<p>Each one does nothing when it is not set. <code>POSTINO_ENV</code> and <code>POSTINO_AUTOSEND</code> only apply to the window; the commands take <code>--env</code> instead.</p>
 ```shell
 # Start with debug logging
 $ POSTINO_LOG=debug postino
@@ -68,5 +189,3 @@ $ POSTINO_ENV=local POSTINO_AUTOSEND=auth/login.postino postino ~/code/shop/api-
 > $env:POSTINO_LOG = "debug"; & "$env:LOCALAPPDATA\Programs\Postino\postino.exe"
 ```
 
-<h2>Not available yet</h2>
-<p>Postino has no headless mode: it cannot run a collection and print test results in a terminal or a CI pipeline. Because requests are plain files, such a runner can be built on the same file format; follow the project on GitHub for news.</p>

@@ -33,7 +33,8 @@ postino-app ──> postino-load ──> postino-runner ──> postino-script �
      ├──────> postino-script
      ├──────> postino-workspace ─> postino-format ─> postino-core
      ├──────> postino-format
-     └──────> postino-cli (standalone, depends on no other postino crate)
+     └──────> postino-cli ──> postino-runner, postino-workspace, postino-format, postino-http,
+                              postino-oauth, postino-script, postino-core
 ```
 
 No cycles, and no crate depends on `postino-app`. From [telaio](https://github.com/tanisperez/telaio),
@@ -53,7 +54,7 @@ window bootstrap and the About header), all shared with the other apps. `postino
 | `postino-oauth` | OAuth 2.0: gets, renews and stores the token of a workspace profile (client credentials, password, refresh, authorization code with PKCE through a loopback listener), the token store (in memory, nothing survives the process), and the masked copy of every token request for the console. The browser part reaches the UI through the `SignInHandler` trait. No `gpui`. See `docs/oauth.md`. |
 | `postino-runner` | The pipeline: OAuth token, variables, pre script, interpolate, send, post script. Also `preview`, which resolves a request without scripts or network. |
 | `postino-load` | The load test engine, live metrics aggregation, the per request sample log, thresholds, time window statistics, run comparison, run history and the report exports (Markdown, PDF, CSV, JSON). |
-| `postino-cli` | The terminal commands that print and exit without opening the window (`--help`, `--version`; later load tests and reports from the terminal). No `gpui` code of its own. The shared plumbing (version line, help header and footer, exit codes, console attach) is `telaio_app::cli`; this crate also holds Postino's `IDENTITY` (the bare version) and the version label shown to people, which adds the commit captured by `build.rs` to a `-dev` version. |
+| `postino-cli` | The terminal commands that run without opening the window (#220): `--help`, `--version` and the console subcommands parsed with `clap` (`run`, `check`, one-off requests with `get`/`post`/.../`http`), which send through the same `Runner` as the app. No `gpui` code of its own, no display needed. The shared plumbing (version line, help header and footer, exit codes, console attach) is `telaio_app::cli`; this crate also holds Postino's `IDENTITY` (the bare version) and the version label shown to people, which adds the commit captured by `build.rs` to a `-dev` version. |
 | `postino-app` | The `gpui` binary (`postino`). Only UI and glue. |
 
 `postino-load` writes its own run history under `.postino/runs/` of the workspace. That is a

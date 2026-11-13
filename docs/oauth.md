@@ -57,7 +57,7 @@ the user's sessions and password manager).
   paths get a 404. It closes after the redirect, a cancel, or 5 minutes (`SIGN_IN_TIMEOUT`).
 - `SignInHandler` is the UI side: `open` (the app opens the browser and the waiting panel),
   `poll` (cancel, pasted URL) and `page` (translated texts). `NoSignIn` is for places without a
-  UI: the command line and load tests fail with "sign in from the Postino app first".
+  UI: load tests fail with "sign in from the Postino app first".
 
 ## Imports and other places
 
@@ -73,9 +73,12 @@ the user's sessions and password manager).
   (`oauth_token_variable`), so no environment can collide with them.
 - Load tests: `Runner::prepare_oauth` gets every token once before the virtual users start; the
   app gives the load runner its store and `NoSignIn`.
-- Command line (#220): the runner with `NoSignIn`. Client credentials and password work. Since
-  tokens live in memory (#228) a new process never has one, so the authorization code grant
-  fails asking to sign in from the app; what the command line does about it is open in #220.
+- Command line (#240): the runner with `ConsoleSignIn` (`postino-cli`), which prints the
+  authorization URL to stderr and opens the system browser (`xdg-open`, `open`, `rundll32`); the
+  loopback listener receives the redirect as in the app. Tokens live in memory (#228), so every
+  process signs in again. Without a display (no `DISPLAY` nor `WAYLAND_DISPLAY` on Linux and the
+  BSDs) `available()` is false and the run fails with a message that names the grants that work
+  headless, client credentials and password.
 
 ## Storage
 

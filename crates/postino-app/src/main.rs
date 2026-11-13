@@ -37,8 +37,10 @@ use state::window::WindowState;
 use views::AppView;
 
 fn main() -> ExitCode {
-    // `--help` and `--version` print and exit before anything else: no settings, no log.
-    if let Some(code) = postino_cli::run_if_cli(std::env::args_os().nth(1).as_deref()) {
+    // `--help`, `--version` and the console subcommands (`postino run`, `postino get`, ...) run
+    // and exit before anything else: no settings, no log, no window.
+    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    if let Some(code) = postino_cli::run_if_cli(&args) {
         return code;
     }
 

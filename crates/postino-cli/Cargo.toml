@@ -1,6 +1,6 @@
 [package]
 name = "postino-cli"
-description = "The command line commands of Postino that print and exit instead of opening the window."
+description = "The command line of Postino: the commands that run in the terminal instead of opening the window."
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
@@ -9,6 +9,21 @@ authors.workspace = true
 
 [dependencies]
 telaio-app = { workspace = true }
+postino-core = { path = "../postino-core" }
+postino-format = { path = "../postino-format" }
+postino-http = { path = "../postino-http" }
+postino-oauth = { path = "../postino-oauth" }
+postino-runner = { path = "../postino-runner" }
+postino-script = { path = "../postino-script" }
+postino-workspace = { path = "../postino-workspace" }
+clap = { workspace = true }
+serde_json = { workspace = true }
+dunce = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }
+postino-http = { path = "../postino-http", features = ["test-support"] }
 
 [lints]
 workspace = true

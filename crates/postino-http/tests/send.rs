@@ -621,16 +621,15 @@ fn system_certificates_child() {
     handle.join().expect("server thread");
 }
 
-/// Downloads `body` from a local server through [`Client::download`] with `options`, returning
-/// the result, what was written and every progress call.
-fn download(
-    body: Vec<u8>,
-    options: SendOptions,
-) -> (
+/// What [`download`] returns: the result, what was written and every progress call.
+type Download = (
     Result<postino_core::Response, HttpError>,
     Vec<u8>,
     Vec<(u64, Option<u64>)>,
-) {
+);
+
+/// Downloads `body` from a local server through [`Client::download`] with `options`.
+fn download(body: Vec<u8>, options: SendOptions) -> Download {
     let server = TestServer::start();
     let request = request_to(Method::Get, server.url());
     let handle = server.serve(move |_| StubResponse::new(200).with_body(body.clone()));

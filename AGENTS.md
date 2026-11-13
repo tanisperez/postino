@@ -96,7 +96,8 @@ postino-app ──> postino-load ──> postino-runner ──> postino-script �
      ├──────> postino-script (the script editors' autocompletion reads `postino_script::api`)
      ├──────> postino-workspace ─> postino-format ─> postino-core
      ├──────> postino-format (the Code snippet dialog renders `render_snippet` directly)
-     └──────> postino-cli (standalone, depends on no other postino crate)
+     └──────> postino-cli ──> postino-runner, postino-workspace, postino-format, postino-http,
+                              postino-oauth, postino-script, postino-core
 ```
 
 From telaio: `postino-app` uses `telaio-ui` (design system and standard components),
@@ -116,8 +117,9 @@ in `state/git_sync.rs` and the `postino-auto:` prefix of automatic stashes in
   store (in memory), masked token requests for the console. No `gpui`.
 - `postino-runner`: the pipeline, OAuth token, vars, pre script, interpolate, send, post script.
 - `postino-load`: the load test engine, live metrics, run comparison and run history.
-- `postino-cli`: the terminal commands that print and exit without opening the window
-  (`-h/--help`, `-V/--version` today; future commands such as running a load test). No `gpui`.
+- `postino-cli`: the terminal commands that run without opening the window (#220): `-h/--help`,
+  `-V/--version` and the console subcommands parsed with `clap` (`run`, `check`, `get`/`post`/...
+  and `http`), which go through the same `Runner` pipeline as the app. No `gpui`, no display.
   It also defines `IDENTITY`, the `telaio_app::AppIdentity` of Postino (name, `postino` slug, app
   id, version, `POSTINO` prefix, repository) that the app passes to every `telaio-app` piece.
   The version line, help header and footer, exit codes and Windows console attach come from

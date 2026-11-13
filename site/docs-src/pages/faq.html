@@ -38,7 +38,7 @@ description: Frequently asked questions about Postino: accounts, cloud sync, pri
 <p>Yes. Write the settings once as a profile of the workspace and choose <strong>OAuth 2.0</strong> in the Auth tab: Postino gets and renews the token on Send, with client credentials, password, or authorization code with PKCE in your browser. See <a href="oauth.html">OAuth 2.0</a>.</p>
 
 <h2>Can I run my requests in CI?</h2>
-<p>Not yet: Postino is a desktop app and has no headless runner.</p>
+<p>Yes. The same <code>postino</code> binary runs requests, folders or the whole workspace in a terminal with <code>postino run</code>, with no window and no display, and writes JUnit or JSON reports. See <a href="ci.html">Running in CI</a>.</p>
 
 <h2>Which languages does the interface speak?</h2>
 <p>English, Spanish, Galician and Italian. By default it follows your system language and falls back to English. Change it in <a href="settings.html">Settings</a>.</p>

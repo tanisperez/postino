@@ -53,6 +53,7 @@ NAV = [
         ("postman-import.html", "Importing from Postman"),
         ("bruno-import.html", "Importing from Bruno"),
         ("git.html", "Working with git"),
+        ("ci.html", "Running in CI"),
     ]),
     ("Reference", [
         ("keyboard-shortcuts.html", "Keyboard shortcuts"),

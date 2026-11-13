@@ -1,8 +1,5 @@
 //! `-h`/`--help` and `-V`/`--version` (GitHub #136): print something and exit. Pure logic, unit
 //! tested without a window. The output stays in English, like log messages.
-//!
-//! This is also the template for a future command module: a type with `parse`, `run` and its
-//! help text, registered in [`crate::Command`].
 
 use std::io::Write;
 
@@ -60,10 +57,21 @@ fn help_text() -> String {
     format!(
         "{header}
 Usage: postino [OPTIONS] [PATH]
+       postino <COMMAND> [ARGS]
 
 Arguments:
   [PATH]  A workspace folder, or a .postino file to open in a tab.
           Without it, Postino opens the last workspace used.
+          A folder named like a command opens with ./name.
+
+Commands (run in the terminal, without the window):
+  run [PATHS]       Run .postino requests, folders or the whole workspace
+  check             Check every .postino and .env file of the workspace
+  get <URL>         Send a request, like curl; also post, put, patch,
+                    delete, head and options
+  http <METHOD> <URL>
+                    Send a request with any method
+  Run postino <COMMAND> --help for its options.
 
 Options:
   -h, --help     Print this help and exit
@@ -119,6 +127,10 @@ mod tests {
         assert!(help.starts_with(&version_line()));
         for needle in [
             "Usage: postino [OPTIONS] [PATH]",
+            "postino <COMMAND> [ARGS]",
+            "run [PATHS]",
+            "check",
+            "http <METHOD> <URL>",
             "-h, --help",
             "-V, --version",
             "POSTINO_LOG",

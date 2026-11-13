@@ -1,0 +1,100 @@
+title: Running in CI
+description: Run Postino requests and their tests in a CI pipeline or on a server with postino run, with no window or display, get a JUnit report, pass secrets and read the exit codes.
+---
+<h1>Running in CI</h1>
+<p class="lead">The requests you build in the app are plain files in your repository, and the same <code>postino</code> binary runs them in a terminal with <code>postino run</code>. No window opens and no display is needed, so a CI pipeline can check an API on every push, with the tests you already wrote.</p>
+
+<h2>What a run does</h2>
+<p><code>postino run</code> takes requests, folders or the whole workspace and sends each request as Send does in the app: the OAuth 2.0 token, the pre script, the variables, the request, the post script and its <code>test()</code> calls. It prints one line per request and exits with a <a href="command-line.html#exit-codes">code</a> the pipeline understands: <code>0</code> when everything passed, <code>1</code> when a test failed. Every option is in the <a href="command-line.html#run">command line reference</a>.</p>
+```text title="postino run --env staging"
+ ✓ auth/login           POST    200    84 ms   2/2 tests
+ ✗ auth/me              GET     401    12 ms   0/1 tests
+     ✗ status is 200: expected 401 to be 200
+ ✓ crud/create-user     POST    201    40 ms   3/3 tests
+
+ 3 requests, 1 failed · 5/6 tests passed · 136 ms
+```
+
+<h2>Step by step</h2>
+<p>A repository with the workspace in <code>api-requests/</code>, as in <a href="git.html#recommended-layout">Working with git</a>, and a <code>staging</code> environment whose token lives in the ignored <code>staging.local.env</code>:</p>
+<ol>
+    <li>Run it locally first, from the workspace folder: <code>postino run --env staging</code>. Fix any red test before moving on.</li>
+    <li>Add <code>postino check</code> to catch files that do not parse. It sends nothing, so it can run on every push, even without the API.</li>
+    <li>Store the secret of <code>staging.local.env</code> in your CI's secret store, such as <code>STAGING_TOKEN</code>, since that file is not in the repository.</li>
+    <li>In the pipeline, install Postino, then run <code>postino run --env staging --var token=$STAGING_TOKEN --output junit -o report.xml</code>.</li>
+    <li>Publish <code>report.xml</code> as a test report, so the pipeline shows which test failed.</li>
+</ol>
+
+<h2>Installing on the runner</h2>
+<p>On Linux, use the <a href="installation.html#install-script">install script</a>, which needs no root, or the <a href="installation.html">APT or DNF repository</a>. The binary links a few X11 libraries even when it opens no window (<code>libxcb</code> and <code>libxkbcommon</code> with its X11 part). The packages bring them; a minimal container installed with the script may need them first, for example <code>apt-get install -y libxkbcommon-x11-0</code> on Debian and Ubuntu.</p>
+
+<h2>GitHub Actions</h2>
+```yaml title=".github/workflows/api.yml"
+name: API tests
+on: [push]
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Postino
+        run: |
+          curl -fsSL https://postino.tanis.codes/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Check the request files
+        run: postino check --workspace api-requests
+      - name: Run the requests
+        run: >
+          postino run --workspace api-requests --env staging
+          --var token=${{ secrets.STAGING_TOKEN }}
+          --output junit -o report.xml
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-report
+          path: report.xml
+```
+
+<h2>GitLab CI</h2>
+```yaml title=".gitlab-ci.yml"
+api-tests:
+  image: ubuntu:24.04
+  script:
+    - apt-get update && apt-get install -y curl ca-certificates libxkbcommon-x11-0
+    - curl -fsSL https://postino.tanis.codes/install.sh | bash
+    - export PATH="$HOME/.local/bin:$PATH"
+    - postino run --workspace api-requests --env staging --var "token=$STAGING_TOKEN" --output junit -o report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+```
+
+<h2 id="secrets">Secrets and variables</h2>
+<p>Values that change between runs, or that must not be in the repository, come from the command line, from the lowest priority to the highest:</p>
+<ul>
+    <li><code>--env &lt;name&gt;</code>: the environment file and its <code>.local.env</code>, when the runner has one.</li>
+    <li><code>--env-file &lt;file&gt;</code>: a <code>.env</code> file written by the pipeline, for example from a secret.</li>
+    <li><code>--var key=value</code>: one variable, repeatable.</li>
+</ul>
+<p>Postino prints no variable values. The URLs in the reports leave out the query string, and <code>-v</code> masks sensitive headers. A secret can still show in a response body printed with <code>--show-body</code>, or in a <code>console.log</code> of a script, which is printed under a request that fails.</p>
+
+<h2>OAuth 2.0 in a pipeline</h2>
+<p>Profiles with the client credentials or password grant work as in the app, and every run gets a new token. The authorization code grant needs a person to sign in in a browser, so it does not work on a CI runner: the request fails and says so. Give the pipeline a profile with the client credentials grant instead.</p>
+
+<h2>Reports</h2>
+<ul>
+    <li><code>--output junit -o report.xml</code>: one test suite per request and one test case per <code>test()</code>, which GitHub, GitLab, Jenkins and most CI tools display.</li>
+    <li><code>--output json</code>: one JSON line per request and a last line with the totals, for your own scripts.</li>
+</ul>
+<p>With <code>-o</code>, the readable lines are still printed in the job log. Add <code>--bail</code> to stop at the first failure, and <code>--filter</code> to run only part of the workspace, such as <code>--filter 'smoke/*'</code>.</p>
+
+<h2 id="windows">Windows</h2>
+<p>On Windows, <code>postino.exe</code> is a desktop app, and shells do not wait for a desktop app to finish: the prompt comes back at once and the exit code is lost. Start it so that the shell waits:</p>
+```shell
+> $p = Start-Process postino.exe -ArgumentList 'run','--env','staging' -NoNewWindow -Wait -PassThru
+> exit $p.ExitCode
+```
+<p>In <code>cmd.exe</code>, use <code>start /wait postino.exe run --env staging</code> and read <code>%ERRORLEVEL%</code>.</p>
