@@ -47,6 +47,34 @@ struct Shared {
     metrics: Mutex<Aggregator>,
     /// The moment the run started, the origin every [`Sample::elapsed`] is measured from.
     start: Instant,
+    /// The pauses of the run, see [`LoadRun::pause`].
+    pause: Mutex<PauseState>,
+}
+
+/// When the run was paused and for how long it has been paused in total.
+#[derive(Debug, Default)]
+struct PauseState {
+    /// When the pause in progress started, `None` while running.
+    since: Option<Instant>,
+    /// The length of every pause that has ended.
+    total: Duration,
+}
+
+impl Shared {
+    fn pause_state(&self) -> MutexGuard<'_, PauseState> {
+        self.pause.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Whether the run is paused.
+    fn is_paused(&self) -> bool {
+        self.pause_state().since.is_some()
+    }
+
+    /// How long the run has been paused in total, the pause in progress included.
+    fn paused_for(&self) -> Duration {
+        let state = self.pause_state();
+        state.total + state.since.map_or(Duration::ZERO, |since| since.elapsed())
+    }
 }
 
 /// Reads the live metrics of a [`LoadRun`] from any thread, see [`LoadRun::snapshot_reader`].
@@ -100,6 +128,7 @@ impl LoadRun {
             active_vus: AtomicU32::new(0),
             metrics: Mutex::new(Aggregator::new(config.targets.len())),
             start: Instant::now(),
+            pause: Mutex::new(PauseState::default()),
         });
 
         let supervisor_shared = Arc::clone(&shared);
@@ -126,6 +155,37 @@ impl LoadRun {
     /// promptly, well under a second, even with a long `think_time` or `duration` left to go.
     pub fn stop(&self) {
         self.shared.stop.store(true, Ordering::SeqCst);
+    }
+
+    /// Pauses the run: every virtual user waits before its next request, and the run's end moves
+    /// later by as long as the pause lasts, so a paused run still gets its full duration of
+    /// traffic. The ramp-up waits too. Requests already in flight finish and are recorded. The
+    /// elapsed time of the snapshots keeps counting, so the throughput of a paused second is 0.
+    pub fn pause(&self) {
+        let mut state = self.shared.pause_state();
+        if state.since.is_none() {
+            state.since = Some(Instant::now());
+        }
+    }
+
+    /// Ends a pause started with [`Self::pause`]. Does nothing when the run is not paused.
+    pub fn resume(&self) {
+        let mut state = self.shared.pause_state();
+        if let Some(since) = state.since.take() {
+            state.total += since.elapsed();
+        }
+    }
+
+    /// Whether the run is paused.
+    #[must_use]
+    pub fn is_paused(&self) -> bool {
+        self.shared.is_paused()
+    }
+
+    /// How long the run has been paused in total, the pause in progress included.
+    #[must_use]
+    pub fn paused_for(&self) -> Duration {
+        self.shared.paused_for()
     }
 
     /// Whether the run has ended (reached `duration`, was stopped, or hit the error rate
@@ -215,7 +275,7 @@ fn run_supervisor(
         let start_offset = config
             .ramp_up
             .mul_f64(f64::from(vu_index) / f64::from(config.vus));
-        wait_or_stop(shared, shared.start + start_offset);
+        wait_until(shared, || shared.start + start_offset + shared.paused_for());
         if shared.stop.load(Ordering::SeqCst) {
             break;
         }
@@ -242,8 +302,10 @@ fn run_supervisor(
 
     // Let the run continue until `duration` has elapsed since the whole run started (not since
     // the last virtual user started), or until something else asked it to stop first.
-    wait_or_stop(shared, shared.start + config.duration);
-    let stopped_early = shared.start.elapsed() < config.duration;
+    wait_until(shared, || {
+        shared.start + config.duration + shared.paused_for()
+    });
+    let stopped_early = shared.start.elapsed() < config.duration + shared.paused_for();
     shared.stop.store(true, Ordering::SeqCst);
 
     for handle in handles {
@@ -283,6 +345,9 @@ fn run_virtual_user(
     let client = config.reuse_connections.then(|| runner.client());
     'iterations: while !shared.stop.load(Ordering::SeqCst) {
         for (target_index, target) in config.targets.iter().enumerate() {
+            while shared.is_paused() && !shared.stop.load(Ordering::SeqCst) {
+                thread::sleep(POLL_INTERVAL);
+            }
             if shared.stop.load(Ordering::SeqCst) {
                 break 'iterations;
             }
@@ -432,6 +497,22 @@ fn wait_or_stop(shared: &Shared, deadline: Instant) {
         if shared.stop.load(Ordering::SeqCst) {
             return;
         }
+        let now = Instant::now();
+        if now >= deadline {
+            return;
+        }
+        thread::sleep(POLL_INTERVAL.min(deadline - now));
+    }
+}
+
+/// [`wait_or_stop`] with a deadline that may move while waiting: it is read again on every
+/// slice, so a pause pushes it later.
+fn wait_until(shared: &Shared, deadline: impl Fn() -> Instant) {
+    loop {
+        if shared.stop.load(Ordering::SeqCst) {
+            return;
+        }
+        let deadline = deadline();
         let now = Instant::now();
         if now >= deadline {
             return;

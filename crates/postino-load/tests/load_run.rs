@@ -506,3 +506,46 @@ fn an_oauth_token_is_obtained_once_before_the_virtual_users_start() {
         vec![(StatusKey::Code(200), summary.snapshot.total)]
     );
 }
+
+#[test]
+fn a_pause_holds_every_request_and_moves_the_end_later() {
+    let server = TestServer::start();
+    let sent = Arc::new(AtomicUsize::new(0));
+    let counter = Arc::clone(&sent);
+    let handle = server.serve(move |_| {
+        counter.fetch_add(1, Ordering::SeqCst);
+        StubResponse::new(200)
+    });
+
+    let config = LoadConfig {
+        targets: vec![LoadTarget::new("a", get(server.url()))],
+        vus: 1,
+        duration: Duration::from_millis(600),
+        ramp_up: Duration::ZERO,
+        think_time: Duration::ZERO,
+        stop_on_error_rate: None,
+        reuse_connections: true,
+    };
+    let started = Instant::now();
+    let run = LoadRun::start(config, Environment::default(), SessionEnv::new(), runner());
+    std::thread::sleep(Duration::from_millis(100));
+    run.pause();
+    assert!(run.is_paused());
+    // Let a request in flight finish, then nothing more may be sent.
+    std::thread::sleep(Duration::from_millis(100));
+    let before = sent.load(Ordering::SeqCst);
+    std::thread::sleep(Duration::from_millis(600));
+    assert_eq!(sent.load(Ordering::SeqCst), before, "sent while paused");
+    assert!(!run.is_finished(), "the end moves later while paused");
+    run.resume();
+    assert!(!run.is_paused());
+    let summary = run.join();
+    let total = started.elapsed();
+
+    drop(server);
+    handle.join().expect("test server thread panicked");
+
+    assert!(!summary.stopped_early);
+    assert!(sent.load(Ordering::SeqCst) > before, "sent after resuming");
+    assert!(total >= Duration::from_millis(1200), "ran for {total:?}");
+}
