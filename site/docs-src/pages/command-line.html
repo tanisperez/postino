@@ -2,7 +2,7 @@ title: Command line
 description: Start Postino from a terminal with a workspace folder or a request file, run requests and send one-off requests without the window, the exit codes, and the environment variables it reads at startup.
 ---
 <h1>Command line</h1>
-<p class="lead">The <code>postino</code> binary opens the app on a folder or a request, and it also works without the window: it runs <code>.postino</code> requests and sends one-off requests like curl, printing the results in the terminal. That second mode needs no display, so it works on servers and in CI pipelines.</p>
+<p class="lead">The <code>postino</code> binary opens the app on a folder or a request, and it also works without the window: it runs <code>.postino</code> requests and load tests, and sends one-off requests like curl, printing the results in the terminal. That second mode needs no display, so it works on servers and in CI pipelines.</p>
 
 <h2>Usage</h2>
 ```shell
@@ -53,6 +53,7 @@ Postino 0.2.0
     <tbody>
         <tr><td><a href="#run"><code>run [PATHS]</code></a></td><td>Runs requests, folders or the whole workspace, with their scripts and tests.</td></tr>
         <tr><td><a href="#check"><code>check</code></a></td><td>Checks that every request, environment and the project file of the workspace can be read.</td></tr>
+        <tr><td><a href="#load"><code>load [PATHS]</code></a></td><td>Runs a <a href="load-testing.html">load test</a>, with a live dashboard on a terminal.</td></tr>
         <tr><td><a href="#one-off-requests"><code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, <code>delete</code>, <code>head</code>, <code>options</code> <code>&lt;URL&gt;</code></a></td><td>Sends one request with that method, like curl.</td></tr>
         <tr><td><a href="#one-off-requests"><code>http &lt;METHOD&gt; &lt;URL&gt;</code></a></td><td>Sends one request with any method, custom ones included.</td></tr>
     </tbody>
@@ -122,6 +123,65 @@ $ postino check
 ```
 <p>Reads every <code>.postino</code> file, every environment (with its <code>.local.env</code>) and <code>.postino/project.toml</code>, and prints the ones that cannot be read with the reason. Nothing is sent. It exits with code 4 when there is a problem. <code>--output json</code> prints one line per problem and a last line with the totals.</p>
 
+<h3 id="load">load</h3>
+```shell
+$ postino load crud/list-users.postino --vus 50 --duration 2m
+$ postino load auth/login.postino crud/ --vus 20 --ramp-up 30s --think 200ms
+```
+<p>Runs a <a href="load-testing.html">load test</a> with the same engine as the app: every virtual user loops over the requests in order, through their scripts, and what one script stores with <code>env.set()</code> reaches the next request of the same virtual user. Without a path, the whole workspace is the target. The <a href="oauth.html">OAuth 2.0</a> tokens are obtained once before the run starts; a token that cannot be obtained stops the command before any request is sent.</p>
+<div class="table"><table>
+    <thead><tr><th>Option</th><th>Effect</th><th>Default</th></tr></thead>
+    <tbody>
+        <tr><td><code>--vus &lt;N&gt;</code></td><td>Virtual users at full ramp-up, from 1 to 500.</td><td><code>50</code></td></tr>
+        <tr><td><code>--duration &lt;TIME&gt;</code></td><td>How long the run lasts, from its start.</td><td><code>60s</code></td></tr>
+        <tr><td><code>--ramp-up &lt;TIME&gt;</code></td><td>How long it takes to start every virtual user, at even intervals.</td><td><code>10s</code></td></tr>
+        <tr><td><code>--think &lt;TIME&gt;</code></td><td>The pause of a virtual user after each pass over the requests.</td><td><code>0s</code></td></tr>
+        <tr><td><code>--no-keep-alive</code></td><td>Opens a new connection for every request. See <a href="load-testing.html#connections">Connections</a>.</td><td>Keep-alive</td></tr>
+        <tr><td><code>--stop-on-error &lt;RATE&gt;</code></td><td>Ends the run early when the error rate goes above the rate, such as <code>5%</code>, once at least 50 requests have completed. The run then exits with code 1.</td><td>Off</td></tr>
+        <tr><td><code>--fail-if &lt;CONDITION&gt;</code></td><td>A condition that fails the run when it holds at the end, repeatable. See below.</td><td></td></tr>
+        <tr><td><code>--no-tui</code></td><td>Prints a progress line every 5 seconds instead of the dashboard.</td><td>The dashboard on a terminal</td></tr>
+        <tr><td><code>--report &lt;FILE&gt;</code></td><td>Writes a report when the run ends, in the format of the extension: <code>.pdf</code>, <code>.md</code>, <code>.json</code> or <code>.csv</code>. They are the same files as <a href="load-testing.html#export">Export</a> in the app.</td><td></td></tr>
+        <tr><td><code>--no-save</code></td><td>Does not save the run to the <a href="load-testing.html#history">run history</a>.</td><td>Saved</td></tr>
+        <tr><td><code>--compare &lt;RUN&gt;</code></td><td>Compares the run with a saved one: <code>last</code>, the latest run with the same target, or a run number.</td><td></td></tr>
+    </tbody>
+</table></div>
+<p>A condition is a metric, <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;</code> or <code>&lt;=</code>, and a limit, checked over the whole run:</p>
+<div class="table"><table>
+    <thead><tr><th>Metric</th><th>Limit</th><th>Example</th></tr></thead>
+    <tbody>
+        <tr><td><code>p50</code>, <code>p95</code>, <code>p99</code>, <code>avg</code>, <code>max</code></td><td>A latency in <code>ms</code> (the default unit) or <code>s</code>.</td><td><code>'p95&gt;500ms'</code></td></tr>
+        <tr><td><code>errors</code></td><td>The error rate, a percentage.</td><td><code>'errors&gt;1%'</code></td></tr>
+        <tr><td><code>rps</code></td><td>The average requests per second.</td><td><code>'rps&lt;100'</code></td></tr>
+    </tbody>
+</table></div>
+<p>Quote a condition, since <code>&gt;</code> and <code>&lt;</code> redirect in a shell. An upper bound of <code>p50</code>, <code>p95</code>, <code>p99</code> or <code>errors</code> and a lower bound of <code>rps</code> are saved with the run as its <a href="load-testing.html#thresholds">thresholds</a>, so the app checks the run against them too.</p>
+<p>On a terminal, a dashboard shows the progress, the requests, the requests per second and the error rate with their recent history, the latency percentiles, a chart of the p50 and p95 of each second, the statuses and a table per request. It redraws four times a second.</p>
+<div class="table"><table>
+    <thead><tr><th>Key</th><th>Does</th></tr></thead>
+    <tbody>
+        <tr><td><kbd>q</kbd>, <kbd>Esc</kbd>, <kbd>Ctrl+C</kbd></td><td>Stops the run. It ends once the requests in flight complete; a second <kbd>Ctrl+C</kbd> quits at once.</td></tr>
+        <tr><td><kbd>p</kbd></td><td>Pauses or resumes. While paused no request starts, and the end of the run moves later by as long as the pause lasts.</td></tr>
+        <tr><td><kbd>s</kbd></td><td>Saves a report of the run so far to the <code>--report</code> file, or to <code>run-NNNN.md</code> in the current directory.</td></tr>
+    </tbody>
+</table></div>
+<p>When standard output is not a terminal, as in CI, or with <code>--no-tui</code>, a progress line is printed to standard error every 5 seconds, and <kbd>Ctrl+C</kbd> stops the run cleanly. Either way, the run ends with a summary on standard output: the totals, the latency, the statuses, the table per request, the comparison and each condition.</p>
+```text title="postino load health.postino --env local --vus 10 --duration 6s --ramp-up 2s --fail-if 'p95>500ms'"
+ postino load · health · 10 VUs · 6s · ramp-up 2s · think 0s · keep-alive
+ Finished after 00:06
+ Saved as run 1 in .postino/runs
+
+ Requests  27891   RPS 4647.1   Errors 0.0 %
+ Latency   p50 <1 ms   p95 1 ms   p99 2 ms   avg <1 ms   max 3 ms
+ Status    200 × 27891
+
+ Request        Count       p50       p95       p99   Errors
+ GET health     27891     <1 ms      1 ms      2 ms    0.0 %
+
+ Fail if
+ ✓ p95 > 500 ms   was 1 ms
+```
+<p>A load test exits with code 1 when a condition holds, when <code>--stop-on-error</code> ended it, or when no request completed, and with code 3 when no request got a response at all. A 4xx or 5xx response counts in the error rate but does not change the exit code by itself: use <code>--fail-if 'errors&gt;0%'</code> for that.</p>
+
 <h3 id="one-off-requests">One-off requests</h3>
 ```shell
 $ postino get https://api.example.com/users
@@ -156,7 +216,7 @@ $ postino get https://example.com/big.iso -o big.iso
     <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
     <tbody>
         <tr><td><code>0</code></td><td>Everything passed.</td></tr>
-        <tr><td><code>1</code></td><td>A <code>test()</code> failed, a script threw, or an OAuth token could not be obtained.</td></tr>
+        <tr><td><code>1</code></td><td>A <code>test()</code> failed, a script threw, or an OAuth token could not be obtained. For <code>load</code>: a <code>--fail-if</code> condition held, <code>--stop-on-error</code> ended the run, or no request completed.</td></tr>
         <tr><td><code>2</code></td><td>The command line is wrong: an unknown option, a missing argument, a bad value.</td></tr>
         <tr><td><code>3</code></td><td>A network or TLS failure: nothing came back, the request timed out, or the body was larger than the limit.</td></tr>
         <tr><td><code>4</code></td><td>A file problem: a <code>.postino</code> or <code>.env</code> file that cannot be read, an unknown environment, a path that does not exist or is outside the workspace.</td></tr>

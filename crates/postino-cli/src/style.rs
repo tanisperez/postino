@@ -31,6 +31,11 @@ impl Style {
         }
     }
 
+    /// Whether colors are printed.
+    pub fn has_color(self) -> bool {
+        self.color
+    }
+
     fn paint(self, code: &str, text: &str) -> String {
         if self.color {
             format!("\x1b[{code}m{text}\x1b[0m")
@@ -57,6 +62,11 @@ impl Style {
     /// Secondary details: timings, sizes.
     pub fn dim(self, text: &str) -> String {
         self.paint("2", text)
+    }
+
+    /// Emphasis.
+    pub fn bold(self, text: &str) -> String {
+        self.paint("1", text)
     }
 
     /// An HTTP status in the color of its class.

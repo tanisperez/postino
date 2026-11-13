@@ -18,10 +18,12 @@ mod context;
 pub mod exit;
 mod filter;
 pub mod info;
+mod load;
 mod oauth;
 mod outcome;
 mod progress;
 mod report;
+pub mod reports;
 mod request;
 mod run;
 mod style;
@@ -37,6 +39,7 @@ use telaio_app::AppIdentity;
 
 use args::{Cli, ConsoleCommand};
 pub use info::Info;
+pub use reports::{DocumentKind, NoRenderer, ReportRenderer, ReportRun};
 
 /// Who Postino is, for every piece of `telaio-app` the app and the command line use: the name,
 /// the lowercase name of folders and files, the application id (Wayland `app_id`, X11 `WM_CLASS`,
@@ -110,18 +113,19 @@ impl Command {
             .then(|| Command::Console(args.to_vec()))
     }
 
-    /// Runs the command and returns the process exit code.
-    pub fn run(self) -> ExitCode {
+    /// Runs the command and returns the process exit code. `renderer` builds the PDF and
+    /// Markdown load test reports.
+    pub fn run(self, renderer: &dyn ReportRenderer) -> ExitCode {
         let code = match self {
             Command::Info(info) => info.run(),
-            Command::Console(args) => run_console(&args),
+            Command::Console(args) => run_console(&args, renderer),
         };
         ExitCode::from(code)
     }
 }
 
 /// Parses and runs a subcommand, returning its exit code.
-fn run_console(args: &[OsString]) -> u8 {
+fn run_console(args: &[OsString], renderer: &dyn ReportRenderer) -> u8 {
     let all = std::iter::once(OsStr::new("postino").to_os_string()).chain(args.iter().cloned());
     let cli = match Cli::try_parse_from(all) {
         Ok(cli) => cli,
@@ -138,6 +142,7 @@ fn run_console(args: &[OsString]) -> u8 {
     match cli.command {
         ConsoleCommand::Run(args) => run::command(&args),
         ConsoleCommand::Check(args) => check::command(&args),
+        ConsoleCommand::Load(args) => load::command(&args, renderer),
         ConsoleCommand::Get(args) => request::command(Method::Get, &args),
         ConsoleCommand::Post(args) => request::command(Method::Post, &args),
         ConsoleCommand::Put(args) => request::command(Method::Put, &args),
@@ -154,11 +159,12 @@ fn run_console(args: &[OsString]) -> u8 {
 
 /// Handles the command line before anything else is set up. Returns `None` when the arguments
 /// (without the program name) are not a command (the app starts normally), otherwise runs it,
-/// attaching to the parent console first on Windows, and returns the exit code.
-pub fn run_if_cli(args: &[OsString]) -> Option<ExitCode> {
+/// attaching to the parent console first on Windows, and returns the exit code. `renderer`
+/// builds the PDF and Markdown load test reports.
+pub fn run_if_cli(args: &[OsString], renderer: &dyn ReportRenderer) -> Option<ExitCode> {
     let command = Command::parse(args)?;
     telaio_app::cli::attach_parent_console();
-    Some(command.run())
+    Some(command.run(renderer))
 }
 
 #[cfg(test)]
@@ -230,13 +236,16 @@ mod tests {
 
     #[test]
     fn usage_errors_exit_with_2() {
-        assert_eq!(run_console(&os(&["get"])), exit::USAGE);
-        assert_eq!(run_console(&os(&["run", "--no-such-flag"])), exit::USAGE);
+        assert_eq!(run_console(&os(&["get"]), &NoRenderer), exit::USAGE);
+        assert_eq!(
+            run_console(&os(&["run", "--no-such-flag"]), &NoRenderer),
+            exit::USAGE
+        );
     }
 
     #[test]
     fn run_if_cli_ignores_what_is_not_a_command() {
-        assert!(run_if_cli(&[]).is_none());
-        assert!(run_if_cli(&os(&["orders"])).is_none());
+        assert!(run_if_cli(&[], &NoRenderer).is_none());
+        assert!(run_if_cli(&os(&["orders"]), &NoRenderer).is_none());
     }
 }

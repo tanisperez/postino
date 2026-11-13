@@ -11,8 +11,8 @@ use crate::units::{parse_duration, parse_size};
 
 /// The names that make Postino run in console mode when they are the first argument. A folder
 /// named like one of them opens in the app with `postino ./name`.
-pub const SUBCOMMANDS: [&str; 10] = [
-    "run", "check", "get", "post", "put", "patch", "delete", "head", "options", "http",
+pub const SUBCOMMANDS: [&str; 11] = [
+    "run", "check", "load", "get", "post", "put", "patch", "delete", "head", "options", "http",
 ];
 
 /// `postino <command> ...`.
@@ -35,6 +35,8 @@ pub enum ConsoleCommand {
     Run(RunArgs),
     /// Check that every .postino and .env file of the workspace can be read.
     Check(CheckArgs),
+    /// Run a load test on requests or folders, with a live dashboard.
+    Load(LoadArgs),
     /// Send a GET request.
     Get(RequestArgs),
     /// Send a POST request.
@@ -138,6 +140,61 @@ pub struct CheckArgs {
     pub output: OutputFormat,
     #[command(flatten)]
     pub common: CommonArgs,
+}
+
+/// `postino load [paths...]`.
+#[derive(Debug, Clone, Args)]
+pub struct LoadArgs {
+    /// Request files or folders, looped over in order. Without any, the whole workspace.
+    #[arg(value_name = "PATH")]
+    pub paths: Vec<PathBuf>,
+    /// Virtual users, 1 to 500.
+    #[arg(long, value_name = "N", default_value_t = 50, value_parser = clap::value_parser!(u32).range(1..=500))]
+    pub vus: u32,
+    /// How long the run lasts, such as 60s or 2m.
+    #[arg(long, value_name = "TIME", default_value = "60s", value_parser = parse_duration)]
+    pub duration: Duration,
+    /// How long it takes to start every virtual user.
+    #[arg(long, value_name = "TIME", default_value = "10s", value_parser = parse_duration)]
+    pub ramp_up: Duration,
+    /// The pause of each virtual user between two passes over the requests.
+    #[arg(long, value_name = "TIME", default_value = "0s", value_parser = parse_duration)]
+    pub think: Duration,
+    /// Open a new connection for every request instead of reusing them.
+    #[arg(long)]
+    pub no_keep_alive: bool,
+    /// Stop early above this error rate, such as 5%.
+    #[arg(long, value_name = "RATE", value_parser = parse_percent)]
+    pub stop_on_error: Option<f64>,
+    /// Fail the run when this is true, such as 'p95>500ms', 'errors>1%' or 'rps<100'.
+    /// Repeatable.
+    #[arg(long = "fail-if", value_name = "CONDITION", value_parser = crate::load::fail_if::FailIf::parse)]
+    pub fail_if: Vec<crate::load::fail_if::FailIf>,
+    /// Print plain progress lines instead of the dashboard.
+    #[arg(long)]
+    pub no_tui: bool,
+    /// Write a report at the end: .pdf, .md, .json or .csv, by extension.
+    #[arg(long, value_name = "FILE")]
+    pub report: Option<PathBuf>,
+    /// Do not save the run to the workspace history (.postino/runs/).
+    #[arg(long)]
+    pub no_save: bool,
+    /// Compare with a saved run: last, or a run number.
+    #[arg(long, value_name = "RUN")]
+    pub compare: Option<String>,
+    #[command(flatten)]
+    pub common: CommonArgs,
+    #[command(flatten)]
+    pub send: SendArgs,
+}
+
+/// `5%`, `0.5%` or `5`: a percentage, returned as a fraction.
+fn parse_percent(text: &str) -> Result<f64, String> {
+    let number = text.trim().trim_end_matches('%').trim();
+    match number.parse::<f64>() {
+        Ok(value) if value.is_finite() && (0.0..=100.0).contains(&value) => Ok(value / 100.0),
+        _ => Err(format!("expected a percentage such as 5%, got {text:?}")),
+    }
 }
 
 /// `postino get|post|... <url>`.
@@ -296,6 +353,53 @@ mod tests {
     }
 
     #[test]
+    fn load_has_the_app_defaults_and_its_own_options() {
+        let cli = parse(&["load", "crud/"]).expect("valid");
+        let ConsoleCommand::Load(load) = cli.command else {
+            panic!("not load");
+        };
+        assert_eq!(load.vus, 50);
+        assert_eq!(load.duration, Duration::from_secs(60));
+        assert_eq!(load.ramp_up, Duration::from_secs(10));
+        assert_eq!(load.think, Duration::ZERO);
+        assert!(!load.no_keep_alive);
+
+        let cli = parse(&[
+            "load",
+            "a.postino",
+            "--vus",
+            "20",
+            "--duration",
+            "2m",
+            "--stop-on-error",
+            "5%",
+            "--fail-if",
+            "p95>500ms",
+            "--fail-if",
+            "errors>1%",
+            "--compare",
+            "last",
+        ])
+        .expect("valid");
+        let ConsoleCommand::Load(load) = cli.command else {
+            panic!("not load");
+        };
+        assert_eq!(load.vus, 20);
+        assert_eq!(load.stop_on_error, Some(0.05));
+        assert_eq!(load.fail_if.len(), 2);
+        assert!(parse(&["load", "--vus", "0"]).is_err());
+        assert!(parse(&["load", "--vus", "501"]).is_err());
+        assert!(parse(&["load", "--fail-if", "p95"]).is_err());
+    }
+
+    #[test]
+    fn percentages_become_fractions() {
+        assert_eq!(parse_percent("5%"), Ok(0.05));
+        assert_eq!(parse_percent("0.5"), Ok(0.005));
+        assert!(parse_percent("150%").is_err());
+    }
+
+    #[test]
     fn http_takes_the_method_first() {
         let cli = parse(&["http", "PURGE", "https://cdn.test/x"]).expect("valid");
         let ConsoleCommand::Http(http) = cli.command else {
@@ -309,7 +413,7 @@ mod tests {
     fn every_subcommand_name_is_a_command() {
         for name in SUBCOMMANDS {
             let args: &[&str] = match name {
-                "run" | "check" => &[],
+                "run" | "check" | "load" => &[],
                 "http" => &["GET", "u"],
                 _ => &["u"],
             };

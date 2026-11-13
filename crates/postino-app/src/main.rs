@@ -40,7 +40,7 @@ fn main() -> ExitCode {
     // `--help`, `--version` and the console subcommands (`postino run`, `postino get`, ...) run
     // and exit before anything else: no settings, no log, no window.
     let args: Vec<_> = std::env::args_os().skip(1).collect();
-    if let Some(code) = postino_cli::run_if_cli(&args) {
+    if let Some(code) = postino_cli::run_if_cli(&args, &views::load_test::export::CliReports) {
         return code;
     }
 

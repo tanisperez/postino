@@ -96,8 +96,8 @@ postino-app ──> postino-load ──> postino-runner ──> postino-script �
      ├──────> postino-script (the script editors' autocompletion reads `postino_script::api`)
      ├──────> postino-workspace ─> postino-format ─> postino-core
      ├──────> postino-format (the Code snippet dialog renders `render_snippet` directly)
-     └──────> postino-cli ──> postino-runner, postino-workspace, postino-format, postino-http,
-                              postino-oauth, postino-script, postino-core
+     └──────> postino-cli ──> postino-load, postino-runner, postino-workspace, postino-format,
+                              postino-http, postino-oauth, postino-script, postino-core
 ```
 
 From telaio: `postino-app` uses `telaio-ui` (design system and standard components),
@@ -118,8 +118,11 @@ in `state/git_sync.rs` and the `postino-auto:` prefix of automatic stashes in
 - `postino-runner`: the pipeline, OAuth token, vars, pre script, interpolate, send, post script.
 - `postino-load`: the load test engine, live metrics, run comparison and run history.
 - `postino-cli`: the terminal commands that run without opening the window (#220): `-h/--help`,
-  `-V/--version` and the console subcommands parsed with `clap` (`run`, `check`, `get`/`post`/...
+  `-V/--version` and the console subcommands parsed with `clap` (`run`, `check`, `load`, `get`/`post`/...
   and `http`), which go through the same `Runner` pipeline as the app. No `gpui`, no display.
+  `load` draws its dashboard with `ratatui`. Its PDF and Markdown reports come from the app's
+  report builder, which `main.rs` hands over as a `postino_cli::ReportRenderer`
+  (`views/load_test/export.rs`, `CliReports`).
   It also defines `IDENTITY`, the `telaio_app::AppIdentity` of Postino (name, `postino` slug, app
   id, version, `POSTINO` prefix, repository) that the app passes to every `telaio-app` piece.
   The version line, help header and footer, exit codes and Windows console attach come from

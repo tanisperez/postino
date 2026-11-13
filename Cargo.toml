@@ -20,6 +20,10 @@ telaio-app = { git = "https://github.com/tanisperez/telaio", tag = "v0.21.0" }
 # The git client shared with ted, it drives the `git` executable.
 telaio-git = { git = "https://github.com/tanisperez/telaio", tag = "v0.21.0" }
 rquickjs = "0.14"
+# The live dashboard of `postino load` (postino-cli, #241), with its crossterm backend.
+ratatui = "0.29"
+# Ctrl+C stops a `postino load --no-tui` run cleanly, with its summary and history.
+ctrlc = "3.4"
 # The subcommands of the command line mode (postino-cli, #220).
 clap = { version = "4.5", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "suggestions"] }
 ureq = "3.4"

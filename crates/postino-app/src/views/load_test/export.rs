@@ -253,6 +253,57 @@ impl ExportSource {
         })
     }
 
+    /// What a run of `postino load` exports (#241): the whole run, as saved in the history.
+    fn from_cli(run: &postino_cli::ReportRun<'_>) -> Self {
+        let record = run.record;
+        let snapshot = record.snapshot.clone();
+        let compare = run
+            .compare
+            .map(|(number, snapshot)| (number, snapshot.clone()));
+        let chart = Shared::new(ChartData::new(
+            &snapshot,
+            compare.as_ref().map(|(_, snapshot)| snapshot),
+        ));
+        let targets = record.target_labels.clone();
+        let target_count = targets
+            .len()
+            .max(snapshot.per_target.len())
+            .max(record.config.target_count);
+        let elapsed_secs = snapshot.elapsed.as_secs_f64();
+        let run_secs = (record.config.duration_secs as f64)
+            .max(elapsed_secs.floor())
+            .max(1.0) as u32;
+        let status = if record.stopped_early {
+            LoadTestStatus::Stopped
+        } else {
+            LoadTestStatus::Finished
+        };
+        Self {
+            number: record.number,
+            target_label: record.target_label.clone(),
+            status_label: status_label(&status),
+            connection_label: Some(connection_label(record.config.reuse_connections)),
+            started_at: Some(record.started_at_unix),
+            vus: Some(record.config.vus),
+            duration_secs: record.config.duration_secs,
+            snapshot,
+            compare,
+            thresholds: record.thresholds.clone(),
+            chart: Some(chart),
+            window: None,
+            window_only: false,
+            targets,
+            timeout_secs: run.timeout_secs,
+            log: Some(Shared::new(run.log.clone())),
+            analysis: None,
+            target_count,
+            run_secs,
+            elapsed_secs,
+            root: run.root.map(Path::to_path_buf),
+            record: record.clone(),
+        }
+    }
+
     /// The covered range in whole seconds `[start, end)`: the window when only it is exported,
     /// the whole run (`None`) otherwise.
     fn range(&self) -> Option<Range<u32>> {
@@ -399,6 +450,30 @@ impl ExportSource {
             }
             _ => Err("no report to render".to_string()),
         }
+    }
+}
+
+/// The PDF and Markdown reports of `postino load --report` (#241), built exactly as the Export
+/// menu builds them, in English (the command line never reads the language setting).
+pub(crate) struct CliReports;
+
+impl postino_cli::ReportRenderer for CliReports {
+    fn render(
+        &self,
+        kind: postino_cli::DocumentKind,
+        run: &postino_cli::ReportRun<'_>,
+    ) -> Result<Vec<u8>, String> {
+        let source = ExportSource::from_cli(run);
+        let progress = Progress::default();
+        let stats = source.covered_stats();
+        let report = source.report(&stats, &progress);
+        let format = match kind {
+            postino_cli::DocumentKind::Pdf => ExportFormat::Pdf,
+            postino_cli::DocumentKind::Markdown => ExportFormat::Markdown,
+        };
+        source
+            .render(format, Some(&report), Some(&stats), &progress)?
+            .ok_or_else(|| "the report was cancelled".to_string())
     }
 }
 

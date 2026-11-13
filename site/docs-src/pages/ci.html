@@ -91,6 +91,14 @@ api-tests:
 </ul>
 <p>With <code>-o</code>, the readable lines are still printed in the job log. Add <code>--bail</code> to stop at the first failure, and <code>--filter</code> to run only part of the workspace, such as <code>--filter 'smoke/*'</code>.</p>
 
+<h2 id="load-tests">Load tests in a pipeline</h2>
+<p><code>postino load</code> prints progress lines instead of the dashboard when it runs in CI, and fails the job when a <code>--fail-if</code> condition holds at the end. Keep the report as an artifact of the job:</p>
+```shell
+$ postino load --workspace api-requests crud/ --env staging --vus 20 --duration 2m \
+    --fail-if 'p95>500ms' --fail-if 'errors>1%' --report load-report.pdf --no-save
+```
+<p><code>--no-save</code> keeps the history of the CI checkout clean; leave it out to keep the run in <code>.postino/runs/</code>, for example to compare it with <code>--compare last</code> on a machine that keeps its workspace. Run load tests against an environment you own, see <a href="load-testing.html">Load testing</a>.</p>
+
 <h2 id="windows">Windows</h2>
 <p>On Windows, <code>postino.exe</code> is a desktop app, and shells do not wait for a desktop app to finish: the prompt comes back at once and the exit code is lost. Start it so that the shell waits:</p>
 ```shell

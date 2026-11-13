@@ -67,6 +67,7 @@ Arguments:
 Commands (run in the terminal, without the window):
   run [PATHS]       Run .postino requests, folders or the whole workspace
   check             Check every .postino and .env file of the workspace
+  load [PATHS]      Run a load test, with a live dashboard on a terminal
   get <URL>         Send a request, like curl; also post, put, patch,
                     delete, head and options
   http <METHOD> <URL>
@@ -130,6 +131,7 @@ mod tests {
             "postino <COMMAND> [ARGS]",
             "run [PATHS]",
             "check",
+            "load [PATHS]",
             "http <METHOD> <URL>",
             "-h, --help",
             "-V, --version",

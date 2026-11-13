@@ -72,10 +72,15 @@ pub fn headless_message(result: &RunResult) -> Option<String> {
         .iter()
         .chain(result.oauth_more.iter())
         .find(|run| matches!(run.result, Err(OAuthError::SignInRequired)))?;
-    Some(format!(
-        "the OAuth profile \"{}\" uses the authorization code grant, which signs in in a \
+    Some(sign_in_message(&run.profile))
+}
+
+/// Why the profile `profile` cannot get a token here: it signs in in a browser and there is no
+/// display.
+pub fn sign_in_message(profile: &str) -> String {
+    format!(
+        "the OAuth profile \"{profile}\" uses the authorization code grant, which signs in in a \
          browser, and there is no display here. Without a display, use a profile with the \
-         client_credentials or password grant",
-        run.profile
-    ))
+         client_credentials or password grant"
+    )
 }

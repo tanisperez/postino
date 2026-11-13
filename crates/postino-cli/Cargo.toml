@@ -16,9 +16,12 @@ postino-oauth = { path = "../postino-oauth" }
 postino-runner = { path = "../postino-runner" }
 postino-script = { path = "../postino-script" }
 postino-workspace = { path = "../postino-workspace" }
+postino-load = { path = "../postino-load" }
 clap = { workspace = true }
 serde_json = { workspace = true }
 dunce = { workspace = true }
+ratatui = { workspace = true }
+ctrlc = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
