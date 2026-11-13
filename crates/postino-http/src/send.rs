@@ -2,6 +2,7 @@
 //! the result back into plain `postino-core` types.
 
 use std::collections::HashMap;
+use std::io::{Read, Write};
 use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::Instant;
 
@@ -66,6 +67,67 @@ impl Client {
     /// Sends a fully resolved request and returns the response, reusing an open connection to
     /// its origin when there is one. Errors and certificate handling are those of [`send`].
     pub fn send(&self, request: &ResolvedRequest) -> Result<Response, HttpError> {
+        let (response, started, tls_warning) = self.start(request)?;
+        finish(
+            response,
+            started,
+            tls_warning,
+            self.options.max_response_size,
+        )
+    }
+
+    /// [`Self::send`], writing the response body to `sink` as it arrives instead of keeping it
+    /// in memory, for downloads. `progress` is called after every chunk with the bytes written
+    /// so far and the `Content-Length`, when the server sent one. The returned response has an
+    /// empty `body`; its `size` is the number of bytes written. The body limit of the options
+    /// still applies.
+    pub fn download(
+        &self,
+        request: &ResolvedRequest,
+        sink: &mut dyn Write,
+        progress: &mut dyn FnMut(u64, Option<u64>),
+    ) -> Result<Response, HttpError> {
+        let (mut response, started, tls_warning) = self.start(request)?;
+        let status = response.status().as_u16();
+        let headers = collect_headers(response.headers());
+        let total = response.body().content_length();
+        let mut reader = response
+            .body_mut()
+            .with_config()
+            .limit(self.options.max_response_size)
+            .reader();
+        let mut buffer = vec![0u8; 64 * 1024];
+        let mut written: u64 = 0;
+        progress(0, total);
+        loop {
+            let read = match reader.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(read) => read,
+                Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(error) => return Err(map_read_error(error, self.options.max_response_size)),
+            };
+            sink.write_all(&buffer[..read]).map_err(HttpError::Write)?;
+            written += read as u64;
+            progress(written, total);
+        }
+        sink.flush().map_err(HttpError::Write)?;
+        Ok(Response {
+            status,
+            headers,
+            body: Vec::new(),
+            time: started.elapsed(),
+            size: usize::try_from(written).unwrap_or(usize::MAX),
+            tls_warning,
+        })
+    }
+
+    /// Sends `request` and waits for the response head, falling back to an unverified
+    /// connection as [`send`] describes. Returns the response, when it started and the
+    /// certificate warning.
+    fn start(
+        &self,
+        request: &ResolvedRequest,
+    ) -> Result<(ureq::http::Response<ureq::Body>, Instant, Option<String>), HttpError> {
         if log::log_enabled!(log::Level::Trace) {
             log_request(request);
         }
@@ -98,12 +160,7 @@ impl Client {
                 other => (other.map_err(map_ureq_error)?, None),
             },
         };
-        finish(
-            response,
-            started,
-            tls_warning,
-            self.options.max_response_size,
-        )
+        Ok((response, started, tls_warning))
     }
 
     /// The agent that sends without verifying certificates.
@@ -191,6 +248,23 @@ fn finish(
     })
 }
 
+/// Maps an error of the body reader of [`Client::download`]: `ureq` wraps its own errors, the
+/// body limit among them, in the `io::Error` it returns.
+fn map_read_error(error: std::io::Error, max_response_size: u64) -> HttpError {
+    match error.downcast::<ureq::Error>() {
+        Ok(ureq::Error::BodyExceedsLimit(_)) => HttpError::BodyTooLarge(max_response_size),
+        Ok(other) => map_ureq_error(other),
+        Err(error) => HttpError::Network(ureq::Error::Io(error)),
+    }
+}
+
+/// Checks a proxy URL for [`SendOptions::proxy`], with the reason it is not valid.
+pub fn check_proxy(proxy: &str) -> Result<(), String> {
+    ureq::Proxy::new(proxy)
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
 /// The `rustls` error inside a `ureq` error, if any. `ureq` reports handshake failures either
 /// as [`ureq::Error::Rustls`] or as an I/O error wrapping the `rustls` one.
 fn rustls_error(error: &ureq::Error) -> Option<&rustls::Error> {
@@ -254,7 +328,14 @@ fn build_agent(options: &SendOptions, verify_tls: bool) -> ureq::Agent {
         0
     };
 
-    let config = ureq::Agent::config_builder()
+    let mut config = ureq::Agent::config_builder();
+    if let Some(proxy) = options.proxy.as_deref() {
+        match ureq::Proxy::new(proxy) {
+            Ok(proxy) => config = config.proxy(Some(proxy)),
+            Err(error) => log::warn!("ignoring the proxy setting: {error}"),
+        }
+    }
+    let config = config
         .http_status_as_error(false)
         .allow_non_standard_methods(true)
         .max_redirects(max_redirects)

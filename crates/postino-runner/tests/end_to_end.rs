@@ -348,3 +348,31 @@ fn json_body_is_sent_with_a_default_content_type() {
                 && value == "application/json")
     );
 }
+
+#[test]
+fn run_sending_resolves_the_request_and_hands_it_to_the_given_sender() {
+    let request = Request {
+        method: Method::Get,
+        url: "{{base}}/file".to_string(),
+        ..Request::default()
+    };
+    let environment = Environment {
+        name: "dev".to_string(),
+        variables: vec![KeyValue::new("base", "http://example.test")],
+    };
+    let mut sent = None;
+    let result = runner().run_sending(&request, &environment, &mut SessionEnv::new(), |resolved| {
+        sent = Some(resolved.url.clone());
+        Ok(postino_core::Response {
+            status: 204,
+            headers: Vec::new(),
+            body: Vec::new(),
+            time: Duration::ZERO,
+            size: 0,
+            tls_warning: None,
+        })
+    });
+    assert_eq!(sent.as_deref(), Some("http://example.test/file"));
+    assert!(result.failed_stage.is_none());
+    assert_eq!(result.response.map(|response| response.status), Some(204));
+}

@@ -30,6 +30,10 @@ pub enum HttpError {
     #[error("the response body is larger than the limit of {} MB", .0 / 1_000_000)]
     BodyTooLarge(u64),
 
+    /// [`crate::Client::download`] could not write the body where it was asked to.
+    #[error("could not write the response body: {0}")]
+    Write(#[source] std::io::Error),
+
     /// Any other failure while talking to the server: DNS resolution, connecting, TLS,
     /// reading or writing the socket, or a malformed HTTP response.
     #[error("network error: {0}")]

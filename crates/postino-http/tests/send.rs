@@ -620,3 +620,69 @@ fn system_certificates_child() {
     assert_eq!(response.tls_warning, None);
     handle.join().expect("server thread");
 }
+
+/// Downloads `body` from a local server through [`Client::download`] with `options`, returning
+/// the result, what was written and every progress call.
+fn download(
+    body: Vec<u8>,
+    options: SendOptions,
+) -> (
+    Result<postino_core::Response, HttpError>,
+    Vec<u8>,
+    Vec<(u64, Option<u64>)>,
+) {
+    let server = TestServer::start();
+    let request = request_to(Method::Get, server.url());
+    let handle = server.serve(move |_| StubResponse::new(200).with_body(body.clone()));
+    let mut sink = Vec::new();
+    let mut calls = Vec::new();
+    let result = Client::new(options).download(&request, &mut sink, &mut |done, total| {
+        calls.push((done, total))
+    });
+    drop(server);
+    handle.join().expect("test server thread panicked");
+    (result, sink, calls)
+}
+
+#[test]
+fn download_writes_the_body_and_reports_progress() {
+    // Under tiny_http's 32 KB chunked threshold, so the server sends a Content-Length.
+    let body: Vec<u8> = (0..30_000u32).map(|i| (i % 251) as u8).collect();
+    let (result, written, calls) = download(body.clone(), SendOptions::default());
+    let response = result.expect("a response");
+    assert_eq!(response.status, 200);
+    assert!(response.body.is_empty(), "the body is not kept in memory");
+    assert_eq!(response.size, body.len());
+    assert_eq!(written, body);
+    assert_eq!(calls.first(), Some(&(0, Some(30_000))));
+    assert_eq!(calls.last(), Some(&(30_000, Some(30_000))));
+}
+
+#[test]
+fn download_of_a_chunked_body_has_no_total() {
+    let body = vec![b'y'; 200_000];
+    let (result, written, calls) = download(body.clone(), SendOptions::default());
+    assert_eq!(result.expect("a response").size, 200_000);
+    assert_eq!(written, body);
+    assert_eq!(calls.last(), Some(&(200_000, None)));
+}
+
+#[test]
+fn download_keeps_the_body_limit() {
+    let options = SendOptions {
+        max_response_size: 1000,
+        ..SendOptions::default()
+    };
+    let (result, _, _) = download(vec![b'x'; 5000], options);
+    match result {
+        Err(HttpError::BodyTooLarge(1000)) => {}
+        other => panic!("expected BodyTooLarge, got {other:?}"),
+    }
+}
+
+#[test]
+fn proxy_urls_are_checked() {
+    assert!(postino_http::check_proxy("http://proxy.example:3128").is_ok());
+    assert!(postino_http::check_proxy("socks5://localhost:1080").is_ok());
+    assert!(postino_http::check_proxy("ftp://nope:21").is_err());
+}

@@ -232,6 +232,19 @@ impl Runner {
         })
     }
 
+    /// [`Self::run`], with `send` doing the sending instead of this runner's client: the
+    /// command line streams a download to a file this way. `send` must use this runner's
+    /// options, see [`Self::client`].
+    pub fn run_sending(
+        &self,
+        request: &Request,
+        environment: &Environment,
+        session_env: &mut SessionEnv,
+        send: impl FnOnce(&ResolvedRequest) -> Result<Response, HttpError>,
+    ) -> RunResult {
+        self.execute(request, environment, session_env, send)
+    }
+
     /// The pipeline behind [`Self::run`] and [`Self::run_with`], which only differ in `send`.
     fn execute(
         &self,

@@ -49,6 +49,14 @@ pub struct SendOptions {
     ///
     /// Defaults to [`DEFAULT_MAX_RESPONSE_SIZE`].
     pub max_response_size: u64,
+
+    /// The proxy every request goes through, such as `http://proxy:3128` or
+    /// `socks5://localhost:1080`. `None` uses the `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY` and
+    /// `NO_PROXY` environment variables, when set. Check it first with [`crate::check_proxy`]:
+    /// an invalid one is ignored, with a warning in the log.
+    ///
+    /// Defaults to `None`.
+    pub proxy: Option<String>,
 }
 
 /// The default [`SendOptions::max_response_size`]: 20 MB (decimal, like the sizes the app shows).
@@ -83,6 +91,7 @@ impl Default for SendOptions {
             invalid_certificates: InvalidCertificates::SendWithWarning,
             system_certificates: true,
             max_response_size: DEFAULT_MAX_RESPONSE_SIZE,
+            proxy: None,
         }
     }
 }
@@ -104,5 +113,6 @@ mod tests {
         );
         assert!(options.system_certificates);
         assert_eq!(options.max_response_size, 20_000_000);
+        assert_eq!(options.proxy, None);
     }
 }
