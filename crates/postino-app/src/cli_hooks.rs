@@ -95,9 +95,13 @@ fn import(request: &ImportRequest<'_>) -> Result<ImportOutcome, String> {
         Some(found) if found == format => {}
         Some(found) => {
             return Err(format!(
-                "{} is a {} source: use postino import {}",
+                "{} is {} source: use postino import {}",
                 request.source,
-                format_name(found),
+                match found {
+                    ImportFormat::OpenApi => "an OpenAPI",
+                    ImportFormat::Postman => "a Postman",
+                    ImportFormat::Bruno => "a Bruno",
+                },
                 command_name(found)
             ));
         }

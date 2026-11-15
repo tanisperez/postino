@@ -201,6 +201,8 @@ struct Parts {
     auth: Auth,
     get: bool,
     head: bool,
+    /// A body read from a file, left out: it still makes the request a POST, as in curl.
+    file_body: bool,
     warnings: Vec<String>,
 }
 
@@ -210,6 +212,7 @@ impl Parts {
             self.warnings.push(format!(
                 "{flag} @{file}: the body is read from a file, add it to the request by hand"
             ));
+            self.file_body = true;
             return;
         }
         self.data.push(value);
@@ -293,6 +296,7 @@ pub fn parse_curl(command: &str) -> Result<CurlImport, CurlError> {
                     parts.warnings.push(format!(
                         "--json {data}: the body is read from a file, add it to the request by hand"
                     ));
+                    parts.file_body = true;
                 } else {
                     parts.json.push(data);
                 }
@@ -467,7 +471,7 @@ fn build(mut parts: Parts) -> Result<CurlImport, CurlError> {
     let method = match parts.method {
         Some(method) => method.to_ascii_uppercase(),
         None if parts.head => "HEAD".to_string(),
-        None if has_body && !parts.get => "POST".to_string(),
+        None if (has_body || parts.file_body) && !parts.get => "POST".to_string(),
         None => "GET".to_string(),
     };
     let request = Request {
@@ -586,6 +590,10 @@ mod tests {
         let import = parse("curl -k --max-time 5 -d @body.json -sSL --frobnicate https://x.test");
         assert_eq!(import.warnings.len(), 4, "{:?}", import.warnings);
         assert_eq!(import.request.body, Body::None);
+        // The body left out still makes it a POST, as curl sends it.
+        assert_eq!(import.request.method, Method::Post);
+        let json = parse("curl --json @body.json https://x.test");
+        assert_eq!(json.request.method, Method::Post);
     }
 
     #[test]

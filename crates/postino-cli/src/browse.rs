@@ -238,6 +238,11 @@ pub fn env_command(args: &EnvArgs) -> u8 {
                 let names = workspace
                     .list_environments()
                     .map_err(|error| CliError::file(error.to_string()))?;
+                let width = names
+                    .iter()
+                    .map(|name| name.chars().count())
+                    .max()
+                    .unwrap_or(0);
                 for name in &names {
                     let count = shown_variables(&workspace, name).map_or(0, |v| v.len());
                     if json {
@@ -246,7 +251,7 @@ pub fn env_command(args: &EnvArgs) -> u8 {
                     } else {
                         let noun = if count == 1 { "variable" } else { "variables" };
                         out.push_str(&format!(
-                            " {name}  {}\n",
+                            " {name:<width$}  {}\n",
                             style.dim(&format!("{count} {noun}"))
                         ));
                     }

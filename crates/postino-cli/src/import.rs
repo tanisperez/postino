@@ -51,11 +51,24 @@ fn folder_name(into: &str) -> Result<String, CliError> {
 
 /// What the import did, in a few lines.
 fn outcome_text(outcome: &ImportOutcome, style: Style) -> String {
+    // An environment export alone writes no folder, only environments.
+    let only_environments =
+        outcome.updated.is_none() && outcome.requests == 0 && !outcome.environments.is_empty();
     let mut out = match outcome.updated {
         Some((added, changed, removed)) => format!(
             " {} {}/: {added} added, {changed} changed, {removed} removed\n",
             style.green("Updated"),
             outcome.folder
+        ),
+        None if only_environments => format!(
+            " {} {}: {}\n",
+            style.green("Imported"),
+            if outcome.environments.len() == 1 {
+                "1 environment".to_string()
+            } else {
+                format!("{} environments", outcome.environments.len())
+            },
+            outcome.environments.join(", ")
         ),
         None => format!(
             " {} {} into {}/\n",
@@ -67,7 +80,7 @@ fn outcome_text(outcome: &ImportOutcome, style: Style) -> String {
             outcome.folder
         ),
     };
-    if !outcome.environments.is_empty() {
+    if !outcome.environments.is_empty() && !only_environments {
         out.push_str(&format!(
             " Environments: {}\n",
             outcome.environments.join(", ")
@@ -188,5 +201,14 @@ mod tests {
             text,
             " Imported 12 requests into Shop/\n Environments: local, staging\n ! no server URL\n 1 request to review, see .postino/import-report.md\n"
         );
+        let environment_only = outcome_text(
+            &ImportOutcome {
+                folder: "Demo".into(),
+                environments: vec!["Demo".into()],
+                ..ImportOutcome::default()
+            },
+            Style::PLAIN,
+        );
+        assert_eq!(environment_only, " Imported 1 environment: Demo\n");
     }
 }

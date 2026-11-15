@@ -49,7 +49,16 @@ pub fn run_number(root: &Path, text: &str) -> Result<u32, CliError> {
 
 /// Reads run `number`.
 pub fn load_run(root: &Path, number: u32) -> Result<RunRecord, CliError> {
-    history::load(root, number).map_err(|error| CliError::file(format!("run {number}: {error}")))
+    history::load(root, number).map_err(|error| match error {
+        history::HistoryError::Io { source, .. }
+            if source.kind() == std::io::ErrorKind::NotFound =>
+        {
+            CliError::file(format!(
+                "run {number} does not exist; postino runs lists them"
+            ))
+        }
+        error => CliError::file(format!("run {number}: {error}")),
+    })
 }
 
 /// The requests of run `number`, empty for a run saved before they were kept.
