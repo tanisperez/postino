@@ -7,7 +7,7 @@ discover. Read this before touching theming, inputs, dialogs, charts or timers.
 `~/.cargo/registry/src/*/` (`gpui-kit`, `gpui-component`, `gpui-base`, `gpui-pre`) instead of
 trusting memory or this file blindly. The findings below were first checked against `gpui-kit`
 0.6.6, by compiling and running throwaway code and reading the sources. The project is now on
-0.8.0, so a detail may have moved; where 0.7.0 or 0.8.0 is known to differ, it is said. Source locations
+0.9.1, so a detail may have moved; where 0.7.0, 0.8.0 or 0.9 is known to differ, it is said. Source locations
 are given as `file:line` in the 0.6.6 crates and may have shifted.
 
 ## Themes

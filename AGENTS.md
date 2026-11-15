@@ -34,10 +34,11 @@ Expo/React Native conventions here.
   (`postino-script`). Two levels share the same Rust built-ins: template functions inline in
   `{{ }}` markers (`util.*`-equivalent, no script needed), and full `::: pre`/`::: post` scripts
   for anything more involved. See `docs/scripting.md`.
-- Widgets: [`gpui-kit`](https://crates.io/crates/gpui-kit) 0.8.0, which bundles `gpui-component`
-  and `gpui-base` and pins `gpui-pre` 0.3.9 (`cargo tree -d --depth 0 | grep gpui` must stay
+- Widgets: [`gpui-kit`](https://crates.io/crates/gpui-kit) 0.9.1, which bundles `gpui-component`
+  and `gpui-base` and pins `gpui-pre` 0.3.12 (`cargo tree -d --depth 0 | grep gpui` must stay
   empty). Since 0.7.0 `Root` renders the dialog, sheet and notification layers itself; views
-  must not render them again.
+  must not render them again. Since 0.9 (gpui-pre 0.3.12) `KeyBinding::new` panics on the
+  `secondary-` alias: bind `cmd-` on macOS and `ctrl-` elsewhere.
 - Design system: [`telaio`](https://github.com/tanisperez/telaio) (#139), shared with Vano and
   Nastro. Its `telaio-ui` crate has the palette tokens, the gpui-kit theme builder, metrics, the
   Geist fonts and the standard components (buttons, modals, tabs, badges, key-value table, ...).

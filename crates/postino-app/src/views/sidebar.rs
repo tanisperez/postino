@@ -604,7 +604,7 @@ fn render_tree_row(
         // Before the tree's own handler, which selects the row (and opens a request): Ctrl+click
         // only picks it.
         .on_mouse_down(MouseButton::Left, move |event, _window, cx| {
-            if event.modifiers.secondary() {
+            if event.modifiers.secondary(cx) {
                 cx.stop_propagation();
                 let _ = pick_view.update(cx, |view, cx| view.toggle_sidebar_pick(&pick_id, cx));
             } else if !is_request {
@@ -618,7 +618,7 @@ fn render_tree_row(
         // selection changes, so a click on the row that is still selected, after switching to
         // another tab such as its load test, opens or focuses its tab here.
         .on_click(move |event, _window, cx| {
-            if !event.modifiers().secondary() {
+            if !event.modifiers().secondary(cx) {
                 let _ = click_view.update(cx, |view, cx| {
                     view.clear_sidebar_picks(cx);
                     if is_request {
