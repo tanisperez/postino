@@ -336,8 +336,8 @@ mod tests {
             &HashSet::new(),
             &SessionEnv::new(),
         );
-        // As sent: a URL without a scheme gets `http://`.
-        assert_eq!(preview.url, "http://{{baseUrl}}/");
+        // As sent: a URL that starts with an unresolved variable keeps no default scheme.
+        assert_eq!(preview.url, "{{baseUrl}}/");
         assert!(preview.url_has_undefined);
         assert_eq!(preview.undefined(), ["baseUrl"]);
         assert_eq!(
@@ -359,7 +359,7 @@ mod tests {
             &HashSet::new(),
             &SessionEnv::new(),
         );
-        assert_eq!(preview.url, "http://{{baseUrl}}/");
+        assert_eq!(preview.url, "{{baseUrl}}/");
         assert_eq!(preview.variables[0].source, PreviewSource::NoEnvironment);
     }
 
