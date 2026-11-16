@@ -54,7 +54,8 @@ pub struct Response {
     /// The response body size in bytes, equal to `body.len()`.
     pub size: usize,
     /// Set when the server's TLS certificate could not be verified and the request was sent
-    /// anyway without verification. Holds a human readable message with the reason.
+    /// anyway without verification. Holds the reason only, such as `certificate expired`, in
+    /// English: each caller adds its own frame, translated in the app.
     pub tls_warning: Option<String>,
 }
 

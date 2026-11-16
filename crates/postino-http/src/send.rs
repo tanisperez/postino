@@ -148,11 +148,10 @@ impl Client {
             }
             None => match run(&self.agent, &http_request) {
                 Err(error) if fallback && is_certificate_error(&error) => {
-                    let warning = format!(
-                        "TLS certificate not verified: {}",
-                        certificate_reason(&error)
+                    let warning = certificate_reason(&error);
+                    log::debug!(
+                        "TLS certificate not verified: {warning}, sending again without verification"
                     );
-                    log::debug!("{warning}, sending again without verification");
                     self.origins().insert(origin, warning.clone());
                     let retry = run(self.unverified_agent(), &http_request);
                     (retry.map_err(map_ureq_error)?, Some(warning))

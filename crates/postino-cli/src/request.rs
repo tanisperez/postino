@@ -239,7 +239,10 @@ fn execute(method: Method, args: &RequestArgs, style: Style) -> Result<u8, CliEr
             style.dim(&details)
         );
         if let Some(warning) = &response.tls_warning {
-            eprintln!("{}", style.yellow(&format!("! {warning}")));
+            eprintln!(
+                "{}",
+                style.yellow(&format!("! TLS certificate not verified: {warning}"))
+            );
         }
     } else if let Some(path) = &args.output {
         // Nothing came back: do not leave an empty file behind.

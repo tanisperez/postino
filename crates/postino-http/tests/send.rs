@@ -481,11 +481,7 @@ fn untrusted_certificate_is_sent_anyway_with_a_warning() {
     assert_eq!(response.status, 200);
     assert_eq!(response.body, b"secure");
     let warning = response.tls_warning.expect("a warning is set");
-    assert!(
-        warning.starts_with("TLS certificate not verified: "),
-        "{warning}"
-    );
-    assert!(warning.contains("unknown issuer"), "{warning}");
+    assert!(warning.starts_with("unknown issuer"), "{warning}");
     // The server saw the request exactly once: the rejected handshake sent nothing.
     assert_eq!(
         requests.recv().expect("one request"),

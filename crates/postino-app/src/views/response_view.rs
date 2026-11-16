@@ -483,11 +483,13 @@ impl AppView {
         if let Some(warning) = result
             .response
             .as_ref()
-            .and_then(|response| response.tls_warning.clone())
+            .and_then(|response| response.tls_warning.as_ref())
         {
+            // The reason comes from the TLS library, shown verbatim in a translated frame.
+            let text = t!("response.warning.tls_unverified", reason = warning).into_owned();
             messages.insert(
                 0,
-                InlineMessage::new(InlineMessageKind::Warning, warning).into_any_element(),
+                InlineMessage::new(InlineMessageKind::Warning, text).into_any_element(),
             );
         }
 

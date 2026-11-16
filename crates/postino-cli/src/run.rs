@@ -100,8 +100,12 @@ pub fn select<'a>(
 fn record_of(id: &str, method: String, result: &RunResult) -> Record {
     let verdict = outcome(result);
     let mut warnings: Vec<String> = result.warnings.iter().map(ToString::to_string).collect();
-    if let Some(warning) = result.response.as_ref().and_then(|r| r.tls_warning.clone()) {
-        warnings.push(warning);
+    if let Some(warning) = result
+        .response
+        .as_ref()
+        .and_then(|r| r.tls_warning.as_ref())
+    {
+        warnings.push(format!("TLS certificate not verified: {warning}"));
     }
     Record {
         id: id.to_string(),
