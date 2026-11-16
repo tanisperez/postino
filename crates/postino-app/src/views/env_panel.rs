@@ -453,16 +453,20 @@ impl AppView {
             .text_size(px(12.0))
             .text_color(palette.fg_subtle)
             .child(Icon::new(IconName::FolderOpen).small())
+            // On a narrow panel the folder name gives way, never the button.
             .child(
                 div()
+                    .flex_1()
+                    .min_w_0()
+                    .truncate()
                     .font_family(mono_font.clone())
                     .text_size(px(11.5))
                     .child(format!("{ENVIRONMENTS_FOLDER}/")),
             )
-            .child(div().flex_1())
             .child(
                 div()
                     .id("env-reveal")
+                    .flex_none()
                     .px(px(6.0))
                     .py(px(2.0))
                     .rounded(px(RADIUS_SM))
