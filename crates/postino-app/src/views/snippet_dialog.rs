@@ -4,7 +4,15 @@
 //! as a copyable cURL, `fetch` or Python snippet (`postino_format::snippet::render_snippet`).
 //! Unresolved `{{name}}` markers are kept literally, exactly as `render_snippet` already leaves
 //! them.
+//!
+//! The snippet shows in a read-only code editor, highlighted with the editors' syntax colors, at
+//! one fixed height for every language so the dialog does not jump when the language changes.
+//! While the dialog itself has the focus, Left and Right change the language and Ctrl+C (Cmd+C on
+//! macOS) copies the whole snippet; in the editor they move the caret and copy the selection.
 
+use std::time::Duration;
+
+use gpui_kit::component::input::EditorState;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -14,25 +22,27 @@ use postino_core::ResolvedRequest;
 use postino_format::snippet::{SnippetLanguage, render_snippet};
 
 use crate::theme::PaletteExt;
-use crate::theme::metrics::RADIUS_MD;
+use telaio_ui::components::{CodeEditor, SecondaryButton};
 
 use super::components::{
-    IconButton, ModalPlacement, SegmentedControl, SegmentedItem, framed_dialog, modal_body,
-    modal_footer, modal_header_with_icon,
+    ModalPlacement, SegmentedControl, SegmentedItem, framed_dialog, modal_body,
+    modal_header_with_icon, modal_hints,
 };
 use super::root::AppView;
 
 /// Width of the dialog.
-const DIALOG_WIDTH: f32 = 560.0;
-/// Max height of the scrollable code view.
-const CODE_MAX_HEIGHT: f32 = 340.0;
+const DIALOG_WIDTH: f32 = 640.0;
+/// Height of the code editor, the same for every language.
+const CODE_HEIGHT: f32 = 300.0;
+/// How long the Copy button says "Copied" after a copy.
+const COPIED_FEEDBACK: Duration = Duration::from_millis(1500);
 
 /// Every language the dialog offers, in the order the `SegmentedControl` shows them, with their
-/// display labels.
-const LANGUAGES: [(SnippetLanguage, &str); 3] = [
-    (SnippetLanguage::Curl, "cURL"),
-    (SnippetLanguage::JsFetch, "fetch"),
-    (SnippetLanguage::PythonRequests, "Python"),
+/// display labels and the editor's highlight language.
+const LANGUAGES: [(SnippetLanguage, &str, &str); 3] = [
+    (SnippetLanguage::Curl, "cURL", "bash"),
+    (SnippetLanguage::JsFetch, "fetch", "javascript"),
+    (SnippetLanguage::PythonRequests, "Python", "python"),
 ];
 
 impl AppView {
@@ -47,13 +57,18 @@ impl AppView {
             return;
         };
         self.snippet_language = SnippetLanguage::Curl;
+        self.snippet_editor = None;
+        self.snippet_copied = false;
         cx.notify();
 
         let resolved = preview.resolved;
         let weak = cx.weak_entity();
+        let focus = cx.focus_handle();
+        let dialog_focus = focus.clone();
         window.open_dialog(cx, move |dialog, window, _cx| {
             let weak = weak.clone();
             let resolved = resolved.clone();
+            let focus = dialog_focus.clone();
             framed_dialog(
                 dialog,
                 DIALOG_WIDTH,
@@ -61,7 +76,13 @@ impl AppView {
                 ModalPlacement::DEFAULT,
                 window,
                 move |window, cx| {
+                    let key_weak = weak.clone();
+                    let key_resolved = resolved.clone();
                     v_flex()
+                        .track_focus(&focus)
+                        .on_key_down(move |event, _window, cx| {
+                            on_dialog_key(&key_weak, &key_resolved, event, cx);
+                        })
                         .child(modal_header_with_icon(
                             gpui_kit::assets::IconName::CodeXml,
                             cx.palette().accent_text,
@@ -74,32 +95,120 @@ impl AppView {
                             window,
                             cx,
                         )))
-                        .child(render_snippet_footer(weak.clone(), resolved.clone(), cx))
+                        .child(modal_hints(
+                            [
+                                (copy_key_hint(), t!("request.snippet.hint_copy")),
+                                ("← →".to_string(), t!("request.snippet.hint_language")),
+                                ("Esc".to_string(), t!("shell.palette.hint_close")),
+                            ],
+                            cx,
+                        ))
                         .into_any_element()
                 },
             )
         });
+        // After the dialog took the focus for itself, so the keys above work at once.
+        window.defer(cx, move |window, cx| window.focus(&focus, cx));
+    }
+
+    /// Copies the snippet of `resolved` in the language shown, and lets the Copy button say
+    /// "Copied" for a moment.
+    fn copy_snippet(&mut self, resolved: &ResolvedRequest, cx: &mut Context<Self>) {
+        let text = render_snippet(resolved, self.snippet_language);
+        cx.write_to_clipboard(ClipboardItem::new_string(text));
+        self.snippet_copied = true;
+        cx.notify();
+        cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(COPIED_FEEDBACK).await;
+            let _ = this.update(cx, |view, cx| {
+                if view.snippet_copied {
+                    view.snippet_copied = false;
+                    cx.notify();
+                }
+            });
+        })
+        .detach();
     }
 }
 
-/// Renders the language switch and the code view.
+/// `"Ctrl C"` (`"Cmd C"` on macOS): the key cap of the copy hint.
+fn copy_key_hint() -> String {
+    if cfg!(target_os = "macos") {
+        "Cmd C".to_string()
+    } else {
+        "Ctrl C".to_string()
+    }
+}
+
+/// The keys of the dialog while it has the focus (not the editor): Left and Right change the
+/// language, Ctrl+C (Cmd+C on macOS) copies the whole snippet.
+fn on_dialog_key(
+    weak: &WeakEntity<AppView>,
+    resolved: &ResolvedRequest,
+    event: &KeyDownEvent,
+    cx: &mut App,
+) {
+    let keystroke = &event.keystroke;
+    let modifiers = keystroke.modifiers;
+    let copy_modifier = if cfg!(target_os = "macos") {
+        modifiers.platform && !modifiers.control
+    } else {
+        modifiers.control && !modifiers.platform
+    };
+    let plain = !modifiers.control && !modifiers.alt && !modifiers.platform && !modifiers.shift;
+    let step: isize = match keystroke.key.as_str() {
+        "left" if plain => -1,
+        "right" if plain => 1,
+        "c" if copy_modifier && !modifiers.alt && !modifiers.shift => {
+            cx.stop_propagation();
+            let resolved = resolved.clone();
+            let _ = weak.update(cx, |view, cx| view.copy_snippet(&resolved, cx));
+            return;
+        }
+        _ => return,
+    };
+    cx.stop_propagation();
+    let _ = weak.update(cx, |view, cx| {
+        let current = LANGUAGES
+            .iter()
+            .position(|(language, _, _)| *language == view.snippet_language)
+            .unwrap_or(0) as isize;
+        let next = (current + step).rem_euclid(LANGUAGES.len() as isize) as usize;
+        view.snippet_language = LANGUAGES[next].0;
+        cx.notify();
+    });
+}
+
+/// Renders the language switch, the Copy button and the code view.
 fn render_snippet_body(
     weak: WeakEntity<AppView>,
     resolved: &ResolvedRequest,
-    _window: &mut Window,
+    window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
     let Some(view) = weak.upgrade() else {
         return div().into_any_element();
     };
     let language = view.read(cx).snippet_language;
-    let palette = cx.palette();
-    let mono_font = cx.theme().mono_font_family.clone();
-    let mono_size = cx.theme().mono_font_size;
-    let text = render_snippet(resolved, language);
+    let copied = view.read(cx).snippet_copied;
+    // The editor is rebuilt only when the language changes, never on a plain render.
+    let editor = view.update(cx, |view, cx| match &view.snippet_editor {
+        Some((shown, editor)) if *shown == language => editor.clone(),
+        _ => {
+            let highlight = LANGUAGES
+                .iter()
+                .find(|(candidate, _, _)| *candidate == language)
+                .map_or("text", |(_, _, highlight)| *highlight);
+            let text = render_snippet(resolved, language);
+            let editor = cx.new(|cx| EditorState::new(window, cx).language(highlight));
+            editor.update(cx, |state, cx| state.set_value(text, window, cx));
+            view.snippet_editor = Some((language, editor.clone()));
+            editor
+        }
+    });
 
     let mut selector = SegmentedControl::new("snippet-language");
-    for (candidate, label) in LANGUAGES {
+    for (candidate, label, _) in LANGUAGES {
         let select_weak = weak.clone();
         selector = selector.item(
             SegmentedItem::new(label)
@@ -113,48 +222,33 @@ fn render_snippet_body(
         );
     }
 
-    v_flex()
-        .gap(px(10.0))
-        .child(selector)
-        .child(
-            div()
-                .id("snippet-code")
-                .max_h(px(CODE_MAX_HEIGHT))
-                .overflow_y_scroll()
-                .p(px(12.0))
-                .rounded(px(RADIUS_MD))
-                .border_1()
-                .border_color(palette.border)
-                .bg(palette.raised)
-                .child(
-                    v_flex()
-                        .font_family(mono_font)
-                        .text_size(mono_size)
-                        .children(text.lines().map(|line| div().child(line.to_string()))),
-                ),
-        )
-        .into_any_element()
-}
+    let copy_weak = weak.clone();
+    let copy_resolved = resolved.clone();
+    let copy_label = if copied {
+        t!("request.snippet.copied")
+    } else {
+        t!("common.copy")
+    };
+    let copy = SecondaryButton::new("snippet-copy", copy_label)
+        .icon(if copied {
+            IconName::Check
+        } else {
+            IconName::Copy
+        })
+        .on_click(move |_, _, cx| {
+            let _ = copy_weak.update(cx, |view, cx| view.copy_snippet(&copy_resolved, cx));
+        });
 
-/// The footer's "Copy" button: recomputes the snippet for whichever language is currently
-/// selected at click time, so it always copies exactly what is on screen.
-fn render_snippet_footer(
-    weak: WeakEntity<AppView>,
-    resolved: ResolvedRequest,
-    cx: &App,
-) -> AnyElement {
-    modal_footer(cx)
+    v_flex()
+        .gap(px(12.0))
         .child(
-            IconButton::new("snippet-copy", IconName::Copy)
-                .tooltip(t!("common.copy"))
-                .on_click(move |_, _, cx| {
-                    let Some(view) = weak.upgrade() else {
-                        return;
-                    };
-                    let language = view.read(cx).snippet_language;
-                    let text = render_snippet(&resolved, language);
-                    cx.write_to_clipboard(ClipboardItem::new_string(text));
-                }),
+            h_flex()
+                .items_center()
+                .gap(px(10.0))
+                .child(selector)
+                .child(div().flex_1())
+                .child(copy),
         )
+        .child(CodeEditor::new(&editor).readonly(true).h(px(CODE_HEIGHT)))
         .into_any_element()
 }

@@ -11,7 +11,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use gpui_kit::component::input::{InputEvent, InputState, TextareaState};
+use gpui_kit::component::input::{EditorState, InputEvent, InputState, TextareaState};
 use gpui_kit::component::menu::ContextMenuExt;
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::tree::TreeState;
@@ -191,6 +191,11 @@ pub struct AppView {
     /// dialog) because it must survive the dialog's `content` closure being re-invoked on every
     /// repaint: see `views/snippet_dialog.rs`'s module doc comment.
     pub(crate) snippet_language: SnippetLanguage,
+    /// The Code dialog's read-only editor, and the language it shows: rebuilt only when the
+    /// language changes, so the dialog's renders cost nothing.
+    pub(crate) snippet_editor: Option<(SnippetLanguage, Entity<EditorState>)>,
+    /// Set by the Code dialog's Copy button and cleared a moment later, while it says "Copied".
+    pub(crate) snippet_copied: bool,
     /// The `gpui` entities behind whichever load test tab is active: its config panel's numeric
     /// inputs and target picker. See `views/load_test/config_panel.rs`.
     pub(crate) load_test_entities: crate::views::load_test::LoadTestEntities,
@@ -434,6 +439,8 @@ impl AppView {
             sidebar_filter_pre_expansion: None,
             openapi_collections: Vec::new(),
             snippet_language: SnippetLanguage::Curl,
+            snippet_editor: None,
+            snippet_copied: false,
             load_test_entities: crate::views::load_test::LoadTestEntities::default(),
             load_runs: HashMap::new(),
             latency_hover: None,

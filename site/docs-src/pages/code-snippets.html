@@ -13,8 +13,8 @@ description: Turn any Postino request into a curl command, a JavaScript fetch ca
 <ol class="steps">
     <li>Open the request.</li>
     <li>Click <strong>Code</strong>, at the right of the request editor's tabs.</li>
-    <li>Pick <strong>cURL</strong>, <strong>fetch</strong> or <strong>Python</strong>.</li>
-    <li>Click <strong>Copy</strong>. What is copied is exactly what the dialog shows.</li>
+    <li>Pick <strong>cURL</strong>, <strong>fetch</strong> or <strong>Python</strong>, or press <kbd>←</kbd> and <kbd>→</kbd>. The code is highlighted like the request editor's.</li>
+    <li>Click <strong>Copy</strong>, or press <kbd>Ctrl</kbd> <kbd>C</kbd> (<kbd>⌘</kbd> <kbd>C</kbd> on macOS). What is copied is exactly what the dialog shows, and the button says <strong>Copied</strong> for a moment. To copy only part of it, select it in the code first.</li>
 </ol>
 
 <h2>What goes into the snippet</h2>
@@ -54,7 +54,7 @@ curl \
   --data-raw '{ "name": "Ada" }'
 ```
 <h3>JavaScript fetch</h3>
-<p>A form body becomes <code>new URLSearchParams({...})</code>.</p>
+<p>A JSON object or array becomes an object literal inside <code>JSON.stringify(...)</code>, and a form body <code>new URLSearchParams({...})</code>. A body that is not valid JSON, for example because it still has a <code>{{name}}</code> marker, stays a single string.</p>
 ```js
 await fetch("https://api.example.com/users", {
   method: "POST",
@@ -62,11 +62,11 @@ await fetch("https://api.example.com/users", {
     "Authorization": "Bearer abc123",
     "Content-Type": "application/json",
   },
-  body: "{ \"name\": \"Ada\" }",
+  body: JSON.stringify({ name: "Ada" }),
 });
 ```
 <h3>Python requests</h3>
-<p>A form body becomes a <code>dict</code> passed as <code>data</code>.</p>
+<p>A JSON object or array becomes a <code>dict</code> or <code>list</code> passed as <code>json</code>, with <code>True</code>, <code>False</code> and <code>None</code>. A form body becomes a <code>dict</code> passed as <code>data</code>, and any other body a string passed as <code>data</code>.</p>
 ```text
 import requests
 
@@ -77,7 +77,7 @@ response = requests.request(
         "Authorization": "Bearer abc123",
         "Content-Type": "application/json",
     },
-    data="{ \"name\": \"Ada\" }",
+    json={"name": "Ada"},
 )
 ```
 <div class="callout note">

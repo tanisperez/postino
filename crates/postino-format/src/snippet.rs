@@ -281,7 +281,13 @@ fn render_js_fetch(request: &ResolvedRequest) -> String {
     match shape {
         BodyShape::None => {}
         BodyShape::Multipart(_) => out.push_str("  body: form,\n"),
-        BodyShape::Raw(text) => out.push_str(&format!("  body: {},\n", js_string(&text))),
+        BodyShape::Raw(text) => match json_container(&text) {
+            Some(value) => out.push_str(&format!(
+                "  body: JSON.stringify({}),\n",
+                literal(&value, Literal::JavaScript, 1)
+            )),
+            None => out.push_str(&format!("  body: {},\n", js_string(&text))),
+        },
         BodyShape::Form(fields) => {
             out.push_str("  body: new URLSearchParams({\n");
             for (key, value) in fields {
@@ -305,8 +311,9 @@ fn js_string(input: &str) -> String {
 
 /// Renders `request` as Python using the `requests` library.
 ///
-/// `headers` is only emitted when non-empty; `data` is only emitted when the request has a body.
-/// A form body becomes a `dict` of its fields; any other body becomes a single string.
+/// `headers` is only emitted when non-empty; the body only when the request has one. A form body
+/// becomes a `dict` of its fields, a JSON object or array a `json=` literal, and any other body a
+/// single string.
 fn render_python_requests(request: &ResolvedRequest) -> String {
     let mut out = String::from("import requests\n\n");
     out.push_str("response = requests.request(\n");
@@ -329,7 +336,13 @@ fn render_python_requests(request: &ResolvedRequest) -> String {
     }
     match body_shape(request) {
         BodyShape::None => {}
-        BodyShape::Raw(text) => out.push_str(&format!("    data={},\n", python_string(&text))),
+        BodyShape::Raw(text) => match json_container(&text) {
+            Some(value) => out.push_str(&format!(
+                "    json={},\n",
+                literal(&value, Literal::Python, 1)
+            )),
+            None => out.push_str(&format!("    data={},\n", python_string(&text))),
+        },
         BodyShape::Multipart(parts) => {
             // `files` makes `requests` send multipart, also for text fields.
             out.push_str("    files={\n");
@@ -359,6 +372,116 @@ fn render_python_requests(request: &ResolvedRequest) -> String {
     }
     out.push_str(")\n");
     out
+}
+
+/// A body that is a JSON object or array, parsed, so the JavaScript and Python snippets can write
+/// it as a literal of their language instead of one escaped string. `None` for any other body,
+/// such as one with an unresolved `{{name}}` marker that leaves it invalid JSON.
+fn json_container(text: &str) -> Option<serde_json::Value> {
+    serde_json::from_str::<serde_json::Value>(text)
+        .ok()
+        .filter(|value| value.is_object() || value.is_array())
+}
+
+/// The language a [`literal`] is written in.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Literal {
+    /// A JavaScript object literal: bare keys where they are identifiers, `true`, `null`.
+    JavaScript,
+    /// A Python `dict` literal: quoted keys, `True`, `None`.
+    Python,
+}
+
+/// The longest container written on one line, as `["a", "b"]`, when it holds no other container.
+const INLINE_LITERAL_WIDTH: usize = 60;
+
+/// Writes `value` as a literal of `language`, with nested lines indented by four spaces for
+/// Python and two for JavaScript, starting at nesting `depth`. A short container of plain values
+/// stays on one line.
+fn literal(value: &serde_json::Value, language: Literal, depth: usize) -> String {
+    use serde_json::Value;
+    let string = |text: &str| match language {
+        Literal::JavaScript => js_string(text),
+        Literal::Python => python_string(text),
+    };
+    match value {
+        Value::Null => match language {
+            Literal::JavaScript => "null".to_string(),
+            Literal::Python => "None".to_string(),
+        },
+        Value::Bool(flag) => match (language, flag) {
+            (Literal::JavaScript, _) => flag.to_string(),
+            (Literal::Python, true) => "True".to_string(),
+            (Literal::Python, false) => "False".to_string(),
+        },
+        Value::Number(number) => number.to_string(),
+        Value::String(text) => string(text),
+        Value::Array(items) => {
+            let entries: Vec<String> = items
+                .iter()
+                .map(|item| literal(item, language, depth + 1))
+                .collect();
+            container("[", "]", entries, items.iter(), language, depth)
+        }
+        Value::Object(map) => {
+            let entries: Vec<String> = map
+                .iter()
+                .map(|(key, item)| {
+                    let key = match language {
+                        Literal::JavaScript if is_js_identifier(key) => key.clone(),
+                        _ => string(key),
+                    };
+                    format!("{key}: {}", literal(item, language, depth + 1))
+                })
+                .collect();
+            container("{", "}", entries, map.values(), language, depth)
+        }
+    }
+}
+
+/// Joins the `entries` of a container between `open` and `close`: on one line when it is short and
+/// holds no other container, one entry per line otherwise.
+fn container<'a>(
+    open: &str,
+    close: &str,
+    entries: Vec<String>,
+    mut items: impl Iterator<Item = &'a serde_json::Value>,
+    language: Literal,
+    depth: usize,
+) -> String {
+    if entries.is_empty() {
+        return format!("{open}{close}");
+    }
+    let flat = !items.any(|item| item.is_object() || item.is_array());
+    let one_line = entries.join(", ");
+    if flat && one_line.len() <= INLINE_LITERAL_WIDTH {
+        let pad = if open == "{" && language == Literal::JavaScript {
+            " "
+        } else {
+            ""
+        };
+        return format!("{open}{pad}{one_line}{pad}{close}");
+    }
+    let unit = match language {
+        Literal::JavaScript => "  ",
+        Literal::Python => "    ",
+    };
+    let inner = unit.repeat(depth + 1);
+    let outer = unit.repeat(depth);
+    let lines: String = entries
+        .iter()
+        .map(|entry| format!("{inner}{entry},\n"))
+        .collect();
+    format!("{open}\n{lines}{outer}{close}")
+}
+
+/// Whether `key` can be written bare as a JavaScript object key.
+fn is_js_identifier(key: &str) -> bool {
+    let mut chars = key.chars();
+    chars
+        .next()
+        .is_some_and(|first| first.is_ascii_alphabetic() || first == '_' || first == '$')
+        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
 }
 
 /// Renders `input` as a double-quoted Python string literal.
@@ -551,7 +674,7 @@ mod tests {
         let snippet = render_snippet(&json_post_request(), SnippetLanguage::JsFetch);
         assert_eq!(
             snippet,
-            "await fetch(\"https://example.com/users\", {\n  method: \"POST\",\n  headers: {\n    \"Content-Type\": \"application/json\",\n  },\n  body: \"{\\\"id\\\": 1}\",\n});"
+            "await fetch(\"https://example.com/users\", {\n  method: \"POST\",\n  headers: {\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({ id: 1 }),\n});"
         );
     }
 
@@ -614,7 +737,7 @@ mod tests {
         let snippet = render_snippet(&json_post_request(), SnippetLanguage::PythonRequests);
         assert_eq!(
             snippet,
-            "import requests\n\nresponse = requests.request(\n    \"POST\",\n    \"https://example.com/users\",\n    headers={\n        \"Content-Type\": \"application/json\",\n    },\n    data=\"{\\\"id\\\": 1}\",\n)\n"
+            "import requests\n\nresponse = requests.request(\n    \"POST\",\n    \"https://example.com/users\",\n    headers={\n        \"Content-Type\": \"application/json\",\n    },\n    json={\"id\": 1},\n)\n"
         );
     }
 
@@ -635,6 +758,50 @@ mod tests {
                 ("first name".to_string(), "Jane Doe".to_string()),
                 ("note".to_string(), "100%".to_string()),
             ]
+        );
+    }
+
+    fn nested_json_request() -> ResolvedRequest {
+        let mut request = json_post_request();
+        request.body = ResolvedBody::Bytes(
+            br#"{"name": "Ada", "active": true, "zip": null, "tags": ["a", "b"], "address": {"city": "A Coru\u00f1a", "zip": null}, "my-key": 1}"#
+                .to_vec(),
+        );
+        request
+    }
+
+    #[test]
+    fn fetch_writes_a_json_body_as_an_object_literal() {
+        let js = render_snippet(&nested_json_request(), SnippetLanguage::JsFetch);
+        assert!(
+            js.contains(
+                "  body: JSON.stringify({\n    name: \"Ada\",\n    active: true,\n    zip: null,\n    tags: [\"a\", \"b\"],\n    address: { city: \"A Coruña\", zip: null },\n    \"my-key\": 1,\n  }),\n"
+            ),
+            "{js}"
+        );
+    }
+
+    #[test]
+    fn python_writes_a_json_body_as_a_dict_literal() {
+        let python = render_snippet(&nested_json_request(), SnippetLanguage::PythonRequests);
+        assert!(
+            python.contains(
+                "    json={\n        \"name\": \"Ada\",\n        \"active\": True,\n        \"zip\": None,\n        \"tags\": [\"a\", \"b\"],\n        \"address\": {\"city\": \"A Coruña\", \"zip\": None},\n        \"my-key\": 1,\n    },\n"
+            ),
+            "{python}"
+        );
+    }
+
+    #[test]
+    fn a_body_that_is_not_json_stays_a_string() {
+        let mut request = json_post_request();
+        request.body = ResolvedBody::Bytes(br#"{"id": {{id}}}"#.to_vec());
+        let js = render_snippet(&request, SnippetLanguage::JsFetch);
+        assert!(js.contains("  body: \"{\\\"id\\\": {{id}}}\",\n"), "{js}");
+        let python = render_snippet(&request, SnippetLanguage::PythonRequests);
+        assert!(
+            python.contains("    data=\"{\\\"id\\\": {{id}}}\",\n"),
+            "{python}"
         );
     }
 }

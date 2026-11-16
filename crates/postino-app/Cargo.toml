@@ -13,12 +13,18 @@ path = "src/main.rs"
 [dependencies]
 anyhow = { workspace = true }
 lsp-types = { workspace = true }
-# Only the tree-sitter grammars the request/response/script editors actually highlight:
-# JSON and XML bodies, JavaScript pre/post scripts. "tree-sitter-html" is the closest available
+# Only the tree-sitter grammars the editors actually highlight: JSON and XML bodies, JavaScript
+# pre/post scripts, and the cURL (bash), fetch and Python snippets of the Code dialog.
+# "tree-sitter-html" is the closest available
 # grammar to XML in this version of gpui-component (there is no dedicated XML grammar), used as a
 # readable approximation for `::: body xml`. Both features pull in the base "tree-sitter" feature,
 # which bundles the JSON grammar, so it is not listed again here.
-gpui-kit = { workspace = true, features = ["tree-sitter-javascript", "tree-sitter-html"] }
+gpui-kit = { workspace = true, features = [
+    "tree-sitter-javascript",
+    "tree-sitter-html",
+    "tree-sitter-bash",
+    "tree-sitter-python",
+] }
 chrono = { workspace = true }
 dirs = { workspace = true }
 dunce = { workspace = true }

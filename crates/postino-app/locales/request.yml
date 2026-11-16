@@ -195,3 +195,18 @@ _version: 2
   es: "Ocultar"
   gl: "Ocultar"
   it: "Nascondi"
+"request.snippet.copied":
+  en: "Copied"
+  es: "Copiado"
+  gl: "Copiado"
+  it: "Copiato"
+"request.snippet.hint_copy":
+  en: "copy"
+  es: "copiar"
+  gl: "copiar"
+  it: "copia"
+"request.snippet.hint_language":
+  en: "change language"
+  es: "cambiar de lenguaje"
+  gl: "cambiar de linguaxe"
+  it: "cambia linguaggio"
