@@ -219,8 +219,8 @@ Galician, Italian.
   translated frame), HTTP literals (methods, header names, MIME types), keyboard shortcut labels,
   the `POSTINO_OPEN=components` gallery and the `--help`/`--version` output.
 - Numbers shown to the user go through `state::number`, which is `telaio_app::number`
-  (`format_integer`, `format_decimal`, `format_signed_decimal`, `icu_decimal` with CLDR data,
-  formatter cached per language). Never in
+  (`format_integer`, `format_decimal`, `format_signed_decimal`: CLDR data through `icu_decimal`
+  in English, formatter cached; `1.234,5` in Spanish, Galician and Italian, a fixed rule). Never in
   logs, snippets, run history JSON or the number inputs the user types in.
 - Tests never call `rust_i18n::set_locale`, the locale is process wide and tests run in parallel.
   Use `t!("key", locale = "es")`. `state/locale.rs` tests (Postino's tables; telaio-app checks its own
