@@ -20,7 +20,7 @@ use crate::state;
 use crate::state::launcher::{LauncherModel, RecentRow};
 use crate::state::locale::plural;
 use crate::state::navigation::NavSection;
-use crate::theme::metrics::{RADIUS_MD, WELCOME_ROW_HEIGHT};
+use crate::theme::metrics::{RADIUS_MD, WELCOME_ROW_HEIGHT, WELCOME_TOP_PADDING_NARROW};
 use crate::theme::palette::PostinoColors;
 use crate::theme::{Palette, PaletteExt};
 
@@ -31,8 +31,6 @@ use super::welcome::help_links;
 
 /// Width of the launcher's column, as in the design.
 const COLUMN_WIDTH: f32 = 580.0;
-/// Space above the column.
-const TOP_PADDING: f32 = 72.0;
 /// Height of a Recent row.
 const RECENT_ROW_HEIGHT: f32 = 32.0;
 /// Width of the method column of a Recent row.
@@ -104,7 +102,8 @@ impl AppView {
         let mut column = v_flex()
             .w_full()
             .max_w(px(COLUMN_WIDTH))
-            .pt(px(TOP_PADDING))
+            // The launcher is always next to the sidebar: the welcome tab's spacing there.
+            .pt(px(WELCOME_TOP_PADDING_NARROW))
             .pb(px(32.0))
             .px(px(16.0))
             .gap(px(26.0))
