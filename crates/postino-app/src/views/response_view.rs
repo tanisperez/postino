@@ -323,7 +323,6 @@ impl AppView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let palette = cx.palette();
         let generation = self.response_generations.get(tab_id);
         let indent = self.state.settings.json_indent;
         // Scoped so the borrow of `self.responses` ends before `self.response_editor` (below)
@@ -332,12 +331,10 @@ impl AppView {
             let Some(result) = self.responses.get(tab_id) else {
                 return div().into_any_element();
             };
+            // No response came back (the send failed): the error banner above says why, and
+            // there is no body to describe.
             let Some(response) = &result.response else {
-                return div()
-                    .p_2()
-                    .text_color(palette.fg_muted)
-                    .child(t!("response.body.empty"))
-                    .into_any_element();
+                return div().into_any_element();
             };
             self.response_editor.texts.shown(
                 tab_id,

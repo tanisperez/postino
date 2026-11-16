@@ -20,11 +20,6 @@ _version: 2
   es: "Consola"
   gl: "Consola"
   it: "Console"
-"response.body.empty":
-  en: "No response body."
-  es: "La respuesta no tiene cuerpo."
-  gl: "A resposta non ten corpo."
-  it: "La risposta non ha corpo."
 "response.body.pretty":
   en: "Pretty"
   es: "Formateado"
