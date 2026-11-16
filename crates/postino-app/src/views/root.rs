@@ -11,7 +11,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use gpui_kit::component::input::{EditorState, InputEvent, InputState, TextareaState};
+use gpui_kit::component::input::{InputEvent, InputState, TextareaState};
 use gpui_kit::component::menu::ContextMenuExt;
 use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::tree::TreeState;
@@ -193,7 +193,7 @@ pub struct AppView {
     pub(crate) snippet_language: SnippetLanguage,
     /// The Code dialog's read-only editor, and the language it shows: rebuilt only when the
     /// language changes, so the dialog's renders cost nothing.
-    pub(crate) snippet_editor: Option<(SnippetLanguage, Entity<EditorState>)>,
+    pub(crate) snippet_editor: Option<(SnippetLanguage, Entity<telaio_editor::EditorView>)>,
     /// Set by the Code dialog's Copy button and cleared a moment later, while it says "Copied".
     pub(crate) snippet_copied: bool,
     /// The `gpui` entities behind whichever load test tab is active: its config panel's numeric
@@ -1808,7 +1808,7 @@ impl AppView {
                 .child(
                     resizable_panel()
                         .size(px(420.0))
-                        .child(self.render_response_view(window, cx)),
+                        .child(self.render_response_view(cx)),
                 )
                 .into_any_element()
         };

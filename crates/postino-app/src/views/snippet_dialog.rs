@@ -12,7 +12,6 @@
 
 use std::time::Duration;
 
-use gpui_kit::component::input::EditorState;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -22,7 +21,9 @@ use postino_core::ResolvedRequest;
 use postino_format::snippet::{SnippetLanguage, render_snippet};
 
 use crate::theme::PaletteExt;
-use telaio_ui::components::{CodeEditor, SecondaryButton};
+use crate::theme::metrics::RADIUS_MD;
+use telaio_editor::{EditorDisplay, EditorState, EditorView, Language};
+use telaio_ui::components::SecondaryButton;
 
 use super::components::{
     ModalPlacement, SegmentedControl, SegmentedItem, framed_dialog, modal_body,
@@ -39,10 +40,10 @@ const COPIED_FEEDBACK: Duration = Duration::from_millis(1500);
 
 /// Every language the dialog offers, in the order the `SegmentedControl` shows them, with their
 /// display labels and the editor's highlight language.
-const LANGUAGES: [(SnippetLanguage, &str, &str); 3] = [
-    (SnippetLanguage::Curl, "cURL", "bash"),
-    (SnippetLanguage::JsFetch, "fetch", "javascript"),
-    (SnippetLanguage::PythonRequests, "Python", "python"),
+const LANGUAGES: [(SnippetLanguage, &str, Language); 3] = [
+    (SnippetLanguage::Curl, "cURL", Language::Shell),
+    (SnippetLanguage::JsFetch, "fetch", Language::JavaScript),
+    (SnippetLanguage::PythonRequests, "Python", Language::Python),
 ];
 
 impl AppView {
@@ -75,7 +76,7 @@ impl AppView {
                 None,
                 ModalPlacement::DEFAULT,
                 window,
-                move |window, cx| {
+                move |_window, cx| {
                     let key_weak = weak.clone();
                     let key_resolved = resolved.clone();
                     v_flex()
@@ -89,12 +90,7 @@ impl AppView {
                             t!("common.code"),
                             cx,
                         ))
-                        .child(modal_body().child(render_snippet_body(
-                            weak.clone(),
-                            &resolved,
-                            window,
-                            cx,
-                        )))
+                        .child(modal_body().child(render_snippet_body(weak.clone(), &resolved, cx)))
                         .child(modal_hints(
                             [
                                 (copy_key_hint(), t!("request.snippet.hint_copy")),
@@ -183,12 +179,12 @@ fn on_dialog_key(
 fn render_snippet_body(
     weak: WeakEntity<AppView>,
     resolved: &ResolvedRequest,
-    window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
     let Some(view) = weak.upgrade() else {
         return div().into_any_element();
     };
+    let palette = cx.palette();
     let language = view.read(cx).snippet_language;
     let copied = view.read(cx).snippet_copied;
     // The editor is rebuilt only when the language changes, never on a plain render.
@@ -198,10 +194,24 @@ fn render_snippet_body(
             let highlight = LANGUAGES
                 .iter()
                 .find(|(candidate, _, _)| *candidate == language)
-                .map_or("text", |(_, _, highlight)| *highlight);
+                .map_or(Language::PlainText, |(_, _, highlight)| *highlight);
             let text = render_snippet(resolved, language);
-            let editor = cx.new(|cx| EditorState::new(window, cx).language(highlight));
-            editor.update(cx, |state, cx| state.set_value(text, window, cx));
+            let editor = cx.new(|cx| {
+                let mut editor = EditorView::new(EditorState::with_text(&text, highlight), cx);
+                editor.set_read_only(true, cx);
+                editor.set_display(
+                    EditorDisplay {
+                        minimap: false,
+                        current_line: false,
+                        folding: false,
+                        find: false,
+                        goto_line: false,
+                        ..EditorDisplay::default()
+                    },
+                    cx,
+                );
+                editor
+            });
             view.snippet_editor = Some((language, editor.clone()));
             editor
         }
@@ -249,6 +259,15 @@ fn render_snippet_body(
                 .child(div().flex_1())
                 .child(copy),
         )
-        .child(CodeEditor::new(&editor).readonly(true).h(px(CODE_HEIGHT)))
+        .child(
+            div()
+                .h(px(CODE_HEIGHT))
+                .border_1()
+                .border_color(palette.border)
+                .rounded(px(RADIUS_MD))
+                .bg(palette.raised)
+                .overflow_hidden()
+                .child(editor),
+        )
         .into_any_element()
 }

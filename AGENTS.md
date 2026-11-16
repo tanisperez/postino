@@ -102,7 +102,9 @@ postino-app ──> postino-load ──> postino-runner ──> postino-script �
 ```
 
 From telaio: `postino-app` uses `telaio-ui` (design system and standard components),
-`telaio-update` (the in-app updater) and `telaio-git` (drives the installed `git` executable:
+`telaio-editor` and `telaio-syntax` (ted's text editor, for the response body and the code
+snippet, #258; the grammars Postino highlights are features of `telaio-syntax` in the workspace
+`Cargo.toml`), `telaio-update` (the in-app updater) and `telaio-git` (drives the installed `git` executable:
 detection, discovery, status, stage, commit, branches, sync, log, diffs and shallow clones; blocking, no `gpui`,
 shared with ted). Postino keeps its own git pieces in the app: `is_secret_file` (`*.local.env`)
 in `state/git_sync.rs` and the `postino-auto:` prefix of automatic stashes in
@@ -248,10 +250,11 @@ Found in the 2026-09-30 investigation (#32, #33, #34). Keep these rules in every
 - Test with big data, not only the small requests of the sample suite: a 5 MB JSON response, or the 15 MB
   `responses/large-15mb` of the sample suite (the response body limit is a setting,
   20 MB by default, `postino_http::DEFAULT_MAX_RESPONSE_SIZE`), measuring main thread CPU while idle and while
-  typing, and RSS. Since gpui-kit 0.8.0 a 15 MB JSON body costs about 460 MB of extra RSS with
-  `MALLOC_ARENA_MAX=1`, and usually about 700 MB with the default glibc malloc, whose arenas keep
-  the freed memory fragmented. gpui-kit 0.7.0 cost about 66 MB less in the editor; measure with
-  `MALLOC_ARENA_MAX=1` to compare builds, since the default allocator varies between runs.
+  typing, and RSS. Since the response body moved to telaio's editor (#258, 2026-11-16), a 15 MB
+  JSON body costs about 56 MB of extra RSS in release with `MALLOC_ARENA_MAX=1` (the body, its
+  pretty text and the rope), down from about 460 MB with gpui-kit's `InputState`; bodies over
+  4 MB are not highlighted. The request body and the scripts still use gpui-kit's editor. Measure
+  with `MALLOC_ARENA_MAX=1` to compare builds, since the default allocator varies between runs.
 - Expected memory on Linux: about 115 MB RSS at startup in release, of which only about 22 MB is
   the app's own heap; the rest is shared libraries (Mesa, LLVM) and the binary itself. gpui also
   allocates GPU memory that is not in RSS but lives in system RAM on integrated GPUs: the

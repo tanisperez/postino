@@ -117,6 +117,8 @@ fn main() -> ExitCode {
     app.on_open_urls(move |urls| url_queue.push(state::launch::paths_from_urls(&urls)));
     app.run(move |cx| {
         window::init(cx, &IDENTITY);
+        // The editor's own bindings first, so Postino's below win where both bind a key.
+        telaio_editor::init(cx);
         bind_keys(cx);
         theme::install(cx, &settings);
 

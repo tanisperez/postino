@@ -26,11 +26,14 @@ description: The Postino response pane: what will be sent, status, time and size
 
 <h2>Body</h2>
 <ul>
-    <li><strong>Pretty</strong> shows a JSON body indented and highlighted, with the <a href="settings.html">JSON indentation</a> of Settings, two spaces by default. Pretty printing works on bodies of any size and is computed once per response, not on every redraw.</li>
+    <li><strong>Pretty</strong> shows a JSON body indented and highlighted, with the <a href="settings.html">JSON indentation</a> of Settings, two spaces by default. Pretty printing works on bodies of any size and is computed once per response, not on every redraw. Bodies over 4 MB are shown without colors.</li>
     <li><strong>Raw</strong> shows the body exactly as received. A body that is not JSON is always shown raw.</li>
     <li>A body that is not valid UTF-8, such as an image, is shown as <code>&lt;N bytes, not valid UTF-8&gt;</code>. There is no hex or image viewer.</li>
     <li>The <strong>copy</strong> button copies the whole body to the clipboard.</li>
-    <li>The <strong>search</strong> button opens a find bar inside the body, to jump between matches in long responses.</li>
+    <li>The <strong>search</strong> button, or <kbd>Ctrl</kbd> <kbd>F</kbd> (<kbd>⌘</kbd> <kbd>F</kbd> on macOS) in the body, opens a find bar inside the body, to jump between matches in long responses. It can match case, whole words or a regular expression, and search only in the selected lines (see <a href="keyboard-shortcuts.html#response-body">Keyboard shortcuts</a>).</li>
+    <li>Point at the line numbers to see a chevron next to each JSON object or array: click it to fold the block into one line, and again to unfold it.</li>
+    <li>Long lines stay on one line and scroll sideways. <kbd>Alt</kbd> <kbd>Z</kbd> wraps them, and again unwraps them.</li>
+    <li>Right click the body for <strong>Copy</strong> and <strong>Select all</strong>.</li>
 </ul>
 <p>The body is read only. Responses are kept in memory for the open tab and are not saved to disk.</p>
 

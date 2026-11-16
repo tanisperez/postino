@@ -1,21 +1,21 @@
 //! The response viewer panel: status, time and size, the Body/Headers/Tests/Console tabs, and a
 //! warnings strip for missing variables and script errors.
 //!
-//! The response body is the one field with a persistent `gpui` entity of its own (a read-only
-//! [`EditorState`], see [`ResponseEditorEntities`]), so it can show line numbers and a working
-//! find bar; every other field is read-only, rendered straight from the
+//! The response body is the one field with a persistent `gpui` entity of its own (telaio's
+//! read only [`EditorView`], see [`ResponseEditorEntities`]), so it can show line numbers, fold
+//! JSON blocks and find; every other field is read-only, rendered straight from the
 //! [`postino_runner::RunResult`] of the last send.
 
 use std::sync::Arc;
 
 use gpui_kit::base::SelectableText;
-use gpui_kit::component::input::EditorState;
 use gpui_kit::component::scroll::Scrollbar;
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
+use telaio_editor::{EditorDisplay, EditorState, EditorView, Language};
 
 use postino_core::TestResult;
 use postino_runner::{FailedStage, HttpError, RunResult};
@@ -27,11 +27,11 @@ use crate::state::ui_tabs::ResponseTab;
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
     HEADERS_COL_GAP, HEADERS_HEADER_HEIGHT, HEADERS_LINE_HEIGHT, HEADERS_NAME_WIDTH,
-    HEADERS_PADDING_X, HEADERS_ROW_PADDING_Y, RADIUS_LG,
+    HEADERS_PADDING_X, HEADERS_ROW_PADDING_Y, RADIUS_LG, RADIUS_MD,
 };
 use crate::views::components::{
-    CodeEditor, EmptyState, IconButton, InlineMessage, InlineMessageKind, SegmentedControl,
-    SegmentedItem, StatusState, UnderlineTabItem, UnderlineTabs, status_badge,
+    EmptyState, IconButton, InlineMessage, InlineMessageKind, SegmentedControl, SegmentedItem,
+    StatusState, UnderlineTabItem, UnderlineTabs, status_badge,
 };
 
 use super::root::AppView;
@@ -44,28 +44,23 @@ const SEND_KEY_HINT: &str = "Cmd+\u{21b5}";
 #[cfg(not(target_os = "macos"))]
 const SEND_KEY_HINT: &str = "Ctrl+\u{21b5}";
 
-/// The live, read-only `EditorState` behind the response body view: a code editor, not a plain
-/// block of text, so it gets the design's line numbers and, wired in
-/// [`AppView::render_response_body_tab`], a working find bar (`EditorState::open_search`, which
-/// works on a readonly editor same as a writable one). Rebuilt when the active tab, the raw/pretty
-/// toggle or the JSON syntax highlighting changes; the shown text is unconditionally resynced
-/// afterwards, the same pattern `RequestEditorEntities` uses for its own editors.
+/// The editor behind the response body view: telaio's own editor (#258), read only, which lays
+/// out and paints only the visible lines, so a 15 MB body costs about its size in memory instead
+/// of the hundreds of megabytes gpui-kit's `InputState` took. One entity for every tab: its text
+/// is replaced when the `(tab id, response generation, JSON indentation, raw)` key changes, a
+/// cheap comparison that never looks at the (possibly huge) text.
 #[derive(Default)]
 pub(crate) struct ResponseEditorEntities {
-    built_for: Option<(String, bool)>,
-    json: bool,
-    /// The `(tab id, response generation, JSON indentation, raw)` whose text the editor currently
-    /// holds, so a resync is decided by comparing this cheap key and never the (possibly huge)
-    /// text.
+    /// The key of the text the editor holds.
     synced: Option<(String, u64, usize, bool)>,
-    editor: Option<Entity<EditorState>>,
+    editor: Option<Entity<EditorView>>,
     texts: response_render::BodyTextCache,
 }
 
 impl ResponseEditorEntities {
-    /// Rebuilds the editor if `tab_id`, `raw` or `json` differ from what it was last built for,
-    /// then resyncs its text to `text` when the `(tab_id, generation, indent, raw)` key changed.
-    #[allow(clippy::too_many_arguments)]
+    /// Creates the editor the first time, then replaces its text with `text` when the
+    /// `(tab_id, generation, indent, raw)` key changed. The pretty view is highlighted as JSON,
+    /// the raw one is plain text.
     fn sync(
         &mut self,
         tab_id: &str,
@@ -73,47 +68,54 @@ impl ResponseEditorEntities {
         indent: usize,
         text: &Arc<str>,
         raw: bool,
-        window: &mut Window,
         cx: &mut Context<AppView>,
     ) {
-        // Raw bodies are never highlighted; only the pretty view is JSON.
-        let json = !raw;
-        let key = (tab_id.to_string(), raw);
-        if self.built_for.as_ref() != Some(&key) || self.json != json {
-            let editor = cx.new(|cx| {
-                let state = EditorState::new(window, cx);
-                if json { state.language("json") } else { state }
-            });
-            self.editor = Some(editor);
-            self.built_for = Some(key);
-            self.json = json;
-            self.synced = None;
-        }
+        let editor = self.editor.get_or_insert_with(|| {
+            cx.new(|cx| {
+                let mut state = EditorState::default();
+                // Long lines stay on one line, as before, until Alt+Z: a raw body is plain text,
+                // which the editor would otherwise wrap.
+                state.wrap_override = Some(false);
+                let mut view = EditorView::new(state, cx);
+                view.set_read_only(true, cx);
+                view.set_display(
+                    EditorDisplay {
+                        minimap: false,
+                        goto_line: false,
+                        ..EditorDisplay::default()
+                    },
+                    cx,
+                );
+                view
+            })
+        });
         let synced = (tab_id.to_string(), generation, indent, raw);
-        if self.synced.as_ref() != Some(&synced)
-            && let Some(editor) = &self.editor
-        {
-            let started = std::time::Instant::now();
-            let new_value = SharedString::from(text.clone());
-            editor.update(cx, |state, cx| state.set_value(new_value, window, cx));
-            log::debug!(
-                "response editor of {tab_id} resynced with {} bytes in {} us",
-                text.len(),
-                started.elapsed().as_micros()
-            );
-            self.synced = Some(synced);
+        if self.synced.as_ref() == Some(&synced) {
+            return;
         }
+        let started = std::time::Instant::now();
+        let language = if raw {
+            Language::PlainText
+        } else {
+            Language::Json
+        };
+        editor.update(cx, |view, cx| {
+            view.set_language(language, cx);
+            view.set_text(text, cx);
+        });
+        log::debug!(
+            "response editor of {tab_id} resynced with {} bytes in {} us",
+            text.len(),
+            started.elapsed().as_micros()
+        );
+        self.synced = Some(synced);
     }
 }
 
 impl AppView {
     /// Renders the active tab's response, a "sending" spinner while it is in flight, or a
     /// placeholder when nothing has been sent yet.
-    pub(crate) fn render_response_view(
-        &mut self,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> AnyElement {
+    pub(crate) fn render_response_view(&mut self, cx: &mut Context<Self>) -> AnyElement {
         let Some(tab) = self.state.tabs.active() else {
             return EmptyState::new(t!("response.placeholder.not_sent")).into_any_element();
         };
@@ -162,7 +164,7 @@ impl AppView {
             self.active_response_tab,
             ResponseTab::Body | ResponseTab::Console
         );
-        let tab_content = self.render_response_tab_content(&tab_id, window, cx);
+        let tab_content = self.render_response_tab_content(&tab_id, cx);
         let content = if own_scroll {
             div()
                 .id("response-content")
@@ -292,14 +294,9 @@ impl AppView {
     }
 
     /// Renders the content of whichever response tab is active.
-    fn render_response_tab_content(
-        &mut self,
-        tab_id: &str,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> AnyElement {
+    fn render_response_tab_content(&mut self, tab_id: &str, cx: &mut Context<Self>) -> AnyElement {
         if self.active_response_tab == ResponseTab::Body {
-            return self.render_response_body_tab(tab_id, window, cx);
+            return self.render_response_body_tab(tab_id, cx);
         }
         if self.active_response_tab == ResponseTab::Console {
             return self.render_console_tab(tab_id, cx);
@@ -317,12 +314,7 @@ impl AppView {
 
     /// Renders the response body: a Pretty/Raw segmented control plus `copy` and `search` icon
     /// buttons on the right, then the body in a read-only, line-numbered code editor.
-    fn render_response_body_tab(
-        &mut self,
-        tab_id: &str,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> AnyElement {
+    fn render_response_body_tab(&mut self, tab_id: &str, cx: &mut Context<Self>) -> AnyElement {
         let generation = self.response_generations.get(tab_id);
         let indent = self.state.settings.json_indent;
         // Scoped so the borrow of `self.responses` ends before `self.response_editor` (below)
@@ -348,7 +340,7 @@ impl AppView {
         let text = shown.text;
 
         self.response_editor
-            .sync(tab_id, generation, indent, &text, show_raw, window, cx);
+            .sync(tab_id, generation, indent, &text, show_raw, cx);
 
         let weak = cx.weak_entity();
         let pretty_available = shown.pretty_available;
@@ -391,9 +383,9 @@ impl AppView {
         let search_editor = self.response_editor.editor.clone();
         let search_button = IconButton::new("response-search", IconName::Search)
             .tooltip(t!("common.search"))
-            .on_click(move |_, _, cx| {
+            .on_click(move |_, window, cx| {
                 if let Some(editor) = &search_editor {
-                    editor.update(cx, |state, cx| state.open_search(false, cx));
+                    editor.update(cx, |view, cx| view.open_find(window, cx));
                 }
             });
 
@@ -410,11 +402,18 @@ impl AppView {
             );
 
         // Padded and boxed like the request editor's body (`views/request_editor.rs`'s
-        // `render_body_tab` and `render_editor_or_placeholder`), so both panels line up. Read
-        // only is set on the element: `Input` applies the element's value to the state on every
-        // render, so `EditorState::set_readonly` alone was undone and the body could be typed in.
+        // `render_body_tab` and `render_editor_or_placeholder`), so both panels line up.
+        let palette = cx.palette();
         let body: AnyElement = match &self.response_editor.editor {
-            Some(editor) => CodeEditor::new(editor).readonly(true).into_any_element(),
+            Some(editor) => div()
+                .size_full()
+                .border_1()
+                .border_color(palette.border)
+                .rounded(px(RADIUS_MD))
+                .bg(palette.raised)
+                .overflow_hidden()
+                .child(editor.clone())
+                .into_any_element(),
             None => div().into_any_element(),
         };
 
