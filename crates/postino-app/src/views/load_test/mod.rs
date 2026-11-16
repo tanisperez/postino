@@ -184,15 +184,8 @@ impl AppView {
         if self.load_test_is_running(tab_id) {
             return;
         }
-        let kind = match target {
-            LoadTestTarget::Request(_) => load_test::TargetKind::Request,
-            LoadTestTarget::Collection(_) => load_test::TargetKind::Collection,
-        };
         self.edit_load_test(tab_id, cx, |load_test| {
-            load_test.target_kind = kind;
-            load_test.target = Some(target);
-            load_test.target_label = label;
-            load_test.target_request_count = request_count;
+            load_test.pick_target(target, label, request_count);
         });
         self.refresh_load_test_history(tab_id, cx);
     }

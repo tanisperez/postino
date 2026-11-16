@@ -491,6 +491,22 @@ pub struct RequestsKey {
 }
 
 impl LoadTestTab {
+    /// Picks `target` from the config panel's target picker. A setup failure (no target, an
+    /// empty folder, a request that failed to load) is about the previous target, so it is
+    /// cleared; the results of an earlier run stay.
+    pub fn pick_target(&mut self, target: LoadTestTarget, label: String, request_count: usize) {
+        self.target_kind = match target {
+            LoadTestTarget::Request(_) => TargetKind::Request,
+            LoadTestTarget::Collection(_) => TargetKind::Collection,
+        };
+        self.target = Some(target);
+        self.target_label = label;
+        self.target_request_count = request_count;
+        if matches!(self.status, LoadTestStatus::Failed(_)) {
+            self.status = LoadTestStatus::NotStarted;
+        }
+    }
+
     /// A tab opened with no preselected target (the command palette's "New load test" action).
     #[must_use]
     pub fn unset() -> Self {
@@ -1159,5 +1175,27 @@ mod tests {
         assert_eq!(format_delta(0.0, " pt"), "0.0 pt");
         assert_eq!(format_delta(0.04, "%"), "0.0%");
         assert_eq!(format_delta(-0.04, "%"), "0.0%");
+    }
+
+    #[test]
+    fn picking_a_target_clears_a_setup_failure() {
+        let mut tab = LoadTestTab::unset();
+        tab.status = LoadTestStatus::Failed(LoadTestFailure::NoTarget);
+        tab.pick_target(
+            LoadTestTarget::Request("users/list.postino".to_string()),
+            "users/list".to_string(),
+            1,
+        );
+        assert_eq!(tab.status, LoadTestStatus::NotStarted);
+        assert_eq!(tab.target_kind, TargetKind::Request);
+
+        tab.status = LoadTestStatus::Finished;
+        tab.pick_target(
+            LoadTestTarget::Collection("users".to_string()),
+            "users".to_string(),
+            2,
+        );
+        assert_eq!(tab.status, LoadTestStatus::Finished);
+        assert_eq!(tab.target_kind, TargetKind::Collection);
     }
 }
