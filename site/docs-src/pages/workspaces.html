@@ -89,7 +89,7 @@ my-api/
 <h2>Creating requests and folders</h2>
 <p>Use the <strong>New request</strong> and <strong>New folder</strong> buttons in the sidebar header to create them at the root, or right click a folder to create them inside it. You can also run <strong>New request</strong> and <strong>New folder</strong> from the command palette.</p>
 <p>A new request is written to disk right away as <code>GET https://example.com</code>, so it is a valid file from the start.</p>
-<p>Names are made safe for every operating system: control characters and the characters Windows does not allow (<code>&lt; &gt; : " / \ | ? *</code>) become <code>_</code>, trailing dots and spaces are removed, names are cut to 120 characters, and Windows device names such as <code>CON</code> or <code>NUL</code> are changed so the file can be created everywhere. If a file or folder with the same name already exists, Postino reports it and changes nothing.</p>
+<p>Names are made safe for every operating system: control characters and the characters Windows does not allow (<code>&lt; &gt; : " / \ | ? *</code>) become <code>_</code>, leading dots and trailing dots and spaces are removed, names are cut to 120 characters, and Windows device names such as <code>CON</code> or <code>NUL</code> are changed so the file can be created everywhere. If a file or folder with the same name already exists, Postino reports it and changes nothing.</p>
 
 <h2>Duplicating, renaming, moving and deleting</h2>
 <ul>

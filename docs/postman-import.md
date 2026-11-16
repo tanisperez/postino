@@ -11,7 +11,7 @@ The code is in `postino_format::postman` (parsing and mapping, no IO) and
 ## Collections
 
 The import writes into a new folder named after the collection, inside the workspace. Names are
-sanitized for every OS (Windows-reserved names and characters, trailing dots and spaces, at most
+sanitized for every OS (Windows-reserved names and characters, leading dots, trailing dots and spaces, at most
 120 characters), and a duplicate gets a ` (2)`, ` (3)` suffix.
 
 | Postman | Postino |

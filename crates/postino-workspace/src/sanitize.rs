@@ -26,8 +26,9 @@ const FALLBACK_NAME: &str = "untitled";
 ///
 /// 1. Every control character and every character forbidden on Windows (`< > : " / \ | ? *`) is
 ///    replaced with `_`.
-/// 2. Trailing dots and spaces are trimmed, since Windows does not allow them at the end of a
-///    name.
+/// 2. Leading dots are trimmed, since a name starting with a dot is hidden on Linux and macOS
+///    and the workspace scan skips it. Trailing dots and spaces are trimmed, since Windows does
+///    not allow them at the end of a name.
 /// 3. The name is truncated to [`MAX_NAME_LENGTH`] characters (counting Unicode scalar values,
 ///    not bytes, so a multi-byte character is never split), then trimmed again in case the
 ///    truncation left new trailing dots or spaces.
@@ -46,7 +47,7 @@ pub fn sanitize_file_name(name: &str) -> String {
         })
         .collect();
 
-    sanitized = trim_trailing_dots_and_spaces(&sanitized);
+    sanitized = trim_trailing_dots_and_spaces(sanitized.trim_start_matches('.'));
 
     if sanitized.chars().count() > MAX_NAME_LENGTH {
         sanitized = sanitized.chars().take(MAX_NAME_LENGTH).collect();
@@ -105,8 +106,10 @@ mod tests {
     }
 
     #[test]
-    fn keeps_leading_and_interior_dots() {
-        assert_eq!(sanitize_file_name("..hidden.name.."), "..hidden.name");
+    fn trims_leading_dots_and_keeps_interior_ones() {
+        assert_eq!(sanitize_file_name("..hidden.name.."), "hidden.name");
+        assert_eq!(sanitize_file_name("../outside"), "_outside");
+        assert_eq!(sanitize_file_name(". ."), "untitled");
     }
 
     #[test]
