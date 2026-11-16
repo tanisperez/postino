@@ -27,7 +27,7 @@ description: Run load tests against a request or a whole folder in Postino with 
 <div class="table"><table>
     <thead><tr><th>Field</th><th>Default</th><th>Range</th><th>Meaning</th></tr></thead>
     <tbody>
-        <tr><td>Target</td><td></td><td></td><td><strong>Request</strong> runs one request. <strong>Collection</strong> runs every request of a folder, in sidebar order.</td></tr>
+        <tr><td>Target</td><td></td><td></td><td><strong>Request</strong> runs one request. <strong>Collection</strong> runs every request of a folder, in sidebar order. The box under them opens a menu with a search field: the requests grouped by folder, with their method, or the folders with their number of requests. Type to filter, <kbd>↑</kbd> <kbd>↓</kbd> to move and <kbd>Enter</kbd> to choose.</td></tr>
         <tr><td>Virtual users</td><td>50</td><td>1 to 500</td><td>How many users send requests at the same time, once the ramp-up is over.</td></tr>
         <tr><td>Duration</td><td>60 s</td><td>1 s to 24 h</td><td>How long the run lasts, counted from the start, ramp-up included.</td></tr>
         <tr><td>Ramp-up</td><td>10 s</td><td>0 s to 24 h</td><td>How long it takes to start every virtual user. Users start at even intervals: with 50 users and 10 s, one every 200 ms.</td></tr>

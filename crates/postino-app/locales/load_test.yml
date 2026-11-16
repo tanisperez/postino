@@ -645,3 +645,28 @@ _version: 2
   es: "ejes logarítmicos · discontinua: %{run}"
   gl: "eixes logarítmicos · descontinua: %{run}"
   it: "assi logaritmici · tratteggio: %{run}"
+"load_test.config.search_requests":
+  en: "Filter requests"
+  es: "Filtrar peticiones"
+  gl: "Filtrar peticións"
+  it: "Filtra le richieste"
+"load_test.config.search_folders":
+  en: "Filter folders"
+  es: "Filtrar carpetas"
+  gl: "Filtrar cartafoles"
+  it: "Filtra le cartelle"
+"load_test.config.no_match":
+  en: "Nothing matches"
+  es: "No hay coincidencias"
+  gl: "Non hai coincidencias"
+  it: "Nessuna corrispondenza"
+"load_test.config.hint_pick":
+  en: "choose"
+  es: "elegir"
+  gl: "escoller"
+  it: "scegli"
+"load_test.config.folders":
+  en: "Folders"
+  es: "Carpetas"
+  gl: "Cartafoles"
+  it: "Cartelle"

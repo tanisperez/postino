@@ -738,6 +738,58 @@ pub fn find_request_name(nodes: &[Node], id: &str) -> Option<String> {
     None
 }
 
+/// One group of the target picker's "Request" list: the requests directly in one folder.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RequestGroup {
+    /// The folder's workspace id (`"auth"`, `"users/admin"`), empty for the workspace's root.
+    pub folder: String,
+    /// The folder's non-broken requests, in tree order.
+    pub requests: Vec<GroupedRequest>,
+}
+
+/// A request of a [`RequestGroup`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GroupedRequest {
+    /// Its workspace id, such as `"auth/login.postino"`.
+    pub id: String,
+    /// Its name, such as `"login"`.
+    pub name: String,
+    /// Its method.
+    pub method: Method,
+}
+
+/// The non-broken requests of `nodes`, grouped by the folder that holds them, in tree order: the
+/// root's requests first, then each folder's, depth first. Folders with no request of their own
+/// have no group.
+#[must_use]
+pub fn request_groups(nodes: &[Node]) -> Vec<RequestGroup> {
+    let mut groups = Vec::new();
+    collect_request_groups(nodes, String::new(), &mut groups);
+    groups
+}
+
+fn collect_request_groups(nodes: &[Node], folder: String, groups: &mut Vec<RequestGroup>) {
+    let requests: Vec<GroupedRequest> = nodes
+        .iter()
+        .filter_map(|node| match node {
+            Node::Request(request) if request.broken.is_none() => Some(GroupedRequest {
+                id: request.id.clone(),
+                name: request.name.clone(),
+                method: request.method.clone().unwrap_or(Method::Get),
+            }),
+            _ => None,
+        })
+        .collect();
+    if !requests.is_empty() {
+        groups.push(RequestGroup { folder, requests });
+    }
+    for node in nodes {
+        if let Node::Folder(child) = node {
+            collect_request_groups(&child.children, child.id.clone(), groups);
+        }
+    }
+}
+
 /// Every non-broken request in `nodes`, in tree order: its workspace id and a display label (its
 /// id with the `.postino` extension stripped, for example `"auth/login"`), for the target
 /// picker's "Request" list.
@@ -1199,5 +1251,46 @@ mod tests {
         assert_eq!(tab.setup_error, None);
         assert_eq!(tab.status, LoadTestStatus::Finished);
         assert_eq!(tab.target_kind, TargetKind::Collection);
+    }
+
+    #[test]
+    fn request_groups_put_each_folders_requests_together() {
+        let tree = vec![
+            folder(
+                "users",
+                "users",
+                vec![
+                    request("users/list.postino", "list", false),
+                    request("users/broken.postino", "broken", true),
+                    folder(
+                        "users/admin",
+                        "admin",
+                        vec![request("users/admin/ban.postino", "ban", false)],
+                    ),
+                ],
+            ),
+            folder("empty", "empty", vec![]),
+            request("health.postino", "health", false),
+        ];
+        let groups = request_groups(&tree);
+        let summary: Vec<(&str, Vec<&str>)> = groups
+            .iter()
+            .map(|group| {
+                (
+                    group.folder.as_str(),
+                    group.requests.iter().map(|r| r.name.as_str()).collect(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            summary,
+            vec![
+                ("", vec!["health"]),
+                ("users", vec!["list"]),
+                ("users/admin", vec!["ban"]),
+            ]
+        );
+        assert_eq!(groups[1].requests[0].id, "users/list.postino");
+        assert_eq!(groups[1].requests[0].method, Method::Get);
     }
 }

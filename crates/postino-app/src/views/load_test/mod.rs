@@ -14,6 +14,7 @@ pub(crate) mod requests_tab;
 pub(crate) mod results_data;
 pub(crate) mod run;
 pub(crate) mod summary;
+pub(crate) mod target_menu;
 
 pub(crate) use config_panel::LoadTestEntities;
 

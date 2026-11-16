@@ -255,6 +255,8 @@ pub struct AppView {
     /// The Load tests panel's target tree (`views/load_panel.rs`), rebuilt by
     /// [`Self::refresh_tree`].
     pub(crate) load_targets: state::load_panel::TargetTree,
+    /// The load test target picker's menus (`views/load_test/target_menu.rs`).
+    pub(crate) load_target_menus: crate::views::load_test::target_menu::LoadTargetMenus,
     /// The recently opened workspaces, most recent first, for the title bar's workspace
     /// switcher. Read from the config file at startup and after opening a workspace
     /// ([`Self::open_workspace_at`]), so render never reads it.
@@ -322,6 +324,8 @@ impl AppView {
             },
         )
         .detach();
+        let load_target_menus =
+            crate::views::load_test::target_menu::LoadTargetMenus::new(window, cx);
         let branch_menu_context = std::rc::Rc::default();
         let branch_menu = crate::views::git::new_branch_menu(
             std::rc::Rc::clone(&branch_menu_context),
@@ -463,6 +467,7 @@ impl AppView {
             env_editors: HashMap::new(),
             new_env_input: None,
             load_targets: state::load_panel::TargetTree::default(),
+            load_target_menus,
             recent_workspaces: state::config::recent_workspaces(),
             recent_requests: Vec::new(),
             launcher: Default::default(),
@@ -861,6 +866,7 @@ impl AppView {
             .as_ref()
             .map_or(&[][..], |workspace| workspace.tree());
         self.load_targets.rebuild(nodes);
+        self.load_target_menus.invalidate();
         if !self.sidebar_selection.is_empty() {
             let existing = state::tree_selection::ids_in(nodes);
             self.sidebar_selection

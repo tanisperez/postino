@@ -23,13 +23,16 @@ use crate::state::load_test::{
 };
 use crate::state::locale;
 use crate::theme::metrics::{CONTROL_HEIGHT, INPUT_PADDING_X, RADIUS_MD};
-use crate::theme::{Palette, PaletteExt};
+use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::{
     DangerButton, IconButton, NeutralButtonExt, PrimaryButton, SegmentedControl, SegmentedItem,
     edit_menu, select_trigger, switch_halo,
 };
 
 use crate::views::root::AppView;
+use telaio_ui::components::SearchableMenu;
+
+use super::target_menu::{LoadTargetMenus, TARGET_MENU_ANCHOR};
 
 /// Width of the config panel (280 px).
 const PANEL_WIDTH: f32 = 280.0;
@@ -216,11 +219,7 @@ impl AppView {
         let ui_font = cx.theme().font_family.clone();
         let is_running = load_test.is_running();
         let weak = cx.weak_entity();
-        let tree = self
-            .state
-            .workspace
-            .as_ref()
-            .map(|workspace| workspace.tree().to_vec());
+        self.sync_load_target_menus(cx);
 
         // Split in two: a scrollable fields area (`flex_1().min_h_0().overflow_y_scroll()`) and a
         // `flex_none` footer holding the Start/Stop button and the note below it. Previously
@@ -247,7 +246,7 @@ impl AppView {
                         tab_id,
                         &palette,
                         &load_test,
-                        tree.as_deref(),
+                        &self.load_target_menus,
                         is_running,
                         cx,
                     ))
@@ -370,13 +369,13 @@ impl AppView {
     }
 }
 
-/// The "Target" label, segmented control (Request/Collection) and the target picker dropdown.
+/// The "Target" label, segmented control (Request/Collection) and the target picker.
 fn render_target_section(
     weak: WeakEntity<AppView>,
     tab_id: &str,
     palette: &Palette,
     load_test: &LoadTestTab,
-    tree: Option<&[postino_workspace::Node]>,
+    menus: &LoadTargetMenus,
     is_running: bool,
     cx: &App,
 ) -> AnyElement {
@@ -424,60 +423,99 @@ fn render_target_section(
                 ),
         )
         .child(render_target_picker(
-            weak, tab_id, palette, load_test, tree, is_running, cx,
+            palette, load_test, menus, is_running, cx,
         ))
         .into_any_element()
 }
 
-/// The bordered row showing the currently picked target (or a placeholder), opening a dropdown of
-/// every request or folder (depending on [`LoadTestTab::target_kind`]) on click.
+/// The box showing the picked target (or a placeholder), which opens the searchable menu of
+/// requests or folders (depending on [`LoadTestTab::target_kind`]), see `target_menu.rs`.
 fn render_target_picker(
-    weak: WeakEntity<AppView>,
-    tab_id: &str,
     palette: &Palette,
     load_test: &LoadTestTab,
-    tree: Option<&[postino_workspace::Node]>,
+    menus: &LoadTargetMenus,
     is_running: bool,
     cx: &App,
 ) -> AnyElement {
-    use crate::state::load_test::{folders_flat, requests_flat};
-
     let is_collection = load_test.target_kind == TargetKind::Collection;
-    let icon = if is_collection {
-        Some(IconName::Folder)
-    } else {
-        None
+    let picked_request = match &load_test.target {
+        Some(LoadTestTarget::Request(id)) if !is_collection => Some(id.as_str()),
+        _ => None,
     };
-    let label = if load_test.target_label.is_empty() {
-        if is_collection {
-            t!("load_test.config.choose_folder").into_owned()
+    let mut content = h_flex().w_full().items_center().gap(px(8.0));
+    if load_test.target_label.is_empty() {
+        let placeholder = if is_collection {
+            t!("load_test.config.choose_folder")
         } else {
-            t!("load_test.config.choose_request").into_owned()
-        }
+            t!("load_test.config.choose_request")
+        };
+        content = content
+            .when(is_collection, |row| {
+                row.child(
+                    Icon::new(IconName::Folder)
+                        .small()
+                        .text_color(palette.fg_subtle),
+                )
+            })
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .truncate()
+                    .text_color(palette.fg_subtle)
+                    .child(placeholder),
+            );
+    } else if let Some(id) = picked_request {
+        // The method in its color, the name, then its folder, as the menu's rows.
+        let (folder, name) = match load_test.target_label.rsplit_once('/') {
+            Some((folder, name)) => (format!("{folder}/"), name.to_string()),
+            None => (String::new(), load_test.target_label.clone()),
+        };
+        content = content
+            .children(menus.method(id).map(|method| {
+                div()
+                    .flex_none()
+                    .font_family(cx.theme().mono_font_family.clone())
+                    .text_size(px(11.0))
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .text_color(palette.method_color(method))
+                    .child(method.to_string())
+            }))
+            .child(
+                div()
+                    .flex_none()
+                    .max_w(relative(0.6))
+                    .truncate()
+                    .child(name),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .truncate()
+                    .text_color(palette.fg_subtle)
+                    .child(folder),
+            );
     } else {
-        load_test.target_label.clone()
-    };
-    let hint = if load_test.target.is_some() && is_collection {
-        Some(request_count_label(load_test.target_request_count))
-    } else {
-        None
-    };
-
-    let mut content = h_flex()
-        .w_full()
-        .items_center()
-        .gap(px(8.0))
-        .when_some(icon, |row, icon| {
-            row.child(Icon::new(icon).small().text_color(palette.fg_subtle))
-        })
-        .child(div().flex_1().min_w_0().truncate().child(label));
-    if let Some(hint) = hint {
-        content = content.child(
-            div()
-                .text_size(px(12.0))
-                .text_color(palette.fg_subtle)
-                .child(hint),
-        );
+        content = content
+            .child(
+                Icon::new(IconName::Folder)
+                    .small()
+                    .text_color(palette.fg_subtle),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .truncate()
+                    .child(load_test.target_label.clone()),
+            )
+            .child(
+                div()
+                    .text_size(px(12.0))
+                    .text_color(palette.fg_subtle)
+                    .child(request_count_label(load_test.target_request_count)),
+            );
     }
 
     let trigger = select_trigger("load-test-target-picker", palette, cx)
@@ -488,68 +526,10 @@ fn render_target_picker(
     if is_running {
         return trigger.into_any_element();
     }
-
-    let Some(tree) = tree else {
-        return trigger.into_any_element();
-    };
-
-    if is_collection {
-        let folders = folders_flat(tree);
-        let tab_id = tab_id.to_string();
-        trigger
-            .dropdown_menu(move |mut menu, _, _| {
-                for (id, name, count) in &folders {
-                    let target_weak = weak.clone();
-                    let tab_id = tab_id.clone();
-                    let id = id.clone();
-                    let name = name.clone();
-                    let count = *count;
-                    menu = menu.item(PopupMenuItem::new(name.clone()).on_click(move |_, _, cx| {
-                        let id = id.clone();
-                        let name = name.clone();
-                        let _ = target_weak.update(cx, |view, cx| {
-                            view.pick_load_test_target(
-                                &tab_id,
-                                LoadTestTarget::Collection(id),
-                                name,
-                                count,
-                                cx,
-                            );
-                        });
-                    }));
-                }
-                menu
-            })
-            .into_any_element()
-    } else {
-        let requests = requests_flat(tree);
-        let tab_id = tab_id.to_string();
-        trigger
-            .dropdown_menu(move |mut menu, _, _| {
-                for (id, label) in &requests {
-                    let target_weak = weak.clone();
-                    let tab_id = tab_id.clone();
-                    let id = id.clone();
-                    let label = label.clone();
-                    menu =
-                        menu.item(PopupMenuItem::new(label.clone()).on_click(move |_, _, cx| {
-                            let id = id.clone();
-                            let label = label.clone();
-                            let _ = target_weak.update(cx, |view, cx| {
-                                view.pick_load_test_target(
-                                    &tab_id,
-                                    LoadTestTarget::Request(id),
-                                    label,
-                                    1,
-                                    cx,
-                                );
-                            });
-                        }));
-                }
-                menu
-            })
-            .into_any_element()
-    }
+    SearchableMenu::new("load-test-target-menu", menus.menu(load_test.target_kind))
+        .anchor(TARGET_MENU_ANCHOR)
+        .trigger(trigger)
+        .into_any_element()
 }
 
 /// `"1 request"` or `"N requests"`, in the current language.
