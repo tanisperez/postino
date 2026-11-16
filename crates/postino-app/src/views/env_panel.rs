@@ -137,8 +137,12 @@ impl AppView {
                     let name = entity.read(cx).value().trim().to_string();
                     view.commit_new_environment(name, window, cx);
                 }
-                // Ignore the blur of an input that was already replaced or committed.
-                InputEvent::Blur if view.new_env_input.as_ref() == Some(entity) => {
+                // Ignore the blur of an input that was already replaced or committed, and the one
+                // its own right-click menu causes: the input keeps its selection focus then.
+                InputEvent::Blur
+                    if view.new_env_input.as_ref() == Some(entity)
+                        && !entity.read(cx).has_selection_focus(window, cx) =>
+                {
                     view.cancel_new_environment(window, cx);
                 }
                 _ => {}

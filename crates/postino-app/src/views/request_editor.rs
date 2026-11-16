@@ -528,14 +528,17 @@ impl RequestEditorEntities {
         let method_input = cx.new(|cx| InputState::new(window, cx).placeholder("METHOD"));
         {
             let tab_id = tab_id.to_string();
-            cx.subscribe(
+            cx.subscribe_in(
                 &method_input,
-                move |view, entity, event: &InputEvent, cx| match event {
+                window,
+                move |view, entity, event: &InputEvent, window, cx| match event {
                     InputEvent::PressEnter { .. } => {
                         let text = entity.read(cx).value().to_string();
                         view.commit_custom_method(&tab_id, text, false, cx);
                     }
-                    InputEvent::Blur => {
+                    // Not the blur its own right-click menu causes: the input keeps its
+                    // selection focus while the menu is open.
+                    InputEvent::Blur if !entity.read(cx).has_selection_focus(window, cx) => {
                         let text = entity.read(cx).value().to_string();
                         view.commit_custom_method(&tab_id, text, true, cx);
                     }
