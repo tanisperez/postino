@@ -713,13 +713,13 @@ impl AppView {
                     error_text(error),
                 ))
             }))
+            // The table scrolls its own rows under a header that stays in place.
             .child(
                 div()
-                    .id("env-table-scroll")
                     .flex_1()
                     .min_h_0()
-                    .overflow_y_scroll()
-                    .track_scroll(&entities.scroll)
+                    .flex()
+                    .flex_col()
                     .px(px(20.0))
                     .py(px(12.0))
                     .child(render_table(
@@ -1169,6 +1169,7 @@ fn render_table(
     ])
     .rows(rows)
     .empty_message(empty)
+    .scroll("env-table-scroll", &entities.scroll)
     .into_any_element()
 }
 
