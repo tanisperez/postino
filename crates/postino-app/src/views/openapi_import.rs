@@ -26,8 +26,9 @@ use postino_runner::Client;
 use postino_workspace::{
     ImportOrigin, ImportReport, ProjectWrite, Workspace, WorkspaceError, openapi_collections_in,
 };
+use telaio_ui::components::modal_header_with_icon;
 use telaio_ui::components::{CheckState, TextArea, TriCheckbox};
-use telaio_ui::metrics::CHECKBOX_HALO_PADDING;
+use telaio_ui::metrics::{CHECKBOX_HALO_PADDING, MODAL_PADDING};
 
 use crate::state::env_color::EnvColor;
 use crate::state::import_destination::{Target, slug};
@@ -41,8 +42,8 @@ use crate::state::openapi_import::{
 use crate::theme::metrics::{RADIUS_MD, RADIUS_SM};
 use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::{
-    GhostButton, IconButton, InlineMessage, InlineMessageKind, MethodBadge, ModalPlacement,
-    PrimaryButton, SecondaryButton, SectionLabel, TreeRow, framed_dialog, text_field,
+    GhostButton, InlineMessage, InlineMessageKind, MethodBadge, ModalPlacement, PrimaryButton,
+    SecondaryButton, SectionLabel, TreeRow, framed_dialog, text_field,
 };
 
 use super::import_destination::{
@@ -53,8 +54,9 @@ use super::root::AppView;
 /// The card's size, from the design. Fixed, so the steps do not change the dialog's size.
 const DIALOG_WIDTH: f32 = 780.0;
 const DIALOG_HEIGHT: f32 = 600.0;
-/// Horizontal padding of the header, the stepper, the body and the footer.
-const PADDING_X: f32 = 20.0;
+/// Horizontal padding of the stepper, the body and the footer: the modal header's, so they line
+/// up with its title.
+const PADDING_X: f32 = MODAL_PADDING;
 /// Size of a stepper dot.
 const STEP_DOT: f32 = 22.0;
 /// Height of a source tab.
@@ -977,7 +979,7 @@ fn render_wizard(wizard: &Entity<ImportWizard>, window: &mut Window, cx: &mut Ap
         .track_focus(&focus)
         .text_size(px(13.0))
         .text_color(palette.fg)
-        .child(render_header(step, &palette))
+        .child(render_header(step, &palette, cx))
         .child(
             div()
                 .flex_1()
@@ -997,8 +999,9 @@ fn render_wizard(wizard: &Entity<ImportWizard>, window: &mut Window, cx: &mut Ap
         .into_any_element()
 }
 
-/// The title row and the stepper, over one bottom border.
-fn render_header(step: Step, palette: &Palette) -> AnyElement {
+/// The modal header every dialog uses (icon, title and close button), then the stepper, over one
+/// bottom border.
+fn render_header(step: Step, palette: &Palette, cx: &App) -> AnyElement {
     let labels: [SharedString; STEP_COUNT] = [
         t!("openapi.step.source").into(),
         t!("openapi.step.options").into(),
@@ -1070,31 +1073,12 @@ fn render_header(step: Step, palette: &Palette) -> AnyElement {
         .flex_none()
         .border_b_1()
         .border_color(palette.border)
-        .child(
-            h_flex()
-                .gap(px(10.0))
-                .px(px(PADDING_X))
-                .pt(px(14.0))
-                .pb(px(10.0))
-                .child(
-                    Icon::new(IconName::Download)
-                        .size(px(16.0))
-                        .text_color(palette.accent_text),
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .text_size(px(15.0))
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .child(t!("import.title")),
-                )
-                .child(
-                    IconButton::new("openapi-close", IconName::X)
-                        .large()
-                        .tooltip(t!("common.close"))
-                        .on_click(|_, window, cx| window.close_dialog(cx)),
-                ),
-        )
+        .child(modal_header_with_icon(
+            IconName::Download,
+            palette.accent_text,
+            t!("import.title"),
+            cx,
+        ))
         .child(stepper)
         .into_any_element()
 }
