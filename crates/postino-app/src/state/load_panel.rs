@@ -131,7 +131,7 @@ pub enum RunDot {
     Running,
     /// Done without errors (success).
     Done,
-    /// Failed to start, or ended with errors (danger).
+    /// Ended with errors (danger).
     Failed,
     /// Not started, or stopped by the user without errors (muted).
     Idle,
@@ -151,8 +151,6 @@ pub enum RunMeta {
     Done(Option<u64>),
     /// A run that was stopped early, with its p95 in milliseconds.
     Stopped(Option<u64>),
-    /// A run that could not start.
-    Failed,
     /// No run yet.
     NotStarted,
 }
@@ -210,7 +208,6 @@ pub fn run_status(load_test: &LoadTestTab) -> (RunDot, RunMeta) {
             },
             RunMeta::Stopped(p95_ms),
         ),
-        LoadTestStatus::Failed(_) => (RunDot::Failed, RunMeta::Failed),
     }
 }
 
@@ -262,7 +259,6 @@ pub fn meta_text(meta: &RunMeta) -> String {
             t!("navigation.run.stopped_p95", p95 = format_integer(*p95)).into_owned()
         }
         RunMeta::Stopped(None) => t!("navigation.run.stopped").into_owned(),
-        RunMeta::Failed => t!("navigation.run.failed").into_owned(),
         RunMeta::NotStarted => t!("navigation.run.not_started").into_owned(),
     }
 }
@@ -270,7 +266,6 @@ pub fn meta_text(meta: &RunMeta) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::load_test::LoadTestFailure;
     use postino_load::LoadSnapshot;
     use postino_workspace::{Folder, RequestEntry};
     use pretty_assertions::assert_eq;
@@ -430,12 +425,9 @@ mod tests {
     }
 
     #[test]
-    fn a_setup_failure_is_failed() {
-        let (dot, meta) = run_status(&tab(
-            LoadTestStatus::Failed(LoadTestFailure::NoTarget),
-            None,
-        ));
-        assert_eq!((dot, meta), (RunDot::Failed, RunMeta::Failed));
-        assert_eq!(meta_text(&RunMeta::NotStarted), "not started");
+    fn a_tab_with_no_run_is_not_started() {
+        let (dot, meta) = run_status(&tab(LoadTestStatus::NotStarted, None));
+        assert_eq!((dot, meta.clone()), (RunDot::Idle, RunMeta::NotStarted));
+        assert_eq!(meta_text(&meta), "not started");
     }
 }

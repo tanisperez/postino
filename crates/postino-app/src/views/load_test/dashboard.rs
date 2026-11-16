@@ -83,6 +83,12 @@ impl AppView {
                 &snapshot,
                 cx,
             ));
+        if let Some(failure) = &load_test.setup_error {
+            column = column.child(InlineMessage::new(
+                InlineMessageKind::Danger,
+                failure_message(failure),
+            ));
+        }
         if !load_test.is_running() && !load_test.run_thresholds.is_empty() {
             column = column.child(render_verdict(&palette, &load_test, &snapshot));
         }
@@ -137,7 +143,7 @@ pub(crate) fn summary_data(load_test: &LoadTestTab, snapshot: &LoadSnapshot) -> 
     }
 }
 
-/// The empty state before a first run: an explanatory placeholder, plus a Failed run's reason, plus
+/// The empty state before a first run: an explanatory placeholder, plus a setup error, plus
 /// the target's run history if any (`click to view` is wired by the history rows' own click
 /// handler, see [`render_history_list`]).
 fn render_empty_state(
@@ -157,7 +163,7 @@ fn render_empty_state(
         .py(px(16.0))
         .gap(px(16.0));
 
-    if let LoadTestStatus::Failed(failure) = &load_test.status {
+    if let Some(failure) = &load_test.setup_error {
         column = column.child(InlineMessage::new(
             InlineMessageKind::Danger,
             failure_message(failure),
@@ -285,11 +291,6 @@ fn status_badge_colors(palette: &Palette, status: &LoadTestStatus) -> (String, H
             t!("load_test.status.stopped"),
             palette.warning,
             palette.warning_subtle,
-        ),
-        LoadTestStatus::Failed(_) => (
-            t!("load_test.status.failed"),
-            palette.danger,
-            palette.danger_subtle,
         ),
     };
     (label.into_owned(), fg, bg)

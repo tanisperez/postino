@@ -96,7 +96,8 @@ impl AppView {
 
     /// Starts a load test run for `tab_id`. A no-op if a run is already in progress for this tab.
     /// On a setup failure (no target, an empty collection, a request that fails to load), records
-    /// [`LoadTestStatus::Failed`] instead of starting anything.
+    /// it as the tab's [`load_test::LoadTestTab::setup_error`] instead of starting anything; the
+    /// run status stays as it was.
     pub(crate) fn start_load_test(&mut self, tab_id: String, cx: &mut Context<Self>) {
         if self.load_runs.contains_key(&tab_id) {
             return;
@@ -106,7 +107,7 @@ impl AppView {
             Err(failure) => {
                 log::warn!("load test not started: {failure:?}");
                 self.edit_load_test(&tab_id, cx, |load_test| {
-                    load_test.status = LoadTestStatus::Failed(failure);
+                    load_test.setup_error = Some(failure);
                 });
                 return;
             }
@@ -175,6 +176,7 @@ impl AppView {
 
         self.edit_load_test(&tab_id, cx, |load_test| {
             load_test.status = LoadTestStatus::Running;
+            load_test.setup_error = None;
             load_test.run_number = Some(run_number);
             load_test.snapshot = None;
             // Cleared, not just `compare_snapshot`: leaving a previous run's `compare_with`

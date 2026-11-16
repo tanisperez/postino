@@ -160,11 +160,6 @@ _version: 2
   es: "Detenida"
   gl: "Detida"
   it: "Interrotto"
-"load_test.status.failed":
-  en: "Failed"
-  es: "Fallida"
-  gl: "Fallida"
-  it: "Fallito"
 "load_test.kpi.rps":
   en: "Requests/s"
   es: "Peticiones/s"

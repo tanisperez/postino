@@ -110,11 +110,6 @@ _version: 2
   es: "detenida \u00b7 p95 %{p95} ms"
   gl: "detida \u00b7 p95 %{p95} ms"
   it: "interrotto \u00b7 p95 %{p95} ms"
-"navigation.run.failed":
-  en: "failed"
-  es: "fallida"
-  gl: "fallida"
-  it: "non riuscito"
 "navigation.run.not_started":
   en: "not started"
   es: "sin iniciar"

@@ -52,13 +52,9 @@ pub enum LoadTestStatus {
     /// The run ended early: [`crate::views::load_test`]'s Stop button, or the configured error
     /// rate threshold.
     Stopped,
-    /// The run could not be started at all, for example because its target resolved to no
-    /// requests. `postino_load::LoadRun` itself never fails once started; this only covers setup
-    /// failures before a run exists.
-    Failed(LoadTestFailure),
 }
 
-/// Why a run could not be started. Kept as a value, not as text, so the message is translated
+/// Why a run could not be started, see [`LoadTestTab::setup_error`]. Kept as a value, not as text, so the message is translated
 /// when it is shown and follows a language change.
 #[derive(Debug, Clone, PartialEq)]
 pub enum LoadTestFailure {
@@ -393,6 +389,11 @@ pub struct LoadTestTab {
     pub run_ramp_up_secs: Option<u64>,
     /// When the run shown started, as Unix seconds. `None` before the first run.
     pub run_started_at: Option<u64>,
+    /// Why the last Start did not start a run (no target, an empty folder, a request that failed
+    /// to load), shown as an error above the results. Not a run status: nothing ran, so the
+    /// run shown and the "Runs this session" entry keep theirs. Cleared by the next run or a
+    /// new target.
+    pub setup_error: Option<LoadTestFailure>,
     /// The results tab shown.
     pub results_tab: ResultsTab,
     /// The selected window of the chart, as inclusive second indices. `None` is the whole run.
@@ -491,9 +492,8 @@ pub struct RequestsKey {
 }
 
 impl LoadTestTab {
-    /// Picks `target` from the config panel's target picker. A setup failure (no target, an
-    /// empty folder, a request that failed to load) is about the previous target, so it is
-    /// cleared; the results of an earlier run stay.
+    /// Picks `target` from the config panel's target picker. A setup error is about the previous
+    /// target, so it is cleared.
     pub fn pick_target(&mut self, target: LoadTestTarget, label: String, request_count: usize) {
         self.target_kind = match target {
             LoadTestTarget::Request(_) => TargetKind::Request,
@@ -502,9 +502,7 @@ impl LoadTestTab {
         self.target = Some(target);
         self.target_label = label;
         self.target_request_count = request_count;
-        if matches!(self.status, LoadTestStatus::Failed(_)) {
-            self.status = LoadTestStatus::NotStarted;
-        }
+        self.setup_error = None;
     }
 
     /// A tab opened with no preselected target (the command palette's "New load test" action).
@@ -529,6 +527,7 @@ impl LoadTestTab {
             run_vus: None,
             run_ramp_up_secs: None,
             run_started_at: None,
+            setup_error: None,
             results_tab: ResultsTab::Summary,
             window: None,
             hidden_series: Vec::new(),
@@ -1178,23 +1177,26 @@ mod tests {
     }
 
     #[test]
-    fn picking_a_target_clears_a_setup_failure() {
+    fn picking_a_target_clears_a_setup_error() {
         let mut tab = LoadTestTab::unset();
-        tab.status = LoadTestStatus::Failed(LoadTestFailure::NoTarget);
+        tab.setup_error = Some(LoadTestFailure::NoTarget);
         tab.pick_target(
             LoadTestTarget::Request("users/list.postino".to_string()),
             "users/list".to_string(),
             1,
         );
+        assert_eq!(tab.setup_error, None);
         assert_eq!(tab.status, LoadTestStatus::NotStarted);
         assert_eq!(tab.target_kind, TargetKind::Request);
 
         tab.status = LoadTestStatus::Finished;
+        tab.setup_error = Some(LoadTestFailure::EmptyFolder);
         tab.pick_target(
             LoadTestTarget::Collection("users".to_string()),
             "users".to_string(),
             2,
         );
+        assert_eq!(tab.setup_error, None);
         assert_eq!(tab.status, LoadTestStatus::Finished);
         assert_eq!(tab.target_kind, TargetKind::Collection);
     }

@@ -338,7 +338,6 @@ pub fn status_label(status: &LoadTestStatus) -> String {
         LoadTestStatus::Running => t!("load_test.status.running"),
         LoadTestStatus::Finished => t!("load_test.status.finished"),
         LoadTestStatus::Stopped => t!("load_test.status.stopped"),
-        LoadTestStatus::Failed(_) => t!("load_test.status.failed"),
     }
     .into_owned()
 }
