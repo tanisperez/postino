@@ -216,10 +216,11 @@ fn set_multipart_content_type(
 }
 
 /// Prepends `http://` to a URL that names no scheme, as Postman does, so `localhost:8080/users`
-/// works as typed. An empty URL, or one that starts with a scheme (`https://`, `HTTP://`, ...),
-/// is returned unchanged.
+/// works as typed. An empty URL, one that starts with a scheme (`https://`, `HTTP://`, ...), or
+/// one that still starts with an unresolved `{{name}}` marker (whose value usually holds the
+/// scheme, as `{{baseUrl}}/users`) is returned unchanged.
 fn with_default_scheme(url: String) -> String {
-    if url.trim().is_empty() || has_scheme(&url) {
+    if url.trim().is_empty() || has_scheme(&url) || url.trim_start().starts_with("{{") {
         url
     } else {
         format!("http://{}", url.trim_start())
@@ -596,6 +597,12 @@ mod tests {
             let (resolved, _) = resolve(&base_request(url), &scope());
             assert_eq!(resolved.url, url);
         }
+    }
+
+    #[test]
+    fn a_url_starting_with_an_unresolved_variable_is_kept() {
+        let (resolved, _) = resolve(&base_request("{{noSuchBase}}/users"), &scope());
+        assert_eq!(resolved.url, "{{noSuchBase}}/users");
     }
 
     #[test]
