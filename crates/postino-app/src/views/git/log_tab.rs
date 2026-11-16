@@ -42,7 +42,8 @@ use crate::state::number::format_integer;
 use crate::theme::metrics::{INPUT_PADDING_X, RADIUS_MD, RADIUS_SM, SIDEBAR_FILTER_HEIGHT};
 use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::{
-    EmptyState, IconButton, MethodBadge, SecondaryButton, SectionLabel, TreeRow, edit_menu,
+    EmptyState, IconButton, MethodBadge, SecondaryButton, SectionLabel, TreeRow, edit_menu_area,
+    no_input_menu,
 };
 
 use super::super::root::AppView;
@@ -662,7 +663,6 @@ impl AppView {
                 &view.branch_filter,
                 None,
                 palette,
-                cx,
             )))
             .child(list)
             .child(
@@ -865,7 +865,6 @@ impl AppView {
                 &view.search,
                 Some(SEARCH_WIDTH),
                 palette,
-                cx,
             ))
             .child(branch_chip)
             .child(pill_input(
@@ -875,7 +874,6 @@ impl AppView {
                 &view.author,
                 Some(AUTHOR_WIDTH + 70.0),
                 palette,
-                cx,
             ))
             .child(pill_input(
                 "git-log-path",
@@ -884,7 +882,6 @@ impl AppView {
                 &view.path,
                 Some(AUTHOR_WIDTH + 50.0),
                 palette,
-                cx,
             ))
             .child(div().flex_none().child(refresh))
             .into_any_element()
@@ -1339,7 +1336,6 @@ fn pill_input(
     state: &Entity<InputState>,
     width: Option<f32>,
     palette: &Palette,
-    cx: &App,
 ) -> AnyElement {
     h_flex()
         .id(id)
@@ -1363,15 +1359,17 @@ fn pill_input(
         .children(icon.map(|icon| Icon::new(icon).small()))
         .children(label.map(|label| div().flex_none().text_color(palette.fg_muted).child(label)))
         .child(
-            Input::new(state)
-                .context_menu(edit_menu(state, cx))
-                .pl_0()
-                .pr(px(INPUT_PADDING_X))
-                .h(px(SIDEBAR_FILTER_HEIGHT))
-                .py_0()
-                .bordered(false)
-                .text_color(palette.fg)
-                .bg(palette.bg.opacity(0.0)),
+            edit_menu_area(state).flex_1().min_w_0().child(
+                Input::new(state)
+                    .context_menu(no_input_menu())
+                    .pl_0()
+                    .pr(px(INPUT_PADDING_X))
+                    .h(px(SIDEBAR_FILTER_HEIGHT))
+                    .py_0()
+                    .bordered(false)
+                    .text_color(palette.fg)
+                    .bg(palette.bg.opacity(0.0)),
+            ),
         )
         .into_any_element()
 }

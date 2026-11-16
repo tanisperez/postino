@@ -21,8 +21,8 @@ use rust_i18n::t;
 use postino_core::{Method, VariableSpan};
 
 use super::NeutralButtonExt;
-use super::edit_menu;
 use super::variable_line::{TextHandler, marker_children};
+use super::{edit_menu_area, no_input_menu};
 use crate::state::variable_hint::VariableContext;
 use crate::theme::metrics::{RADIUS_MD, URL_BAR_HEIGHT};
 use crate::theme::{PaletteExt, PostinoColors};
@@ -169,13 +169,15 @@ impl UrlBar {
                 .border_color(palette.border)
                 .child(
                     // Same sizing as the focused URL field, see `RenderOnce for UrlBar`.
-                    Input::new(input)
-                        .context_menu(edit_menu(input, cx))
-                        .h_full()
-                        .px_2()
-                        .py_0()
-                        .line_height(px(URL_LINE_HEIGHT))
-                        .bordered(false),
+                    edit_menu_area(input).size_full().child(
+                        Input::new(input)
+                            .context_menu(no_input_menu())
+                            .h_full()
+                            .px_2()
+                            .py_0()
+                            .line_height(px(URL_LINE_HEIGHT))
+                            .bordered(false),
+                    ),
                 )
                 .into_any_element();
         }
@@ -275,11 +277,12 @@ impl RenderOnce for UrlBar {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let palette = cx.palette();
         let mono_font = cx.theme().mono_font_family.clone();
-        let focused = self
-            .input_state
-            .read(cx)
-            .focus_handle(cx)
-            .is_focused(window);
+        // A field whose right-click menu is open keeps its selection focus and stays the field: the
+        // menu is anchored to it and would close if the field turned back into its line of chips.
+        let focused = {
+            let state = self.input_state.read(cx);
+            state.focus_handle(cx).is_focused(window) || state.has_selection_focus(window, cx)
+        };
 
         let on_escape = self.on_escape.clone();
         let field: AnyElement = if focused {
@@ -289,17 +292,23 @@ impl RenderOnce for UrlBar {
             // bar's border (a fixed `URL_BAR_HEIGHT` overflowed it by the border's 2px and
             // clipped descenders), and the taller line height gives a selection some room above
             // and below the glyphs. Transparent, so the bar's own background shows through.
-            Input::new(&self.input_state)
-                .context_menu(edit_menu(&self.input_state, cx))
+            edit_menu_area(&self.input_state)
                 .h_full()
                 .flex_1()
-                .px_2()
-                .py_0()
-                .line_height(px(URL_LINE_HEIGHT))
-                .bordered(false)
-                .bg(palette.raised.opacity(0.0))
-                .font_family(mono_font)
-                .text_size(px(12.5))
+                .min_w_0()
+                .child(
+                    Input::new(&self.input_state)
+                        .context_menu(no_input_menu())
+                        .h_full()
+                        .flex_1()
+                        .px_2()
+                        .py_0()
+                        .line_height(px(URL_LINE_HEIGHT))
+                        .bordered(false)
+                        .bg(palette.raised.opacity(0.0))
+                        .font_family(mono_font)
+                        .text_size(px(12.5)),
+                )
                 .into_any_element()
         } else {
             self.render_line(cx)

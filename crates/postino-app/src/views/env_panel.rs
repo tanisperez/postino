@@ -36,7 +36,7 @@ use crate::state::number::format_integer;
 use crate::state::workspace_log::log_workspace_error;
 use crate::theme::metrics::{ENV_ROW_HEIGHT, ICON_BUTTON_HEADER, INPUT_PADDING_X, RADIUS_SM};
 use crate::theme::{Palette, PaletteExt, PostinoColors};
-use crate::views::components::{IconButton, SectionLabel, edit_menu};
+use crate::views::components::{IconButton, SectionLabel, edit_menu_area, no_input_menu};
 
 use super::root::AppView;
 
@@ -414,13 +414,15 @@ impl AppView {
             .child(grip_spacer())
             .child(
                 div().flex_1().min_w_0().child(
-                    Input::new(input)
-                        .context_menu(edit_menu(input, cx))
-                        .px(px(INPUT_PADDING_X))
-                        .h(px(ENV_ROW_HEIGHT - 2.0))
-                        .py_0()
-                        .bordered(false)
-                        .bg(palette.bg.opacity(0.0)),
+                    edit_menu_area(input).w_full().child(
+                        Input::new(input)
+                            .context_menu(no_input_menu())
+                            .px(px(INPUT_PADDING_X))
+                            .h(px(ENV_ROW_HEIGHT - 2.0))
+                            .py_0()
+                            .bordered(false)
+                            .bg(palette.bg.opacity(0.0)),
+                    ),
                 ),
             )
             .child(

@@ -26,7 +26,7 @@ use crate::theme::metrics::{
 use crate::theme::{PaletteExt, PostinoColors};
 use crate::views::components::{
     GhostButton, HoverInput, NeutralButtonExt, SecondaryButton, SegmentedControl, SegmentedItem,
-    VariableField, edit_menu, switch_halo,
+    VariableField, edit_menu_area, no_input_menu, switch_halo,
 };
 use crate::views::request_editor::define_variable_click;
 
@@ -673,17 +673,22 @@ impl AppView {
             Some(input) => div()
                 .flex_1()
                 .min_w_0()
-                .child(HoverInput::new(
-                    "oauth-redirect-url",
-                    &input,
-                    Input::new(&input)
-                        .context_menu(edit_menu(&input, cx))
-                        .appearance(false)
-                        .px_0()
-                        .py_0()
-                        .font_family(cx.theme().mono_font_family.clone())
-                        .text_size(px(12.0)),
-                ))
+                .child(
+                    edit_menu_area(&input).w_full().child(
+                        edit_menu_area(&input).w_full().child(HoverInput::new(
+                            "oauth-redirect-url",
+                            &input,
+                            Input::new(&input)
+                                .context_menu(no_input_menu())
+                                .context_menu(no_input_menu())
+                                .appearance(false)
+                                .px_0()
+                                .py_0()
+                                .font_family(cx.theme().mono_font_family.clone())
+                                .text_size(px(12.0)),
+                        )),
+                    ),
+                )
                 .into_any_element(),
             None => div()
                 .flex_1()
@@ -921,11 +926,14 @@ impl AppView {
                     })
                     .child(
                         div().w(px(110.0)).flex_none().child(
-                            Input::new(key)
-                                .appearance(false)
-                                .px_0()
-                                .py_0()
-                                .text_size(px(12.0)),
+                            edit_menu_area(key).w_full().child(
+                                Input::new(key)
+                                    .context_menu(no_input_menu())
+                                    .appearance(false)
+                                    .px_0()
+                                    .py_0()
+                                    .text_size(px(12.0)),
+                            ),
                         ),
                     )
                     .child(
@@ -934,11 +942,14 @@ impl AppView {
                             .min_w_0()
                             .text_color(palette.syntax_color("string"))
                             .child(
-                                Input::new(value)
-                                    .appearance(false)
-                                    .px_0()
-                                    .py_0()
-                                    .text_size(px(12.0)),
+                                edit_menu_area(value).w_full().child(
+                                    Input::new(value)
+                                        .context_menu(no_input_menu())
+                                        .appearance(false)
+                                        .px_0()
+                                        .py_0()
+                                        .text_size(px(12.0)),
+                                ),
                             ),
                     )
                     .child(

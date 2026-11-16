@@ -36,8 +36,8 @@ use crate::views::components::NeutralButtonExt;
 use crate::views::components::{
     ConfirmDialog, EditableCell, EditableColumn, EditableRow, EditableTable, GhostButton,
     HoverInput, IconButton, InlineMessage, InlineMessageKind, ModalPlacement, PrimaryButton,
-    SecondaryButton, SegmentedControl, SegmentedItem, edit_menu, framed_dialog, modal_body,
-    modal_footer, modal_header_with_icon, open_confirm_dialog,
+    SecondaryButton, SegmentedControl, SegmentedItem, edit_menu_area, framed_dialog, modal_body,
+    modal_footer, modal_header_with_icon, no_input_menu, open_confirm_dialog,
 };
 use crate::views::env_color_picker::color_picker;
 
@@ -584,14 +584,16 @@ impl AppView {
                             cx,
                         ))
                         .child(
-                            modal_body().child(HoverInput::new(
-                                "env-rename-input",
-                                &input,
-                                Input::new(&input)
-                                    .context_menu(edit_menu(&input, cx))
-                                    .px(px(INPUT_PADDING_X))
-                                    .py_0(),
-                            )),
+                            modal_body().child(
+                                edit_menu_area(&input).w_full().child(HoverInput::new(
+                                    "env-rename-input",
+                                    &input,
+                                    Input::new(&input)
+                                        .context_menu(no_input_menu())
+                                        .px(px(INPUT_PADDING_X))
+                                        .py_0(),
+                                )),
+                            ),
                         )
                         .child(
                             modal_footer(cx)
@@ -705,7 +707,6 @@ impl AppView {
                 &tab_id,
                 &weak,
                 &palette,
-                cx,
             ))
             .children(edit.error.as_ref().map(|error| {
                 div().px(px(20.0)).pt(px(10.0)).child(InlineMessage::new(
@@ -1025,7 +1026,6 @@ fn render_toolbar(
     tab_id: &str,
     weak: &WeakEntity<AppView>,
     palette: &Palette,
-    cx: &mut Context<AppView>,
 ) -> AnyElement {
     let scope_item = |label: String, scope: EnvScope| {
         let weak = weak.clone();
@@ -1064,21 +1064,25 @@ fn render_toolbar(
         .px(px(20.0))
         .pt(px(12.0))
         .child(
-            div().w(px(220.0)).child(HoverInput::new(
-                "env-filter",
-                &entities.filter,
-                Input::new(&entities.filter)
-                    .context_menu(edit_menu(&entities.filter, cx))
-                    .px(px(INPUT_PADDING_X))
-                    .h(px(CONTROL_HEIGHT))
-                    .py_0()
-                    .prefix(
-                        Icon::new(IconName::ListFilter)
-                            .small()
-                            .text_color(palette.fg_subtle),
-                    )
-                    .cleanable(true),
-            )),
+            div().w(px(220.0)).child(
+                edit_menu_area(&entities.filter)
+                    .w_full()
+                    .child(HoverInput::new(
+                        "env-filter",
+                        &entities.filter,
+                        Input::new(&entities.filter)
+                            .context_menu(no_input_menu())
+                            .px(px(INPUT_PADDING_X))
+                            .h(px(CONTROL_HEIGHT))
+                            .py_0()
+                            .prefix(
+                                Icon::new(IconName::ListFilter)
+                                    .small()
+                                    .text_color(palette.fg_subtle),
+                            )
+                            .cleanable(true),
+                    )),
+            ),
         )
         .child(
             SegmentedControl::new("env-scope")

@@ -25,7 +25,7 @@ use crate::theme::metrics::RADIUS_LG;
 use crate::theme::{Palette, PaletteExt};
 use crate::views::components::{
     DataAlign, DataCell, DataColumn, EmptyState, MethodBadge, NeutralButtonExt, SegmentedControl,
-    SegmentedItem, SortOrder, VirtualDataTable,
+    SegmentedItem, SortOrder, VirtualDataTable, edit_menu_area, no_input_menu,
 };
 use crate::views::root::AppView;
 
@@ -105,14 +105,17 @@ impl AppView {
                                     .text_color(palette.fg_subtle),
                             )
                             .child(
-                                Input::new(search)
-                                    .flex_1()
-                                    .px_0()
-                                    .py_0()
-                                    .h(px(FILTER_HEIGHT - 2.0))
-                                    .bordered(false)
-                                    .text_size(px(12.5))
-                                    .bg(palette.bg.opacity(0.0)),
+                                edit_menu_area(search).flex_1().min_w_0().child(
+                                    Input::new(search)
+                                        .context_menu(no_input_menu())
+                                        .flex_1()
+                                        .px_0()
+                                        .py_0()
+                                        .h(px(FILTER_HEIGHT - 2.0))
+                                        .bordered(false)
+                                        .text_size(px(12.5))
+                                        .bg(palette.bg.opacity(0.0)),
+                                ),
                             )
                     }),
             )

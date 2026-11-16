@@ -20,8 +20,8 @@ use postino_core::{VariableKind, VariableSpan, variable_spans};
 
 use super::HoverInput;
 use super::IconButton;
-use super::edit_menu;
 use super::variable_chip::VariableChip;
+use super::{edit_menu_area, no_input_menu};
 use crate::state::variable_hint::{Hint, Origin, VariableContext, hint};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{INPUT_PADDING_X, RADIUS_MD, VARIABLE_FIELD_HEIGHT};
@@ -199,11 +199,12 @@ impl VariableField {
 
 impl RenderOnce for VariableField {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let focused = self
-            .input_state
-            .read(cx)
-            .focus_handle(cx)
-            .is_focused(window);
+        // A field whose right-click menu is open keeps its selection focus and stays the field: the
+        // menu is anchored to it and would close if the field turned back into its line of chips.
+        let focused = {
+            let state = self.input_state.read(cx);
+            state.focus_handle(cx).is_focused(window) || state.has_selection_focus(window, cx)
+        };
         let text = if self.masked {
             SharedString::from(mask_literals(&self.text))
         } else {
@@ -232,7 +233,7 @@ impl RenderOnce for VariableField {
         if spans.is_empty() {
             let accent = cx.palette().accent;
             let input = Input::new(&self.input_state)
-                .context_menu(edit_menu(&self.input_state, cx))
+                .context_menu(no_input_menu())
                 .px(px(INPUT_PADDING_X))
                 .py_0()
                 // The same height as the row of chips, smaller than the default 32 px so it stays
@@ -244,7 +245,13 @@ impl RenderOnce for VariableField {
                 .focus_ring(false)
                 .when(focused, |input| input.border_color(accent))
                 .when_some(mask_toggle, |input, toggle| input.suffix(toggle));
-            return HoverInput::new(format!("{}-input", self.id), &self.input_state, input)
+            return edit_menu_area(&self.input_state)
+                .w_full()
+                .child(HoverInput::new(
+                    format!("{}-input", self.id),
+                    &self.input_state,
+                    input,
+                ))
                 .into_any_element();
         }
 

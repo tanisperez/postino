@@ -20,7 +20,7 @@ use crate::theme::metrics::{INPUT_PADDING_X, RADIUS_MD};
 use crate::theme::{PaletteExt, PostinoColors};
 use crate::views::components::{
     ConfirmDialog, HoverInput, MODAL_INNER_RADIUS, ModalPlacement, PrimaryButton, SecondaryButton,
-    edit_menu, framed_dialog, modal_body, modal_footer, modal_header_with_icon,
+    edit_menu_area, framed_dialog, modal_body, modal_footer, modal_header_with_icon, no_input_menu,
     open_confirm_dialog,
 };
 
@@ -810,17 +810,19 @@ fn subscribe_enter(
 
 /// A single line mono input of a dialog.
 fn name_field(id: &'static str, input: &Entity<InputState>, cx: &App) -> AnyElement {
-    HoverInput::new(
-        id,
-        input,
-        Input::new(input)
-            .context_menu(edit_menu(input, cx))
-            .px(px(INPUT_PADDING_X))
-            .py_0()
-            .font_family(cx.theme().mono_font_family.clone())
-            .text_size(px(12.0)),
-    )
-    .into_any_element()
+    edit_menu_area(input)
+        .w_full()
+        .child(HoverInput::new(
+            id,
+            input,
+            Input::new(input)
+                .context_menu(no_input_menu())
+                .px(px(INPUT_PADDING_X))
+                .py_0()
+                .font_family(cx.theme().mono_font_family.clone())
+                .text_size(px(12.0)),
+        ))
+        .into_any_element()
 }
 
 /// The Name field alone, for a copy: the grant comes from the profile copied.

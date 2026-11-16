@@ -26,7 +26,8 @@ use crate::state::palette::{self, ActionId, PaletteItem, PaletteItemKind};
 use crate::theme::Palette;
 use crate::theme::{PaletteExt, PostinoColors};
 use crate::views::components::{
-    MODAL_INNER_RADIUS, MethodBadge, ModalPlacement, edit_menu, framed_dialog, modal_hints,
+    MODAL_INNER_RADIUS, MethodBadge, ModalPlacement, edit_menu_area, framed_dialog, modal_hints,
+    no_input_menu,
 };
 
 use super::root::AppView;
@@ -261,12 +262,14 @@ fn render_search_row(search_input: &Entity<InputState>, cx: &App) -> AnyElement 
                 .text_color(cx.palette().fg_subtle),
         )
         .child(
-            Input::new(search_input)
-                .context_menu(edit_menu(search_input, cx))
-                .appearance(false)
-                .text_size(px(SEARCH_TEXT_SIZE))
-                .flex_1()
-                .p_0(),
+            edit_menu_area(search_input).flex_1().min_w_0().child(
+                Input::new(search_input)
+                    .context_menu(no_input_menu())
+                    .appearance(false)
+                    .text_size(px(SEARCH_TEXT_SIZE))
+                    .flex_1()
+                    .p_0(),
+            ),
         )
         .into_any_element()
 }

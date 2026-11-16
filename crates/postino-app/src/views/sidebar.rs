@@ -34,8 +34,8 @@ use crate::theme::metrics::{
 };
 use crate::views::components::{
     ConfirmDialog, IconButton, MethodBadge, ModalPlacement, PrimaryButton, SecondaryButton,
-    SectionLabel, edit_menu, framed_dialog, modal_body, modal_footer, modal_header_with_icon,
-    open_confirm_dialog, text_field,
+    SectionLabel, edit_menu_area, framed_dialog, modal_body, modal_footer, modal_header_with_icon,
+    no_input_menu, open_confirm_dialog, text_field,
 };
 
 use super::root::AppView;
@@ -326,20 +326,25 @@ impl AppView {
                     .text_color(palette.fg_subtle)
                     .child(Icon::new(gpui_kit::assets::IconName::ListFilter).small())
                     .child(
-                        Input::new(&self.sidebar_filter_input)
-                            .context_menu(edit_menu(&self.sidebar_filter_input, cx))
-                            // No left padding: the row's 8 px gap already separates the text
-                            // from the icon, as in the title bar's search trigger.
-                            .pl_0()
-                            .pr(px(INPUT_PADDING_X))
-                            .h(px(SIDEBAR_FILTER_HEIGHT))
-                            .py_0()
-                            .bordered(false)
-                            // The row's `fg_subtle` is for the icon; typed text is plain `fg`.
-                            .text_color(palette.fg)
-                            // Transparent so only the outer pill shows: without this, the `Input`'s
-                            // own background paints a second, visible box inside it.
-                            .bg(palette.bg.opacity(0.0)),
+                        edit_menu_area(&self.sidebar_filter_input)
+                            .flex_1()
+                            .min_w_0()
+                            .child(
+                                Input::new(&self.sidebar_filter_input)
+                                    .context_menu(no_input_menu())
+                                    // No left padding: the row's 8 px gap already separates the text
+                                    // from the icon, as in the title bar's search trigger.
+                                    .pl_0()
+                                    .pr(px(INPUT_PADDING_X))
+                                    .h(px(SIDEBAR_FILTER_HEIGHT))
+                                    .py_0()
+                                    .bordered(false)
+                                    // The row's `fg_subtle` is for the icon; typed text is plain `fg`.
+                                    .text_color(palette.fg)
+                                    // Transparent so only the outer pill shows: without this, the `Input`'s
+                                    // own background paints a second, visible box inside it.
+                                    .bg(palette.bg.opacity(0.0)),
+                            ),
                     ),
             )
             .into_any_element()

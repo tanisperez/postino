@@ -26,7 +26,7 @@ use crate::theme::metrics::{CONTROL_HEIGHT, INPUT_PADDING_X, RADIUS_MD};
 use crate::theme::{Palette, PaletteExt, PostinoColors};
 use crate::views::components::{
     DangerButton, IconButton, NeutralButtonExt, PrimaryButton, SegmentedControl, SegmentedItem,
-    edit_menu, select_trigger, switch_halo,
+    edit_menu_area, no_input_menu, select_trigger, switch_halo,
 };
 
 use crate::views::root::AppView;
@@ -264,7 +264,6 @@ impl AppView {
                                         self.load_test_entities.vus.as_ref(),
                                         "VUs",
                                         is_running,
-                                        cx,
                                     ))
                                     .child(render_field(
                                         &palette,
@@ -274,7 +273,6 @@ impl AppView {
                                         self.load_test_entities.duration_secs.as_ref(),
                                         "s",
                                         is_running,
-                                        cx,
                                     )),
                             )
                             .child(
@@ -288,7 +286,6 @@ impl AppView {
                                         self.load_test_entities.ramp_up_secs.as_ref(),
                                         "s",
                                         is_running,
-                                        cx,
                                     ))
                                     .child(render_field(
                                         &palette,
@@ -298,7 +295,6 @@ impl AppView {
                                         self.load_test_entities.think_time_ms.as_ref(),
                                         "ms",
                                         is_running,
-                                        cx,
                                     )),
                             ),
                     )
@@ -548,7 +544,6 @@ fn render_field(
     entity: Option<&Entity<InputState>>,
     unit: &'static str,
     disabled: bool,
-    cx: &App,
 ) -> AnyElement {
     // An id keeps the pill's hover state, so entering and leaving renders again.
     let pill_id = SharedString::from(format!("load-test-field-{label}"));
@@ -577,15 +572,17 @@ fn render_field(
         .text_size(px(12.5));
     if let Some(entity) = entity {
         pill = pill.child(
-            Input::new(entity)
-                .context_menu(edit_menu(entity, cx))
-                .px(px(INPUT_PADDING_X))
-                .flex_1()
-                .h(px(CONTROL_HEIGHT))
-                .py_0()
-                .bordered(false)
-                .disabled(disabled)
-                .bg(palette.bg.opacity(0.0)),
+            edit_menu_area(entity).flex_1().min_w_0().child(
+                Input::new(entity)
+                    .context_menu(no_input_menu())
+                    .px(px(INPUT_PADDING_X))
+                    .flex_1()
+                    .h(px(CONTROL_HEIGHT))
+                    .py_0()
+                    .bordered(false)
+                    .disabled(disabled)
+                    .bg(palette.bg.opacity(0.0)),
+            ),
         );
     }
     // The interface font, not `mono_font` (the unit suffix is drawn in the UI
@@ -663,7 +660,6 @@ fn render_thresholds(
                     view.remove_load_test_threshold(&remove_tab_id, metric, cx);
                 });
             },
-            cx,
         ));
     }
 
@@ -723,7 +719,6 @@ fn render_threshold_row(
     entity: Option<&Entity<InputState>>,
     disabled: bool,
     on_remove: impl Fn(&mut App) + 'static,
-    cx: &App,
 ) -> AnyElement {
     let metric = row.metric;
     let invalid = row.resolved().is_none();
@@ -771,14 +766,16 @@ fn render_threshold_row(
                 .min_w_0()
                 .font_family(mono_font.clone())
                 .child(
-                    Input::new(entity)
-                        .context_menu(edit_menu(entity, cx))
-                        .px_0()
-                        .h(px(CONTROL_HEIGHT))
-                        .py_0()
-                        .bordered(false)
-                        .disabled(disabled)
-                        .bg(palette.bg.opacity(0.0)),
+                    edit_menu_area(entity).w_full().child(
+                        Input::new(entity)
+                            .context_menu(no_input_menu())
+                            .px_0()
+                            .h(px(CONTROL_HEIGHT))
+                            .py_0()
+                            .bordered(false)
+                            .disabled(disabled)
+                            .bg(palette.bg.opacity(0.0)),
+                    ),
                 ),
         );
     }

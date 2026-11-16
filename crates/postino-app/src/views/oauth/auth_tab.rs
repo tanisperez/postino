@@ -23,7 +23,8 @@ use crate::theme::metrics::{
 use crate::theme::{PaletteExt, PostinoColors};
 use crate::views::components::{
     GhostButton, HoverInput, InlineMessage, InlineMessageKind, NeutralButtonExt, PrimaryButton,
-    SecondaryButton, SegmentedControl, SegmentedItem, edit_menu, rich_menu_width,
+    SecondaryButton, SegmentedControl, SegmentedItem, edit_menu_area, no_input_menu,
+    rich_menu_width,
 };
 
 use super::super::root::AppView;
@@ -310,18 +311,18 @@ impl AppView {
                 .text_color(palette.fg_subtle)
                 .child(t!("oauth.from_profile").into_owned())
         });
-        let field = HoverInput::new(
+        let field = edit_menu_area(&input).w_full().child(HoverInput::new(
             "oauth-scope-input",
             &input,
             Input::new(&input)
-                .context_menu(edit_menu(&input, cx))
+                .context_menu(no_input_menu())
                 .px(px(INPUT_PADDING_X))
                 .py_0()
                 .font_family(cx.theme().mono_font_family.clone())
                 .text_size(px(12.0))
                 .when(empty, |input| input.bg(palette.surface))
                 .when_some(from_profile, |input, suffix| input.suffix(suffix)),
-        );
+        ));
         h_flex()
             .gap_3()
             .items_center()
@@ -732,16 +733,18 @@ impl AppView {
                             .child(t!("oauth.name").into_owned()),
                     )
                     .child(
-                        div().flex_1().child(HoverInput::new(
-                            "oauth-create-name",
-                            &input,
-                            Input::new(&input)
-                                .context_menu(edit_menu(&input, cx))
-                                .px(px(INPUT_PADDING_X))
-                                .py_0()
-                                .font_family(cx.theme().mono_font_family.clone())
-                                .text_size(px(12.0)),
-                        )),
+                        div().flex_1().child(
+                            edit_menu_area(&input).w_full().child(HoverInput::new(
+                                "oauth-create-name",
+                                &input,
+                                Input::new(&input)
+                                    .context_menu(no_input_menu())
+                                    .px(px(INPUT_PADDING_X))
+                                    .py_0()
+                                    .font_family(cx.theme().mono_font_family.clone())
+                                    .text_size(px(12.0)),
+                            )),
+                        ),
                     ),
             )
             .child(

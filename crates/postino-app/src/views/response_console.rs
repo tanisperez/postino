@@ -29,7 +29,9 @@ use crate::state::console::{
 use crate::state::response_render::{format_duration, format_size};
 use crate::theme::metrics::{INPUT_PADDING_X, RADIUS_MD, RADIUS_SM};
 use crate::theme::{Palette, PaletteExt, PostinoColors};
-use crate::views::components::{GhostButton, SegmentedControl, SegmentedItem, edit_menu};
+use crate::views::components::{
+    GhostButton, SegmentedControl, SegmentedItem, edit_menu_area, no_input_menu,
+};
 
 use super::root::AppView;
 
@@ -204,16 +206,21 @@ impl AppView {
                     .text_color(palette.fg_subtle)
                     .child(Icon::new(Lucide::Search).small())
                     .child(
-                        Input::new(&self.console_filter_input)
-                            .context_menu(edit_menu(&self.console_filter_input, cx))
-                            .pl_0()
-                            .pr(px(INPUT_PADDING_X))
-                            .h(px(BAR_CONTROL_HEIGHT))
-                            .py_0()
-                            .text_size(px(12.0))
-                            .bordered(false)
-                            .text_color(palette.fg)
-                            .bg(palette.bg.opacity(0.0)),
+                        edit_menu_area(&self.console_filter_input)
+                            .flex_1()
+                            .min_w_0()
+                            .child(
+                                Input::new(&self.console_filter_input)
+                                    .context_menu(no_input_menu())
+                                    .pl_0()
+                                    .pr(px(INPUT_PADDING_X))
+                                    .h(px(BAR_CONTROL_HEIGHT))
+                                    .py_0()
+                                    .text_size(px(12.0))
+                                    .bordered(false)
+                                    .text_color(palette.fg)
+                                    .bg(palette.bg.opacity(0.0)),
+                            ),
                     ),
             )
             .child(
