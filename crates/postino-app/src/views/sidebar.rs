@@ -563,8 +563,10 @@ fn render_tree_row(
         div()
             .text_sm()
             .text_color(label_color)
-            // With the lock at the end, a long name gives way to it.
-            .when(locked, |label| label.flex_1().min_w_0().truncate())
+            // A long name ends in an ellipsis at the panel's edge, before the lock if there is one.
+            .flex_1()
+            .min_w_0()
+            .truncate()
             .child(item.label.clone()),
     );
     if locked {
@@ -597,6 +599,12 @@ fn render_tree_row(
         .py(px(0.0))
         .px(px(8.0))
         .when(in_target, |this| this.bg(palette.hover))
+        // `ListItem` only has a hover style; a row the click will select presses one step
+        // darker, like every other clickable thing.
+        .when(!selected, |this| {
+            let pressed = palette.pressed;
+            this.active(move |style| style.bg(pressed))
+        })
         // `Tree` sets `selected` from its own single selection, so picked rows paint the same
         // background themselves.
         .when(picked, |this| this.bg(palette.list_active))
