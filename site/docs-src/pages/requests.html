@@ -75,6 +75,7 @@ Authorization: Bearer {{token}}
     <li>The API key <strong>Name</strong> suggests common header names while <strong>Add to</strong> is <strong>Header</strong>, like the names of the Headers table, see <a href="#suggested-headers">suggested headers</a>.</li>
     <li>The eye button at the end of a masked field shows its text, and clicking it again hides it. It applies to the tab, not to the file: the fields are masked again when the request is opened again.</li>
     <li>Variables are replaced before the Basic credentials are encoded, so <code>{{username}}</code> and <code>{{password}}</code> work as they are.</li>
+    <li>A new API key starts with <code>X-API-Key</code> as its <strong>Name</strong>, the most common header for one. Change it if the API expects another.</li>
     <li>Nothing is sent while the field a type needs is empty: the token, the API key name, or both the username and the password.</li>
     <li>A header you write yourself in the Headers tab wins: with an enabled <code>Authorization</code> header (in any letter case), Basic and Bearer add nothing, and the Auth tab says <strong>The Authorization header of the Headers tab is sent instead.</strong> The same goes for an API key and an enabled header with its name, or an enabled Params entry with its name when it goes in the query.</li>
     <li>Switching the type keeps what the other types held while the tab is open, so switching back brings the fields back. Only the type selected when you save is written to the file.</li>

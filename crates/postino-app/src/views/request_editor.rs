@@ -230,13 +230,7 @@ fn build_auth_input(
     window: &mut Window,
     cx: &mut Context<AppView>,
 ) -> Entity<InputState> {
-    let input = cx.new(|cx| {
-        let state = InputState::new(window, cx).masked(field.is_secret() && !show_secrets);
-        match field {
-            AuthField::KeyName => state.placeholder("X-API-Key"),
-            _ => state,
-        }
-    });
+    let input = cx.new(|cx| InputState::new(window, cx).masked(field.is_secret() && !show_secrets));
     input.update(cx, |state, cx| {
         state.set_value(text.to_string(), window, cx)
     });

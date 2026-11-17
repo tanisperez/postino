@@ -129,8 +129,12 @@ impl AuthStash {
     }
 }
 
+/// The name a new API key auth starts with, the most common header for one (#270). A real value,
+/// not a placeholder: an empty name sends nothing.
+pub const DEFAULT_API_KEY_NAME: &str = "X-API-Key";
+
 /// Switches `request.auth` to `kind`, putting the current auth in `stash` and restoring what
-/// `stash` holds for `kind`, or empty fields.
+/// `stash` holds for `kind`, or empty fields (an API key starts with [`DEFAULT_API_KEY_NAME`]).
 pub fn set_auth_kind(request: &mut Request, kind: AuthKind, stash: &mut AuthStash) {
     let current = std::mem::take(&mut request.auth);
     if let Some(slot) = stash.slot(AuthKind::of(&current)) {
@@ -149,7 +153,7 @@ pub fn set_auth_kind(request: &mut Request, kind: AuthKind, stash: &mut AuthStas
                 token: String::new(),
             },
             AuthKind::ApiKey => Auth::ApiKey {
-                name: String::new(),
+                name: DEFAULT_API_KEY_NAME.to_string(),
                 value: String::new(),
                 location: ApiKeyLocation::Header,
             },
@@ -286,6 +290,20 @@ mod tests {
         set_field(&mut auth, AuthField::Token, "u".to_string());
         assert_eq!(auth, bearer("u"));
         assert_eq!(field_value(&auth, AuthField::Password), "");
+    }
+
+    #[test]
+    fn a_new_api_key_starts_with_the_default_name() {
+        let mut request = Request::default();
+        set_auth_kind(&mut request, AuthKind::ApiKey, &mut AuthStash::default());
+        assert_eq!(
+            request.auth,
+            Auth::ApiKey {
+                name: DEFAULT_API_KEY_NAME.to_string(),
+                value: String::new(),
+                location: ApiKeyLocation::Header,
+            }
+        );
     }
 
     #[test]
