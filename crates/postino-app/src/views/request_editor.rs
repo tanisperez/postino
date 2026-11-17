@@ -15,9 +15,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
-use gpui_kit::component::input::{
-    EditorState, IndentInline, InputEvent, InputState, TextDecoration, TextDecorationCollection,
-};
+use gpui_kit::component::input::{EditorState, IndentInline, InputEvent, InputState};
 use gpui_kit::component::scroll::Scrollbar;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -49,7 +47,7 @@ use crate::views::components::{
     VariableField,
 };
 use crate::views::script_completion::{ScriptCompletionData, ScriptCompletionProvider};
-use crate::views::variable_hover::{BodyMarkers, VariableHover};
+use crate::views::variable_hover::BodyMarkers;
 
 use super::root::AppView;
 
@@ -258,14 +256,11 @@ fn build_auth_input(
 /// The body editor's language for a request's current body, and the raw text to load into it.
 /// `None` for a body kind that has no code editor of its own (`None` or `Form`, which uses the
 /// key-value table instead).
-fn body_language(body: &Body) -> Option<(&str, &'static str)> {
+fn body_language(body: &Body) -> Option<(&str, telaio_editor::Language)> {
     match body {
-        Body::Json(text) => Some((text.as_str(), "json")),
-        Body::Text(text) => Some((text.as_str(), "text")),
-        // gpui-component 0.6.6 ships no dedicated XML grammar; "html" is the closest available
-        // and still highlights tags and attributes reasonably well for a preview (see this
-        // crate's Cargo.toml for the exact tree-sitter features enabled).
-        Body::Xml(text) => Some((text.as_str(), "html")),
+        Body::Json(text) => Some((text.as_str(), telaio_editor::Language::Json)),
+        Body::Text(text) => Some((text.as_str(), telaio_editor::Language::PlainText)),
+        Body::Xml(text) => Some((text.as_str(), telaio_editor::Language::Xml)),
         Body::None | Body::Form(_) | Body::Multipart(_) => None,
     }
 }
@@ -335,12 +330,14 @@ pub(crate) struct RequestEditorEntities {
     form: KeyValueTableEntities,
     /// The inputs of the Auth tab, one per field of the request's auth kind, in display order.
     pub(crate) auth: Vec<(AuthField, Entity<InputState>)>,
-    body_editor: Option<Entity<EditorState>>,
+    /// The Body tab's editor for a JSON, text or XML body: telaio's (#267).
+    body_editor: Option<Entity<telaio_editor::EditorView>>,
     /// How the `{{ }}` markers resolve right now, refreshed on every render of the editor. Every
     /// field that shows markers reads it.
     pub(crate) variable_context: Rc<VariableContext>,
-    /// The body editor's marker styling and hover data, rebuilt together with `body_editor`.
-    body_markers: Option<BodyMarkerHandles>,
+    /// The body's `{{ }}` markers and how they resolve, for the editor's tooltip, rebuilt
+    /// together with `body_editor`.
+    body_markers: Option<Rc<RefCell<BodyMarkers>>>,
     /// What `body_markers` was last styled for, so it is recomputed only when the context or
     /// the colors change (an edit recomputes it directly, see [`AppView::refresh_body_markers`]).
     body_markers_built_for: Option<(VariableContext, Hsla)>,
@@ -367,12 +364,6 @@ pub(crate) struct RequestEditorEntities {
     /// The request (tab id) and 0 based line where the code editor of the active request tab
     /// puts its cursor on the next render, once: the diff tab's "Open file" (#224).
     pub(crate) reveal_line: Option<(String, u32)>,
-}
-
-/// The handles that style and explain the markers of the body editor.
-struct BodyMarkerHandles {
-    decorations: TextDecorationCollection,
-    shared: Rc<RefCell<BodyMarkers>>,
 }
 
 impl RequestEditorEntities {
@@ -418,29 +409,15 @@ impl RequestEditorEntities {
             }
         }
 
-        // The body editor's text can also change without a rebuild: the "Format" button
-        // rewrites `request.body`'s text directly (not by typing into the editor), the same
-        // reason the URL needs the unconditional resync above.
-        if let Some(editor) = &self.body_editor
-            && let Some((text, _language)) = body_language(&request.body)
-        {
-            let current = editor.read(cx).value();
-            if current.as_ref() != text {
-                let new_value = text.to_string();
-                editor.update(cx, |state, cx| state.set_value(new_value, window, cx));
-                // `set_value` clears the editor's decorations.
-                self.body_markers_built_for = None;
-            }
-        }
-
         rebuilt
     }
 
     /// The entities of the table that `kind` names.
-    /// Sets the text of every table cell, auth field, script and the docs from `request` where
-    /// it differs. The URL and the body are kept in sync on every sync already. Only called once
-    /// after an undo or redo, never per render.
-    fn resync_values(&self, request: &Request, window: &mut Window, cx: &mut Context<AppView>) {
+    /// Sets the text of every table cell, auth field, script, the body and the docs from
+    /// `request` where it differs. The URL is kept in sync on every sync already. Only called
+    /// once after an undo or redo or a Format, never per render: comparing the body costs its
+    /// size.
+    fn resync_values(&mut self, request: &Request, window: &mut Window, cx: &mut Context<AppView>) {
         let form: &[KeyValue] = match &request.body {
             Body::Form(rows) | Body::Multipart(rows) => rows,
             _ => &[],
@@ -477,6 +454,15 @@ impl RequestEditorEntities {
             if let Some(editor) = editor {
                 set_editor_if_changed(editor, text, window, cx);
             }
+        }
+        // A body the user can undo back to what it was: Format is one more step.
+        if let Some(editor) = &self.body_editor
+            && let Some((text, _)) = body_language(&request.body)
+            && editor.read(cx).text() != text
+        {
+            let text = text.to_string();
+            editor.update(cx, |view, cx| view.replace_text(&text, cx));
+            self.body_markers_built_for = None;
         }
         if let Some(docs) = &self.docs
             && docs.read(cx).text() != request.docs
@@ -570,31 +556,38 @@ impl RequestEditorEntities {
 
         self.body_markers = None;
         self.body_editor = body_language(&request.body).map(|(text, language)| {
-            let editor = cx.new(|cx| EditorState::new(window, cx).language(language));
-            editor.update(cx, |state, cx| {
-                state.set_value(text.to_string(), window, cx)
-            });
-            let shared = Rc::new(RefCell::new(BodyMarkers::default()));
-            let decorations = editor.update(cx, |state, cx| {
-                state.lsp_mut().hover_provider = Some(Rc::new(VariableHover::new(shared.clone())));
-                state.refresh(cx);
-                state.create_decorations_collection(Vec::new(), cx)
-            });
-            self.body_markers = Some(BodyMarkerHandles {
-                decorations,
-                shared,
-            });
-            let tab_id = tab_id.to_string();
-            cx.subscribe(&editor, move |view, entity, event: &InputEvent, cx| {
-                if !matches!(event, InputEvent::Change) {
-                    return;
-                }
-                let text = entity.read(cx).value().to_string();
-                view.edit_request(&tab_id, Some("body"), cx, |request| {
-                    request_edit::set_body_text(request, text)
+            let markers = Rc::new(RefCell::new(BodyMarkers::default()));
+            let hover_markers = markers.clone();
+            let editor = cx.new(|cx| {
+                let state = telaio_editor::EditorState::with_text(text, language);
+                let mut view = telaio_editor::EditorView::new(state, cx);
+                view.set_display(
+                    telaio_editor::EditorDisplay {
+                        minimap: false,
+                        ..telaio_editor::EditorDisplay::default()
+                    },
+                    cx,
+                );
+                // Duplicate line and Delete line, as #266 decided for bodies.
+                view.set_context_menu(|entries, edit, _, _| {
+                    entries.section(telaio_editor::line_entries(edit))
                 });
-                view.refresh_body_markers(cx);
-            })
+                // The value of the `{{ }}` marker under the pointer.
+                view.set_hover(move |offset, _| hover_markers.borrow().tooltip_at(offset));
+                view
+            });
+            self.body_markers = Some(markers);
+            let tab_id = tab_id.to_string();
+            cx.subscribe(
+                &editor,
+                move |view, entity, _: &telaio_editor::EditorEvent, cx| {
+                    let text = entity.read(cx).text();
+                    view.edit_request(&tab_id, Some("body"), cx, |request| {
+                        request_edit::set_body_text(request, text)
+                    });
+                    view.refresh_body_markers(cx);
+                },
+            )
             .detach();
             editor
         });
@@ -913,7 +906,12 @@ impl AppView {
     fn reveal_editor_line(&mut self, row: u32, window: &mut Window, cx: &mut Context<Self>) {
         let editors = &self.request_editor;
         let editor = match self.active_request_tab {
-            RequestTab::Body => editors.body_editor.clone(),
+            RequestTab::Body => {
+                if let Some(body) = editors.body_editor.clone() {
+                    body.update(cx, |view, cx| view.reveal_line(row as usize, window, cx));
+                }
+                None
+            }
             RequestTab::Pre => editors
                 .pre_editor
                 .as_ref()
@@ -1231,22 +1229,7 @@ impl AppView {
                     .map(|script| script.editor.clone()),
                 cx,
             ),
-            RequestTab::Docs => match &self.request_editor.docs {
-                // Boxed like the code editors around it.
-                Some(docs) => {
-                    let palette = cx.palette();
-                    div()
-                        .size_full()
-                        .border_1()
-                        .border_color(palette.border)
-                        .rounded(px(RADIUS_MD))
-                        .bg(palette.raised)
-                        .overflow_hidden()
-                        .child(docs.clone())
-                        .into_any_element()
-                }
-                None => div().into_any_element(),
-            },
+            RequestTab::Docs => render_boxed_editor(&self.request_editor.docs, cx),
         }
     }
 
@@ -1426,6 +1409,8 @@ impl AppView {
                             request.body = Body::Json(pretty);
                         }
                     });
+                    // The editor takes the formatted text on the next render.
+                    view.request_editor.resync_values = true;
                 });
             });
 
@@ -1469,7 +1454,7 @@ impl AppView {
                     .into_any_element()
             }
             Body::Json(_) | Body::Text(_) | Body::Xml(_) => {
-                render_editor_or_placeholder(&self.request_editor.body_editor, cx)
+                render_boxed_editor(&self.request_editor.body_editor, cx)
             }
         };
 
@@ -1826,24 +1811,34 @@ impl AppView {
     /// and refreshes what its hover tooltip shows. Called when the body text changes, and from
     /// [`Self::sync_body_markers`] when the variables or the colors do.
     pub(crate) fn refresh_body_markers(&mut self, cx: &mut Context<Self>) {
-        let (Some(editor), Some(handles)) = (
+        let (Some(editor), Some(shared)) = (
             self.request_editor.body_editor.clone(),
-            self.request_editor.body_markers.as_ref(),
+            self.request_editor.body_markers.clone(),
         ) else {
             return;
         };
         let context = self.request_editor.variable_context.clone();
-        let text = editor.read(cx).value();
+        let text = editor.read(cx).text();
         let markers = variable_hint::markers(&text, &context);
         let palette = cx.palette();
         let decorations = markers
             .iter()
             .map(|(span, defined)| {
-                TextDecoration::new(span.range.clone(), highlight_style(*defined, &palette))
+                // The same look as the chips of the single-line fields.
+                let style = highlight_style(*defined, &palette);
+                telaio_editor::Decoration {
+                    range: span.range.clone(),
+                    color: style.color,
+                    background: style.background_color,
+                    wavy_underline: style
+                        .underline
+                        .filter(|underline| underline.wavy)
+                        .and_then(|underline| underline.color),
+                }
             })
             .collect();
-        handles.decorations.set(decorations, cx);
-        *handles.shared.borrow_mut() = BodyMarkers {
+        editor.update(cx, |view, cx| view.set_decorations(decorations, cx));
+        *shared.borrow_mut() = BodyMarkers {
             spans: markers.into_iter().map(|(span, _)| span).collect(),
             context,
         };
@@ -1873,6 +1868,27 @@ fn render_editor_or_placeholder(
         Some(editor) => CodeEditor::new(editor).into_any_element(),
         None => div().into_any_element(),
     }
+}
+
+/// Renders one of telaio's editors boxed like the code editors around it, or nothing before the
+/// first [`RequestEditorEntities::sync`].
+fn render_boxed_editor(
+    editor: &Option<Entity<telaio_editor::EditorView>>,
+    cx: &Context<AppView>,
+) -> AnyElement {
+    let Some(editor) = editor else {
+        return div().into_any_element();
+    };
+    let palette = cx.palette();
+    div()
+        .size_full()
+        .border_1()
+        .border_color(palette.border)
+        .rounded(px(RADIUS_MD))
+        .bg(palette.raised)
+        .overflow_hidden()
+        .child(editor.clone())
+        .into_any_element()
 }
 
 /// Sets `input`'s text to `text` unless it already shows it.
