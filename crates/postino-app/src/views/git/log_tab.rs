@@ -849,10 +849,14 @@ impl AppView {
                     });
                 })
         };
+        // Wraps when the commits column is narrow (a small window with the sidebar open), so
+        // the author and path filters and Refresh stay reachable instead of clipped (#275).
         h_flex()
             .flex_none()
-            .h(px(FILTER_BAR_HEIGHT))
+            .flex_wrap()
+            .min_h(px(FILTER_BAR_HEIGHT))
             .px(px(12.0))
+            .py(px(6.0))
             .gap(px(8.0))
             .items_center()
             .overflow_hidden()
