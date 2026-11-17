@@ -124,8 +124,8 @@ are, else the file names.
   `query` and `headers` names, `body` (FNV-1a 64 of a canonical text, stable across builds, tested)
   and `body_keys`. Hidden files are not scanned, so the sidebar never lists it.
 - **Finding an import**: after a load the wizard compares the source (canonical path, URL, or
-  repository and branch) with the manifests of `Workspace::openapi_collections` (top-level
-  folders). `AppView` caches that list in `refresh_tree_with` for the palette's "Update from
+  repository and branch) with the manifests of `Workspace::openapi_collections` (folders at any
+  depth, hidden ones and those inside a collection skipped, so a moved collection is found, #268). `AppView` caches that list in `refresh_tree_with` for the palette's "Update from
   OpenAPI" items, which carry the source so the palette never reads `AppView`.
 - **Diff**: `diff_plan` compares the manifest with the new plan: added (no entry), removed (no
   operation), changed (a fingerprint part differs, with a short detail per part), unchanged.

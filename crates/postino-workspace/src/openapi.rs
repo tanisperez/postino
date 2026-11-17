@@ -139,8 +139,8 @@ impl Workspace {
         Ok(plan)
     }
 
-    /// The collections an OpenAPI import created: every top-level folder with a manifest.
-    /// A manifest that does not parse is skipped.
+    /// The collections an import created: every folder with a manifest, see
+    /// [`openapi_collections_in`].
     pub fn openapi_collections(&self) -> Vec<OpenApiCollection> {
         openapi_collections_in(self.root())
     }
@@ -265,28 +265,41 @@ impl Workspace {
     }
 }
 
-/// The collections an OpenAPI import created in the workspace folder `root`, without scanning the
-/// workspace: every top-level folder with a manifest. A manifest that does not parse is skipped.
+/// The collections an import created in the workspace folder `root`, without scanning the
+/// workspace: every folder with a manifest, at any depth, so a collection moved into another
+/// folder is still found (#268). Hidden folders are skipped, and so are the folders inside a
+/// collection. A manifest that does not parse is skipped.
 pub fn openapi_collections_in(root: &Path) -> Vec<OpenApiCollection> {
-    let Ok(entries) = fs::read_dir(root) else {
-        return Vec::new();
-    };
-    let mut collections: Vec<OpenApiCollection> = entries
-        .flatten()
-        .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_dir()))
-        .filter_map(|entry| {
-            let text = fs::read_to_string(entry.path().join(MANIFEST_FILE)).ok()?;
-            let manifest = Manifest::from_toml(&text)
-                .map_err(|error| log::warn!("{MANIFEST_FILE} in {:?}: {error}", entry.file_name()))
-                .ok()?;
-            Some(OpenApiCollection {
-                folder: path_to_id(root, &entry.path()),
-                manifest,
-            })
-        })
-        .collect();
+    let mut collections = Vec::new();
+    collect_collections(root, root, &mut collections);
     collections.sort_by(|a, b| a.folder.cmp(&b.folder));
     collections
+}
+
+/// Adds the collections under `dir` to `collections`, see [`openapi_collections_in`].
+fn collect_collections(root: &Path, dir: &Path, collections: &mut Vec<OpenApiCollection>) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        if !entry.file_type().is_ok_and(|kind| kind.is_dir())
+            || entry.file_name().to_string_lossy().starts_with('.')
+        {
+            continue;
+        }
+        let path = entry.path();
+        let Ok(text) = fs::read_to_string(path.join(MANIFEST_FILE)) else {
+            collect_collections(root, &path, collections);
+            continue;
+        };
+        match Manifest::from_toml(&text) {
+            Ok(manifest) => collections.push(OpenApiCollection {
+                folder: path_to_id(root, &path),
+                manifest,
+            }),
+            Err(error) => log::warn!("{MANIFEST_FILE} in {:?}: {error}", entry.file_name()),
+        }
+    }
 }
 
 /// Writes the collection folder `target`, its manifest and the environments of `plan`.

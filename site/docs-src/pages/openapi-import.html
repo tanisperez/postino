@@ -86,7 +86,7 @@ spec:
 </table></div>
 
 <h2>Updating an imported collection</h2>
-<p>Every import leaves a small <code>.openapi.toml</code> file in the collection folder. It records the source, the day and the options of the import, and for each request its file and what the spec generated: method, URL, parameter and header names and the example body. The sidebar hides it; commit it with the requests, so everyone working on the collection can update it.</p>
+<p>Every import leaves a small <code>.openapi.toml</code> file in the collection folder. It records the source, the day and the options of the import, and for each request its file and what the spec generated: method, URL, parameter and header names and the example body. The sidebar hides it; commit it with the requests, so everyone working on the collection can update it. It goes with the folder when the collection is moved or renamed, and the collection can still be updated from inside another folder.</p>
 <p>When a source that was already imported is read again (the same file, folder, URL, or repository and branch; pasted text never matches), the wizard takes the options of the earlier import and the Preview step shows that collection's update instead of a new tree:</p>
 <ul>
     <li>A line tells which collection was imported from this source, and when.</li>

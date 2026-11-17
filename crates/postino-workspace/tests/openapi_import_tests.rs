@@ -206,6 +206,50 @@ fn updates_apply_the_chosen_changes_and_keep_user_edits() {
 }
 
 #[test]
+fn a_collection_moved_into_another_folder_is_still_found_and_updated() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let mut workspace = Workspace::open(dir.path()).expect("opens");
+    workspace
+        .import_openapi(&plan(SPEC), &|_| true, &origin("2026-10-28"))
+        .expect("imports");
+    workspace
+        .create_folder(None, "apis")
+        .expect("a folder to move it to");
+    let moved = workspace
+        .move_entry("Acme Payments API", Some("apis"))
+        .expect("moves");
+    assert_eq!(moved, "apis/Acme Payments API");
+    // A hidden folder is never searched.
+    std::fs::create_dir_all(dir.path().join(".hidden/copy")).expect("hidden folder");
+    std::fs::copy(
+        dir.path()
+            .join("apis/Acme Payments API")
+            .join(MANIFEST_FILE),
+        dir.path().join(".hidden/copy").join(MANIFEST_FILE),
+    )
+    .expect("copy");
+
+    let collections = workspace.openapi_collections();
+    let folders: Vec<&str> = collections.iter().map(|c| c.folder.as_str()).collect();
+    assert_eq!(folders, vec!["apis/Acme Payments API"]);
+
+    let report = workspace
+        .update_openapi(
+            "apis/Acme Payments API",
+            &plan(SPEC_V2),
+            &|_| true,
+            &origin("2026-11-04"),
+        )
+        .expect("updates where it now is");
+    assert_eq!((report.added, report.changed, report.removed), (1, 1, 1));
+    assert!(
+        dir.path()
+            .join("apis/Acme Payments API/payouts/List payouts.postino")
+            .exists()
+    );
+}
+
+#[test]
 fn a_kept_removed_request_is_no_longer_tracked() {
     let dir = tempfile::tempdir().expect("tempdir");
     let mut workspace = Workspace::open(dir.path()).expect("opens");
