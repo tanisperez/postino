@@ -30,6 +30,14 @@ use crate::theme::{PaletteExt, PostinoColors};
 /// Line height of the focused URL `Input`, which is also the height of its selection highlight.
 const URL_LINE_HEIGHT: f32 = 22.0;
 
+/// The row that holds a focused URL or custom method `Input` inside its menu area. The area lays
+/// its children out as blocks, where `h_full` does not fill the bar and the input's taller line
+/// sits higher: the URL moved up on focus (#272). A flex row keeps it where the line of chips has
+/// it.
+fn url_input_row() -> Div {
+    h_flex().size_full()
+}
+
 /// The standard methods offered by the selector, before the trailing "Custom..." entry.
 const STANDARD_METHODS: [Method; 7] = [
     Method::Get,
@@ -170,13 +178,15 @@ impl UrlBar {
                 .child(
                     // Same sizing as the focused URL field, see `RenderOnce for UrlBar`.
                     edit_menu_area(input).size_full().child(
-                        Input::new(input)
-                            .context_menu(no_input_menu())
-                            .h_full()
-                            .px_2()
-                            .py_0()
-                            .line_height(px(URL_LINE_HEIGHT))
-                            .bordered(false),
+                        url_input_row().child(
+                            Input::new(input)
+                                .context_menu(no_input_menu())
+                                .h_full()
+                                .px_2()
+                                .py_0()
+                                .line_height(px(URL_LINE_HEIGHT))
+                                .bordered(false),
+                        ),
                     ),
                 )
                 .into_any_element();
@@ -297,17 +307,19 @@ impl RenderOnce for UrlBar {
                 .flex_1()
                 .min_w_0()
                 .child(
-                    Input::new(&self.input_state)
-                        .context_menu(no_input_menu())
-                        .h_full()
-                        .flex_1()
-                        .px_2()
-                        .py_0()
-                        .line_height(px(URL_LINE_HEIGHT))
-                        .bordered(false)
-                        .bg(palette.raised.opacity(0.0))
-                        .font_family(mono_font)
-                        .text_size(px(12.5)),
+                    url_input_row().child(
+                        Input::new(&self.input_state)
+                            .context_menu(no_input_menu())
+                            .h_full()
+                            .flex_1()
+                            .px_2()
+                            .py_0()
+                            .line_height(px(URL_LINE_HEIGHT))
+                            .bordered(false)
+                            .bg(palette.raised.opacity(0.0))
+                            .font_family(mono_font)
+                            .text_size(px(12.5)),
+                    ),
                 )
                 .into_any_element()
         } else {
