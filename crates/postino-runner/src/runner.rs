@@ -68,7 +68,37 @@ impl OAuthConfig {
     pub fn profile(&self, name: &str) -> Option<&OAuthProfile> {
         self.profiles.iter().find(|profile| profile.name == name)
     }
+
+    /// `request` with its OAuth 2.0 auth replaced by the header or query entry its profile sends
+    /// the token in, for the code snippet (#269): the token kept for `environment` when it is
+    /// still valid, [`SNIPPET_TOKEN_PLACEHOLDER`] otherwise. Never asks for a token. Any other
+    /// auth, or an unknown profile, leaves `request` as it is.
+    #[must_use]
+    pub fn with_snippet_token(&self, request: &Request, environment: &str) -> Request {
+        let Auth::OAuth2 { profile, scope } = &request.auth else {
+            return request.clone();
+        };
+        let Some(profile) = self.profile(profile) else {
+            return request.clone();
+        };
+        let key = token_key(&self.workspace, environment, profile, scope);
+        let token = self
+            .store
+            .get(&key)
+            .filter(|token| token.is_valid_at(SystemTime::now()))
+            .map_or_else(
+                || SNIPPET_TOKEN_PLACEHOLDER.to_string(),
+                |token| token.access_token,
+            );
+        let mut request = request.clone();
+        request.auth = token_auth(profile, &token);
+        request
+    }
 }
+
+/// What a code snippet shows in place of an OAuth 2.0 token Postino does not hold, see
+/// [`OAuthConfig::with_snippet_token`].
+pub const SNIPPET_TOKEN_PLACEHOLDER: &str = "<access token>";
 
 /// The auth that carries `token` the way `profile` sends it, so the usual rules apply (an
 /// enabled header or query entry of the same name wins).

@@ -19,6 +19,7 @@ use rust_i18n::t;
 
 use postino_core::ResolvedRequest;
 use postino_format::snippet::{SnippetLanguage, render_snippet};
+use postino_runner::{Preview, preview};
 
 use crate::theme::PaletteExt;
 use crate::theme::metrics::RADIUS_MD;
@@ -54,7 +55,7 @@ impl AppView {
             return;
         }
         self.state.reload_environment();
-        let Some(preview) = self.current_preview() else {
+        let Some(preview) = self.snippet_preview() else {
             return;
         };
         self.snippet_language = SnippetLanguage::Curl;
@@ -105,6 +106,18 @@ impl AppView {
         });
         // After the dialog took the focus for itself, so the keys above work at once.
         window.defer(cx, move |window, cx| window.focus(&focus, cx));
+    }
+
+    /// The preview of the active tab's request for its snippet: an OAuth 2.0 auth becomes the
+    /// token kept for the active environment, or a placeholder when there is none (#269). Never
+    /// asks for a token.
+    fn snippet_preview(&self) -> Option<Preview> {
+        let tab = self.state.tabs.active()?;
+        let environment = self.active_environment();
+        let request = self
+            .oauth_config(&tab.id)
+            .with_snippet_token(tab.request()?, &environment.name);
+        Some(preview(&request, &environment, &self.state.session_env))
     }
 
     /// Copies the snippet of `resolved` in the language shown, and lets the Copy button say

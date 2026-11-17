@@ -248,7 +248,7 @@ $ postino import curl 'curl -X POST https://api.example.com/login --json "{}"' -
 $ postino snippet auth/login.postino --env local
 $ postino snippet auth/login.postino --lang python
 ```
-<p>Prints a request as code, as the <a href="code-snippets.html">Code dialog</a> does: <code>--lang curl</code> (the default), <code>fetch</code> or <code>python</code>. Its variables are resolved with <code>--env</code>, <code>--env-file</code> and <code>--var</code>, without running its scripts; an unknown variable is kept as written and named in a warning on standard error.</p>
+<p>Prints a request as code, as the <a href="code-snippets.html">Code dialog</a> does: <code>--lang curl</code> (the default), <code>fetch</code> or <code>python</code>. Its variables are resolved with <code>--env</code>, <code>--env-file</code> and <code>--var</code>, without running its scripts; an unknown variable is kept as written and named in a warning on standard error. The console keeps no OAuth 2.0 token between runs, so a request with OAuth 2.0 auth shows <code>&lt;access token&gt;</code> where the token goes.</p>
 
 <h3 id="completions">completions</h3>
 ```shell

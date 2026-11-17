@@ -178,3 +178,76 @@ fn oauth_token_calls_get_their_profile_token_before_the_pre_script() {
     drop(server);
     handle.join().unwrap();
 }
+
+#[test]
+fn a_snippet_carries_the_kept_token_or_a_placeholder() {
+    use postino_oauth::{TokenSet, TokenStore, token_key};
+    use postino_runner::SNIPPET_TOKEN_PLACEHOLDER;
+
+    let profile = OAuthProfile::new("machine", OAuthGrant::ClientCredentials);
+    let store = Arc::new(MemoryStore::default());
+    let config = OAuthConfig {
+        workspace: "ws-000000".into(),
+        profiles: Arc::new(vec![profile.clone()]),
+        store: store.clone(),
+        sign_in: Arc::new(NoSignIn),
+    };
+    let request = request("http://example.test/".into());
+    let sent = |request: &Request| match &request.auth {
+        Auth::ApiKey { name, value, .. } => format!("{name}: {value}"),
+        other => format!("{other:?}"),
+    };
+
+    // No token yet: the placeholder, never a sign-in.
+    assert_eq!(
+        sent(&config.with_snippet_token(&request, "dev")),
+        format!("Authorization: Bearer {SNIPPET_TOKEN_PLACEHOLDER}")
+    );
+
+    // A valid token for the environment: that token.
+    let token = TokenSet {
+        access_token: "tok".into(),
+        refresh_token: None,
+        id_token: None,
+        token_type: "Bearer".into(),
+        expires_at: None,
+        obtained_at: 0,
+        scope: String::new(),
+    };
+    store.set(&token_key("ws-000000", "dev", &profile, ""), &token);
+    assert_eq!(
+        sent(&config.with_snippet_token(&request, "dev")),
+        "Authorization: Bearer tok"
+    );
+    // Another environment has none.
+    assert_eq!(
+        sent(&config.with_snippet_token(&request, "prod")),
+        format!("Authorization: Bearer {SNIPPET_TOKEN_PLACEHOLDER}")
+    );
+
+    // An expired token is not used.
+    let expired = TokenSet {
+        expires_at: Some(1),
+        ..token
+    };
+    store.set(&token_key("ws-000000", "dev", &profile, ""), &expired);
+    assert_eq!(
+        sent(&config.with_snippet_token(&request, "dev")),
+        format!("Authorization: Bearer {SNIPPET_TOKEN_PLACEHOLDER}")
+    );
+
+    // In the query, as the profile says.
+    let mut in_query = profile;
+    in_query.token_placement = TokenPlacement::Query;
+    let config = OAuthConfig {
+        profiles: Arc::new(vec![in_query]),
+        ..config
+    };
+    assert!(matches!(
+        config.with_snippet_token(&request, "dev").auth,
+        Auth::ApiKey {
+            location: postino_core::ApiKeyLocation::Query,
+            ..
+        }
+    ));
+}

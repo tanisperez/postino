@@ -287,6 +287,9 @@ pub fn snippet_command(args: &SnippetArgs) -> u8 {
             .load_request(&id)
             .map_err(|error| CliError::file(format!("{}: {error}", args.file.display())))?;
         let environment = context::environment(&args.common, Some(&workspace))?;
+        // The console keeps no token between runs: an OAuth 2.0 auth shows a placeholder (#269).
+        let request = context::oauth_config(Some(&workspace))?
+            .with_snippet_token(&request, &environment.name);
         let preview = postino_runner::preview(&request, &environment, &SessionEnv::new());
         for unknown in &preview.unknown_variables {
             eprintln!(

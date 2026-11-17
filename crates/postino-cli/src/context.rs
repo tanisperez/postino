@@ -150,7 +150,15 @@ pub fn send_options(send: &SendArgs) -> Result<SendOptions, CliError> {
 /// the browser sign-in of the console.
 pub fn runner(workspace: Option<&Workspace>, options: SendOptions) -> Result<Runner, CliError> {
     let base_dir = workspace.map_or_else(current_dir, |workspace| workspace.root().to_path_buf());
-    let oauth = match workspace {
+    Ok(Runner::new(Arc::new(QuickJsEngine), options)
+        .with_base_dir(Some(base_dir))
+        .with_oauth(oauth_config(workspace)?))
+}
+
+/// The workspace's OAuth profiles, with tokens kept in memory for this run and the browser
+/// sign-in of the console. No profiles without a workspace.
+pub fn oauth_config(workspace: Option<&Workspace>) -> Result<OAuthConfig, CliError> {
+    Ok(match workspace {
         Some(workspace) => {
             let profiles = workspace
                 .load_project()
@@ -164,10 +172,7 @@ pub fn runner(workspace: Option<&Workspace>, options: SendOptions) -> Result<Run
             }
         }
         None => OAuthConfig::default(),
-    };
-    Ok(Runner::new(Arc::new(QuickJsEngine), options)
-        .with_base_dir(Some(base_dir))
-        .with_oauth(oauth))
+    })
 }
 
 #[cfg(test)]

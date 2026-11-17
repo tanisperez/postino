@@ -19,5 +19,5 @@ pub use preview::{
     Preview, UnknownVariable, UsedVariable, VariableLocation, preview, used_variables,
 };
 pub use result::{FailedStage, RunResult};
-pub use runner::{OAuthConfig, Runner};
+pub use runner::{OAuthConfig, Runner, SNIPPET_TOKEN_PLACEHOLDER};
 pub use session_env::SessionEnv;

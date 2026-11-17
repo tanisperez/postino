@@ -10,7 +10,7 @@ use std::time::Instant;
 use gpui_kit::*;
 use postino_core::Environment;
 use postino_oauth::Force;
-use postino_runner::{FailedStage, Preview, RunResult, Runner, preview};
+use postino_runner::{FailedStage, RunResult, Runner};
 
 use crate::state::console::ConsoleTimeline;
 use crate::state::run_log;
@@ -41,17 +41,6 @@ impl AppView {
     /// calls `AppState::reload_environment` first, to see edits made outside Postino.
     pub(crate) fn active_environment(&self) -> Arc<Environment> {
         self.state.environment.clone()
-    }
-
-    /// The active tab's request resolved against the active environment and the session
-    /// environment, without running its scripts or sending it. `None` when no tab is open. Cheap
-    /// enough to call on every render: it only interpolates `{{ }}` markers, it never runs a script
-    /// or opens a socket.
-    pub(crate) fn current_preview(&self) -> Option<Preview> {
-        let tab = self.state.tabs.active()?;
-        let request = tab.request()?;
-        let environment = self.active_environment();
-        Some(preview(request, &environment, &self.state.session_env))
     }
 
     /// Whether `tab_id` currently has a request in flight.

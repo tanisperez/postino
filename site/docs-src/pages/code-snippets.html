@@ -23,12 +23,14 @@ description: Turn any Postino request into a curl command, a JavaScript fetch ca
     <li>Variables and template functions are replaced. A template function such as <code>{{ uuid() }}</code> is evaluated once for the snippet.</li>
     <li>Enabled query parameters are appended to the URL, percent-encoded.</li>
     <li>Only enabled headers are included, plus the automatic <code>Content-Type</code> for JSON, XML and form bodies.</li>
+    <li>The <a href="requests.html#authentication">Auth tab</a> is included as the request sends it: the <code>Authorization</code> header of Basic and Bearer, and the header or query parameter of an API key.</li>
+    <li>With OAuth 2.0, the snippet carries the token Postino holds for the active environment, in the header or query parameter of the profile. When there is none yet, or it has expired, the snippet shows <code>&lt;access token&gt;</code> in its place: send the request once to get a token. The Code dialog never signs in.</li>
     <li>A form body is written field by field, in the style of each language.</li>
     <li>Scripts are <strong>not</strong> run. Variables that only a pre-request script would set stay as <code>{{name}}</code> in the snippet, and so does any unknown variable.</li>
 </ul>
 <div class="callout warning">
     <span class="title">Secrets are included</span>
-    <p>Because variables are resolved, the snippet contains the real values of tokens and passwords from your environment, including <code>.local.env</code>. Check it before pasting it into an issue or a chat.</p>
+    <p>Because variables are resolved, the snippet contains the real values of tokens and passwords from your environment, including <code>.local.env</code>, and the OAuth 2.0 token of the session. Check it before pasting it into an issue or a chat.</p>
 </div>
 
 <h2 id="command-line">From the command line</h2>
