@@ -26,7 +26,6 @@ pub mod import_destination;
 pub mod json_pretty;
 pub mod launch;
 pub mod launcher;
-pub mod line_edit;
 pub mod load_panel;
 pub mod load_report;
 pub mod load_results;

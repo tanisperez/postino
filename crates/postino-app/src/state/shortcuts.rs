@@ -6,16 +6,6 @@
 use rust_i18n::t;
 use telaio_ui::components::{MODIFIER_KEY, Shortcut, ShortcutGroup};
 
-/// The keys that delete the line in a script editor: `Ctrl+D`, or `Cmd+Shift+K` on macOS, where
-/// `Ctrl+D` deletes forward in every text field.
-fn delete_line_keys() -> &'static [&'static str] {
-    if cfg!(target_os = "macos") {
-        &["Cmd", "Shift", "K"]
-    } else {
-        &["Ctrl", "D"]
-    }
-}
-
 /// The modifier of the shortcuts that open and close the sidebar panels, matching `main.rs`:
 /// `Ctrl` on macOS, where Option + a digit types characters, `Alt` elsewhere.
 /// The modifier that moves an environment up or down, matching `main.rs`'s `alt-up`: `Option`
@@ -62,7 +52,12 @@ pub fn groups() -> Vec<ShortcutGroup> {
                 Shortcut::new(t!("shortcuts.action.save"), &[modifier, "S"]),
                 // Ctrl on macOS too: Cmd+Space is Spotlight.
                 Shortcut::new(t!("shortcuts.action.complete_variable"), &["Ctrl", "Space"]),
-                Shortcut::new(t!("shortcuts.action.delete_line"), delete_line_keys()),
+                // telaio's editor keys (#267), in the body, script and Docs editors.
+                Shortcut::new(t!("shortcuts.action.duplicate_line"), &[modifier, "D"]),
+                Shortcut::new(
+                    t!("shortcuts.action.delete_line"),
+                    &[modifier, MOVE_MODIFIER_KEY, "D"],
+                ),
                 Shortcut::new(t!("shortcuts.action.undo"), &[modifier, "Z"]),
                 Shortcut::new(t!("shortcuts.action.redo"), &[modifier, "Shift", "Z"]),
             ],

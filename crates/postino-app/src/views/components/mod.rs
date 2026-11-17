@@ -18,10 +18,10 @@ pub use env_pill::{EnvMenuItem, EnvPill};
 pub use method_badge::MethodBadge;
 pub use status_badge::{StatusState, status_badge};
 pub use telaio_ui::components::{
-    AxisSide, Card, ChartAxis, ChartLabel, ChartSeries, Chip, CodeEditor, ConfirmDialog,
-    DangerButton, DataAlign, DataCell, DataColumn, DataTable, DocumentTab, DocumentTabs,
-    EditableCell, EditableColumn, EditableRow, EditableTable, EmptyState, GhostButton, HoverInput,
-    IconButton, InlineMessage, InlineMessageKind, KeyValueRow, KeyValueTable, LabelPlacement,
+    AxisSide, Card, ChartAxis, ChartLabel, ChartSeries, Chip, ConfirmDialog, DangerButton,
+    DataAlign, DataCell, DataColumn, DataTable, DocumentTab, DocumentTabs, EditableCell,
+    EditableColumn, EditableRow, EditableTable, EmptyState, GhostButton, HoverInput, IconButton,
+    InlineMessage, InlineMessageKind, KeyValueRow, KeyValueTable, LabelPlacement,
     MODAL_INNER_RADIUS, ModalPlacement, NeutralButtonExt, PrimaryButton, ProgressBar,
     ReferenceLine, SecondaryButton, SectionLabel, SegmentedControl, SegmentedItem, SeriesStyle,
     SortOrder, ThemeCard, TimeSeriesChart, TreeRow, UnderlineTabItem, UnderlineTabs,

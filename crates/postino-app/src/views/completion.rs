@@ -72,7 +72,6 @@ impl AppView {
     ) {
         match self.focused_completion_field(window, cx) {
             Some(field) => self.update_completion(field, true, cx),
-            None if self.show_script_completion(window, cx) => {}
             None => cx.propagate(),
         }
     }
@@ -283,9 +282,7 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         let Some(open) = self.focused_completion(window, cx) else {
-            if !self.confirm_script_completion(window, cx) {
-                cx.propagate();
-            }
+            cx.propagate();
             return;
         };
         match open.menu.selected().cloned() {

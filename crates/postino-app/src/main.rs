@@ -23,15 +23,15 @@ use postino_cli::IDENTITY;
 use telaio_app::{logging, window};
 
 use actions::{
-    CloseActiveTab, CommitFromMessage, ConfirmCompletion, CopyLoadTestSummary, DeleteLine,
-    DeleteSelectedEntry, DismissCompletion, ImportOpenApi, MoveEnvironmentDown, MoveEnvironmentUp,
-    NewRequest, NextCompletion, NextDiffChange, NextTab, OpenCommandPalette, OpenContextMenu,
-    OpenDiffFile, OpenSettings, OpenShortcuts, OpenWorkspace, PreviousCompletion,
-    PreviousDiffChange, PreviousTab, RedoRequestEdit, RenameSelectedEntry, SaveActiveTab,
-    SelectEnvironment1, SelectEnvironment2, SelectEnvironment3, SelectEnvironment4,
-    SelectEnvironment5, SelectEnvironment6, SelectEnvironment7, SelectEnvironment8,
-    SelectEnvironment9, SelectNoEnvironment, SendActiveTab, ShowCompletion, ToggleCollections,
-    ToggleEnvironments, ToggleLoadTests, ToggleSourceControl, UndoRequestEdit,
+    CloseActiveTab, CommitFromMessage, ConfirmCompletion, CopyLoadTestSummary, DeleteSelectedEntry,
+    DismissCompletion, ImportOpenApi, MoveEnvironmentDown, MoveEnvironmentUp, NewRequest,
+    NextCompletion, NextDiffChange, NextTab, OpenCommandPalette, OpenContextMenu, OpenDiffFile,
+    OpenSettings, OpenShortcuts, OpenWorkspace, PreviousCompletion, PreviousDiffChange,
+    PreviousTab, RedoRequestEdit, RenameSelectedEntry, SaveActiveTab, SelectEnvironment1,
+    SelectEnvironment2, SelectEnvironment3, SelectEnvironment4, SelectEnvironment5,
+    SelectEnvironment6, SelectEnvironment7, SelectEnvironment8, SelectEnvironment9,
+    SelectNoEnvironment, SendActiveTab, ShowCompletion, ToggleCollections, ToggleEnvironments,
+    ToggleLoadTests, ToggleSourceControl, UndoRequestEdit,
 };
 use state::settings::ThemeChoice;
 use state::window::WindowState;
@@ -396,13 +396,6 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("tab", ConfirmCompletion, input),
         KeyBinding::new("escape", DismissCompletion, input),
     ]);
-    // Delete the line, in any text input like the completion keys above, but the handler
-    // (`views/request_editor.rs`) acts only in a script editor and otherwise lets the key through.
-    // On macOS `Ctrl+D` is the system's "delete forward" in text fields, so it is VS Code's key.
-    #[cfg(target_os = "macos")]
-    cx.bind_keys([KeyBinding::new("cmd-shift-k", DeleteLine, input)]);
-    #[cfg(not(target_os = "macos"))]
-    cx.bind_keys([KeyBinding::new("ctrl-d", DeleteLine, input)]);
     // Undo and redo of request edits (#109): anywhere, and in any text input, bound after
     // gpui-kit's own input bindings so they run first. The handlers
     // (`views/request_editor.rs`) act on the active request tab when the focus is outside a

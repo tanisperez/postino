@@ -42,7 +42,7 @@ env.set("orderId", res.json().id);
 <p>Nothing is suggested inside comments or other strings. The menu opens by itself while you type, and <kbd>Ctrl</kbd> <kbd>Space</kbd> opens it on demand, listing every global on an empty line. <kbd>↑</kbd> and <kbd>↓</kbd> move through it, <kbd>Enter</kbd> or <kbd>Tab</kbd> inserts the highlighted entry and <kbd>Esc</kbd> closes it.</p>
 
 <h2 id="editing-shortcuts">Editing shortcuts</h2>
-<p>Besides the usual editing keys (see <a href="keyboard-shortcuts.html#text-editing">text editing</a>), <kbd>Ctrl</kbd> <kbd>D</kbd> (<kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>K</kbd> on macOS) deletes the line under the cursor, line break included, and leaves the cursor on the next line at the same column, or at its end when it is shorter. With a selection it deletes every line the selection touches. On the last line it also removes the line break before it, so no empty line is left behind. <kbd>Ctrl</kbd> <kbd>Z</kbd> brings the lines back in one step. It only works in the script editors, not in the body editor or the other fields.</p>
+<p>Besides the usual editing keys (see <a href="keyboard-shortcuts.html#text-editing">text editing</a>), <kbd>Ctrl</kbd> <kbd>D</kbd> (<kbd>⌘</kbd> <kbd>D</kbd> on macOS) duplicates the line under the cursor, or every line a selection touches, and <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>D</kbd> (<kbd>⌘</kbd> <kbd>Option</kbd> <kbd>D</kbd>) deletes them. Both are also in the right-click menu, as <strong>Duplicate line</strong> and <strong>Delete line</strong>, and <kbd>Ctrl</kbd> <kbd>Z</kbd> undoes them in one step. The script editors also have the find bar (<kbd>Ctrl</kbd> <kbd>F</kbd>) and folding.</p>
 
 <h2>When they run</h2>
 <ol class="steps">

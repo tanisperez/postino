@@ -15,7 +15,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use gpui_kit::component::button::{Button, ButtonVariants as _};
-use gpui_kit::component::input::{EditorState, IndentInline, InputEvent, InputState};
+use gpui_kit::component::input::{IndentInline, InputEvent, InputState};
 use gpui_kit::component::scroll::Scrollbar;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
@@ -26,9 +26,8 @@ use gpui::Hsla;
 use postino_core::log_safe::is_sensitive_header;
 use postino_core::{ApiKeyLocation, Auth, Body, KeyValue, Method, Request, variable_spans};
 
-use crate::actions::{DeleteLine, RedoRequestEdit, UndoRequestEdit};
+use crate::actions::{RedoRequestEdit, UndoRequestEdit};
 use crate::state::auth_edit::{self, AuthField, AuthKind, Overridden};
-use crate::state::line_edit;
 use crate::state::request_edit::{self, BodyKind, SortColumn, SortOrder};
 use crate::state::script_completion::ScriptKind;
 use crate::state::script_heuristics;
@@ -36,17 +35,16 @@ use crate::state::ui_tabs::RequestTab;
 use crate::state::variable_hint::{self, VariableContext};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
-    AUTH_FORM_MAX_WIDTH, AUTH_LABEL_WIDTH, COMPLETION_MENU_WIDTH, OAUTH_FORM_MAX_WIDTH, RADIUS_MD,
-    SEND_BUTTON_HEIGHT, SEND_BUTTON_MIN_WIDTH,
+    AUTH_FORM_MAX_WIDTH, AUTH_LABEL_WIDTH, OAUTH_FORM_MAX_WIDTH, RADIUS_MD, SEND_BUTTON_HEIGHT,
+    SEND_BUTTON_MIN_WIDTH,
 };
 use crate::views::components::NeutralButtonExt;
 use crate::views::components::variable_chip::highlight_style;
 use crate::views::components::{
-    CodeEditor, GhostButton, InlineMessage, InlineMessageKind, KeyValueRow, KeyValueTable,
-    PrimaryButton, SegmentedControl, SegmentedItem, UnderlineTabItem, UnderlineTabs, UrlBar,
-    VariableField,
+    GhostButton, InlineMessage, InlineMessageKind, KeyValueRow, KeyValueTable, PrimaryButton,
+    SegmentedControl, SegmentedItem, UnderlineTabItem, UnderlineTabs, UrlBar, VariableField,
 };
-use crate::views::script_completion::{ScriptCompletionData, ScriptCompletionProvider};
+use crate::views::script_completion::{ScriptCompletionData, script_items, script_trigger};
 use crate::views::variable_hover::BodyMarkers;
 
 use super::root::AppView;
@@ -265,52 +263,60 @@ fn body_language(body: &Body) -> Option<(&str, telaio_editor::Language)> {
     }
 }
 
-/// Builds a JavaScript code editor for a `::: pre` or `::: post` section, subscribed to write
-/// typed changes back into the active tab's request, with its completion provider reading
-/// `completion_data`.
+/// Builds telaio's JavaScript editor for a `::: pre` or `::: post` section (#267), subscribed to
+/// write typed changes back into the active tab's request, completing from `completion_data`.
 fn make_script_editor(
     tab_id: &str,
     text: &str,
     field: ScriptField,
     completion_data: &Rc<RefCell<ScriptCompletionData>>,
-    window: &mut Window,
     cx: &mut Context<AppView>,
-) -> ScriptEditor {
+) -> Entity<telaio_editor::EditorView> {
     let kind = match field {
         ScriptField::Pre => ScriptKind::Pre,
         ScriptField::Post => ScriptKind::Post,
     };
-    let completion = Rc::new(ScriptCompletionProvider::new(kind, completion_data.clone()));
-    let editor = cx.new(|cx| EditorState::new(window, cx).language("javascript"));
-    editor.update(cx, |state, cx| {
-        state.set_value(text.to_string(), window, cx);
-        let lsp = state.lsp_mut();
-        lsp.completion_provider = Some(completion.clone());
-        lsp.completion_menu.max_width = px(COMPLETION_MENU_WIDTH);
+    let data = completion_data.clone();
+    let editor = cx.new(|cx| {
+        let state =
+            telaio_editor::EditorState::with_text(text, telaio_editor::Language::JavaScript);
+        let mut view = telaio_editor::EditorView::new(state, cx);
+        view.set_display(
+            telaio_editor::EditorDisplay {
+                minimap: false,
+                ..telaio_editor::EditorDisplay::default()
+            },
+            cx,
+        );
+        // Duplicate line and Delete line, as #266 decided for scripts.
+        view.set_context_menu(|entries, edit, _, _| {
+            entries.section(telaio_editor::line_entries(edit))
+        });
+        view.set_completion(
+            move |text, offset, explicit, _| {
+                script_items(kind, &data.borrow(), text, offset, explicit)
+            },
+            script_trigger,
+        );
+        view
     });
     let tab_id = tab_id.to_string();
-    cx.subscribe(&editor, move |view, entity, event: &InputEvent, cx| {
-        if !matches!(event, InputEvent::Change) {
-            return;
-        }
-        let text = entity.read(cx).value().to_string();
-        let typing = match field {
-            ScriptField::Pre => "pre_script",
-            ScriptField::Post => "post_script",
-        };
-        view.edit_request(&tab_id, Some(typing), cx, |request| match field {
-            ScriptField::Pre => request.pre_script = text,
-            ScriptField::Post => request.post_script = text,
-        });
-    })
+    cx.subscribe(
+        &editor,
+        move |view, entity, _: &telaio_editor::EditorEvent, cx| {
+            let text = entity.read(cx).text();
+            let typing = match field {
+                ScriptField::Pre => "pre_script",
+                ScriptField::Post => "post_script",
+            };
+            view.edit_request(&tab_id, Some(typing), cx, |request| match field {
+                ScriptField::Pre => request.pre_script = text,
+                ScriptField::Post => request.post_script = text,
+            });
+        },
+    )
     .detach();
-    ScriptEditor { editor, completion }
-}
-
-/// A `::: pre` or `::: post` code editor and its completion provider, kept for `Ctrl+Space`.
-pub(crate) struct ScriptEditor {
-    pub(crate) editor: Entity<EditorState>,
-    pub(crate) completion: Rc<ScriptCompletionProvider>,
+    editor
 }
 
 /// The `gpui` entities behind the request editor's editable fields, for whichever tab is
@@ -341,8 +347,8 @@ pub(crate) struct RequestEditorEntities {
     /// What `body_markers` was last styled for, so it is recomputed only when the context or
     /// the colors change (an edit recomputes it directly, see [`AppView::refresh_body_markers`]).
     body_markers_built_for: Option<(VariableContext, Hsla)>,
-    pre_editor: Option<ScriptEditor>,
-    post_editor: Option<ScriptEditor>,
+    pre_editor: Option<Entity<telaio_editor::EditorView>>,
+    post_editor: Option<Entity<telaio_editor::EditorView>>,
     /// What the script editors complete besides the API, refreshed on every render of the
     /// editor like `variable_context`.
     script_completion: Rc<RefCell<ScriptCompletionData>>,
@@ -440,19 +446,16 @@ impl RequestEditorEntities {
                 cx,
             );
         }
-        let editors = [
-            (
-                self.pre_editor.as_ref().map(|script| &script.editor),
-                &request.pre_script,
-            ),
-            (
-                self.post_editor.as_ref().map(|script| &script.editor),
-                &request.post_script,
-            ),
-        ];
-        for (editor, text) in editors {
-            if let Some(editor) = editor {
-                set_editor_if_changed(editor, text, window, cx);
+        for (editor, text) in [
+            (&self.pre_editor, &request.pre_script),
+            (&self.post_editor, &request.post_script),
+            (&self.docs, &request.docs),
+        ] {
+            if let Some(editor) = editor
+                && editor.read(cx).text() != *text
+            {
+                let text = text.clone();
+                editor.update(cx, |view, cx| view.set_text(&text, cx));
             }
         }
         // A body the user can undo back to what it was: Format is one more step.
@@ -463,12 +466,6 @@ impl RequestEditorEntities {
             let text = text.to_string();
             editor.update(cx, |view, cx| view.replace_text(&text, cx));
             self.body_markers_built_for = None;
-        }
-        if let Some(docs) = &self.docs
-            && docs.read(cx).text() != request.docs
-        {
-            let text = request.docs.clone();
-            docs.update(cx, |view, cx| view.set_text(&text, cx));
         }
     }
 
@@ -597,7 +594,6 @@ impl RequestEditorEntities {
             &request.pre_script,
             ScriptField::Pre,
             &self.script_completion,
-            window,
             cx,
         ));
         self.post_editor = Some(make_script_editor(
@@ -605,7 +601,6 @@ impl RequestEditorEntities {
             &request.post_script,
             ScriptField::Post,
             &self.script_completion,
-            window,
             cx,
         ));
 
@@ -906,33 +901,14 @@ impl AppView {
     fn reveal_editor_line(&mut self, row: u32, window: &mut Window, cx: &mut Context<Self>) {
         let editors = &self.request_editor;
         let editor = match self.active_request_tab {
-            RequestTab::Body => {
-                if let Some(body) = editors.body_editor.clone() {
-                    body.update(cx, |view, cx| view.reveal_line(row as usize, window, cx));
-                }
-                None
-            }
-            RequestTab::Pre => editors
-                .pre_editor
-                .as_ref()
-                .map(|script| script.editor.clone()),
-            RequestTab::Post => editors
-                .post_editor
-                .as_ref()
-                .map(|script| script.editor.clone()),
-            RequestTab::Docs => {
-                if let Some(docs) = editors.docs.clone() {
-                    docs.update(cx, |view, cx| view.reveal_line(row as usize, window, cx));
-                }
-                None
-            }
+            RequestTab::Body => editors.body_editor.clone(),
+            RequestTab::Pre => editors.pre_editor.clone(),
+            RequestTab::Post => editors.post_editor.clone(),
+            RequestTab::Docs => editors.docs.clone(),
             RequestTab::Params | RequestTab::Headers | RequestTab::Auth => None,
         };
         if let Some(editor) = editor {
-            let position = gpui_kit::base::input::Position::new(row, 0);
-            editor.update(cx, |state, cx| {
-                state.set_cursor_position(position, window, cx)
-            });
+            editor.update(cx, |view, cx| view.reveal_line(row as usize, window, cx));
         }
     }
 
@@ -1213,22 +1189,8 @@ impl AppView {
             ),
             RequestTab::Auth => self.render_auth_tab(tab_id, request, cx),
             RequestTab::Body => self.render_body_tab(tab_id, request, cx),
-            RequestTab::Pre => render_editor_or_placeholder(
-                &self
-                    .request_editor
-                    .pre_editor
-                    .as_ref()
-                    .map(|script| script.editor.clone()),
-                cx,
-            ),
-            RequestTab::Post => render_editor_or_placeholder(
-                &self
-                    .request_editor
-                    .post_editor
-                    .as_ref()
-                    .map(|script| script.editor.clone()),
-                cx,
-            ),
+            RequestTab::Pre => render_boxed_editor(&self.request_editor.pre_editor, cx),
+            RequestTab::Post => render_boxed_editor(&self.request_editor.post_editor, cx),
             RequestTab::Docs => render_boxed_editor(&self.request_editor.docs, cx),
         }
     }
@@ -1667,15 +1629,6 @@ impl AppView {
             })
     }
 
-    /// The script editor (`::: pre` or `::: post`) that has the focus, if any.
-    pub(crate) fn focused_script_editor(&self, window: &Window, cx: &App) -> Option<&ScriptEditor> {
-        let editor = &self.request_editor;
-        [&editor.pre_editor, &editor.post_editor]
-            .into_iter()
-            .flatten()
-            .find(|script| script.editor.focus_handle(cx).is_focused(window))
-    }
-
     /// Whether the focus is in one of the request editor's single-line fields: the URL, the
     /// custom method, a table cell or an Auth field. Undo and redo there use the tab's history;
     /// the multi-line editors (body, scripts, docs) keep their own.
@@ -1743,32 +1696,6 @@ impl AppView {
             self.completion = None;
             cx.notify();
         }
-    }
-
-    /// `Ctrl+D` (`Cmd+Shift+K` on macOS): deletes the lines of the selection in the focused
-    /// script editor, as one undo step (`state::line_edit`), or lets the key through elsewhere.
-    pub(crate) fn on_delete_line(
-        &mut self,
-        _: &DeleteLine,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let Some(script) = self.focused_script_editor(window, cx) else {
-            cx.propagate();
-            return;
-        };
-        script.editor.clone().update(cx, |state, cx| {
-            let text = state.value();
-            let deletion = line_edit::delete_lines(&text, state.selected_range(), state.cursor());
-            if deletion.range.is_empty() {
-                return;
-            }
-            state.set_selected_range(deletion.range, cx);
-            state.replace("", window, cx);
-            state.set_selected_range(deletion.cursor..deletion.cursor, cx);
-            // `replace` is silent: emit the change the editor's subscription writes back.
-            cx.emit(InputEvent::Change);
-        });
     }
 
     /// Whether the menu of `field` hides every value: the value of a sensitive header or a
@@ -1856,20 +1783,6 @@ fn body_type_display_label(kind: BodyKind) -> String {
     }
 }
 
-/// Renders a code editor entity if present, or an empty placeholder (only possible transiently,
-/// before the first [`RequestEditorEntities::sync`] call), as telaio's [`CodeEditor`]: boxed in a
-/// bordered, `raised` container with line numbers, as tall as its `flex_1`/`min_h_0` wrapper (see
-/// the call sites).
-fn render_editor_or_placeholder(
-    editor: &Option<Entity<EditorState>>,
-    _cx: &Context<AppView>,
-) -> AnyElement {
-    match editor {
-        Some(editor) => CodeEditor::new(editor).into_any_element(),
-        None => div().into_any_element(),
-    }
-}
-
 /// Renders one of telaio's editors boxed like the code editors around it, or nothing before the
 /// first [`RequestEditorEntities::sync`].
 fn render_boxed_editor(
@@ -1901,19 +1814,6 @@ fn set_input_if_changed(
     if input.read(cx).value().as_ref() != text {
         let text = text.to_string();
         input.update(cx, |state, cx| state.set_value(text, window, cx));
-    }
-}
-
-/// Sets `editor`'s text to `text` unless it already shows it.
-fn set_editor_if_changed(
-    editor: &Entity<EditorState>,
-    text: &str,
-    window: &mut Window,
-    cx: &mut Context<AppView>,
-) {
-    if editor.read(cx).value().as_ref() != text {
-        let text = text.to_string();
-        editor.update(cx, |state, cx| state.set_value(text, window, cx));
     }
 }
 
