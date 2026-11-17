@@ -579,28 +579,43 @@ pub fn card_claims(token: &TokenSet, now: SystemTime) -> Vec<ClaimPart> {
     parts
 }
 
-/// Every claim as pretty JSON for the "All claims" dialog, with the times (`exp`, `iat`, `nbf`,
-/// `auth_time`) followed by their local time in a comment line.
+/// Every claim as pretty JSON, what "Copy" in the "All claims" dialog copies.
+pub fn all_claims_json(token: &TokenSet) -> String {
+    let object: serde_json::Map<String, serde_json::Value> = token.claims().into_iter().collect();
+    serde_json::to_string_pretty(&serde_json::Value::Object(object)).unwrap_or_default()
+}
+
+/// [`all_claims_json`] as the "All claims" dialog shows it (#271): each time claim (`exp`, `iat`,
+/// `nbf`, `auth_time`) followed by its local time in a `//` comment on its line.
 pub fn all_claims_text(token: &TokenSet) -> String {
-    let claims = token.claims();
-    let object: serde_json::Map<String, serde_json::Value> = claims.iter().cloned().collect();
-    let mut text =
-        serde_json::to_string_pretty(&serde_json::Value::Object(object)).unwrap_or_default();
-    let times: Vec<String> = claims
+    let times: Vec<(String, String)> = token
+        .claims()
         .iter()
         .filter(|(name, _)| matches!(name.as_str(), "exp" | "iat" | "nbf" | "auth_time"))
         .filter_map(|(name, value)| {
             let seconds = value.as_u64()?;
             let local =
                 chrono::DateTime::<chrono::Local>::from(postino_oauth::from_unix_seconds(seconds));
-            Some(format!("{name}: {}", local.format("%Y-%m-%d %H:%M:%S")))
+            Some((
+                format!("  \"{name}\": "),
+                local.format("%Y-%m-%d %H:%M:%S").to_string(),
+            ))
         })
         .collect();
-    if !times.is_empty() {
-        text.push_str("\n\n");
-        text.push_str(&times.join("\n"));
-    }
-    text
+    all_claims_json(token)
+        .lines()
+        .map(|line| {
+            // Top level keys are the lines indented by two spaces.
+            match times
+                .iter()
+                .find(|(prefix, _)| line.starts_with(prefix.as_str()))
+            {
+                Some((_, local)) => format!("{line} // {local}"),
+                None => line.to_string(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// What the response shows about the token, besides the console (designs 3b and 3c).
@@ -1058,6 +1073,28 @@ mod tests {
             obtained_at: 1_000,
             scope: String::new(),
         }
+    }
+
+    #[test]
+    fn all_claims_are_json_with_local_times_in_comments() {
+        let mut jwt = token(None, false);
+        // {"sub":"u_8121","exp":2000000000}
+        jwt.access_token =
+            "eyJhbGciOiJub25lIn0.eyJzdWIiOiJ1XzgxMjEiLCJleHAiOjIwMDAwMDAwMDB9.sig".into();
+        let json = all_claims_json(&jwt);
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
+        assert_eq!(parsed["sub"], "u_8121");
+        let local = chrono::DateTime::<chrono::Local>::from(postino_oauth::from_unix_seconds(
+            2_000_000_000,
+        ))
+        .format("%Y-%m-%d %H:%M:%S")
+        .to_string();
+        let text = all_claims_text(&jwt);
+        assert_eq!(
+            text,
+            format!("{{\n  \"sub\": \"u_8121\",\n  \"exp\": 2000000000 // {local}\n}}")
+        );
+        assert_eq!(text.lines().count(), json.lines().count());
     }
 
     #[test]

@@ -11,8 +11,10 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use postino_core::{OAuthGrant, OAuthProfile};
+use postino_oauth::TokenSet;
 use postino_workspace::{EnvChange, EnvLayer, ProjectWrite};
 use rust_i18n::t;
+use telaio_editor::{EditorDisplay, EditorState, EditorView, Language};
 
 use crate::state::oauth::{self, ProfileFieldKind};
 use crate::state::workspace_log::log_workspace_error;
@@ -28,6 +30,8 @@ use super::super::root::AppView;
 
 /// Width of the OAuth dialogs.
 const DIALOG_WIDTH: f32 = 520.0;
+/// Height of the "All claims" editor, the same as the Code dialog's.
+const CLAIMS_HEIGHT: f32 = 300.0;
 
 /// A handler shared by Enter and the confirm button of a dialog.
 type Submit = Rc<dyn Fn(&mut Window, &mut App)>;
@@ -650,15 +654,33 @@ impl AppView {
         true
     }
 
-    /// "All claims": every claim of the token as JSON, with the times in local time.
+    /// "All claims": every claim of the token as highlighted JSON in a read-only editor, like
+    /// the Code dialog (#271), with the times in local time in comments. Copy copies plain JSON.
     pub(crate) fn open_all_claims_dialog(
         &mut self,
-        text: String,
+        token: &TokenSet,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let copy = oauth::all_claims_json(token);
+        let text = oauth::all_claims_text(token);
+        let editor = cx.new(|cx| {
+            let mut editor = EditorView::new(EditorState::with_text(&text, Language::Json), cx);
+            editor.set_read_only(true, cx);
+            editor.set_display(
+                EditorDisplay {
+                    minimap: false,
+                    current_line: false,
+                    goto_line: false,
+                    ..EditorDisplay::default()
+                },
+                cx,
+            );
+            editor
+        });
         window.open_dialog(cx, move |dialog, window, _| {
-            let text = text.clone();
+            let editor = editor.clone();
+            let copy = copy.clone();
             framed_dialog(
                 dialog,
                 DIALOG_WIDTH + 80.0,
@@ -667,7 +689,7 @@ impl AppView {
                 window,
                 move |_, cx| {
                     let palette = cx.palette();
-                    let copy = text.clone();
+                    let copy = copy.clone();
                     v_flex()
                         .child(modal_header_with_icon(
                             Lucide::ScrollText,
@@ -678,22 +700,13 @@ impl AppView {
                         .child(
                             modal_body().child(
                                 div()
-                                    .id("oauth-claims-text")
-                                    .max_h(px(420.0))
-                                    .overflow_y_scroll()
-                                    .p(px(12.0))
+                                    .h(px(CLAIMS_HEIGHT))
                                     .rounded(px(RADIUS_MD))
-                                    .bg(palette.bg)
+                                    .bg(palette.raised)
                                     .border_1()
                                     .border_color(palette.border)
-                                    .font_family(cx.theme().mono_font_family.clone())
-                                    .text_size(px(12.0))
-                                    .whitespace_normal()
-                                    .children(
-                                        text.lines().map(|line| {
-                                            div().min_h(px(18.0)).child(line.to_string())
-                                        }),
-                                    ),
+                                    .overflow_hidden()
+                                    .child(editor.clone()),
                             ),
                         )
                         .child(

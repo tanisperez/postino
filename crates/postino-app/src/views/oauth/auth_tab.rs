@@ -416,7 +416,7 @@ impl AppView {
             let access = token.access_token.clone();
             let mono = cx.theme().mono_font_family.clone();
             let claims = oauth::card_claims(token, now);
-            let all_claims = oauth::all_claims_text(token);
+            let claims_token = token.clone();
             let mut claim_row = h_flex()
                 .flex_wrap()
                 .gap(px(4.0))
@@ -449,9 +449,8 @@ impl AppView {
                 .ml(px(8.0))
                 .font_family(ui_font)
                 .on_click(move |_, window, cx| {
-                    let text = all_claims.clone();
                     let _ = claims_weak.update(cx, |view, cx| {
-                        view.open_all_claims_dialog(text, window, cx);
+                        view.open_all_claims_dialog(&claims_token, window, cx);
                     });
                 }),
             );
