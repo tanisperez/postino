@@ -26,7 +26,9 @@ use super::variable_chip::VariableChip;
 use crate::state::variable_hint::{Hint, Origin, VariableContext, copyable_value, hint};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{INPUT_PADDING_X, RADIUS_MD, VARIABLE_FIELD_HEIGHT};
-use telaio_ui::components::edit_menu_area_with;
+use telaio_ui::components::{EditActions, edit_entries, input_edit_state};
+
+use crate::actions::{RedoRequestEdit, UndoRequestEdit};
 use telaio_ui::components::{MenuArea, MenuEntries, MenuItem};
 
 thread_local! {
@@ -108,30 +110,51 @@ pub fn variable_entries(
     MenuEntries::new().item(copy).item(edit)
 }
 
+/// Whether the active request tab can undo and redo, read when a field's menu opens: the request
+/// editor's fields undo the whole request, as Ctrl+Z does there (#109, #264).
+pub type RequestHistory = Rc<dyn Fn(&App) -> (bool, bool)>;
+
 /// The right-click menu box of a focused field holding `{{ }}` markers: the standard edit entries
 /// and, when the cursor is on a variable (a right click moves it there), its
-/// [`variable_entries`].
+/// [`variable_entries`]. With `history`, Undo and Redo are the request's (the same actions as
+/// Ctrl+Z, with their keys shown) and enabled from it, not the field's own.
 pub fn variable_menu_area(
     state: &Entity<InputState>,
     context: Rc<VariableContext>,
     mask_all: bool,
     on_edit: Option<TextHandler>,
+    history: Option<RequestHistory>,
 ) -> MenuArea {
     let input = state.clone();
-    edit_menu_area_with(state, move |entries, _, _, cx| {
-        let state = input.read(cx);
-        let cursor = state.cursor();
-        let text = state.value();
-        let span = variable_spans(&text)
-            .into_iter()
-            .find(|span| span.range.start <= cursor && cursor <= span.range.end);
-        match span {
-            Some(span) => {
-                entries.section(variable_entries(&span, &context, mask_all, on_edit.clone()))
+    MenuArea::new(
+        ("telaio-edit-menu", state.entity_id()),
+        move |menu, window, cx| {
+            let mut edit = input_edit_state(&input, cx);
+            let mut actions = EditActions::input();
+            if let Some(history) = &history {
+                let (can_undo, can_redo) = history(cx);
+                edit.can_undo = Some(can_undo);
+                edit.can_redo = Some(can_redo);
+                actions.undo = Box::new(UndoRequestEdit);
+                actions.redo = Box::new(RedoRequestEdit);
             }
-            None => entries,
-        }
-    })
+            let entries = edit_entries(edit, actions);
+            let state = input.read(cx);
+            let cursor = state.cursor();
+            let text = state.value();
+            let span = variable_spans(&text)
+                .into_iter()
+                .find(|span| span.range.start <= cursor && cursor <= span.range.end);
+            let entries = match span {
+                Some(span) => {
+                    entries.section(variable_entries(&span, &context, mask_all, on_edit.clone()))
+                }
+                None => entries,
+            };
+            let focus = state.focus_handle(cx);
+            entries.render(menu.action_context(focus), window, cx)
+        },
+    )
 }
 
 /// The tooltip text for `hint`, one line per entry of [`tooltip_lines`].
@@ -260,6 +283,7 @@ pub struct VariableField {
     masked: bool,
     on_chip_click: Option<TextHandler>,
     on_mask_toggle: Option<ActionHandler>,
+    history: Option<RequestHistory>,
 }
 
 impl VariableField {
@@ -279,6 +303,7 @@ impl VariableField {
             masked: false,
             on_chip_click: None,
             on_mask_toggle: None,
+            history: None,
         }
     }
 
@@ -309,6 +334,12 @@ impl VariableField {
         handler: impl Fn(String, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_chip_click = Some(Rc::new(handler));
+        self
+    }
+
+    /// Makes the menu's Undo and Redo the request's, see [`variable_menu_area`].
+    pub fn history(mut self, history: RequestHistory) -> Self {
+        self.history = Some(history);
         self
     }
 }
@@ -366,6 +397,7 @@ impl RenderOnce for VariableField {
                 self.context.clone(),
                 self.mask_all || self.masked,
                 self.on_chip_click.clone(),
+                self.history.clone(),
             )
             .w_full()
             .child(HoverInput::new(

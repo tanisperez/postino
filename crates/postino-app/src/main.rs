@@ -401,15 +401,18 @@ fn bind_keys(cx: &mut App) {
     // (`views/request_editor.rs`) act on the active request tab when the focus is outside a
     // text input or in one of the request editor's single-line fields, and otherwise let the
     // input's own undo run.
+    // In the root view's context rather than with none: a binding without context outranks every
+    // other, and telaio's code editors must keep their own Ctrl+Z, with its label in their menus.
+    let root = Some(views::root::ROOT_KEY_CONTEXT);
     #[cfg(target_os = "macos")]
-    for context in [None, input] {
+    for context in [root, input] {
         cx.bind_keys([
             KeyBinding::new("cmd-z", UndoRequestEdit, context),
             KeyBinding::new("cmd-shift-z", RedoRequestEdit, context),
         ]);
     }
     #[cfg(not(target_os = "macos"))]
-    for context in [None, input] {
+    for context in [root, input] {
         cx.bind_keys([
             KeyBinding::new("ctrl-z", UndoRequestEdit, context),
             KeyBinding::new("ctrl-shift-z", RedoRequestEdit, context),

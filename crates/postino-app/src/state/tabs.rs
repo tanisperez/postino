@@ -142,6 +142,14 @@ impl OpenTab {
         self.dirty = true;
     }
 
+    /// Whether [`Self::undo`] and [`Self::redo`] have a step to restore, for the menus' Undo and
+    /// Redo (#264).
+    pub fn can_undo_redo(&self) -> (bool, bool) {
+        self.history.as_ref().map_or((false, false), |history| {
+            (history.can_undo(), history.can_redo())
+        })
+    }
+
     /// Restores the previous step of the undo history. Returns whether something changed.
     pub fn undo(&mut self) -> bool {
         let restored = self

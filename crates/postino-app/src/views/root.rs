@@ -74,6 +74,9 @@ pub(crate) struct OpeningWorkspace {
     _task: Task<()>,
 }
 
+/// The key context of the whole window's view, for the bindings that need one (`main.rs`).
+pub const ROOT_KEY_CONTEXT: &str = "Postino";
+
 /// The main window view: title bar, resizable sidebar, and main area (open tabs plus the
 /// request editor and response viewer).
 pub struct AppView {
@@ -2007,6 +2010,9 @@ impl Render for AppView {
         v_flex()
             .size_full()
             .bg(background)
+            // The context of the request undo keys (`main.rs`): deeper than nothing, so the
+            // code editors' own Ctrl+Z wins inside them and their menus show it (#264).
+            .key_context(ROOT_KEY_CONTEXT)
             .track_focus(&self.focus_handle)
             // Esc cancels a browser sign-in in progress, wherever the focus is (design OAuth 3c).
             .capture_key_down(cx.listener(|view, event: &KeyDownEvent, _, cx| {

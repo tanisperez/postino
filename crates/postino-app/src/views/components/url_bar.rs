@@ -21,8 +21,8 @@ use rust_i18n::t;
 use postino_core::{Method, VariableSpan};
 
 use super::NeutralButtonExt;
-use super::variable_line::{TextHandler, marker_children, variable_menu_area};
-use super::{edit_menu_area, no_input_menu};
+use super::no_input_menu;
+use super::variable_line::{RequestHistory, TextHandler, marker_children, variable_menu_area};
 use crate::state::variable_hint::VariableContext;
 use crate::theme::metrics::{RADIUS_MD, URL_BAR_HEIGHT};
 use crate::theme::{PaletteExt, PostinoColors};
@@ -66,6 +66,8 @@ pub struct UrlBar {
     editing_method: Option<Entity<InputState>>,
     on_method_change: Option<MethodHandler>,
     on_chip_click: Option<TextHandler>,
+    /// The request's undo state for the fields' menus, see [`variable_menu_area`].
+    history: Option<RequestHistory>,
     /// Fired when the URL text changes. `UrlBar` is a `RenderOnce` (no `Context<Self>`), so it
     /// cannot subscribe to `input_state`'s own change events itself; the owning view would need
     /// to do that subscription and call this callback from there. The request editor (`views/request_editor.rs`)
@@ -105,6 +107,7 @@ impl UrlBar {
             editing_method: None,
             on_method_change: None,
             on_chip_click: None,
+            history: None,
             on_text_change: None,
             on_escape: None,
         }
@@ -134,6 +137,12 @@ impl UrlBar {
         handler: impl Fn(String, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_chip_click = Some(Rc::new(handler));
+        self
+    }
+
+    /// Makes the menus' Undo and Redo the request's, see [`variable_menu_area`].
+    pub fn history(mut self, history: RequestHistory) -> Self {
+        self.history = Some(history);
         self
     }
 
@@ -177,7 +186,15 @@ impl UrlBar {
                 .border_color(palette.border)
                 .child(
                     // Same sizing as the focused URL field, see `RenderOnce for UrlBar`.
-                    edit_menu_area(input).size_full().child(
+                    variable_menu_area(
+                        input,
+                        self.context.clone(),
+                        false,
+                        None,
+                        self.history.clone(),
+                    )
+                    .size_full()
+                    .child(
                         url_input_row().child(
                             Input::new(input)
                                 .context_menu(no_input_menu())
@@ -307,6 +324,7 @@ impl RenderOnce for UrlBar {
                 self.context.clone(),
                 false,
                 self.on_chip_click.clone(),
+                self.history.clone(),
             )
             .h_full()
             .flex_1()

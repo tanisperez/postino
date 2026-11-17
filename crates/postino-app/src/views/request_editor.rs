@@ -40,6 +40,7 @@ use crate::theme::metrics::{
 };
 use crate::views::components::NeutralButtonExt;
 use crate::views::components::variable_chip::highlight_style;
+use crate::views::components::variable_line::RequestHistory;
 use crate::views::components::{
     GhostButton, InlineMessage, InlineMessageKind, KeyValueRow, KeyValueTable, PrimaryButton,
     SegmentedControl, SegmentedItem, UnderlineTabItem, UnderlineTabs, UrlBar, VariableField,
@@ -1065,6 +1066,7 @@ impl AppView {
             url_input,
         )
         .editing_method(editing_method_input)
+        .history(request_history(&weak))
         .on_escape(move |window, cx| app_focus_handle.focus(window, cx))
         .on_method_change(move |method, window, cx| {
             let _ = method_weak.update(cx, |view, cx| {
@@ -1276,7 +1278,8 @@ impl AppView {
             )
             .mask_all(field.is_secret())
             .masked(field.is_secret() && !show_secrets)
-            .on_chip_click(define_variable_click(&weak, &context));
+            .on_chip_click(define_variable_click(&weak, &context))
+            .history(request_history(&weak));
             if field.is_secret() {
                 let toggle_weak = weak.clone();
                 let toggle_tab_id = tab_id.to_string();
@@ -1474,7 +1477,8 @@ impl AppView {
             // The value of a sensitive header never shows in a tooltip, whatever the variable
             // inside it is called.
             .mask_all(kind == RowKind::Headers && is_sensitive_header(&row.key))
-            .on_chip_click(define_variable_click(&weak, &context));
+            .on_chip_click(define_variable_click(&weak, &context))
+            .history(request_history(&weak));
             // Tab in the last value adds a row, unless that row is still empty: then Tab moves
             // on as usual. A single-line input lets `IndentInline` (its Tab) bubble up to here.
             let is_last = index + 1 == rows.len();
@@ -1500,7 +1504,8 @@ impl AppView {
                         row.key.clone(),
                         context.clone(),
                     )
-                    .on_chip_click(define_variable_click(&weak, &context)),
+                    .on_chip_click(define_variable_click(&weak, &context))
+                    .history(request_history(&weak)),
                     value,
                 )
                 .enabled(row.enabled)
@@ -1536,6 +1541,20 @@ impl AppView {
             })
             .into_any_element()
     }
+}
+
+/// Whether the active request tab can undo and redo, for the menus of the request editor's
+/// fields (#264).
+pub(crate) fn request_history(weak: &WeakEntity<AppView>) -> RequestHistory {
+    let weak = weak.clone();
+    Rc::new(move |cx| {
+        weak.upgrade()
+            .and_then(|view| {
+                let view = view.read(cx);
+                view.state.tabs.active().map(|tab| tab.can_undo_redo())
+            })
+            .unwrap_or((false, false))
+    })
 }
 
 /// The handler of a click on a variable chip: takes an unknown variable, or one from the active

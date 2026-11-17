@@ -144,6 +144,16 @@ impl EditHistory {
         self.enforce_budget();
     }
 
+    /// Whether [`Self::undo`] has a step to go back to.
+    pub fn can_undo(&self) -> bool {
+        self.cursor > 0
+    }
+
+    /// Whether [`Self::redo`] has a step to go forward to.
+    pub fn can_redo(&self) -> bool {
+        self.cursor + 1 < self.entries.len()
+    }
+
     /// Steps back and returns the snapshot to restore, or `None` at the oldest step.
     pub fn undo(&mut self) -> Option<&Snapshot> {
         if self.cursor == 0 {
@@ -228,6 +238,16 @@ mod tests {
         assert!(!history.is_dirty());
         assert_eq!(history.undo(), None);
         assert_eq!(history.redo(), None);
+    }
+
+    #[test]
+    fn can_undo_and_redo_follow_the_cursor() {
+        let mut history = EditHistory::new(snapshot("a"));
+        assert!(!history.can_undo() && !history.can_redo());
+        history.record(snapshot("b"), None, Instant::now());
+        assert!(history.can_undo() && !history.can_redo());
+        history.undo();
+        assert!(!history.can_undo() && history.can_redo());
     }
 
     #[test]
