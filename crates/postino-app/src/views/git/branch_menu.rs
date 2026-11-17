@@ -215,14 +215,22 @@ impl AppView {
             .iter()
             .map(|group| MenuGroup::new(group.kind.label(), group.rows.iter().map(row)))
             .collect();
-        let ahead = self.git.status().map_or(0, |(_, status)| status.ahead);
+        let (ahead, behind) = self
+            .git
+            .status()
+            .map_or((0, 0), |(_, status)| (status.ahead, status.behind));
         let mut push = MenuAction::new("push", t!("git.menu.push"), IconName::ArrowUp);
         if ahead > 0 {
             push = push.badge(ahead.to_string());
         }
+        // The commits to pull, as Push shows the ones to push (#274).
+        let mut pull = MenuAction::new("pull", t!("git.menu.pull"), IconName::ArrowDown);
+        if behind > 0 {
+            pull = pull.badge(behind.to_string());
+        }
         let actions = [
             MenuAction::new("new", t!("git.menu.new_branch"), IconName::Plus),
-            MenuAction::new("pull", t!("git.menu.pull"), IconName::ArrowDown),
+            pull,
             push,
             MenuAction::new("log", t!("git.menu.log"), IconName::GitGraph),
         ];
