@@ -38,7 +38,7 @@ use crate::state::ui_tabs::RequestTab;
 use crate::state::variable_hint::{self, VariableContext};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{
-    AUTH_FORM_MAX_WIDTH, AUTH_LABEL_WIDTH, COMPLETION_MENU_WIDTH, OAUTH_FORM_MAX_WIDTH,
+    AUTH_FORM_MAX_WIDTH, AUTH_LABEL_WIDTH, COMPLETION_MENU_WIDTH, OAUTH_FORM_MAX_WIDTH, RADIUS_MD,
     SEND_BUTTON_HEIGHT, SEND_BUTTON_MIN_WIDTH,
 };
 use crate::views::components::NeutralButtonExt;
@@ -349,8 +349,8 @@ pub(crate) struct RequestEditorEntities {
     /// What the script editors complete besides the API, refreshed on every render of the
     /// editor like `variable_context`.
     script_completion: Rc<RefCell<ScriptCompletionData>>,
-    /// The Docs tab's editor: plain text, with line numbers like the script editors.
-    docs: Option<Entity<EditorState>>,
+    /// The Docs tab's editor: telaio's, with Markdown colors (#267).
+    docs: Option<Entity<telaio_editor::EditorView>>,
     /// The row whose key input takes the focus once the entities are rebuilt for it: the row
     /// that Tab in the last value just added ([`AppView::add_row_from_tab`]).
     focus_after_rebuild: Option<(RowKind, usize)>,
@@ -472,12 +472,17 @@ impl RequestEditorEntities {
                 self.post_editor.as_ref().map(|script| &script.editor),
                 &request.post_script,
             ),
-            (self.docs.as_ref(), &request.docs),
         ];
         for (editor, text) in editors {
             if let Some(editor) = editor {
                 set_editor_if_changed(editor, text, window, cx);
             }
+        }
+        if let Some(docs) = &self.docs
+            && docs.read(cx).text() != request.docs
+        {
+            let text = request.docs.clone();
+            docs.update(cx, |view, cx| view.set_text(&text, cx));
         }
     }
 
@@ -611,19 +616,30 @@ impl RequestEditorEntities {
             cx,
         ));
 
-        let docs = cx.new(|cx| EditorState::new(window, cx).language("text"));
-        docs.update(cx, |state, cx| {
-            state.set_value(request.docs.clone(), window, cx)
+        let docs = cx.new(|cx| {
+            let state = telaio_editor::EditorState::with_text(
+                &request.docs,
+                telaio_editor::Language::Markdown,
+            );
+            let mut view = telaio_editor::EditorView::new(state, cx);
+            view.set_display(
+                telaio_editor::EditorDisplay {
+                    minimap: false,
+                    ..telaio_editor::EditorDisplay::default()
+                },
+                cx,
+            );
+            view
         });
         {
             let tab_id = tab_id.to_string();
-            cx.subscribe(&docs, move |view, entity, event: &InputEvent, cx| {
-                if !matches!(event, InputEvent::Change) {
-                    return;
-                }
-                let text = entity.read(cx).value().to_string();
-                view.edit_request(&tab_id, Some("docs"), cx, |request| request.docs = text);
-            })
+            cx.subscribe(
+                &docs,
+                move |view, entity, _: &telaio_editor::EditorEvent, cx| {
+                    let text = entity.read(cx).text();
+                    view.edit_request(&tab_id, Some("docs"), cx, |request| request.docs = text);
+                },
+            )
             .detach();
         }
         self.docs = Some(docs);
@@ -906,7 +922,12 @@ impl AppView {
                 .post_editor
                 .as_ref()
                 .map(|script| script.editor.clone()),
-            RequestTab::Docs => editors.docs.clone(),
+            RequestTab::Docs => {
+                if let Some(docs) = editors.docs.clone() {
+                    docs.update(cx, |view, cx| view.reveal_line(row as usize, window, cx));
+                }
+                None
+            }
             RequestTab::Params | RequestTab::Headers | RequestTab::Auth => None,
         };
         if let Some(editor) = editor {
@@ -1210,7 +1231,22 @@ impl AppView {
                     .map(|script| script.editor.clone()),
                 cx,
             ),
-            RequestTab::Docs => render_editor_or_placeholder(&self.request_editor.docs, cx),
+            RequestTab::Docs => match &self.request_editor.docs {
+                // Boxed like the code editors around it.
+                Some(docs) => {
+                    let palette = cx.palette();
+                    div()
+                        .size_full()
+                        .border_1()
+                        .border_color(palette.border)
+                        .rounded(px(RADIUS_MD))
+                        .bg(palette.raised)
+                        .overflow_hidden()
+                        .child(docs.clone())
+                        .into_any_element()
+                }
+                None => div().into_any_element(),
+            },
         }
     }
 
@@ -1694,13 +1730,13 @@ impl AppView {
 
     /// Steps the active request tab's history back (`redo` false) or forward, then rewrites
     /// the editor's fields from the restored request on the next render. Lets the key through
-    /// when the focus is in a text input other than the request editor's single-line fields,
-    /// or when the active tab is not a request.
+    /// when the focus is in a text input or code editor other than the request editor's
+    /// single-line fields, or when the active tab is not a request.
     fn step_request_history(&mut self, redo: bool, window: &mut Window, cx: &mut Context<Self>) {
-        let in_input = window
-            .context_stack()
-            .iter()
-            .any(|context| context.contains("Input"));
+        // telaio's code editor (the Docs tab, #267) keeps its own undo, like a text input.
+        let in_input = window.context_stack().iter().any(|context| {
+            context.contains("Input") || context.contains(telaio_editor::KEY_CONTEXT)
+        });
         if in_input && !self.focused_single_line_field(window, cx) {
             cx.propagate();
             return;
