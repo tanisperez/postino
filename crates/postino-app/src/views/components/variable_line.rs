@@ -20,11 +20,13 @@ use postino_core::{VariableKind, VariableSpan, variable_spans};
 
 use super::HoverInput;
 use super::IconButton;
+use super::no_input_menu;
 use super::variable_chip::VariableChip;
-use super::{edit_menu_area, no_input_menu};
-use crate::state::variable_hint::{Hint, Origin, VariableContext, hint};
+use crate::state::variable_hint::{Hint, Origin, VariableContext, copyable_value, hint};
 use crate::theme::PaletteExt;
 use crate::theme::metrics::{INPUT_PADDING_X, RADIUS_MD, VARIABLE_FIELD_HEIGHT};
+use telaio_ui::components::edit_menu_area_with;
+use telaio_ui::components::{MenuArea, MenuEntries, MenuItem};
 
 /// A text-carrying handler (chip click), factored out because clippy's `type_complexity` flags
 /// the inline form.
@@ -62,6 +64,69 @@ pub fn tooltip_lines(hint: &Hint) -> Vec<String> {
     lines
 }
 
+/// The right-click entries of the `{{variable}}` `span` (#266): **Copy value**, disabled while
+/// the variable has no value or its value is hidden (`mask_all`, a sensitive name), and **Edit in
+/// environment**, which calls `on_edit` with its name, disabled for a variable the session or a
+/// script sets. Nothing for a template function.
+pub fn variable_entries(
+    span: &VariableSpan,
+    context: &VariableContext,
+    mask_all: bool,
+    on_edit: Option<TextHandler>,
+) -> MenuEntries {
+    if span.kind != VariableKind::Variable {
+        return MenuEntries::new();
+    }
+    let value = copyable_value(context, span, mask_all);
+    let copy = MenuItem::handler(t!("request.variable.copy_value"), {
+        let value = value.clone();
+        move |_, cx| {
+            if let Some(value) = &value {
+                cx.write_to_clipboard(ClipboardItem::new_string(value.clone()));
+            }
+        }
+    })
+    .disabled(value.is_none());
+    let name = span.name.clone();
+    let editable = on_edit.is_some() && context.opens_environment(&name);
+    let edit = MenuItem::handler(
+        t!("request.variable.edit_in_environment"),
+        move |window, cx| {
+            if let Some(on_edit) = &on_edit {
+                on_edit(name.clone(), window, cx);
+            }
+        },
+    )
+    .disabled(!editable);
+    MenuEntries::new().item(copy).item(edit)
+}
+
+/// The right-click menu box of a focused field holding `{{ }}` markers: the standard edit entries
+/// and, when the cursor is on a variable (a right click moves it there), its
+/// [`variable_entries`].
+pub fn variable_menu_area(
+    state: &Entity<InputState>,
+    context: Rc<VariableContext>,
+    mask_all: bool,
+    on_edit: Option<TextHandler>,
+) -> MenuArea {
+    let input = state.clone();
+    edit_menu_area_with(state, move |entries, _, _, cx| {
+        let state = input.read(cx);
+        let cursor = state.cursor();
+        let text = state.value();
+        let span = variable_spans(&text)
+            .into_iter()
+            .find(|span| span.range.start <= cursor && cursor <= span.range.end);
+        match span {
+            Some(span) => {
+                entries.section(variable_entries(&span, &context, mask_all, on_edit.clone()))
+            }
+            None => entries,
+        }
+    })
+}
+
 /// The tooltip text for `hint`, one line per entry of [`tooltip_lines`].
 pub fn tooltip_text(hint: &Hint) -> String {
     tooltip_lines(hint).join("\n")
@@ -76,7 +141,7 @@ pub fn marker_children(
     id: &SharedString,
     text: &str,
     spans: &[VariableSpan],
-    context: &VariableContext,
+    context: &Rc<VariableContext>,
     mask_all: bool,
     on_chip_click: Option<&TextHandler>,
 ) -> Vec<AnyElement> {
@@ -93,6 +158,7 @@ pub fn marker_children(
         let defined = context.is_defined(span);
         let marker_text = text[span.range.clone()].to_string();
         let name = span.name.clone();
+        let chip_handler = on_chip_click.cloned();
         let mut chip = div()
             .id((id.clone(), span.range.start))
             .cursor_pointer()
@@ -110,7 +176,24 @@ pub fn marker_children(
             let handler = handler.clone();
             chip = chip.on_click(move |_, window, cx| handler(name.clone(), window, cx));
         }
-        children.push(chip.into_any_element());
+        // A right click on a variable chip opens its entries (#266), where a click acts on it.
+        let chip = match chip_handler {
+            Some(handler) if span.kind == VariableKind::Variable => {
+                let menu_span = span.clone();
+                let menu_context = context.clone();
+                MenuArea::new(
+                    (id.clone(), span.range.start + 1),
+                    move |menu, window, cx| {
+                        variable_entries(&menu_span, &menu_context, mask_all, Some(handler.clone()))
+                            .render(menu, window, cx)
+                    },
+                )
+                .child(chip)
+                .into_any_element()
+            }
+            _ => chip.into_any_element(),
+        };
+        children.push(chip);
         cursor = span.range.end;
     }
     if cursor < text.len() {
@@ -245,14 +328,19 @@ impl RenderOnce for VariableField {
                 .focus_ring(false)
                 .when(focused, |input| input.border_color(accent))
                 .when_some(mask_toggle, |input, toggle| input.suffix(toggle));
-            return edit_menu_area(&self.input_state)
-                .w_full()
-                .child(HoverInput::new(
-                    format!("{}-input", self.id),
-                    &self.input_state,
-                    input,
-                ))
-                .into_any_element();
+            return variable_menu_area(
+                &self.input_state,
+                self.context.clone(),
+                self.mask_all || self.masked,
+                self.on_chip_click.clone(),
+            )
+            .w_full()
+            .child(HoverInput::new(
+                format!("{}-input", self.id),
+                &self.input_state,
+                input,
+            ))
+            .into_any_element();
         }
 
         let input_state = self.input_state.clone();
@@ -305,8 +393,58 @@ impl RenderOnce for VariableField {
 
 #[cfg(test)]
 mod tests {
-    use super::mask_literals;
+    use super::{TextHandler, mask_literals, variable_entries};
+    use crate::state::variable_hint::VariableContext;
+    use postino_core::{KeyValue, variable_spans};
     use pretty_assertions::assert_eq;
+    use std::collections::HashSet;
+    use std::rc::Rc;
+    use telaio_ui::components::MenuEntry;
+
+    /// `(label, enabled)` of each entry of `span`'s menu.
+    fn entries(text: &str, on_edit: Option<TextHandler>) -> Vec<(String, bool)> {
+        let context = VariableContext::new(
+            Some("dev".to_string()),
+            &[
+                KeyValue::new("baseUrl", "https://x"),
+                KeyValue::new("authorization", "Bearer t"),
+            ],
+            &[KeyValue::new("region", "eu")],
+            HashSet::new(),
+        );
+        let span = variable_spans(text).remove(0);
+        variable_entries(&span, &context, false, on_edit)
+            .visible()
+            .iter()
+            .filter_map(|entry| match entry {
+                MenuEntry::Item(item) => Some((item.label().to_string(), !item.is_disabled())),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn variable_entries_follow_what_the_variable_allows() {
+        let edit: Option<TextHandler> = Some(Rc::new(|_, _, _| {}));
+        let both = |copy, edit| {
+            vec![
+                ("Copy value".to_string(), copy),
+                ("Edit in environment".to_string(), edit),
+            ]
+        };
+        assert_eq!(entries("{{baseUrl}}", edit.clone()), both(true, true));
+        // Unknown: nothing to copy, but it can be defined.
+        assert_eq!(entries("{{missing}}", edit.clone()), both(false, true));
+        // A hidden value, and one the session sets.
+        assert_eq!(
+            entries("{{authorization}}", edit.clone()),
+            both(false, true)
+        );
+        assert_eq!(entries("{{region}}", edit.clone()), both(true, false));
+        // Without a way to edit, and for a template function.
+        assert_eq!(entries("{{baseUrl}}", None), both(true, false));
+        assert!(entries("{{ uuid() }}", edit).is_empty());
+    }
 
     #[test]
     fn mask_literals_keeps_only_the_markers() {

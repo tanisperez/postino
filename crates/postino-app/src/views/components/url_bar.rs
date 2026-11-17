@@ -21,7 +21,7 @@ use rust_i18n::t;
 use postino_core::{Method, VariableSpan};
 
 use super::NeutralButtonExt;
-use super::variable_line::{TextHandler, marker_children};
+use super::variable_line::{TextHandler, marker_children, variable_menu_area};
 use super::{edit_menu_area, no_input_menu};
 use crate::state::variable_hint::VariableContext;
 use crate::theme::metrics::{RADIUS_MD, URL_BAR_HEIGHT};
@@ -302,26 +302,31 @@ impl RenderOnce for UrlBar {
             // bar's border (a fixed `URL_BAR_HEIGHT` overflowed it by the border's 2px and
             // clipped descenders), and the taller line height gives a selection some room above
             // and below the glyphs. Transparent, so the bar's own background shows through.
-            edit_menu_area(&self.input_state)
-                .h_full()
-                .flex_1()
-                .min_w_0()
-                .child(
-                    url_input_row().child(
-                        Input::new(&self.input_state)
-                            .context_menu(no_input_menu())
-                            .h_full()
-                            .flex_1()
-                            .px_2()
-                            .py_0()
-                            .line_height(px(URL_LINE_HEIGHT))
-                            .bordered(false)
-                            .bg(palette.raised.opacity(0.0))
-                            .font_family(mono_font)
-                            .text_size(px(12.5)),
-                    ),
-                )
-                .into_any_element()
+            variable_menu_area(
+                &self.input_state,
+                self.context.clone(),
+                false,
+                self.on_chip_click.clone(),
+            )
+            .h_full()
+            .flex_1()
+            .min_w_0()
+            .child(
+                url_input_row().child(
+                    Input::new(&self.input_state)
+                        .context_menu(no_input_menu())
+                        .h_full()
+                        .flex_1()
+                        .px_2()
+                        .py_0()
+                        .line_height(px(URL_LINE_HEIGHT))
+                        .bordered(false)
+                        .bg(palette.raised.opacity(0.0))
+                        .font_family(mono_font)
+                        .text_size(px(12.5)),
+                ),
+            )
+            .into_any_element()
         } else {
             self.render_line(cx)
         };

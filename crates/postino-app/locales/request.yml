@@ -110,6 +110,16 @@ _version: 2
   es: "(vacío)"
   gl: "(baleiro)"
   it: "(vuoto)"
+"request.variable.copy_value":
+  en: "Copy value"
+  es: "Copiar valor"
+  gl: "Copiar valor"
+  it: "Copia valore"
+"request.variable.edit_in_environment":
+  en: "Edit in environment"
+  es: "Editar en el entorno"
+  gl: "Editar no contorno"
+  it: "Modifica nell'ambiente"
 "request.auth.none":
   en: "None"
   es: "Ninguna"

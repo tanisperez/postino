@@ -145,6 +145,11 @@ apiKey=sk_test_51H...
     <li><strong>The active environment already has the variable:</strong> its tab opens, scrolled to that row, with the cursor in the value. No row is added. When the variable is in both files, that is the <code>.local.env</code> row, the one that applies.</li>
 </ul>
 <p>Type the value and save the tab with <kbd>Ctrl</kbd> <kbd>S</kbd>: nothing is written before that, and the chip stays red until the variable is saved. When the response warning lists several unknown variables, <strong>Define</strong> adds a row for each one and puts the cursor in the first.</p>
+<p>Right click a variable, in a chip, in a field you are editing or in the request body, for two more entries after the usual editing ones:</p>
+<ul>
+    <li><strong>Copy value</strong> copies the whole value of the variable, as it resolves now. It is disabled when the variable has no value yet, or when its value is hidden because its name looks like a secret.</li>
+    <li><strong>Edit in environment</strong> does what a click on the chip does, as described above. It is disabled for a variable that a script or the session sets.</li>
+</ul>
 
 <h2>Session variables</h2>
 <p>A post-response script can store a value for later requests with <code>env.set()</code>. The typical case is a login request that keeps the token:</p>

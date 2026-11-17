@@ -189,6 +189,24 @@ pub fn hint(context: &VariableContext, span: &VariableSpan, force_mask: bool) ->
     hint_of(context, &span.name, span.kind, force_mask)
 }
 
+/// The whole value of the variable `span` names, for "Copy value" in a right-click menu (#266).
+/// `None` when it has none yet (unknown, set by the pre script, a template function) or when it
+/// is hidden: `force_mask`, or a sensitive name, as [`hint`] hides it.
+pub fn copyable_value(
+    context: &VariableContext,
+    span: &VariableSpan,
+    force_mask: bool,
+) -> Option<String> {
+    match context.state_of(&span.name, span.kind) {
+        VariableState::Resolved { value, .. }
+            if !(force_mask || is_sensitive_header(&span.name)) || value.is_empty() =>
+        {
+            Some(value)
+        }
+        _ => None,
+    }
+}
+
 /// The tooltip content of every variable in [`VariableContext::names`], for the autocompletion
 /// menu. `force_mask` hides every value, as in [`hint`].
 pub fn completions(context: &VariableContext, force_mask: bool) -> Vec<Hint> {
@@ -288,6 +306,26 @@ mod tests {
         assert!(context.opens_environment("baseUrl"));
         assert!(!context.opens_environment("token"));
         assert!(!context.opens_environment("fromScript"));
+    }
+
+    #[test]
+    fn the_whole_value_is_copied_unless_it_is_hidden() {
+        let long = "x".repeat(500);
+        let context = context(
+            Some("dev"),
+            &[("baseUrl", &long), ("authorization", "Bearer t")],
+        );
+        assert_eq!(
+            copyable_value(&context, &span("{{baseUrl}}"), false),
+            Some(long)
+        );
+        assert_eq!(copyable_value(&context, &span("{{baseUrl}}"), true), None);
+        assert_eq!(
+            copyable_value(&context, &span("{{authorization}}"), false),
+            None
+        );
+        assert_eq!(copyable_value(&context, &span("{{missing}}"), false), None);
+        assert_eq!(copyable_value(&context, &span("{{ uuid() }}"), false), None);
     }
 
     #[test]

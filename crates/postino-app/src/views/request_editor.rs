@@ -552,10 +552,13 @@ impl RequestEditorEntities {
             .collect();
 
         self.body_markers = None;
+        let app = cx.weak_entity();
         self.body_editor = body_language(&request.body).map(|(text, language)| {
             let markers = Rc::new(RefCell::new(BodyMarkers::default()));
             let hover_markers = markers.clone();
+            let menu_markers = markers.clone();
             let editor = cx.new(|cx| {
+                let this = cx.entity().downgrade();
                 let state = telaio_editor::EditorState::with_text(text, language);
                 let mut view = telaio_editor::EditorView::new(state, cx);
                 view.set_display(
@@ -565,8 +568,16 @@ impl RequestEditorEntities {
                     },
                     cx,
                 );
-                // Duplicate line and Delete line, as #266 decided for bodies.
-                view.set_context_menu(|entries, edit, _, _| {
+                // On a `{{variable}}`, Copy value and Edit in environment; then Duplicate line and
+                // Delete line, as #266 decided for bodies.
+                view.set_context_menu(move |entries, edit, _, cx| {
+                    let offset = this.upgrade().and_then(|view| view.read(cx).menu_offset());
+                    let entries = match offset {
+                        Some(offset) => {
+                            entries.section(menu_markers.borrow().variable_entries(offset, &app))
+                        }
+                        None => entries,
+                    };
                     entries.section(telaio_editor::line_entries(edit))
                 });
                 // The value of the `{{ }}` marker under the pointer.
