@@ -181,9 +181,14 @@ impl EditHistory {
         self.origin = Origin::Discrete;
     }
 
-    /// Whether the current step differs from the one on disk.
+    /// Whether the current step differs from the one on disk. A step whose content equals the
+    /// saved one is clean too: an editor's own undo records its text back as a new step (#273).
     pub fn is_dirty(&self) -> bool {
-        self.saved != Some(self.cursor)
+        match self.saved {
+            Some(saved) if saved == self.cursor => false,
+            Some(saved) => self.entries[saved].0 != self.entries[self.cursor].0,
+            None => true,
+        }
     }
 
     /// Drops the steps after the cursor.
@@ -335,6 +340,19 @@ mod tests {
             history.is_dirty(),
             "the opened state is no longer what is on disk"
         );
+    }
+
+    #[test]
+    fn an_edit_that_brings_back_the_saved_content_is_clean() {
+        let start = Instant::now();
+        let mut history = EditHistory::new(snapshot("a"));
+        history.record(snapshot("ab"), Some("body"), start);
+        assert!(history.is_dirty());
+        // An editor's own undo reports its text back as one more edit (#273).
+        history.record(snapshot("a"), Some("body"), start + TYPING_PAUSE);
+        assert!(!history.is_dirty());
+        history.record(snapshot("ac"), Some("body"), start + TYPING_PAUSE * 2);
+        assert!(history.is_dirty());
     }
 
     #[test]

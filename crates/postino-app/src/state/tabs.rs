@@ -139,7 +139,10 @@ impl OpenTab {
         if let Some(history) = &mut self.history {
             history.record(snapshot, typing, now);
         }
-        self.dirty = true;
+        // Not simply `true`: undo inside the body, script and Docs editors arrives here as an
+        // edit, and it can bring back what is on disk (#273).
+        self.dirty =
+            self.history.as_ref().is_none_or(EditHistory::is_dirty) || self.profile_draft.is_some();
     }
 
     /// Whether [`Self::undo`] and [`Self::redo`] have a step to restore, for the menus' Undo and
@@ -810,6 +813,29 @@ mod tests {
         assert_eq!(tabs.active_index(), Some(0));
         tabs.activate_previous();
         assert_eq!(tabs.active_index(), Some(0));
+    }
+
+    #[test]
+    fn an_edit_back_to_the_saved_request_cleans_the_tab() {
+        let mut tabs = TabsState::default();
+        tabs.open("a.postino", request());
+        let tab = tabs.get_mut(0).expect("tab");
+        let original = tab.request().expect("request").post_script.clone();
+
+        if let Some(request) = tab.request_mut() {
+            request.post_script.push('x');
+        }
+        tab.record_edit(Some("post_script"), Instant::now());
+        assert!(tab.dirty);
+
+        if let Some(request) = tab.request_mut() {
+            request.post_script = original;
+        }
+        tab.record_edit(Some("post_script"), Instant::now());
+        assert!(
+            !tab.dirty,
+            "an editor's own undo back to the file is clean (#273)"
+        );
     }
 
     #[test]
