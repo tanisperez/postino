@@ -6,6 +6,7 @@
 //! focused and swap to the live `Input` when it is. The body code editor does not need it: it
 //! styles the markers in place with text decorations (`views/request_editor.rs`).
 
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use gpui_kit::assets::IconName;
@@ -27,6 +28,12 @@ use crate::theme::PaletteExt;
 use crate::theme::metrics::{INPUT_PADDING_X, RADIUS_MD, VARIABLE_FIELD_HEIGHT};
 use telaio_ui::components::edit_menu_area_with;
 use telaio_ui::components::{MenuArea, MenuEntries, MenuItem};
+
+thread_local! {
+    /// The chip whose right-click menu was opened last, until the pointer enters it again after
+    /// the menu: its tooltip stays hidden meanwhile. One at a time, as there is one menu at a time.
+    static MENU_CHIP: RefCell<Option<ElementId>> = const { RefCell::new(None) };
+}
 
 /// A text-carrying handler (chip click), factored out because clippy's `type_complexity` flags
 /// the inline form.
@@ -163,9 +170,17 @@ pub fn marker_children(
             .id((id.clone(), span.range.start))
             .cursor_pointer()
             .child(VariableChip::new(marker_text, defined));
+        let chip_key = ElementId::from((id.clone(), span.range.start));
         if let Some(hint) = hint(context, span, mask_all) {
             let tooltip = SharedString::from(tooltip_text(&hint));
-            chip = chip.tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx));
+            let key = chip_key.clone();
+            chip = chip.tooltip(move |window, cx| {
+                // Not over the chip's own right-click menu (#266).
+                if MENU_CHIP.with_borrow(|open| open.as_ref() == Some(&key)) {
+                    return cx.new(|_| EmptyView).into();
+                }
+                Tooltip::new(tooltip.clone()).build(window, cx)
+            });
         }
         // Only a variable chip calls the handler, not a template function call. A handler that
         // acts on the click stops its propagation, or the line around the chip also takes it and
@@ -177,8 +192,26 @@ pub fn marker_children(
             chip = chip.on_click(move |_, window, cx| handler(name.clone(), window, cx));
         }
         // A right click on a variable chip opens its entries (#266), where a click acts on it.
+        // gpui hides the chip's tooltip on the click but shows it again while the pointer stays on
+        // the chip, over the menu: the chip keeps it hidden until the pointer enters it again.
         let chip = match chip_handler {
             Some(handler) if span.kind == VariableKind::Variable => {
+                let key = chip_key.clone();
+                let chip = chip
+                    .on_mouse_down(MouseButton::Right, move |_, _, _| {
+                        MENU_CHIP.set(Some(key.clone()));
+                    })
+                    // The open menu covers the chip, which counts as leaving it; entering it
+                    // again happens once the menu is closed.
+                    .on_hover(move |hovered, _, _| {
+                        if *hovered {
+                            MENU_CHIP.with_borrow_mut(|open| {
+                                if open.as_ref() == Some(&chip_key) {
+                                    *open = None;
+                                }
+                            });
+                        }
+                    });
                 let menu_span = span.clone();
                 let menu_context = context.clone();
                 MenuArea::new(
