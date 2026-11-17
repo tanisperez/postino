@@ -15,7 +15,7 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
-use telaio_editor::{EditorDisplay, EditorState, EditorView, Language};
+use telaio_editor::{EditorDisplay, EditorState, EditorView, Language, fold_entries};
 
 use postino_core::TestResult;
 use postino_runner::{FailedStage, HttpError, RunResult};
@@ -102,6 +102,14 @@ impl ResponseEditorEntities {
         editor.update(cx, |view, cx| {
             view.set_language(language, cx);
             view.set_text(text, cx);
+            // Fold all and Unfold all only where there is something to fold: the pretty view.
+            view.set_context_menu(move |entries, _, _, _| {
+                if raw {
+                    entries
+                } else {
+                    entries.section(fold_entries())
+                }
+            });
         });
         log::debug!(
             "response editor of {tab_id} resynced with {} bytes in {} us",
