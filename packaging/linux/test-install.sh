@@ -155,7 +155,7 @@ check "logs purged" test ! -e "$tmp/home/.local/state/postino"
 mkdir -p "$tmp/usr/bin"
 touch "$tmp/usr/bin/postino"
 check "a packaged copy is refused" refused run
-rm -rf "$tmp/usr"
+rm -rf "${tmp:?}/usr"
 
 # Another prefix.
 check "install --prefix" run --prefix "$tmp/opt" >/dev/null 2>&1
