@@ -123,6 +123,19 @@ impl ResponseGenerations {
     pub fn get(&self, tab_id: &str) -> u64 {
         self.by_tab.get(tab_id).copied().unwrap_or(0)
     }
+
+    /// Keeps only the tabs `keep` accepts, for the tabs that closed (#292).
+    pub fn retain(&mut self, keep: impl Fn(&str) -> bool) {
+        self.by_tab.retain(|tab_id, _| keep(tab_id));
+    }
+
+    /// Gives every tab its id after `rename`, for tabs whose request moved (#292).
+    pub fn rename(&mut self, rename: impl Fn(&str) -> String) {
+        self.by_tab = std::mem::take(&mut self.by_tab)
+            .into_iter()
+            .map(|(tab_id, generation)| (rename(&tab_id), generation))
+            .collect();
+    }
 }
 
 /// The text the Body tab shows, computed once per response instead of once per render.
@@ -149,6 +162,18 @@ pub struct BodyTextCache {
 }
 
 impl BodyTextCache {
+    /// The tab whose body the cache holds, if any.
+    pub fn tab(&self) -> Option<&str> {
+        self.key.as_ref().map(|(tab_id, _, _)| tab_id.as_str())
+    }
+
+    /// Drops the texts, so a closed tab's body is not kept (#292).
+    pub fn clear(&mut self) {
+        self.key = None;
+        self.pretty = None;
+        self.raw = None;
+    }
+
     /// Returns the text to show for the response identified by `(tab_id, generation)`, pretty
     /// printed with `indent` spaces per level. `body` is only read when that key or `indent`
     /// differs from the last call, or the raw text is first requested.
@@ -434,5 +459,28 @@ mod tests {
             WarningGroup::UnknownVariable("token".to_string())
         );
         assert!(matches!(groups[1], WarningGroup::Function(_)));
+    }
+
+    #[test]
+    fn generations_follow_closed_and_moved_tabs() {
+        let mut generations = ResponseGenerations::default();
+        generations.bump("a.postino");
+        let b = generations.bump("f/b.postino");
+        generations.retain(|tab_id| tab_id != "a.postino");
+        assert_eq!(generations.get("a.postino"), 0);
+        generations.rename(|tab_id| tab_id.replace("f/", "g/"));
+        assert_eq!(generations.get("f/b.postino"), 0);
+        assert_eq!(generations.get("g/b.postino"), b);
+    }
+
+    #[test]
+    fn a_cleared_body_cache_holds_nothing_and_computes_again() {
+        let mut cache = BodyTextCache::default();
+        cache.shown("t", 1, br#"{"a":1}"#, false, 2);
+        assert_eq!(cache.tab(), Some("t"));
+        cache.clear();
+        assert_eq!(cache.tab(), None);
+        cache.shown("t", 1, br#"{"a":1}"#, false, 2);
+        assert_eq!(cache.computations, 2);
     }
 }

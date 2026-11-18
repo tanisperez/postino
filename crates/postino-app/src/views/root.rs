@@ -5,7 +5,7 @@
 //! rendering code lives next to what it renders, while the overall layout stays here.
 
 use std::cell::Cell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -722,6 +722,8 @@ impl AppView {
         match result {
             Ok(workspace) => {
                 self.state.set_workspace(workspace);
+                // The previous workspace's tabs are gone, and their responses with them.
+                self.forget_closed_tab_responses();
                 self.on_oauth_workspace_opened();
                 self.log_opened_workspace(root, elapsed);
                 self.workspace_error = None;
@@ -1001,7 +1003,54 @@ impl AppView {
             self.env_editors.remove(&tab_id);
         }
         self.state.tabs.close(index);
+        self.forget_closed_tab_responses();
         cx.notify();
+    }
+
+    /// Forgets the last response of every tab that is no longer open, and everything built from
+    /// it: the console timeline, the JSON shape for completion, its generation and the body the
+    /// response viewer holds (#292). Before, a closed tab kept its whole response in memory until
+    /// Postino quit; reopening the request shows it as never sent.
+    pub(crate) fn forget_closed_tab_responses(&mut self) {
+        let open: HashSet<String> = self
+            .state
+            .tabs
+            .open_tabs()
+            .iter()
+            .map(|tab| tab.id.clone())
+            .collect();
+        let is_open = |tab_id: &str| open.contains(tab_id);
+        let before = self.responses.len();
+        self.responses.retain(|tab_id, _| is_open(tab_id));
+        self.response_consoles.retain(|tab_id, _| is_open(tab_id));
+        self.response_shapes.retain(|tab_id, _| is_open(tab_id));
+        self.response_generations.retain(is_open);
+        self.response_editor.forget_closed(is_open);
+        let dropped = before - self.responses.len();
+        if dropped > 0 {
+            log::debug!("dropped the responses of {dropped} closed tabs");
+        }
+    }
+
+    /// Moves the responses of the tabs under `id` (a request, or a folder) to their ids under
+    /// `new_id`, after a rename or a move, so the tabs keep showing them (#292).
+    fn move_tab_responses(&mut self, id: &str, new_id: &str) {
+        let moved = |tab_id: &str| state::tree_drop::moved_id(tab_id, id, new_id);
+        self.responses = std::mem::take(&mut self.responses)
+            .into_iter()
+            .map(|(tab_id, response)| (moved(&tab_id), response))
+            .collect();
+        self.response_consoles = std::mem::take(&mut self.response_consoles)
+            .into_iter()
+            .map(|(tab_id, timeline)| (moved(&tab_id), timeline))
+            .collect();
+        self.response_shapes = std::mem::take(&mut self.response_shapes)
+            .into_iter()
+            .map(|(tab_id, shape)| (moved(&tab_id), shape))
+            .collect();
+        self.response_generations.rename(moved);
+        // The viewer held the body under the old id: it reads it again under the new one.
+        self.forget_closed_tab_responses();
     }
 
     /// Saves the active tab's request to disk with `postino-format`'s canonical serialization, via
@@ -1118,6 +1167,7 @@ impl AppView {
             Ok(new_id) => {
                 log::debug!("renamed {id} to {new_id}");
                 self.state.tabs.rename_prefix(&id, &new_id);
+                self.move_tab_responses(&id, &new_id);
                 self.workspace_error = None;
                 self.refresh_tree_with(cx, |expansion| {
                     state::tree_expansion::rename_prefix(expansion, &id, &new_id);
@@ -1166,14 +1216,7 @@ impl AppView {
             .map(|item| item.id.to_string());
         for (id, new_id) in &moved {
             self.state.tabs.rename_prefix(id, new_id);
-            self.responses = std::mem::take(&mut self.responses)
-                .into_iter()
-                .map(|(key, response)| (state::tree_drop::moved_id(&key, id, new_id), response))
-                .collect();
-            self.response_consoles = std::mem::take(&mut self.response_consoles)
-                .into_iter()
-                .map(|(key, timeline)| (state::tree_drop::moved_id(&key, id, new_id), timeline))
-                .collect();
+            self.move_tab_responses(id, new_id);
             self.sidebar_selection.follow_move(id, new_id);
             selected = selected.map(|selected| state::tree_drop::moved_id(&selected, id, new_id));
             self.last_selected_request = self
@@ -1236,6 +1279,7 @@ impl AppView {
             Ok(()) => {
                 log::debug!("deleted {id}");
                 self.state.tabs.close_prefix(&id);
+                self.forget_closed_tab_responses();
                 self.workspace_error = None;
                 self.refresh_tree(cx);
             }

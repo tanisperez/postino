@@ -126,6 +126,15 @@ impl AppView {
                     }
                 }
                 view.state.session_env = session_env;
+                if view.is_sending(&tab_id) {
+                    view.sending = None;
+                }
+                // The tab closed while the request ran: its response goes with it (#292).
+                if view.state.tabs.index_of(&tab_id).is_none() {
+                    log::debug!("dropped the response of a closed tab");
+                    cx.notify();
+                    return;
+                }
                 view.responses.insert(tab_id.clone(), result);
                 view.response_consoles.insert(tab_id.clone(), console);
                 match shape {
@@ -133,9 +142,6 @@ impl AppView {
                     None => view.response_shapes.remove(&tab_id),
                 };
                 view.response_generations.bump(&tab_id);
-                if view.is_sending(&tab_id) {
-                    view.sending = None;
-                }
                 cx.notify();
             });
         });

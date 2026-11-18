@@ -58,6 +58,22 @@ pub(crate) struct ResponseEditorEntities {
 }
 
 impl ResponseEditorEntities {
+    /// Drops the editor and its texts when they hold the body of a tab `open` does not accept
+    /// any more, so a closed tab's body leaves memory with it (#292). The next response shown
+    /// creates the editor again.
+    pub(crate) fn forget_closed(&mut self, open: impl Fn(&str) -> bool) {
+        let synced_closed = self
+            .synced
+            .as_ref()
+            .is_some_and(|(tab_id, ..)| !open(tab_id));
+        let texts_closed = self.texts.tab().is_some_and(|tab_id| !open(tab_id));
+        if synced_closed || texts_closed {
+            self.synced = None;
+            self.editor = None;
+            self.texts.clear();
+        }
+    }
+
     /// Creates the editor the first time, then replaces its text with `text` when the
     /// `(tab_id, generation, indent, raw)` key changed. The pretty view is highlighted as JSON,
     /// the raw one is plain text.
