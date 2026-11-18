@@ -255,8 +255,9 @@ Found in the 2026-09-30 investigation (#32, #33, #34). Keep these rules in every
   pretty text and the rope), down from about 460 MB with gpui-kit's `InputState`; bodies over
   4 MB are not highlighted. The request body and the scripts still use gpui-kit's editor. Measure
   with `MALLOC_ARENA_MAX=1` to compare builds, since the default allocator varies between runs.
-- Expected memory on Linux: about 115 MB RSS at startup in release, of which only about 22 MB is
-  the app's own heap; the rest is shared libraries (Mesa, LLVM) and the binary itself. gpui also
+- Expected memory on Linux: about 141 MB RSS at startup in release (2026-11-18, Mesa 26.2, #277),
+  of which only about 19 MB is the app's own heap; the rest is shared libraries (Mesa's
+  `libgallium` and `libLLVM`, about 64 MB) and the binary itself (about 36 MB). gpui also
   allocates GPU memory that is not in RSS but lives in system RAM on integrated GPUs: the
   swapchain plus two window-sized path textures (one with 4x MSAA), about five framebuffers.
   That part is gpui's design and grows with the window size.
