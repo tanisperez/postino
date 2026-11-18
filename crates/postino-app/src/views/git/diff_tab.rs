@@ -16,6 +16,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui_kit::component::button::Button;
+use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -31,8 +32,8 @@ use crate::actions::{NextDiffChange, OpenDiffFile, PreviousDiffChange};
 use crate::state::diff_view::DiffModel;
 use crate::state::git::{ChangeRowKind, change_rows};
 use crate::state::git_diff::{
-    DiffSummary, DiffTab, DiffTarget, HunkStage, block_at_row, block_new_line, neighbour,
-    request_location, summarize,
+    DiffSummary, DiffTab, DiffTarget, HeaderFit, HunkStage, block_at_row, block_new_line,
+    header_fit, neighbour, request_location, summarize,
 };
 use crate::state::git_log::Detail;
 use crate::state::locale::plural;
@@ -375,18 +376,21 @@ impl AppView {
         }
     }
 
-    /// The layout the diff tab shows: the chosen one, unless the main area is too narrow for two
-    /// columns or the file has no request diff.
-    fn shown_git_diff_mode(&self, window: &Window) -> GitDiffMode {
-        // The main area's width, without measuring a frame: the window less the rail and the
-        // sidebar when it shows.
+    /// The main area's width, without measuring a frame: the window less the rail and the sidebar
+    /// when it shows.
+    fn diff_area_width(&self, window: &Window) -> f32 {
         let sidebar = if self.nav.sidebar_visible() {
             SIDEBAR_WIDTH
         } else {
             0.0
         };
-        let narrow =
-            f32::from(window.viewport_size().width) - RAIL_WIDTH - sidebar < SPLIT_MIN_WIDTH;
+        f32::from(window.viewport_size().width) - RAIL_WIDTH - sidebar
+    }
+
+    /// The layout the diff tab shows: the chosen one, unless the main area is too narrow for two
+    /// columns or the file has no request diff.
+    fn shown_git_diff_mode(&self, window: &Window) -> GitDiffMode {
+        let narrow = self.diff_area_width(window) < SPLIT_MIN_WIDTH;
         let semantic = self
             .git_tasks
             .diff_view
@@ -651,7 +655,8 @@ impl AppView {
             view.scroll.scroll_to_item(row, ScrollStrategy::Center);
         }
 
-        let header = self.render_diff_header(&tab, shows, semantic.is_some(), &palette, cx);
+        let fit = header_fit(self.diff_area_width(window));
+        let header = self.render_diff_header(&tab, shows, fit, semantic.is_some(), &palette, cx);
         let body = match (&tab.summary, &self.git_tasks.diff_view) {
             (None, _) | (_, None) => div().flex_1().into_any_element(),
             (Some(summary), _) if summary.error.is_some() => EmptyState::new(t!("git.diff.failed"))
@@ -763,6 +768,7 @@ impl AppView {
         &self,
         tab: &DiffTab,
         shows: GitDiffMode,
+        fit: HeaderFit,
         has_request_mode: bool,
         palette: &Palette,
         cx: &Context<Self>,
@@ -806,13 +812,24 @@ impl AppView {
                             .child(tab.label().to_string()),
                     ),
             )
-            .child(
-                div()
+            .child({
+                let label = status_label(tab.letter, &tab.target);
+                let status = div()
+                    .id("git-diff-status")
                     .flex_none()
                     .text_size(px(11.5))
-                    .text_color(super::panel::letter_color(tab.letter, palette))
-                    .child(status_label(tab.letter, &tab.target)),
-            )
+                    .text_color(super::panel::letter_color(tab.letter, palette));
+                // Compact: the letter of the Source Control list, the word as its tooltip.
+                if fit == HeaderFit::Compact {
+                    status
+                        .font_family(mono.clone())
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .child(tab.letter.to_string())
+                        .tooltip(move |window, cx| Tooltip::new(label.clone()).build(window, cx))
+                } else {
+                    status.child(label)
+                }
+            })
             .child(
                 h_flex()
                     .flex_none()
@@ -835,10 +852,11 @@ impl AppView {
             .diff_view
             .as_ref()
             .and_then(|view| view.edge_hint);
+        let full = fit == HeaderFit::Full;
         let navigation = (summary.blocks > 0 && shows != GitDiffMode::Request).then(|| {
             let step = |id: &'static str,
                         icon: IconName,
-                        label: String,
+                        label: Option<String>,
                         tooltip: String,
                         action: &dyn Action,
                         forward: bool| {
@@ -846,10 +864,10 @@ impl AppView {
                 Button::new(id)
                     .neutral_ghost(cx, palette.fg_muted)
                     .h(px(26.0))
-                    .px(px(8.0))
+                    .px(px(if label.is_some() { 8.0 } else { 6.0 }))
                     .rounded(px(0.0))
                     .icon(Icon::new(icon).size(px(14.0)))
-                    .label(label)
+                    .when_some(label, |button, label| button.label(label))
                     .tooltip_with_action(tooltip, action, Some(DIFF_KEY_CONTEXT))
                     .on_click(move |_, window, cx| {
                         let _ = weak.update(cx, |view, cx| view.step_git_diff(forward, window, cx));
@@ -898,7 +916,7 @@ impl AppView {
                         .child(step(
                             "git-diff-previous",
                             IconName::ChevronUp,
-                            t!("git.diff.prev_button").into_owned(),
+                            full.then(|| t!("git.diff.prev_button").into_owned()),
                             t!("git.diff.previous").into_owned(),
                             &PreviousDiffChange,
                             false,
@@ -907,7 +925,7 @@ impl AppView {
                         .child(step(
                             "git-diff-next",
                             IconName::ChevronDown,
-                            t!("git.diff.next_button").into_owned(),
+                            full.then(|| t!("git.diff.next_button").into_owned()),
                             t!("git.diff.next").into_owned(),
                             &NextDiffChange,
                             true,
@@ -915,7 +933,7 @@ impl AppView {
                 )
                 .child(
                     h_flex()
-                        .gap(px(4.0))
+                        .gap(px(if full { 4.0 } else { 0.0 }))
                         .text_size(px(12.0))
                         .text_color(palette.fg_subtle)
                         .whitespace_nowrap()
@@ -924,35 +942,68 @@ impl AppView {
                                 .text_color(palette.fg)
                                 .child(format_integer((current + 1) as u64)),
                         )
-                        .child(plural("git.diff.of_changes", summary.blocks)),
+                        .child(if full {
+                            plural("git.diff.of_changes", summary.blocks)
+                        } else {
+                            format!("/{}", format_integer(summary.blocks as u64))
+                        }),
                 )
                 .children(hint)
         });
 
         let mut modes = SegmentedControl::new("git-diff-mode");
-        let request_mode = has_request_mode.then(|| (GitDiffMode::Request, t!("git.diff.request")));
-        for (mode, label) in request_mode.into_iter().chain([
-            (GitDiffMode::Split, t!("git.diff.split")),
-            (GitDiffMode::Unified, t!("git.diff.unified")),
+        let request_mode = has_request_mode.then(|| {
+            (
+                GitDiffMode::Request,
+                t!("git.diff.request"),
+                IconName::FileText,
+            )
+        });
+        for (mode, label, icon) in request_mode.into_iter().chain([
+            (GitDiffMode::Split, t!("git.diff.split"), IconName::Columns2),
+            (
+                GitDiffMode::Unified,
+                t!("git.diff.unified"),
+                IconName::Rows2,
+            ),
         ]) {
             let weak = weak.clone();
             // The mode that shows: narrow, a split choice is kept but Unified is what shows.
             let selected = mode == shows;
-            modes = modes.item(SegmentedItem::new(label).selected(selected).on_click(
-                move |window, cx| {
-                    let _ = weak.update(cx, |view, cx| view.set_git_diff_mode(mode, window, cx));
-                },
-            ));
+            let item = SegmentedItem::new(label)
+                .icon(icon)
+                .icon_only(fit == HeaderFit::Compact);
+            modes = modes.item(item.selected(selected).on_click(move |window, cx| {
+                let _ = weak.update(cx, |view, cx| view.set_git_diff_mode(mode, window, cx));
+            }));
         }
 
         let open_file = (tab.letter != 'D').then(|| {
             let weak = weak.clone();
-            SecondaryButton::new("git-diff-open-file", t!("git.diff.open_file"))
-                .icon(Icon::new(IconName::ExternalLink).size(px(12.0)))
-                .key_hint("F4")
-                .on_click(move |_, _, cx| {
-                    let _ = weak.update(cx, |view, cx| view.open_diff_file(cx));
-                })
+            let open = move |_: &ClickEvent, _: &mut Window, cx: &mut App| {
+                let _ = weak.update(cx, |view, cx| view.open_diff_file(cx));
+            };
+            if full {
+                SecondaryButton::new("git-diff-open-file", t!("git.diff.open_file"))
+                    .icon(Icon::new(IconName::ExternalLink).size(px(12.0)))
+                    .key_hint("F4")
+                    .on_click(open)
+                    .into_any_element()
+            } else {
+                // The same bordered box, the icon alone and the label with F4 as its tooltip.
+                Button::new("git-diff-open-file")
+                    .neutral_bordered(cx, palette.raised, palette.border_strong, palette.fg_muted)
+                    .size(px(28.0))
+                    .rounded(px(7.0))
+                    .icon(Icon::new(IconName::ExternalLink).size(px(13.0)))
+                    .tooltip_with_action(
+                        t!("git.diff.open_file"),
+                        &OpenDiffFile,
+                        Some(DIFF_KEY_CONTEXT),
+                    )
+                    .on_click(open)
+                    .into_any_element()
+            }
         });
 
         h_flex()

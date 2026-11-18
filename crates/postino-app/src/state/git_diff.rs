@@ -227,6 +227,35 @@ pub fn summarize(diff: &FileDiff) -> DiffSummary {
     }
 }
 
+/// How much of the git diff tab's header fits the width of its area (design 7d, #289).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HeaderFit {
+    /// Every label, from [`HEADER_FULL_WIDTH`].
+    Full,
+    /// Previous, Next and Open file as icons with tooltips, and the counter as `1/3`.
+    Medium,
+    /// Under [`HEADER_MEDIUM_WIDTH`], the smallest window with the sidebar: the status as its
+    /// letter and the modes as icons too.
+    Compact,
+}
+
+/// The area width, in logical pixels, from which the header shows every label.
+pub const HEADER_FULL_WIDTH: f32 = 1100.0;
+
+/// The area width under which the header is [`HeaderFit::Compact`].
+pub const HEADER_MEDIUM_WIDTH: f32 = 760.0;
+
+/// The header for an area `width` wide.
+pub fn header_fit(width: f32) -> HeaderFit {
+    if width >= HEADER_FULL_WIDTH {
+        HeaderFit::Full
+    } else if width >= HEADER_MEDIUM_WIDTH {
+        HeaderFit::Medium
+    } else {
+        HeaderFit::Compact
+    }
+}
+
 /// Whether a hunk of the work tree diff is in the index already.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HunkStage {
@@ -352,5 +381,17 @@ mod tests {
         assert_eq!(neighbour(&items, 2, true), None);
         assert_eq!(neighbour(&items, 0, false), None);
         assert_eq!(neighbour(&items, 2, false), Some(&2));
+    }
+
+    #[test]
+    fn the_header_drops_labels_as_the_area_narrows() {
+        // Measured with the Spanish labels, the longest: the full header needs about 1100 px for
+        // the file name to show, the medium one about 760. The smallest window with the sidebar
+        // leaves 728 px.
+        assert_eq!(header_fit(1300.0), HeaderFit::Full);
+        assert_eq!(header_fit(1100.0), HeaderFit::Full);
+        assert_eq!(header_fit(1099.0), HeaderFit::Medium);
+        assert_eq!(header_fit(760.0), HeaderFit::Medium);
+        assert_eq!(header_fit(728.0), HeaderFit::Compact);
     }
 }

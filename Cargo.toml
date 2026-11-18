@@ -13,17 +13,17 @@ authors = ["Estanislao Pérez Nartallo <tanisperez@gmail.com>"]
 [workspace.dependencies]
 gpui-kit = "0.9.1"
 # The design system and standard components shared with Vano and Nastro. Same gpui-kit pin.
-telaio-ui = { git = "https://github.com/tanisperez/telaio", tag = "v0.26.0" }
-telaio-update = { git = "https://github.com/tanisperez/telaio", tag = "v0.26.0" }
+telaio-ui = { git = "https://github.com/tanisperez/telaio", tag = "v0.27.0" }
+telaio-update = { git = "https://github.com/tanisperez/telaio", tag = "v0.27.0" }
 # The application shell: logging, command line pieces, language, numbers, paths, window bootstrap.
-telaio-app = { git = "https://github.com/tanisperez/telaio", tag = "v0.26.0" }
+telaio-app = { git = "https://github.com/tanisperez/telaio", tag = "v0.27.0" }
 # The git client shared with ted, it drives the `git` executable.
-telaio-git = { git = "https://github.com/tanisperez/telaio", tag = "v0.26.0" }
+telaio-git = { git = "https://github.com/tanisperez/telaio", tag = "v0.27.0" }
 # The text editor of every highlighted text (#258), from ted, and its highlighting, with the
 # grammars Postino shows: JSON (always), JavaScript, HTML for HTML and XML, Markdown, and Bash and
 # Python for the code snippets.
-telaio-editor = { git = "https://github.com/tanisperez/telaio", tag = "v0.26.0" }
-telaio-syntax = { git = "https://github.com/tanisperez/telaio", tag = "v0.26.0", features = ["javascript", "html", "markdown", "bash", "python"] }
+telaio-editor = { git = "https://github.com/tanisperez/telaio", tag = "v0.27.0" }
+telaio-syntax = { git = "https://github.com/tanisperez/telaio", tag = "v0.27.0", features = ["javascript", "html", "markdown", "bash", "python"] }
 rquickjs = "0.14"
 # The live dashboard of `postino load` (postino-cli, #241), with its crossterm backend.
 ratatui = "0.30"
