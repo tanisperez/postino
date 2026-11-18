@@ -65,6 +65,9 @@ const ROW_GROUP: &str = "git-diff-row";
 /// The key context of the diff tab, where `main.rs` binds F7, Shift+F7 and F4.
 pub(crate) const DIFF_KEY_CONTEXT: &str = "GitDiff";
 
+/// The shrink weight of the folder in the header, against 1 for the file name (#289).
+const FOLDER_SHRINK: f32 = 100.0;
+
 /// How long the "press F7 again" hint stays.
 const EDGE_HINT_DURATION: Duration = Duration::from_secs(3);
 
@@ -773,8 +776,20 @@ impl AppView {
             .as_ref()
             .map_or(0, |view| view.current);
 
+        // A narrow header cuts the folder first and then the file name, with an ellipsis, and
+        // clips the rest: before, the file name shrank to nothing and the folder ran into the
+        // status label and the buttons (#289).
+        let mut folder = div()
+            .min_w_0()
+            .truncate()
+            .text_color(palette.fg_subtle)
+            .child(tab.folder().to_string());
+        // Shrinking is shared out by each item's weight times its width: this weight makes the
+        // folder give up its width long before the file name.
+        folder.style().flex_shrink = Some(FOLDER_SHRINK);
         let file = h_flex()
             .min_w_0()
+            .overflow_hidden()
             .items_center()
             .gap(px(8.0))
             .child(
@@ -782,13 +797,10 @@ impl AppView {
                     .min_w_0()
                     .font_family(mono.clone())
                     .text_size(px(12.5))
+                    .child(folder)
                     .child(
                         div()
-                            .text_color(palette.fg_subtle)
-                            .child(tab.folder().to_string()),
-                    )
-                    .child(
-                        div()
+                            .min_w_0()
                             .truncate()
                             .text_color(palette.fg)
                             .child(tab.label().to_string()),
