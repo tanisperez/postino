@@ -100,9 +100,9 @@ $ postino load --workspace api-requests crud/ --env staging --vus 20 --duration 
 <p><code>--no-save</code> keeps the history of the CI checkout clean; leave it out to keep the run in <code>.postino/runs/</code>, for example to compare it with <code>--compare last</code> on a machine that keeps its workspace. Run load tests against an environment you own, see <a href="load-testing.html">Load testing</a>.</p>
 
 <h2 id="windows">Windows</h2>
-<p>On Windows, <code>postino.exe</code> is a desktop app, and shells do not wait for a desktop app to finish: the prompt comes back at once and the exit code is lost. Start it so that the shell waits:</p>
+<p>On Windows, <code>postino.exe</code> works like any other command line tool: <code>cmd.exe</code>, PowerShell and a WSL terminal wait for each command to finish and read its exit code, and the output can be redirected to a file or piped to another command.</p>
 ```shell
-> $p = Start-Process postino.exe -ArgumentList 'run','--env','staging' -NoNewWindow -Wait -PassThru
-> exit $p.ExitCode
+> postino.exe run --env staging --output junit > results.xml
+> exit $LASTEXITCODE
 ```
-<p>In <code>cmd.exe</code>, use <code>start /wait postino.exe run --env staging</code> and read <code>%ERRORLEVEL%</code>.</p>
+<p>Run without a command, <code>postino.exe</code> opens the window and gives the prompt back at once. Closing the terminal does not close the window.</p>

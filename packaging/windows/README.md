@@ -1,5 +1,19 @@
 # Windows packaging
 
+## Manifest
+
+`postino.exe` is a console subsystem binary (#282), so shells wait for its commands. Right after
+the release build, `merge-manifest.ps1` merges `console.manifest` (`consoleAllocationPolicy`
+`detached`, so a double click opens no console window on Windows 11 24H2 or later) into the
+manifest gpui embeds, with `mt.exe` from the Windows SDK. It runs before the installer and the
+zip, which package the merged exe:
+
+```powershell
+powershell -File packaging\windows\merge-manifest.ps1 target\x86_64-pc-windows-msvc\release\postino.exe
+```
+
+## Installer
+
 `postino.iss` is an Inno Setup 6 script. Defines, passed to `ISCC`:
 
 - `AppVersion`: full version, may be `0.1.0-rc.1` (the numeric file version is derived).

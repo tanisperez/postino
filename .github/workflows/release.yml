@@ -103,6 +103,13 @@ jobs:
           POSTINO_UPDATER: ${{ matrix.updater }}
         run: cargo build --release --locked --target ${{ matrix.target }}
 
+      # postino.exe is a console subsystem binary: adds `consoleAllocationPolicy` to the manifest
+      # gpui embeds, so a double click opens no console window (#282, packaging/windows).
+      - name: Merge the Windows manifest
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: packaging\windows\merge-manifest.ps1 "target\${{ matrix.target }}\release\postino.exe"
+
       # Tarball, deb, rpm and Arch package (packaging/linux).
       - name: Package for Linux
         if: runner.os == 'Linux'

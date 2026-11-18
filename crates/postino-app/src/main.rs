@@ -1,8 +1,10 @@
 //! Postino, the desktop HTTP client. Binary entry point: initializes `gpui`, the theme, the main
 //! window, and opens the workspace given on the command line or remembered from the last run.
 
-// A GUI application on Windows: never open a console window behind the main window.
-#![cfg_attr(windows, windows_subsystem = "windows")]
+// On Windows `postino.exe` is a console subsystem binary (#282): shells wait for the commands
+// and read their exit code, and pipes work. The manifest (`assets/postino.manifest`) keeps
+// Windows 11 24H2 from opening a console for a double click, and `detach_from_console` below
+// frees the terminal when the window opens.
 
 mod actions;
 mod cli_hooks;
@@ -43,6 +45,11 @@ fn main() -> ExitCode {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
     if let Some(code) = postino_cli::run_if_cli(&args, &cli_hooks::CliHooks) {
         return code;
+    }
+    // The window never holds the terminal it was started from: on Windows, a detached copy of
+    // this process opens it and this one exits.
+    if telaio_app::cli::detach_from_console() == telaio_app::cli::GuiLaunch::Relaunched {
+        return ExitCode::SUCCESS;
     }
 
     // Settings first, for the log level: the logger is installed before anything else runs, so

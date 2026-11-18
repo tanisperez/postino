@@ -170,12 +170,13 @@ fn run_console(args: &[OsString], hooks: &dyn AppHooks) -> u8 {
 }
 
 /// Handles the command line before anything else is set up. Returns `None` when the arguments
-/// (without the program name) are not a command (the app starts normally), otherwise runs it,
-/// attaching to the parent console first on Windows, and returns the exit code. `hooks`
-/// are the app's pieces the commands reuse, see [`AppHooks`].
+/// (without the program name) are not a command (the app starts normally), otherwise runs it and
+/// returns the exit code. `hooks` are the app's pieces the commands reuse, see [`AppHooks`].
+///
+/// On Windows `postino.exe` is a console subsystem binary, so the output goes to the terminal,
+/// file or pipe the shell gave it, and the shell waits for the exit code.
 pub fn run_if_cli(args: &[OsString], hooks: &dyn AppHooks) -> Option<ExitCode> {
     let command = Command::parse(args)?;
-    telaio_app::cli::attach_parent_console();
     Some(command.run(hooks))
 }
 
