@@ -92,7 +92,7 @@ description: Use OAuth 2.0 in Postino with named profiles: client credentials, p
 <ul>
     <li>When the token was obtained for the first time, a green line above the body says <strong>New token for acme-sso · dev · expires in 60 min</strong>.</li>
     <li>When an expired token was renewed, a <strong>Token renewed</strong> chip shows next to the status. Hover it for the profile, the environment and the new expiry, click it to open the console on the token request.</li>
-    <li>Each token request appears in the <a href="responses.html#console">Console</a> as a <code>POST</code> entry of its own, before the request, with its <code>grant_type</code>. <code>oauth</code> rows tell what happened: <em>token expired 12 min ago, refreshing it</em>, <em>new token, expires at 11:42 (60 min)</em>. The client secret, the code, the tokens and the passwords are always masked.</li>
+    <li>Each token request appears in the <a href="responses.html#console">Console</a> as a <code>POST</code> entry of its own, before the request, with its <code>grant_type</code>. <code>oauth</code> rows tell what happened: <em>token expired 12 min ago, refreshing it</em>, <em>new token, expires at 11:42 (60 min)</em>. In these token requests, the client secret, the code, the tokens and the passwords are masked. The network entry of the request itself is not: it shows the <code>Authorization</code> header with the token, exactly as it was sent.</li>
 </ul>
 <h3 id="errors">When it fails</h3>
 <ul>

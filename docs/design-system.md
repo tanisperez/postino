@@ -367,12 +367,13 @@ Top to bottom (px unless said otherwise):
 3. **Two columns.** Margin top 36, items aligned to the top, gap 40, widths 1 to 1.3 (flex grow
    1 and 1.3 from a zero basis, both allowed to shrink to nothing). Each column is a stack with gap
    6, headed by a `SectionLabel` ("Start", "Recent") padded 0 10 6.
-   - **Start rows.** Three rows. A row is 34 high (`WELCOME_ROW_HEIGHT`), padding 0 10, radius 7
+   - **Start rows.** Five rows. A row is 34 high (`WELCOME_ROW_HEIGHT`), padding 0 10, radius 7
      (`RADIUS_MD` minus 1), `hover` background on hover and `pressed` while held, pointer cursor.
      Gap 10: a 15 icon in `accent_text`, the label in `fg` (grows, truncates), and an optional key
      hint in the mono font, 11, `fg_subtle`. The rows are `plus` "New workspace...", `folder-open`
-     "Open folder..." with the hint "Ctrl+O" ("Cmd+O" on macOS) and `download` "Import from
-     Postman...".
+     "Open folder..." with the hint "Ctrl+O" ("Cmd+O" on macOS), `file-code` "Import OpenAPI..."
+     with the hint "Ctrl+Shift+O", `download` "Import from Postman..." and `folder-input` "Import
+     from Bruno...".
    - **Recent rows.** Up to four (`RECENT_LIMIT`), same row box, gap 12: the folder name in `fg`, a
      fixed 80 wide (`WELCOME_RECENT_NAME_WIDTH`) and truncated, then the path in the mono font, 12,
      `fg_subtle`, which takes the rest and truncates with an ellipsis. The path is `~`-shortened

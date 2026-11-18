@@ -1,5 +1,5 @@
 //! The welcome tab (GitHub #90): what Postino is, how it stores requests, how to start (New
-//! workspace, Open folder, Import from Postman), the recent workspaces, links to the quick
+//! workspace, Open folder, Import OpenAPI, Import from Postman, Import from Bruno), the recent workspaces, links to the quick
 //! start, the shortcuts and the command palette. It only exists while no workspace is open: it is
 //! the only tab then and has no close button. With a workspace open and no tab, the launcher
 //! (`views/launcher.rs`) takes its place.
@@ -289,7 +289,8 @@ fn separator_dot(palette: &Palette) -> impl IntoElement {
         .child("\u{b7}")
 }
 
-/// The "Start" column: New workspace, Open folder, Import from Postman.
+/// The "Start" column: New workspace, Open folder, Import OpenAPI, Import from Postman, Import
+/// from Bruno.
 fn render_start(
     weak: WeakEntity<AppView>,
     palette: &Palette,
@@ -298,7 +299,8 @@ fn render_start(
     let new_weak = weak.clone();
     let open_weak = weak.clone();
     let openapi_weak = weak.clone();
-    let rows: [(&str, Lucide, SharedString, Option<String>, ClickHandler); 4] = [
+    let postman_weak = weak.clone();
+    let rows: [(&str, Lucide, SharedString, Option<String>, ClickHandler); 5] = [
         (
             "welcome-new-workspace",
             Lucide::Plus,
@@ -337,7 +339,16 @@ fn render_start(
             t!("welcome.import_postman").into(),
             None,
             Box::new(move |window, cx| {
-                super::openapi_import::open_postman_wizard(weak.clone(), window, cx);
+                super::openapi_import::open_postman_wizard(postman_weak.clone(), window, cx);
+            }),
+        ),
+        (
+            "welcome-import-bruno",
+            Lucide::FolderInput,
+            t!("welcome.import_bruno").into(),
+            None,
+            Box::new(move |window, cx| {
+                super::openapi_import::open_bruno_wizard(weak.clone(), window, cx);
             }),
         ),
     ];

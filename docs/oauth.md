@@ -41,7 +41,8 @@ Every step is recorded in `OAuthRun::steps` (`OAuthNote` lines and `TokenExchang
 which the console shows. Exchanges are masked when recorded: the `Authorization` value, the form
 fields `client_secret`, `code`, `code_verifier`, `refresh_token`, `password` and `assertion`, and
 the `access_token`, `refresh_token` and `id_token` of the response. Nothing secret reaches
-`RunResult`.
+`RunResult`. The API request itself is not masked: its console entry shows the `Authorization`
+header with the token, as it was sent, like every other header.
 
 ## Browser sign-in
 
