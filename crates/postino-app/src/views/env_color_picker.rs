@@ -11,6 +11,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use postino_workspace::ProjectWrite;
 use rust_i18n::t;
+use telaio_ui::components::OpenOnClickExt as _;
 
 use crate::state::env_color::{EnvColor, auto_color};
 use crate::state::workspace_log::log_workspace_error;
@@ -118,7 +119,7 @@ pub(crate) fn color_picker(
             let open = *open;
             let _ = change_weak.update(cx, |view, cx| view.set_env_color_picker_open(open, cx));
         })
-        .trigger(trigger)
+        .trigger(trigger.open_on_click())
         .content(move |_, _, cx| render_picker(&name, chosen, content_weak.clone(), cx))
         .into_any_element()
 }

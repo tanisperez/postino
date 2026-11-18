@@ -4,6 +4,7 @@
 
 use std::cell::Cell;
 use std::rc::Rc;
+use telaio_ui::components::OpenOnClickExt as _;
 
 use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
@@ -524,7 +525,7 @@ fn render_target_picker(
     }
     SearchableMenu::new("load-test-target-menu", menus.menu(load_test.target_kind))
         .anchor(TARGET_MENU_ANCHOR)
-        .trigger(trigger)
+        .trigger(trigger.open_on_click())
         .into_any_element()
 }
 
@@ -684,6 +685,7 @@ fn render_thresholds(
             button.into_any_element()
         } else {
             button
+                .open_on_click()
                 .dropdown_menu(move |mut menu, _, _| {
                     for metric in &missing {
                         let metric = *metric;

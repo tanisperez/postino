@@ -9,6 +9,7 @@
 //! forwards clicks.
 
 use std::rc::Rc;
+use telaio_ui::components::OpenOnClickExt as _;
 
 use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputState};
@@ -233,6 +234,7 @@ impl UrlBar {
                     .text_color(color)
                     .child(label),
             )
+            .open_on_click()
             .dropdown_menu(move |mut menu, _, _| {
                 for method in STANDARD_METHODS {
                     let handler = handler.clone();

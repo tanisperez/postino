@@ -6,6 +6,7 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 use std::sync::Arc;
+use telaio_ui::components::OpenOnClickExt as _;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::Button;
@@ -215,7 +216,7 @@ impl AppView {
             .w(px(ICON_BUTTON_HEADER))
             .h(px(ICON_BUTTON_HEADER))
             .tooltip(t!("git.panel.more"))
-            .dropdown_menu(move |menu, _, _| {
+            .open_on_click().dropdown_menu(move |menu, _, _| {
                 let item = |label: Cow<'static, str>, action: fn(&mut AppView, &mut Window, &mut Context<AppView>)| {
                     let weak = weak.clone();
                     PopupMenuItem::new(label)

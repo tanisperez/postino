@@ -6,6 +6,7 @@
 //! building a whole custom popover from scratch.
 
 use std::rc::Rc;
+use telaio_ui::components::OpenOnClickExt as _;
 
 use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
@@ -153,6 +154,7 @@ impl RenderOnce for EnvPill {
                     .child(trigger_label),
             )
             .dropdown_caret(true)
+            .open_on_click()
             .dropdown_menu(move |mut menu, _, _| {
                 for item in &self.items {
                     let color = item.dot_color().map(|color| palette.env_color(color));

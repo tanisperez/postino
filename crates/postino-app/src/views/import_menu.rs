@@ -7,6 +7,7 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
+use telaio_ui::components::OpenOnClickExt as _;
 
 use crate::theme::PaletteExt;
 use crate::theme::metrics::ICON_BUTTON_HEADER;
@@ -26,6 +27,7 @@ impl AppView {
             .icon(Icon::new(gpui_kit::assets::IconName::Download))
             .text_color(cx.palette().fg_muted)
             .tooltip(t!("shell.import.button"))
+            .open_on_click()
             .dropdown_menu(move |menu, _, _| {
                 let openapi_weak = weak.clone();
                 let postman_weak = weak.clone();

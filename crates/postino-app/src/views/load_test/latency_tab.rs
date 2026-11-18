@@ -10,6 +10,7 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
+use telaio_ui::components::OpenOnClickExt as _;
 
 use postino_load::latency::{CURVE_POINTS, curve_percentile};
 use postino_load::{LatencyPercentiles, LatencyScale, LatencyView, StackedHistogram};
@@ -265,6 +266,7 @@ fn render_toolbar(
                         .text_color(palette.fg_muted),
                 ),
         )
+        .open_on_click()
         .dropdown_menu(move |menu, _, _| {
             let mut menu = menu
                 .min_w(px(REQUEST_MENU_WIDTH))

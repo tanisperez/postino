@@ -17,6 +17,7 @@ use postino_core::{
 };
 use postino_oauth::Force;
 use rust_i18n::t;
+use telaio_ui::components::OpenOnClickExt as _;
 
 use crate::state::oauth::{self, FieldHint, ProfileFieldKind};
 use crate::theme::metrics::{
@@ -967,6 +968,7 @@ impl AppView {
                             })
                             .child(target_label)
                             .dropdown_caret(true)
+                            .open_on_click()
                             .dropdown_menu(move |menu, _, _| {
                                 let mut menu = menu;
                                 for (option, text) in [

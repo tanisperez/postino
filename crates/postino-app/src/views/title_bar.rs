@@ -5,6 +5,7 @@
 //! (`views/command_palette.rs`); the settings gear opens Settings (`views/settings.rs`).
 
 use std::path::Path;
+use telaio_ui::components::OpenOnClickExt as _;
 
 use gpui_kit::assets::IconName as Lucide;
 use gpui_kit::component::button::Button;
@@ -110,7 +111,7 @@ impl AppView {
         Popover::new("workspace-switcher-popover")
             .w(px(WORKSPACE_MENU_WIDTH))
             .p(px(6.0))
-            .trigger(trigger)
+            .trigger(trigger.open_on_click())
             .content(move |_, _, cx| render_workspace_menu(weak.clone(), cx))
             .into_any_element()
     }

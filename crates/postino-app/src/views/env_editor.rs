@@ -8,6 +8,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
+use telaio_ui::components::OpenOnClickExt as _;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::{Button, ButtonCustomVariant, ButtonVariants as _};
@@ -844,6 +845,7 @@ fn render_header(
         .border_1()
         .text_color(palette.fg_muted)
         .tooltip(t!("environments.more_tooltip"))
+        .open_on_click()
         .dropdown_menu({
             let weak = weak.clone();
             let name = name.clone();
@@ -1317,6 +1319,7 @@ fn file_row(
         cx,
     )
     .tooltip(t!("environments.stored_in_tooltip"))
+    .open_on_click()
     .dropdown_menu({
         let weak = weak.clone();
         let tab_id = tab_id.to_string();

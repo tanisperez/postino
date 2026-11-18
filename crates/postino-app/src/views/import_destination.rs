@@ -5,6 +5,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use telaio_ui::components::OpenOnClickExt as _;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::Button;
@@ -390,6 +391,7 @@ fn render_with_workspace(
                             .border_1()
                             .child(recent_label)
                             .dropdown_caret(true)
+                            .open_on_click()
                             .dropdown_menu(move |mut menu, _, _| {
                                 for (index, path) in recent.iter().enumerate() {
                                     let weak = menu_block.clone();

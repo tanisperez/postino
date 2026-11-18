@@ -4,6 +4,7 @@
 //! selected window's chip) and the shown tab (`summary.rs`, `requests_tab.rs`, `errors_tab.rs`).
 
 use std::time::Duration;
+use telaio_ui::components::OpenOnClickExt as _;
 
 use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::DropdownMenu as _;
@@ -448,6 +449,7 @@ fn render_compare_menu(
                         .text_color(palette.fg_muted),
                 ),
         )
+        .open_on_click()
         .dropdown_menu(move |menu, _, _| {
             let mut menu = rich_menu_width(menu, COMPARE_MENU_WIDTH);
             for header in &candidates {
@@ -550,6 +552,7 @@ fn render_export_menu(
                         .text_color(palette.fg_muted),
                 ),
         )
+        .open_on_click()
         .dropdown_menu(move |menu, _, _| {
             let mut menu = rich_menu_width(menu, EXPORT_MENU_WIDTH);
             for (icon, title, extension, description, format) in &entries {

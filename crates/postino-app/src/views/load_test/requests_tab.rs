@@ -11,6 +11,7 @@ use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 use rust_i18n::t;
+use telaio_ui::components::OpenOnClickExt as _;
 
 use postino_load::StatusKey;
 
@@ -313,6 +314,7 @@ fn render_latency_filter(
         label(current),
         cx,
     )
+    .open_on_click()
     .dropdown_menu(move |mut menu, _, _| {
         for option in std::iter::once(None).chain(options.iter().copied().map(Some)) {
             let item_weak = weak.clone();
@@ -356,6 +358,7 @@ fn render_vu_filter(
         label(current),
         cx,
     )
+    .open_on_click()
     .dropdown_menu(move |menu, _, _| {
         let mut menu = menu.scrollable(true).max_h(px(320.0));
         for option in std::iter::once(None).chain((1..=vus).map(Some)) {

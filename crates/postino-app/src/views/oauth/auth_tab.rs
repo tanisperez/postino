@@ -3,6 +3,7 @@
 //! state (3a·2, step 3).
 
 use std::time::SystemTime;
+use telaio_ui::components::OpenOnClickExt as _;
 
 use gpui_kit::assets::IconName as Lucide;
 use gpui_kit::component::button::Button;
@@ -163,6 +164,7 @@ impl AppView {
                     ),
             )
             .dropdown_caret(true)
+            .open_on_click()
             .dropdown_menu(move |menu, _, _| {
                 // Many profiles scroll inside the menu instead of running off the window.
                 let mut menu = rich_menu_width(menu, OAUTH_MENU_WIDTH)

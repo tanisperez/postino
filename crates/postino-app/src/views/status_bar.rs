@@ -11,6 +11,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 use postino_workspace::git_branch;
 use rust_i18n::t;
+use telaio_ui::components::OpenOnClickExt as _;
 use telaio_ui::components::{SearchableMenu, open_tooltip};
 
 use crate::state;
@@ -108,7 +109,8 @@ impl AppView {
                                         .rounded(px(4.0))
                                         .text_size(px(11.5))
                                         .tooltip(t!("git.menu.tooltip"))
-                                        .child(content),
+                                        .child(content)
+                                        .open_on_click(),
                                 )
                                 .into_any_element()
                         } else {
