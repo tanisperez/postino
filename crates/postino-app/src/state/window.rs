@@ -22,6 +22,12 @@ pub struct WindowState {
     pub maximized: bool,
 }
 
+/// Whether `width` x `height` is a size a window can have. A minimized window on Windows reports
+/// a negative one (its empty client area minus the frame), which reopened as the minimum (#290).
+pub fn usable_size(width: f32, height: f32) -> bool {
+    width.is_finite() && height.is_finite() && width > 0.0 && height > 0.0
+}
+
 impl WindowState {
     /// The size to open with: as saved, but inside the visible area of the display (the display
     /// may be another one now, `None` when the OS does not report it yet) and never under the
@@ -50,9 +56,9 @@ pub fn save(state: &WindowState) {
 fn read(base: &Path) -> Option<WindowState> {
     let content = fs::read_to_string(base.join(WINDOW_FILE)).ok()?;
     match toml::from_str::<WindowState>(&content) {
-        Ok(state) if state.width.is_finite() && state.height.is_finite() => Some(state),
+        Ok(state) if usable_size(state.width, state.height) => Some(state),
         Ok(_) => {
-            log::warn!("ignoring {WINDOW_FILE}: the size is not a number");
+            log::warn!("ignoring {WINDOW_FILE}: the size is not a positive number");
             None
         }
         Err(error) => {
@@ -109,6 +115,18 @@ mod tests {
         fs::write(dir.path().join(WINDOW_FILE), "width = \"big\"").unwrap();
         assert_eq!(read(dir.path()), None);
         fs::write(dir.path().join(WINDOW_FILE), "width = nan\nheight = 700.0").unwrap();
+        assert_eq!(read(dir.path()), None);
+    }
+
+    #[test]
+    fn a_minimized_size_is_not_usable_and_not_loaded() {
+        // What a window minimized on Windows saved (#290).
+        assert!(!usable_size(-16.0, -8.0));
+        assert!(!usable_size(0.0, 700.0));
+        assert!(!usable_size(f32::INFINITY, 700.0));
+        assert!(usable_size(1100.0, 700.0));
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join(WINDOW_FILE), "width = -16.0\nheight = -8.0").unwrap();
         assert_eq!(read(dir.path()), None);
     }
 

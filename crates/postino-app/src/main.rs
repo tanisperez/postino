@@ -244,11 +244,15 @@ fn remember_window_size(
     let resized = last.clone();
     view.update(cx, |_, cx| {
         cx.observe_window_bounds(window, move |_, window, _| {
+            // A minimized window has no usable size: keep the state it had before (#290).
+            let size = reopening_size(wayland, window);
+            if !state::window::usable_size(size.width.into(), size.height.into()) {
+                return;
+            }
             let mut state = resized.get();
             state.maximized = window.is_maximized();
             // A maximized or fullscreen window keeps the size it goes back to.
             if !state.maximized && !window.is_fullscreen() {
-                let size = reopening_size(wayland, window);
                 state.width = size.width.into();
                 state.height = size.height.into();
             }
