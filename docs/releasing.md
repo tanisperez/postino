@@ -55,7 +55,8 @@ The work of a version is tracked by its GitHub milestone (`gh issue list --miles
    with placeholder notes; edit them afterwards with `gh release edit v0.1.0 --notes-file release-notes/0.1.0.md`.
 
 7. For a stable release, run the `Website` workflow by hand (`gh workflow run website.yml`) once
-   the release is published. It rebuilds the APT and DNF repositories with the new packages. Its
+   the release is published. It rebuilds the APT and DNF repositories with the new packages and
+   points the download buttons of the website at the new files. Its
    `release: published` trigger does not fire here, because the release workflow publishes with
    `GITHUB_TOKEN`, and events caused by that token never start other workflows.
 
@@ -244,12 +245,14 @@ and DNF repos, served by GitHub Pages.
 - Plain static HTML, CSS and a little JavaScript under `site/`, no dependencies, so a feature and
   its screenshot and text change in the same pull request. The only build step is
   `site/docs-src/build.py` (Python standard library), which the workflow runs to generate
-  `site/docs/` and which fails the deploy on a broken link (`site/README.md`).
+  `site/docs/` and which fails the deploy on a broken link (`site/README.md`). Then
+  `site/docs-src/release_links.py` points the download buttons at the files of the latest
+  stable release and shows its version; the pages in git link to the releases page instead.
 - Styled with the design system (`docs/design-system.md`): its color tokens as CSS custom
   properties, light and dark through `prefers-color-scheme`, Geist and Geist Mono served from the
   site (SIL OFL 1.1).
-- Pages: the landing page (features, each with a screenshot) and the install page (one download
-  button per OS, then the install script, `apt` and `dnf` commands, each with a copy button;
+- Pages: the landing page (features, each with a screenshot) and the install page (direct
+  download buttons per OS, a package picker for Linux, then the install script, `apt` and `dnf` commands, each with a copy button;
   `yay`, `brew` and `winget` join them once those channels exist, #44) and the user documentation under
   `/docs/`, with a search built in the browser. The developer documents stay in `docs/` on GitHub.
 - Screenshots are generated, not taken by hand: a script opens the sample workspace, drives the

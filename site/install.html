@@ -35,6 +35,7 @@
     <link rel="stylesheet" href="css/style.css">
     <script src="js/theme.js"></script>
     <script src="js/copy.js" defer></script>
+    <script src="js/download.js" defer></script>
 </head>
 <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -75,24 +76,34 @@
                     <li class="download">
                         <h2>Windows</h2>
                         <p>Windows 10 and 11, 64 bit. The installer is for your user only, needs no administrator rights and updates itself. The portable zip needs no installer at all, for machines where installing is not allowed.</p>
-                        <a class="btn btn-primary" href="https://github.com/tanisperez/postino/releases/latest">Download the installer</a>
-                        <span class="alt">File <code>Postino-…-windows-x86_64-setup.exe</code></span>
-                        <a class="btn btn-secondary" href="https://github.com/tanisperez/postino/releases/latest">Download the portable zip</a>
-                        <span class="alt">File <code>Postino-…-windows-x86_64-portable.zip</code></span>
+                        <a class="btn btn-primary" href="https://github.com/tanisperez/postino/releases/latest" data-asset="Postino-…-windows-x86_64-setup.exe">Download the installer</a>
+                        <span class="alt">File <code data-file>Postino-…-windows-x86_64-setup.exe</code></span>
+                        <a class="btn btn-secondary" href="https://github.com/tanisperez/postino/releases/latest" data-asset="Postino-…-windows-x86_64-portable.zip">Download the portable zip</a>
+                        <span class="alt">File <code data-file>Postino-…-windows-x86_64-portable.zip</code></span>
                     </li>
                     <li class="download">
                         <h2>macOS</h2>
                         <p>Apple silicon (M1 and later). Drag Postino to Applications. Updates itself.</p>
-                        <a class="btn btn-primary" href="https://github.com/tanisperez/postino/releases/latest">Download the disk image</a>
-                        <span class="alt">File <code>Postino-…-macos-arm64.dmg</code></span>
+                        <a class="btn btn-primary" href="https://github.com/tanisperez/postino/releases/latest" data-asset="Postino-…-macos-arm64.dmg">Download the disk image</a>
+                        <span class="alt">File <code data-file>Postino-…-macos-arm64.dmg</code></span>
                     </li>
-                    <li class="download">
+                    <li class="download" id="linux">
                         <h2>Linux</h2>
                         <p>x86_64. A <code>.deb</code>, an <code>.rpm</code>, an Arch package, an AppImage and a tarball. Use a repository below to get updates, or the <a href="#install-script">install script</a> on any distribution.</p>
-                        <a class="btn btn-primary" href="https://github.com/tanisperez/postino/releases/latest">Download a package</a>
-                        <span class="alt">Files <code>.deb</code>, <code>.rpm</code>, <code>.pkg.tar.zst</code>, <code>.AppImage</code>, <code>.tar.gz</code></span>
+                        <div class="picker">
+                            <select aria-label="Linux package">
+                                <option value="https://github.com/tanisperez/postino/releases/latest" data-asset="Postino-…-x86_64.AppImage" selected>AppImage, any distribution</option>
+                                <option value="https://github.com/tanisperez/postino/releases/latest" data-asset="postino_…_amd64.deb">.deb, Debian and Ubuntu</option>
+                                <option value="https://github.com/tanisperez/postino/releases/latest" data-asset="postino-…-1.x86_64.rpm">.rpm, Fedora and openSUSE</option>
+                                <option value="https://github.com/tanisperez/postino/releases/latest" data-asset="postino-…-1-x86_64.pkg.tar.zst">.pkg.tar.zst, Arch Linux</option>
+                                <option value="https://github.com/tanisperez/postino/releases/latest" data-asset="postino-…-linux-x86_64.tar.gz">.tar.gz, any distribution</option>
+                            </select>
+                        </div>
+                        <a class="btn btn-primary" href="https://github.com/tanisperez/postino/releases/latest" data-asset="Postino-…-x86_64.AppImage">Download</a>
+                        <span class="alt">File <code data-file>Postino-…-x86_64.AppImage</code></span>
                     </li>
                 </ul>
+                <p class="release-line"><span data-version hidden><a href="https://github.com/tanisperez/postino/releases/latest">Version …</a> · </span>Every file and its SHA-256 checksum are on the <a href="https://github.com/tanisperez/postino/releases">releases page</a>.</p>
             </div>
         </section>
 

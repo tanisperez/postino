@@ -907,6 +907,66 @@ kbd {
     color: var(--fg-subtle);
 }
 
+/* The Linux package picker. js/download.js makes the Download button follow it, so without
+   JavaScript (no data-theme on the root, see js/theme.js) it stays hidden. */
+.download .picker {
+    position: relative;
+    display: none;
+    margin-top: 24px;
+}
+
+:root[data-theme] .download .picker {
+    display: block;
+}
+
+:root[data-theme] .download .picker + .btn {
+    margin-top: 12px;
+}
+
+.download .picker select {
+    appearance: none;
+    width: 100%;
+    height: 44px;
+    padding: 0 40px 0 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-md);
+    background: var(--raised);
+    color: var(--fg);
+    font: inherit;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+}
+
+.download .picker select:hover {
+    background: var(--hover);
+}
+
+.download .picker select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.download .picker::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 17px;
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid var(--fg-muted);
+    border-bottom: 1.5px solid var(--fg-muted);
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+}
+
+.release-line {
+    margin-top: 24px;
+    text-align: center;
+    color: var(--fg-subtle);
+    font-size: 14px;
+}
+
 .channels {
     display: grid;
     /* minmax(0, 1fr): without it the column grows to the longest code line on phones. */

@@ -5,6 +5,13 @@ Plain HTML, CSS and JavaScript, no dependencies. The only build step generates t
 documentation pages. How it is deployed: `docs/releasing.md`.
 
 - `index.html`, `install.html`: the pages.
+- Download links: the pages in git hold `…` where the version goes and link to the latest
+  release page. When the site is published, `docs-src/release_links.py` turns every
+  `data-asset` link into the direct download of that file in the latest stable release, fills
+  in the `<code data-file>` names and shows the `data-version` elements. `js/download.js` makes
+  the Linux Download button follow the package picker; without JavaScript the picker is hidden
+  and the button downloads the AppImage. Preview it with
+  `python3 site/docs-src/release_links.py <copy of site> v1.0.1` on a copy, never on `site/`.
 - `404.html`: the page GitHub Pages serves for any missing address. Its links are absolute.
 - SEO: every page has a description, a canonical URL, Open Graph and Twitter tags with the card
   `img/og.png` (1200x630, rendered from `screenshots/og.html` by `screenshots/og-image.sh`). The

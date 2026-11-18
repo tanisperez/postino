@@ -45,6 +45,19 @@ jobs:
       - name: Assemble the site
         run: rsync -a --exclude screenshots/ --exclude docs-src/ --exclude README.md site/ _site/
 
+      # The download buttons point at the files of the latest stable release, and the pages show
+      # its version. Without a stable release they keep linking to the releases page.
+      - name: Link the downloads to the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh release view --json tagName -q .tagName 2>/dev/null || true)
+          if [ -z "$tag" ]; then
+            echo "No stable release yet, the downloads link to the releases page."
+            exit 0
+          fi
+          python3 site/docs-src/release_links.py _site "$tag"
+
       - name: Install the repository tools
         if: env.GPG_PRIVATE_KEY != ''
         run: sudo apt-get update -qq && sudo apt-get install -y -qq apt-utils createrepo-c rpm
