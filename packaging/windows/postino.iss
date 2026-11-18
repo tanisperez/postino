@@ -48,6 +48,9 @@ DisableProgramGroupPage=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ChangesAssociations=yes
+; The install folder goes into the user's Path (#284): tell running programs, so new terminals
+; see it. The uninstaller broadcasts the removal too.
+ChangesEnvironment=yes
 ; The updater runs the installer silently while Postino may be open: close it through the
 ; Restart Manager, never ask for a reboot, and relaunch from [Run].
 CloseApplications=yes
@@ -102,4 +105,58 @@ Filename: "{app}\{#AppExe}"; Flags: nowait; Check: RelaunchRequested
 function RelaunchRequested: Boolean;
 begin
   Result := WizardSilent and (ExpandConstant('{param:relaunch|0}') = '1');
+end;
+
+// The user's Path (HKCU, no admin), so `postino` works in any terminal (#284). Kept as
+// REG_EXPAND_SZ, since it usually holds %USERPROFILE% style entries.
+const
+  EnvironmentKey = 'Environment';
+
+function PathHasDir(Paths, Dir: String): Boolean;
+begin
+  Result := Pos(';' + Uppercase(Dir) + ';', ';' + Uppercase(Paths) + ';') > 0;
+end;
+
+procedure AddToPath(Dir: String);
+var
+  Paths: String;
+begin
+  if not RegQueryStringValue(HKCU, EnvironmentKey, 'Path', Paths) then
+    Paths := '';
+  // The updater runs the installer on every update: add the folder once.
+  if PathHasDir(Paths, Dir) then
+    Exit;
+  if (Paths <> '') and (Paths[Length(Paths)] <> ';') then
+    Paths := Paths + ';';
+  RegWriteExpandStringValue(HKCU, EnvironmentKey, 'Path', Paths + Dir);
+end;
+
+procedure RemoveFromPath(Dir: String);
+var
+  Paths: String;
+begin
+  if not RegQueryStringValue(HKCU, EnvironmentKey, 'Path', Paths) then
+    Exit;
+  if not PathHasDir(Paths, Dir) then
+    Exit;
+  Paths := ';' + Paths + ';';
+  StringChangeEx(Paths, ';' + Dir + ';', ';', True);
+  // Drop the separators added above, and the one left where the entry was last.
+  while (Length(Paths) > 0) and (Paths[1] = ';') do
+    Delete(Paths, 1, 1);
+  while (Length(Paths) > 0) and (Paths[Length(Paths)] = ';') do
+    Delete(Paths, Length(Paths), 1);
+  RegWriteExpandStringValue(HKCU, EnvironmentKey, 'Path', Paths);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    AddToPath(ExpandConstant('{app}'));
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usPostUninstall then
+    RemoveFromPath(ExpandConstant('{app}'));
 end;

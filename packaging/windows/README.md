@@ -25,14 +25,16 @@ ISCC.exe /DAppVersion=0.1.0 /DSourceExe=..\..\target\release\postino.exe /DOutpu
 ```
 
 Produces `Postino-<version>-windows-x86_64-setup.exe`. Per-user install in
-`%LOCALAPPDATA%\Programs\Postino`, no admin. Registers `.postino` under HKCU, Start menu shortcut
+`%LOCALAPPDATA%\Programs\Postino`, no admin. Adds the install folder to the user `Path` (HKCU, removed on uninstall, #284). Registers `.postino` under HKCU, Start menu shortcut
 (and optional desktop one) with AppUserModelID `codes.tanis.postino`. Interactive installs offer to
 launch Postino at the end; silent installs (winget) do not, unless `/relaunch=1` is passed, which
 the in-app updater does. The `AppId` GUID must never change. Languages:
 English, Spanish, Italian (Inno bundles no Galician).
 
 Tested with Inno Setup 6.7.3 under wine: compile, silent install, registry keys, shortcuts,
-silent uninstall cleanup. Not tested on real Windows.
+silent uninstall cleanup. Tested on Windows 11 25H2 (a VM, 2026-11-18, #284): silent install twice,
+the Path entry added once, `postino` found by a new terminal, and removed by the uninstaller. Run the
+uninstaller from the desktop, not over SSH: OpenSSH kills it with the session, halfway.
 
 ## Portable zip
 
