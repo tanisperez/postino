@@ -200,7 +200,20 @@ fn render_palette_content(
         .flex_1()
         .min_h_0()
         .max_h(px(PALETTE_LIST_HEIGHT))
-        .header(move |_, _, cx| render_search_row(&search_input, cx));
+        .header(move |_, _, cx| render_search_row(&search_input, cx))
+        // gpui-component's own message has no Spanish or Galician translation.
+        .empty({
+            let muted = palette.fg_muted;
+            move |_, _, _| {
+                div()
+                    .py_6()
+                    .w_full()
+                    .text_center()
+                    .text_sm()
+                    .text_color(muted)
+                    .child(t!("shell.palette.no_results").into_owned())
+            }
+        });
 
     for (group_items, heading) in sections.iter().zip(group_labels()) {
         let mut group = CommandGroup::new().label(heading);
