@@ -187,7 +187,7 @@ scene_demo() {
 # window of the chart, the latency compared with the first run and the PDF report.
 scene_loadtest() {
     start_app dark POSTINO_OPEN=loadtest
-    click 664 226 0.6; click 686 278 0.8; click 544 370 0.6    # Collection, the folder, books
+    click 664 226 0.6; click 686 278 0.8; click 591 515 0.6    # Collection, the folder, books
     click 66 126 1.0                                           # collapses the sidebar
     type_into 190 384 10; type_into 400 384 5; type_into 190 482 1; type_into 400 482 20
     click 312 1164 9                                           # the first run

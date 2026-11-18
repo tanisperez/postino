@@ -223,7 +223,7 @@ step_loadtest() {
     # The results open on the Summary tab.
     rm -f "$WORK"/export/*
     launch "$theme" POSTINO_OPEN=loadtest POSTINO_EXPORT_DIR="$WORK/export"
-    click 670 226; click 694 278; click 550 370       # Collection, the folder field, books
+    click 670 226; click 694 278; click 597 515       # Collection, the folder field, books
     click 66 126      # collapses the sidebar, for a wider view of the results
     run_load_test 10 8 2
     click 210 590; click 161 678                       # Add threshold, p95
