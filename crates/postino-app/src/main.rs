@@ -39,6 +39,9 @@ use state::settings::ThemeChoice;
 use state::window::WindowState;
 use views::AppView;
 
+/// The smallest window, in logical pixels, see `main`.
+const MIN_WINDOW_SIZE: (f32, f32) = (1024.0, 640.0);
+
 fn main() -> ExitCode {
     // `--help`, `--version` and the console subcommands (`postino run`, `postino get`, ...) run
     // and exit before anything else: no settings, no log, no window.
@@ -130,8 +133,13 @@ fn main() -> ExitCode {
         theme::install(cx, &settings);
 
         // 1440x900 logical, capped to 90% of the display (see `window::options`), the first time;
-        // then the size it was closed with (#214).
-        let sizes = window::WindowSizes::default();
+        // then the size it was closed with (#214). Never under 1024x640: below it the title bar,
+        // the request tabs and the diff header no longer fit, and it still fits a 1920x1080
+        // laptop at 150% (1280x720 logical) with its taskbar.
+        let sizes = window::WindowSizes {
+            min: MIN_WINDOW_SIZE,
+            ..window::WindowSizes::default()
+        };
         let mut window_options = window::options(cx, &IDENTITY, sizes);
         let saved_window = state::window::load();
         if let Some(saved) = saved_window {
