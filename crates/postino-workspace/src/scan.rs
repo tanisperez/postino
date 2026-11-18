@@ -1,7 +1,9 @@
 //! Recursively scanning a workspace folder into a sorted list of [`Node`]s.
 
+use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use postino_core::Method;
 
@@ -30,6 +32,10 @@ const SKIPPED_FOLDERS: [&str; 2] = ["target", "node_modules"];
 ///
 /// With `limit`, the scan gives up with [`WorkspaceError::TooLarge`] once it has visited more
 /// than `limit` entries (files and folders, not counting skipped ones).
+///
+/// The folders are walked first and the requests read and parsed afterwards, by several threads
+/// (#287): on a slow file system each read waits on a round trip, about 8 ms per file through
+/// `\\wsl.localhost` on Windows, and they add up one after the other.
 pub(crate) fn scan_workspace(
     root: &Path,
     limit: Option<usize>,
@@ -38,8 +44,83 @@ pub(crate) fn scan_workspace(
         root,
         left: limit.unwrap_or(usize::MAX),
         limit: limit.unwrap_or(usize::MAX),
+        requests: Vec::new(),
     };
-    Ok(scan_folder(root, root, true, &mut budget)?.nodes)
+    let mut nodes = scan_folder(root, root, true, &mut budget)?.nodes;
+    let parsed = read_all(&budget.requests);
+    let mut by_id: HashMap<String, Parsed> = budget
+        .requests
+        .into_iter()
+        .map(|(id, _)| id)
+        .zip(parsed)
+        .collect();
+    fill(&mut nodes, &mut by_id);
+    Ok(nodes)
+}
+
+/// The most threads that read requests at once.
+const MAX_READERS: usize = 8;
+
+/// The requests each reader thread is worth: a small workspace is read by one thread, with no
+/// thread to start.
+const REQUESTS_PER_READER: usize = 16;
+
+/// Reads and parses every request of `requests` (id and path), in the same order, sharing them
+/// out among up to [`MAX_READERS`] threads.
+fn read_all(requests: &[(String, PathBuf)]) -> Vec<Parsed> {
+    let readers = (requests.len() / REQUESTS_PER_READER).clamp(1, MAX_READERS);
+    if readers == 1 {
+        return requests
+            .iter()
+            .map(|(_, path)| read_and_parse(path))
+            .collect();
+    }
+    let next = AtomicUsize::new(0);
+    let mut read: Vec<Option<Parsed>> = requests.iter().map(|_| None).collect();
+    std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..readers)
+            .map(|_| {
+                scope.spawn(|| {
+                    let mut done = Vec::new();
+                    loop {
+                        let index = next.fetch_add(1, Ordering::Relaxed);
+                        let Some((_, path)) = requests.get(index) else {
+                            break;
+                        };
+                        done.push((index, read_and_parse(path)));
+                    }
+                    done
+                })
+            })
+            .collect();
+        for worker in workers {
+            for (index, parsed) in worker.join().unwrap_or_default() {
+                read[index] = Some(parsed);
+            }
+        }
+    });
+    read.into_iter()
+        .map(|parsed| {
+            // Only a reader thread that panicked leaves a request unread.
+            parsed.unwrap_or_else(|| Parsed::broken("the file could not be read".to_string()))
+        })
+        .collect()
+}
+
+/// Sets the parse results of `by_id` on the requests of `nodes`, at every level.
+fn fill(nodes: &mut [Node], by_id: &mut HashMap<String, Parsed>) {
+    for node in nodes {
+        match node {
+            Node::Request(entry) => {
+                if let Some(parsed) = by_id.remove(&entry.id) {
+                    entry.broken = parsed.broken;
+                    entry.method = parsed.method;
+                    entry.oauth_profile = parsed.oauth_profile;
+                }
+            }
+            Node::Folder(folder) => fill(&mut folder.children, by_id),
+        }
+    }
 }
 
 /// How many more entries a scan may visit before it gives up (see [`scan_workspace`]).
@@ -47,6 +128,8 @@ struct Budget<'a> {
     root: &'a Path,
     left: usize,
     limit: usize,
+    /// The requests found so far, by id and path, to read once the folders are walked.
+    requests: Vec<(String, PathBuf)>,
 }
 
 impl Budget<'_> {
@@ -143,13 +226,14 @@ fn scan_folder(
                 continue;
             };
             let id = path_to_id(root, &path);
-            let parsed = read_and_parse(&path);
+            // Read later, with the others (see `scan_workspace`).
+            budget.requests.push((id.clone(), path));
             nodes.push(Node::Request(RequestEntry {
                 id,
                 name: stem.to_string(),
-                broken: parsed.broken,
-                method: parsed.method,
-                oauth_profile: parsed.oauth_profile,
+                broken: None,
+                method: None,
+                oauth_profile: None,
             }));
         }
         // Symlinks and other special file types are neither a folder nor a request, so they are
@@ -167,16 +251,23 @@ struct Parsed {
     oauth_profile: Option<String>,
 }
 
+impl Parsed {
+    /// A file that could not be read or parsed, and why.
+    fn broken(message: String) -> Parsed {
+        Parsed {
+            broken: Some(message),
+            method: None,
+            oauth_profile: None,
+        }
+    }
+}
+
 /// Reads and parses a `.postino` file once, for [`RequestEntry::broken`],
 /// [`RequestEntry::method`] and [`RequestEntry::oauth_profile`], so a broken or valid file is
 /// never read or parsed twice. A file that cannot be read or is not a valid request is `broken`,
 /// with a message saying why: an IO error or a [`postino_format::ParseError`].
 fn read_and_parse(path: &Path) -> Parsed {
-    let broken = |message: String| Parsed {
-        broken: Some(message),
-        method: None,
-        oauth_profile: None,
-    };
+    let broken = Parsed::broken;
     match fs::read_to_string(path) {
         Ok(text) => match postino_format::parse(&text) {
             Ok(request) => Parsed {
@@ -233,5 +324,48 @@ mod tests {
         // `api` and `api/ping.postino`.
         assert!(scan_workspace(temp.path(), Some(2)).is_ok());
         assert!(scan_workspace(temp.path(), Some(1)).is_err());
+    }
+
+    /// Enough requests for several reader threads: every entry gets the result of its own file,
+    /// wherever it sits in the tree.
+    #[test]
+    fn many_requests_are_read_in_parallel_into_their_own_entries() {
+        let dir = TempDir::new().expect("temp dir");
+        let methods = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+        for n in 0..50 {
+            let method = methods[n % methods.len()];
+            let path = dir.path().join(format!("f{}/r{n:02}.postino", n % 4));
+            fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+            fs::write(&path, format!("{method} https://example.com/{n}\n")).expect("write");
+        }
+        fs::write(dir.path().join("f1/broken.postino"), "not a request\n").expect("write");
+
+        let nodes = scan_workspace(dir.path(), None).expect("scan");
+        let mut seen = 0;
+        for folder in &nodes {
+            let Node::Folder(folder) = folder else {
+                panic!("only folders at the top");
+            };
+            for child in &folder.children {
+                let Node::Request(entry) = child else {
+                    panic!("only requests in the folders");
+                };
+                if entry.name == "broken" {
+                    assert!(entry.broken.is_some());
+                    assert_eq!(entry.method, None);
+                    continue;
+                }
+                let n: usize = entry.name[1..].parse().expect("number");
+                assert_eq!(entry.broken, None, "{}", entry.id);
+                assert_eq!(
+                    entry.method.as_ref().map(ToString::to_string).as_deref(),
+                    Some(methods[n % methods.len()]),
+                    "{}",
+                    entry.id
+                );
+                seen += 1;
+            }
+        }
+        assert_eq!(seen, 50);
     }
 }
