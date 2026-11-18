@@ -23,7 +23,9 @@ use postino_core::Method;
 use postino_format::highlight::TokenKind;
 use postino_format::{DiffRowKind, RequestDiff, RequestPart, RowNote, diff_requests};
 use rust_i18n::t;
-use telaio_git::{ApplyTarget, DiffSource, FileVersion, LineKind, Repo, block_patch};
+use telaio_git::{
+    ApplyTarget, DiffSource, FileDiff, FileVersion, LineKind, Repo, block_applies, block_patch,
+};
 
 use crate::actions::{NextDiffChange, OpenDiffFile, PreviousDiffChange};
 use crate::state::diff_view::DiffModel;
@@ -90,12 +92,21 @@ impl LoadedDiff {
         let summary = summarize(&model.diff);
         let with_actions = matches!(source, DiffSource::HeadToWorkTree)
             && model.diff.blocks.len() <= MAX_BLOCK_ACTIONS;
+        // The index once, instead of one or two `git apply --check` per block (#285).
+        let index = with_actions
+            .then(|| repo.file_at(repo_path, &FileVersion::Index).ok().flatten())
+            .flatten();
         let blocks = (0..model.diff.blocks.len())
-            .map(|index| {
-                with_actions
-                    .then(|| block_patch(&patch, &model.diff, index))
-                    .flatten()
-                    .map(|block| hunk_stage(repo, &block))
+            .map(|block| {
+                if !with_actions {
+                    return None;
+                }
+                index
+                    .as_deref()
+                    .and_then(|index| stage_in_index(&patch, &model.diff, block, index))
+                    .or_else(|| {
+                        block_patch(&patch, &model.diff, block).map(|hunk| hunk_stage(repo, &hunk))
+                    })
             })
             .collect();
         let semantic = repo_path
@@ -137,6 +148,19 @@ fn semantic_diff(repo: &Repo, repo_path: &str, source: &DiffSource) -> Result<Re
         }
     };
     diff_requests(old.as_deref(), new.as_deref()).map_err(|error| error.to_string())
+}
+
+/// [`hunk_stage`] worked out from the `index` text instead of git, `None` when
+/// [`block_applies`] cannot tell.
+fn stage_in_index(patch: &str, diff: &FileDiff, block: usize, index: &str) -> Option<HunkStage> {
+    if block_applies(patch, diff, block, index, false)? {
+        return Some(HunkStage::Unstaged);
+    }
+    Some(if block_applies(patch, diff, block, index, true)? {
+        HunkStage::Staged
+    } else {
+        HunkStage::Mixed
+    })
 }
 
 /// Whether `block` (from HEAD to the work tree) is in the index: it applies to the index forward
