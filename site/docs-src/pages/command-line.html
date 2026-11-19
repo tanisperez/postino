@@ -103,6 +103,7 @@ $ postino run                        # the whole workspace
         <tr><td><code>--bail</code></td><td>Stops at the first request that fails.</td></tr>
         <tr><td><code>--filter &lt;PATTERN&gt;</code></td><td>Runs only the requests whose path matches, repeatable. <code>*</code> matches any text, slashes included, and <code>?</code> one character. The <code>.postino</code> extension is optional: <code>'auth/*'</code>, <code>'*login*'</code>.</td></tr>
         <tr><td><code>--show-body</code></td><td>Prints each response body under its request.</td></tr>
+        <tr><td><code>-v</code>, <code>--verbose</code></td><td>Prints the connection, the TLS handshake and what each request sent and received, to standard error. See <a href="#verbose">Verbose output</a>.</td></tr>
         <tr><td><code>--output &lt;FORMAT&gt;</code></td><td><code>human</code> (the default), <code>json</code> or <code>junit</code>.</td></tr>
         <tr><td><code>-o</code>, <code>--output-file &lt;FILE&gt;</code></td><td>Writes the <code>json</code> or <code>junit</code> output to a file, and the readable lines to the terminal.</td></tr>
     </tbody>
@@ -278,12 +279,43 @@ $ postino get https://example.com/big.iso -o big.iso
         <tr><td><code>-u</code>, <code>--user &lt;USER:PASSWORD&gt;</code></td><td>Basic authorization.</td></tr>
         <tr><td><code>--bearer &lt;TOKEN&gt;</code></td><td>Bearer authorization.</td></tr>
         <tr><td><code>-i</code>, <code>--include</code></td><td>Prints the status and the response headers before the body, on standard output.</td></tr>
-        <tr><td><code>-v</code>, <code>--verbose</code></td><td>Prints what was sent to standard error: the method, the URL without its query string, and the headers, with the values of sensitive ones such as <code>Authorization</code> masked.</td></tr>
+        <tr><td><code>-v</code>, <code>--verbose</code></td><td>Prints the connection, the TLS handshake and what was sent and received, to standard error. See <a href="#verbose">Verbose output</a>.</td></tr>
         <tr><td><code>-o</code>, <code>--output &lt;FILE&gt;</code></td><td>Saves the body to a file as it arrives, like wget, with a progress bar on a terminal. There is no size limit unless <code>--max-size</code> sets one. When nothing comes back, the file is removed.</td></tr>
         <tr><td><code>--save &lt;PATH&gt;</code></td><td>Saves the request as a <code>.postino</code> file before sending it, with its <code>{{variables}}</code> as written. Missing folders are created. An existing file is never replaced: the command exits with code 4.</td></tr>
     </tbody>
 </table></div>
 <p>Only one body option and one authorization option can be given. Any HTTP status, <code>404</code> and <code>500</code> included, exits with code 0: the request was sent and answered. Use <code>run</code> with a <code>test()</code> to fail on a status.</p>
+
+<h3 id="verbose">Verbose output</h3>
+<p><code>-v</code> on <code>run</code> and on the one-off requests explains, like <code>curl -v</code>, what happens on the wire. It all goes to standard error, so the body on standard output stays clean:</p>
+```text
+$ postino get https://api.example.com/users -v
+* Host api.example.com:443 is 93.184.215.14, 2606:2800:21f:cb07:6820:80da:af6b:8b2c (12 ms)
+* Connected to api.example.com port 443 (31 ms)
+* TLS handshake done: TLSv1.3, TLS13_AES_256_GCM_SHA384 (58 ms)
+* Server certificate:
+*   subject: CN=api.example.com
+*   issuer: C=US, O=Let's Encrypt, CN=R11
+*   valid from 2026-10-01 00:00:00 UTC until 2026-12-30 23:59:59 UTC
+*   alternative names: api.example.com
+*   verified, chain of 2 certificates
+> GET https://api.example.com/users
+> Accept: application/json
+>
+< HTTP 200
+< content-type: application/json
+< content-length: 1342
+<
+* 1.3 kB received in 74 ms
+```
+<ul>
+    <li>Lines starting with <code>*</code> tell each step as it happens, with the time since the request started: the addresses the host resolved to (Postino tries them in order), the open connection, and over HTTPS the TLS handshake. The handshake line gives the protocol version and the cipher suite, then the server's certificate: its subject, its issuer, its validity, up to eight of its alternative names, whether it was verified and how many certificates the server sent.</li>
+    <li>A certificate that is not trusted shows <em>TLS handshake failed</em> with the reason, then the connection opened again without verification, marked <strong>NOT verified</strong>, as Postino sends it anyway with a warning. With <code>--insecure</code> the certificate is never verified.</li>
+    <li>Each redirect followed shows as <em>Redirected to</em> with the new URL, and the connection it opens.</li>
+    <li>Once the response is in, <code>&gt;</code> lines show the request line and the headers sent, and <code>&lt;</code> lines the status and the headers received.</li>
+    <li>With <code>run</code>, each request starts with a <code>*</code> line with its path. A request that goes over a connection still open shows <em>Reusing the open connection</em> instead of the connection steps.</li>
+    <li>Secrets stay out: URLs are shown without their query string, and the values of sensitive headers, such as <code>Authorization</code>, <code>Cookie</code> and <code>Set-Cookie</code>, are masked.</li>
+</ul>
 
 <h3 id="oauth">OAuth 2.0</h3>
 <p>A request whose authorization is an <a href="oauth.html">OAuth 2.0 profile</a> gets its token as in the app. The client credentials and password grants need nothing else. The authorization code grant opens the system browser on the sign-in page and prints its address, in case the browser does not open; Postino waits for the redirect for up to 5 minutes. Tokens are kept in memory only, so every run gets new ones. Without a display, such as an SSH session or a CI runner on Linux, the browser cannot open: the request fails with a message that suggests a profile with the client credentials or password grant.</p>

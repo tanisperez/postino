@@ -2,6 +2,8 @@
 
 use std::time::Duration;
 
+use crate::trace::Trace;
+
 /// Options for [`crate::send`].
 ///
 /// The defaults match what most HTTP clients do out of the box: a generous timeout, redirects
@@ -57,6 +59,13 @@ pub struct SendOptions {
     ///
     /// Defaults to `None`.
     pub proxy: Option<String>,
+
+    /// Receives the steps of every request: the connection, the TLS handshake and the redirects
+    /// (`--verbose` on the command line, #299). Requests are sent the same way, through a
+    /// connector that also reports what it does.
+    ///
+    /// Defaults to `None`.
+    pub trace: Option<Trace>,
 }
 
 /// The default [`SendOptions::max_response_size`]: 20 MB (decimal, like the sizes the app shows).
@@ -92,6 +101,7 @@ impl Default for SendOptions {
             system_certificates: true,
             max_response_size: DEFAULT_MAX_RESPONSE_SIZE,
             proxy: None,
+            trace: None,
         }
     }
 }

@@ -159,6 +159,9 @@ impl Client {
                 other => (other.map_err(map_ureq_error)?, None),
             },
         };
+        if let Some(trace) = &self.options.trace {
+            trace_redirects(trace, &response);
+        }
         Ok((response, started, tls_warning))
     }
 
@@ -174,6 +177,21 @@ impl Client {
         self.unverified_origins
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
+/// Reports every redirect `response` followed: its history is the first URL, then each one it
+/// was redirected to.
+fn trace_redirects(trace: &crate::Trace, response: &ureq::http::Response<ureq::Body>) {
+    use ureq::ResponseExt as _;
+    for uri in response
+        .get_redirect_history()
+        .unwrap_or_default()
+        .iter()
+        .skip(1)
+    {
+        let url = log_safe::url_for_log(&uri.to_string()).into_owned();
+        trace.emit(&crate::TraceEvent::Redirected(url));
     }
 }
 
@@ -311,11 +329,7 @@ fn certificate_reason(error: &ureq::Error) -> String {
 /// non-standard HTTP methods a `.postino` file may use, and applies the timeout, redirect and
 /// TLS verification settings.
 fn build_agent(options: &SendOptions, verify_tls: bool) -> ureq::Agent {
-    let root_certs = if options.system_certificates {
-        system_roots()
-    } else {
-        ureq::tls::RootCerts::WebPki
-    };
+    let root_certs = root_certs_of(options);
     let tls_config = ureq::tls::TlsConfig::builder()
         .root_certs(root_certs)
         .disable_verification(!verify_tls)
@@ -340,9 +354,26 @@ fn build_agent(options: &SendOptions, verify_tls: bool) -> ureq::Agent {
         .max_redirects(max_redirects)
         .timeout_global(Some(options.timeout))
         .tls_config(tls_config)
+        .save_redirect_history(options.trace.is_some())
         .build();
 
-    config.new_agent()
+    match &options.trace {
+        Some(trace) => ureq::Agent::with_parts(
+            config,
+            crate::trace::connector(trace.clone(), root_certs_of(options), verify_tls),
+            ureq::unversioned::resolver::DefaultResolver::default(),
+        ),
+        None => config.new_agent(),
+    }
+}
+
+/// The roots certificates are verified against, see [`SendOptions::system_certificates`].
+fn root_certs_of(options: &SendOptions) -> ureq::tls::RootCerts {
+    if options.system_certificates {
+        system_roots()
+    } else {
+        ureq::tls::RootCerts::WebPki
+    }
 }
 
 /// The roots of [`SendOptions::system_certificates`] on Windows and macOS: the platform verifier,

@@ -15,6 +15,7 @@ use crate::filter;
 use crate::outcome::{elapsed, format_duration, outcome};
 use crate::report::{self, Record, Totals};
 use crate::style::Style;
+use crate::verbose::Verbose;
 
 /// The widest request name column; longer names push the rest of their line.
 const MAX_NAME_WIDTH: usize = 40;
@@ -229,7 +230,13 @@ pub fn execute(args: &RunArgs, out: &mut dyn Write, style: Style) -> Result<u8, 
         return Err(CliError::file("no request to run"));
     }
     let environment = context::environment(&args.common, Some(&workspace))?;
-    let runner = context::runner(Some(&workspace), context::send_options(&args.send)?)?;
+    let mut options = context::send_options(&args.send)?;
+    let verbose = args.verbose.then(|| {
+        let (verbose, trace) = Verbose::new(Style::stderr(args.common.no_color));
+        options.trace = Some(trace);
+        verbose
+    });
+    let runner = context::runner(Some(&workspace), options)?;
 
     // The readable lines go to stdout unless the report does.
     let human = args.output == OutputFormat::Human || args.output_file.is_some();
@@ -246,7 +253,15 @@ pub fn execute(args: &RunArgs, out: &mut dyn Write, style: Style) -> Result<u8, 
     for entry in selected {
         let record = match workspace.load_request(&entry.id) {
             Ok(request) => {
+                if let Some(verbose) = &verbose {
+                    let _ = out.flush();
+                    eprintln!("* {}", entry.id);
+                    verbose.start();
+                }
                 let result = runner.run(&request, &environment, &mut session);
+                if let Some(verbose) = &verbose {
+                    eprint!("{}", verbose.exchange(&result));
+                }
                 let record = record_of(&entry.id, request.method.to_string(), &result);
                 if human {
                     out.write_all(human_lines(&record, width, style).as_bytes())

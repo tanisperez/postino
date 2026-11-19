@@ -8,9 +8,11 @@
 //! for every request; a [`Client`] keeps them open and reuses them (keep-alive).
 #![warn(missing_docs)]
 
+mod certificate;
 mod error;
 mod options;
 mod send;
+mod trace;
 
 #[cfg(feature = "test-support")]
 pub mod test_support;
@@ -18,3 +20,4 @@ pub mod test_support;
 pub use error::HttpError;
 pub use options::{DEFAULT_MAX_RESPONSE_SIZE, InvalidCertificates, SendOptions};
 pub use send::{Client, check_proxy, send};
+pub use trace::{CertificateInfo, TlsInfo, Trace, TraceEvent};

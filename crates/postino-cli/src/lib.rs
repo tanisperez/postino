@@ -33,6 +33,7 @@ mod run;
 mod runs;
 mod style;
 mod units;
+mod verbose;
 
 use std::ffi::{OsStr, OsString};
 use std::process::ExitCode;

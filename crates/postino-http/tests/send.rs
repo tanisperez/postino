@@ -13,7 +13,7 @@ use std::time::Duration;
 
 use postino_core::{Method, ResolvedBody, ResolvedField, ResolvedRequest};
 use postino_http::test_support::{CapturedRequest, StubResponse, TestServer};
-use postino_http::{Client, HttpError, InvalidCertificates, SendOptions};
+use postino_http::{Client, HttpError, InvalidCertificates, SendOptions, TraceEvent};
 
 /// A bare request for `method` against `url`, no headers, no body.
 fn request_to(method: Method, url: impl Into<String>) -> ResolvedRequest {
@@ -680,4 +680,107 @@ fn proxy_urls_are_checked() {
     assert!(postino_http::check_proxy("http://proxy.example:3128").is_ok());
     assert!(postino_http::check_proxy("socks5://localhost:1080").is_ok());
     assert!(postino_http::check_proxy("ftp://nope:21").is_err());
+}
+
+/// A trace that keeps every event, for the `--verbose` tests (#299).
+fn recording_trace() -> (postino_http::Trace, Arc<std::sync::Mutex<Vec<TraceEvent>>>) {
+    let events = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let sink = Arc::clone(&events);
+    let trace = postino_http::Trace::new(move |event| {
+        sink.lock().expect("events").push(event.clone());
+    });
+    (trace, events)
+}
+
+#[test]
+fn a_trace_follows_the_rejected_handshake_and_the_retry() {
+    let (url, _requests, handle) = start_tls_server();
+    let (trace, events) = recording_trace();
+    let options = SendOptions {
+        trace: Some(trace),
+        ..SendOptions::default()
+    };
+
+    let response = postino_http::send(&request_to(Method::Get, format!("{url}/")), &options)
+        .expect("sent after the retry");
+
+    // The certificate error is still recognized through the traced TLS step.
+    assert!(response.tls_warning.is_some());
+    assert_eq!(response.body, b"secure");
+    handle.join().expect("server thread");
+    let events = events.lock().expect("events");
+    let port = url
+        .rsplit(':')
+        .next()
+        .and_then(|port| port.parse().ok())
+        .expect("port");
+    assert_eq!(
+        events[0],
+        TraceEvent::Resolved {
+            host: "127.0.0.1".to_string(),
+            port,
+            addresses: vec![format!("127.0.0.1:{port}").parse().expect("address")],
+        }
+    );
+    assert_eq!(
+        events[1],
+        TraceEvent::Connected {
+            host: "127.0.0.1".to_string(),
+            port,
+        }
+    );
+    let TraceEvent::TlsFailed(reason) = &events[2] else {
+        panic!("a failed handshake first: {events:?}");
+    };
+    assert!(reason.contains("UnknownIssuer"), "{reason}");
+    let TraceEvent::Tls(tls) = &events[5] else {
+        panic!("then a handshake without verification: {events:?}");
+    };
+    assert!(!tls.verified);
+    assert_eq!(tls.version, "TLSv1.3");
+    assert!(tls.cipher.starts_with("TLS13_"), "{}", tls.cipher);
+    let certificate = &tls.certificates[0];
+    assert_eq!(certificate.subject, "CN=postino-test");
+    assert_eq!(certificate.issuer, "CN=postino-test");
+    assert_eq!(certificate.not_before, "2026-09-30 20:08:54 UTC");
+    assert_eq!(certificate.not_after, "2126-09-06 20:08:54 UTC");
+    assert_eq!(certificate.alt_names, vec!["127.0.0.1".to_string()]);
+}
+
+#[test]
+fn a_trace_lists_the_redirects() {
+    let (trace, events) = recording_trace();
+    let options = SendOptions {
+        trace: Some(trace),
+        ..SendOptions::default()
+    };
+    let request_count = Arc::new(AtomicUsize::new(0));
+    let count_for_handler = Arc::clone(&request_count);
+    let run = run(
+        |url| request_to(Method::Get, url),
+        &options,
+        move |_| match count_for_handler.fetch_add(1, Ordering::SeqCst) {
+            0 => StubResponse::new(302).with_header("Location", "/target?secret=1"),
+            _ => StubResponse::new(200).with_body("landed"),
+        },
+    );
+
+    assert_eq!(run.result.expect("landed").body, b"landed");
+    let events = events.lock().expect("events");
+    let redirected: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
+            TraceEvent::Redirected(url) => Some(url.clone()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(redirected.len(), 1, "{events:?}");
+    // The query string is left out, as everywhere secrets may be printed.
+    assert!(redirected[0].ends_with("/target"), "{}", redirected[0]);
+    assert!(
+        !events
+            .iter()
+            .any(|event| matches!(event, TraceEvent::Tls(_))),
+        "plain HTTP has no handshake"
+    );
 }

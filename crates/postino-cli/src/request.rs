@@ -6,7 +6,7 @@
 use std::io::{Read, Write};
 use std::path::Path;
 
-use postino_core::{Auth, Body, KeyValue, Method, Request, log_safe};
+use postino_core::{Auth, Body, KeyValue, Method, Request};
 use postino_runner::RunResult;
 
 use crate::args::RequestArgs;
@@ -15,6 +15,7 @@ use crate::exit::CliError;
 use crate::outcome::{format_duration, format_size, outcome};
 use crate::progress::Progress;
 use crate::style::Style;
+use crate::verbose::Verbose;
 
 /// The request the arguments describe, before interpolation.
 pub fn build_request(method: Method, args: &RequestArgs) -> Result<Request, CliError> {
@@ -117,27 +118,6 @@ pub(crate) fn save(request: &Request, path: &Path) -> Result<(), CliError> {
         .map_err(|error| CliError::file(format!("--save {}: {error}", path.display())))
 }
 
-/// What was sent, for `-v`: the request line and the headers, secrets masked.
-fn sent_lines(result: &RunResult) -> String {
-    let Some(request) = &result.resolved_request else {
-        return String::new();
-    };
-    let mut out = format!(
-        "> {} {}\n",
-        request.method,
-        log_safe::url_for_log(&request.url)
-    );
-    for header in &request.headers {
-        out.push_str(&format!(
-            "> {}: {}\n",
-            header.name,
-            log_safe::header_value_for_log(&header.name, &header.value)
-        ));
-    }
-    out.push_str(">\n");
-    out
-}
-
 /// The status line and headers of `-i`.
 fn head_lines(result: &RunResult) -> String {
     let Some(response) = &result.response else {
@@ -175,6 +155,11 @@ fn execute(method: Method, args: &RequestArgs, style: Style) -> Result<u8, CliEr
         // A download goes to a file, not to memory: no limit unless one is asked for.
         options.max_response_size = u64::MAX;
     }
+    let verbose = args.verbose.then(|| {
+        let (verbose, trace) = Verbose::new(Style::stderr(args.common.no_color));
+        options.trace = Some(trace);
+        verbose
+    });
     let runner = context::runner(workspace.as_ref(), options)?;
     if let Some(path) = &args.save {
         save(&request, path)?;
@@ -182,6 +167,9 @@ fn execute(method: Method, args: &RequestArgs, style: Style) -> Result<u8, CliEr
     }
 
     let mut session = postino_runner::SessionEnv::new();
+    if let Some(verbose) = &verbose {
+        verbose.start();
+    }
     let result = match &args.output {
         Some(path) => {
             let mut file = std::fs::File::create(path)
@@ -199,8 +187,8 @@ fn execute(method: Method, args: &RequestArgs, style: Style) -> Result<u8, CliEr
         None => runner.run(&request, &environment, &mut session),
     };
 
-    if args.verbose {
-        eprint!("{}", sent_lines(&result));
+    if let Some(verbose) = &verbose {
+        eprint!("{}", verbose.exchange(&result));
     }
     let verdict = outcome(&result);
     let stdout = std::io::stdout();

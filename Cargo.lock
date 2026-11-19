@@ -5476,9 +5476,11 @@ dependencies = [
  "pretty_assertions",
  "rustls",
  "rustls-native-certs",
+ "rustls-platform-verifier",
  "thiserror 2.0.21",
  "tiny_http",
  "ureq",
+ "webpki-roots",
 ]
 
 [[package]]

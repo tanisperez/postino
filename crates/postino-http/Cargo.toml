@@ -10,7 +10,11 @@ authors.workspace = true
 postino-core = { path = "../postino-core" }
 # platform-verifier: trust the OS certificate store, see `SendOptions::system_certificates`.
 ureq = { workspace = true, features = ["platform-verifier"] }
-rustls = { version = "0.23", default-features = false, features = ["std"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "ring"] }
+# The traced TLS step of `--verbose` (src/trace.rs) builds its own rustls configuration with the
+# roots `ureq` would use. Both are already built for `ureq`, same versions.
+rustls-platform-verifier = "0.7"
+webpki-roots = "1.0"
 thiserror = { workspace = true }
 log = { workspace = true }
 tiny_http = { workspace = true, optional = true }

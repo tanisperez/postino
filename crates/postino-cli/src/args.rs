@@ -176,6 +176,9 @@ pub struct RunArgs {
     /// Print each response body.
     #[arg(long)]
     pub show_body: bool,
+    /// Print the connection, the TLS handshake and what was sent and received, to stderr.
+    #[arg(short = 'v', long)]
+    pub verbose: bool,
     /// The output format.
     #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
     pub output: OutputFormat,
@@ -471,7 +474,8 @@ pub struct RequestArgs {
     /// Print the response status and headers before the body.
     #[arg(short = 'i', long = "include")]
     pub include: bool,
-    /// Also print what was sent, secrets masked, to stderr.
+    /// Print the connection, the TLS handshake and what was sent and received, secrets
+    /// masked, to stderr.
     #[arg(short = 'v', long)]
     pub verbose: bool,
     /// Save the body to a file instead of printing it, with a progress bar.
