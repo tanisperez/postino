@@ -164,10 +164,11 @@ impl AppView {
     pub(crate) fn render_side_panel(
         &mut self,
         weak: WeakEntity<Self>,
+        window: &Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         match self.nav.section() {
-            NavSection::Collections => self.render_sidebar(weak, cx),
+            NavSection::Collections => self.render_sidebar(weak, window, cx),
             NavSection::SourceControl => self.render_git_panel(cx),
             NavSection::Environments => self.render_env_panel(weak, cx),
             NavSection::LoadTests => self.render_load_panel(weak, cx),

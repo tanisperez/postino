@@ -10,6 +10,7 @@
 
 use std::rc::Rc;
 use telaio_ui::components::OpenOnClickExt as _;
+use telaio_ui::components::input_halo;
 
 use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputState};
@@ -368,21 +369,18 @@ impl RenderOnce for UrlBar {
                 Some(handler) => handler(window, cx),
                 None => window.blur(cx),
             })
+            // The "Contrast" inputs of telaio's `HoverInput`: `border_strong` at rest,
+            // `border_hover` under the pointer, `accent` and the focus halo when focused.
             .border_color(if focused {
                 palette.accent
             } else {
-                palette.border
+                palette.border_strong
             })
-            // The hover of every text input (telaio's `HoverInput`).
             .when(!focused, |bar| {
-                let border_strong = palette.border_strong;
-                bar.hover(move |style| style.border_color(border_strong))
+                let border_hover = palette.border_hover;
+                bar.hover(move |style| style.border_color(border_hover))
             })
-            .when(focused, |bar| {
-                bar.shadow(vec![
-                    BoxShadow::new(px(0.0), px(0.0), palette.accent_subtle).spread_radius(px(3.0)),
-                ])
-            })
+            .when(focused, |bar| bar.shadow(input_halo(palette.focus_halo)))
             .bg(palette.raised)
             .overflow_hidden()
             .child(self.render_method(cx))

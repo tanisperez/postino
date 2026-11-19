@@ -1747,7 +1747,7 @@ impl AppView {
         let has_workspace = self.state.workspace.is_some() || self.opening.is_some();
         let sidebar_visible = has_workspace && self.nav.sidebar_visible();
         let sidebar = if sidebar_visible {
-            self.render_side_panel(weak.clone(), cx)
+            self.render_side_panel(weak.clone(), window, cx)
         } else {
             div().into_any_element()
         };

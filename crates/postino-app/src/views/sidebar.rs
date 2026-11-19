@@ -37,6 +37,7 @@ use crate::views::components::{
     SectionLabel, edit_menu_area, framed_dialog, modal_body, modal_footer, modal_header_with_icon,
     no_input_menu, open_confirm_dialog, text_field,
 };
+use telaio_ui::components::input_halo;
 
 use super::root::AppView;
 
@@ -119,6 +120,7 @@ impl AppView {
     pub(crate) fn render_sidebar(
         &mut self,
         weak: WeakEntity<Self>,
+        window: &Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let has_workspace = self.state.workspace.is_some();
@@ -160,7 +162,7 @@ impl AppView {
                 has_workspace,
                 self.render_import_menu(cx),
             ))
-            .child(self.render_filter_row(cx))
+            .child(self.render_filter_row(window, cx))
             .child(
                 div()
                     .flex_1()
@@ -299,8 +301,13 @@ impl AppView {
     /// `raised` pill, backed by [`AppView::sidebar_filter_input`]. Narrowing the tree as the user
     /// types happens in [`AppView::on_sidebar_filter_changed`], subscribed once in
     /// [`AppView::new`].
-    fn render_filter_row(&self, cx: &Context<Self>) -> AnyElement {
+    fn render_filter_row(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
         let palette = cx.palette();
+        let focused = self
+            .sidebar_filter_input
+            .read(cx)
+            .focus_handle(cx)
+            .is_focused(window);
 
         h_flex()
             .px(px(10.0))
@@ -317,12 +324,18 @@ impl AppView {
                     .rounded(px(RADIUS_MD - 1.0))
                     .bg(palette.raised)
                     .border_1()
-                    .border_color(palette.border)
-                    // The hover of every text input (telaio's `HoverInput`).
-                    .hover({
-                        let border_strong = palette.border_strong;
-                        move |style| style.border_color(border_strong)
+                    // The "Contrast" inputs of telaio's `HoverInput`: `border_strong` at rest,
+                    // `border_hover` under the pointer, `accent` and the focus halo when focused.
+                    .border_color(if focused {
+                        palette.accent
+                    } else {
+                        palette.border_strong
                     })
+                    .when(!focused, |row| {
+                        let border_hover = palette.border_hover;
+                        row.hover(move |style| style.border_color(border_hover))
+                    })
+                    .when(focused, |row| row.shadow(input_halo(palette.focus_halo)))
                     .text_color(palette.fg_subtle)
                     .child(Icon::new(gpui_kit::assets::IconName::ListFilter).small())
                     .child(
