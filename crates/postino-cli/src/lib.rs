@@ -13,6 +13,7 @@
 //! 3. List it in the help of [`info`] and add its tests next to it.
 
 pub mod args;
+mod body;
 mod browse;
 mod check;
 mod context;

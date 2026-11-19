@@ -266,7 +266,7 @@ $ postino post https://api.example.com/login --json '{"user":"ada"}'
 $ postino http PURGE https://cdn.example.com/assets/app.js
 $ postino get https://example.com/big.iso -o big.iso
 ```
-<p>The response body goes to standard output untouched, so it can be piped to <code>jq</code> or saved with <code>&gt;</code>. A summary line with the status, the time and the size goes to standard error, with any warning. Inside a workspace, the URL, headers and body take <code>{{variables}}</code> from <code>--env</code>, <code>--env-file</code> and <code>--var</code>, and <a href="template-functions.html">template functions</a> work too.</p>
+<p>The response body goes to standard output untouched when it is piped or redirected, so it can go to <code>jq</code> or be saved with <code>&gt;</code>. On a terminal it is printed as UTF-8 text: a body in another charset named by its <code>Content-Type</code>, such as <code>ISO-8859-1</code>, is converted, and bytes that are not text show as <code>�</code>. A summary line with the status, the time and the size goes to standard error, with any warning. Inside a workspace, the URL, headers and body take <code>{{variables}}</code> from <code>--env</code>, <code>--env-file</code> and <code>--var</code>, and <a href="template-functions.html">template functions</a> work too.</p>
 <div class="table"><table>
     <thead><tr><th>Option</th><th>Effect</th></tr></thead>
     <tbody>

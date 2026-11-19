@@ -214,7 +214,8 @@ fn execute(method: Method, args: &RequestArgs, style: Style) -> Result<u8, CliEr
             write(&mut out, head_lines(&result).as_bytes())?;
         }
         if args.output.is_none() {
-            write(&mut out, &response.body)?;
+            crate::body::write_body(&mut out, response)
+                .map_err(|error| CliError::file(format!("cannot write: {error}")))?;
         }
         let _ = out.flush();
         let mut details = format!(

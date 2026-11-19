@@ -260,7 +260,7 @@ pub fn execute(args: &RunArgs, out: &mut dyn Write, style: Style) -> Result<u8, 
                     if args.show_body
                         && let Some(response) = &result.response
                     {
-                        out.write_all(&response.body).map_err(write_err)?;
+                        crate::body::write_body(out, response).map_err(write_err)?;
                         if !response.body.ends_with(b"\n") {
                             writeln!(out).map_err(write_err)?;
                         }
