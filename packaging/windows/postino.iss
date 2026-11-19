@@ -48,8 +48,8 @@ DisableProgramGroupPage=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ChangesAssociations=yes
-; The install folder goes into the user's Path (#284): tell running programs, so new terminals
-; see it. The uninstaller broadcasts the removal too.
+; The addtopath task puts the install folder in the user's Path (#284, #298): tell running
+; programs, so new terminals see it. The uninstaller broadcasts the removal too.
 ChangesEnvironment=yes
 ; The updater runs the installer silently while Postino may be open: close it through the
 ; Restart Manager, never ask for a reboot, and relaunch from [Run].
@@ -70,7 +70,17 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
 
+[CustomMessages]
+english.AddToPath=Add Postino to the PATH (run "postino" from a terminal)
+spanish.AddToPath=Añadir Postino al PATH (ejecutar "postino" desde una terminal)
+italian.AddToPath=Aggiungi Postino al PATH (esegui "postino" da un terminale)
+english.Integration=Integration:
+spanish.Integration=Integración:
+italian.Integration=Integrazione:
+
+; Upgrades and the updater's silent installs keep the previous choice (UsePreviousTasks).
 [Tasks]
+Name: "addtopath"; Description: "{cm:AddToPath}"; GroupDescription: "{cm:Integration}"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
@@ -151,7 +161,7 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  if CurStep = ssPostInstall then
+  if (CurStep = ssPostInstall) and WizardIsTaskSelected('addtopath') then
     AddToPath(ExpandConstant('{app}'));
 end;
 
