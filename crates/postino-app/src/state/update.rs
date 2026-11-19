@@ -108,6 +108,46 @@ pub fn check_and_download(platform: Platform, portable: bool) -> Result<CheckOut
     flow::check_and_download(&UPDATER, platform, portable)
 }
 
+/// Records a check that found `outcome` while an update may already be ready (#300).
+/// `UpdateState` keeps the first update it finds, so a copy left open across two releases would
+/// install the older one: a different version replaces the ready one. Returns whether it did.
+pub fn keep_latest(state: &mut UpdateState, outcome: &CheckOutcome) -> bool {
+    let CheckOutcome::Ready(found) = outcome else {
+        return false;
+    };
+    if state
+        .ready()
+        .is_some_and(|ready| ready.version == found.version)
+    {
+        return false;
+    }
+    let mut fresh = UpdateState::default();
+    fresh.begin_check();
+    fresh.finish_check(outcome);
+    *state = fresh;
+    true
+}
+
+/// The update to install: `ready`, unless the manifest now names another version (#300), whose
+/// asset is downloaded and returned instead. A failed check keeps `ready`. Blocking.
+pub fn latest_ready(platform: Platform, portable: bool, ready: ReadyUpdate) -> ReadyUpdate {
+    match check_and_download(platform, portable) {
+        Ok(CheckOutcome::Ready(found)) if found.version != ready.version => {
+            log::info!(
+                "update {} replaced by the newer {}",
+                ready.version,
+                found.version
+            );
+            found
+        }
+        Ok(_) => ready,
+        Err(error) => {
+            log::warn!("update check before installing failed: {error}");
+            ready
+        }
+    }
+}
+
 /// [`flow::start_install`] for Postino. Blocking.
 pub fn start_install(platform: Platform, ready: &ReadyUpdate, exe: &Path) -> InstallOutcome {
     flow::start_install(&UPDATER, platform, ready, exe)
@@ -126,6 +166,36 @@ mod tests {
         assert!(!needs_restart_confirmation(&tabs));
         tabs.set_dirty(0, true);
         assert!(needs_restart_confirmation(&tabs));
+    }
+
+    fn ready(version: &str) -> ReadyUpdate {
+        ReadyUpdate {
+            version: version.to_string(),
+            notes_url: format!("https://example.com/v{version}"),
+            path: Some(PathBuf::from(format!("Postino-{version}-setup.exe"))),
+        }
+    }
+
+    #[test]
+    fn a_later_check_replaces_the_ready_update_with_the_latest() {
+        let mut state = UpdateState::default();
+        assert!(keep_latest(
+            &mut state,
+            &CheckOutcome::Ready(ready("1.0.0"))
+        ));
+        assert_eq!(state.ready().map(|r| r.version.as_str()), Some("1.0.0"));
+        assert!(!keep_latest(
+            &mut state,
+            &CheckOutcome::Ready(ready("1.0.0"))
+        ));
+        assert!(!keep_latest(&mut state, &CheckOutcome::UpToDate));
+        assert_eq!(state.ready().map(|r| r.version.as_str()), Some("1.0.0"));
+        assert!(keep_latest(
+            &mut state,
+            &CheckOutcome::Ready(ready("1.0.1"))
+        ));
+        assert_eq!(state.ready().map(|r| r.version.as_str()), Some("1.0.1"));
+        assert!(state.begin_install().is_some());
     }
 
     #[test]

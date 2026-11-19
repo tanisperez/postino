@@ -101,17 +101,10 @@ impl AppView {
         let Some(platform) = Platform::current().filter(|_| updater_enabled()) else {
             return;
         };
-        if let Some(ready) = self.state.update.ready() {
-            let version = ready.version.as_str();
-            let text = if ready.is_manual_download() {
-                available_text(self.manual_update(), version)
-            } else {
-                t!("update.already_ready", version = version).into_owned()
-            };
-            window.push_notification(Notification::info(text), cx);
-            return;
-        }
-        if !self.state.update.begin_check() {
+        // With an update already ready, check anyway: a newer version may have come out since
+        // (#300). There is no check flag to raise then, a second click only checks twice.
+        let had_ready = self.state.update.ready().is_some();
+        if !had_ready && !self.state.update.begin_check() {
             return;
         }
         window.push_notification(Notification::info(t!("update.checking").into_owned()), cx);
@@ -125,8 +118,17 @@ impl AppView {
             let _ = this.update_in(cx, |view, window, cx| {
                 let notification = match result {
                     Ok(outcome) => {
-                        view.state.update.finish_check(&outcome);
+                        let replaced = update::keep_latest(&mut view.state.update, &outcome);
+                        if !had_ready {
+                            view.state.update.finish_check(&outcome);
+                        }
                         match outcome {
+                            CheckOutcome::Ready(ready) if had_ready && !replaced => {
+                                Notification::info(
+                                    t!("update.already_ready", version = ready.version.as_str())
+                                        .into_owned(),
+                                )
+                            }
                             CheckOutcome::UpToDate => Notification::success(
                                 t!("update.up_to_date", version = update::CURRENT_VERSION)
                                     .into_owned(),
@@ -143,7 +145,9 @@ impl AppView {
                         }
                     }
                     Err(error) => {
-                        view.state.update.fail_check();
+                        if !had_ready {
+                            view.state.update.fail_check();
+                        }
                         log::warn!("update check failed: {error}");
                         Notification::error(
                             t!("update.check_failed", error = error.to_string()).into_owned(),
@@ -194,12 +198,17 @@ impl AppView {
         let Some(ready) = self.state.update.begin_install() else {
             return;
         };
-        log::info!("installing update {}", ready.version);
         let exe = std::env::current_exe().unwrap_or_default();
+        let portable = self.about_info.portable;
         cx.spawn_in(window, async move |this, cx| {
-            let task_ready = ready.clone();
-            let outcome = cx
-                .background_spawn(async move { update::start_install(platform, &task_ready, &exe) })
+            // The ready update may be days old: install the latest version (#300).
+            let (ready, outcome) = cx
+                .background_spawn(async move {
+                    let ready = update::latest_ready(platform, portable, ready);
+                    log::info!("installing update {}", ready.version);
+                    let outcome = update::start_install(platform, &ready, &exe);
+                    (ready, outcome)
+                })
                 .await;
             let _ = this.update_in(cx, |view, window, cx| {
                 view.finish_install(outcome, &ready, window, cx);
