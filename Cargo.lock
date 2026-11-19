@@ -7299,8 +7299,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-app"
-version = "0.31.2"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.31.2#71ce279d0e70a87f9ff914a144c5511ed184536f"
+version = "0.31.3"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.31.3#57a7215d1109ec22f2f100f9f9c5b2eef35a52d6"
 dependencies = [
  "chrono",
  "dirs 7.0.0",
@@ -7317,8 +7317,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-editor"
-version = "0.31.2"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.31.2#71ce279d0e70a87f9ff914a144c5511ed184536f"
+version = "0.31.3"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.31.3#57a7215d1109ec22f2f100f9f9c5b2eef35a52d6"
 dependencies = [
  "gpui-kit",
  "log",
@@ -7330,8 +7330,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-git"
-version = "0.31.2"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.31.2#71ce279d0e70a87f9ff914a144c5511ed184536f"
+version = "0.31.3"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.31.3#57a7215d1109ec22f2f100f9f9c5b2eef35a52d6"
 dependencies = [
  "dunce",
  "log",
@@ -7340,8 +7340,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-syntax"
-version = "0.31.2"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.31.2#71ce279d0e70a87f9ff914a144c5511ed184536f"
+version = "0.31.3"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.31.3#57a7215d1109ec22f2f100f9f9c5b2eef35a52d6"
 dependencies = [
  "ropey",
  "telaio-text",
@@ -7356,8 +7356,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-text"
-version = "0.31.2"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.31.2#71ce279d0e70a87f9ff914a144c5511ed184536f"
+version = "0.31.3"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.31.3#57a7215d1109ec22f2f100f9f9c5b2eef35a52d6"
 dependencies = [
  "regex",
  "regex-syntax",
@@ -7366,8 +7366,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-ui"
-version = "0.31.2"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.31.2#71ce279d0e70a87f9ff914a144c5511ed184536f"
+version = "0.31.3"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.31.3#57a7215d1109ec22f2f100f9f9c5b2eef35a52d6"
 dependencies = [
  "gpui-kit",
  "rust-i18n",
@@ -7376,8 +7376,8 @@ dependencies = [
 
 [[package]]
 name = "telaio-update"
-version = "0.31.2"
-source = "git+https://github.com/tanisperez/telaio?tag=v0.31.2#71ce279d0e70a87f9ff914a144c5511ed184536f"
+version = "0.31.3"
+source = "git+https://github.com/tanisperez/telaio?tag=v0.31.3#57a7215d1109ec22f2f100f9f9c5b2eef35a52d6"
 dependencies = [
  "dirs 7.0.0",
  "log",
