@@ -67,7 +67,7 @@ never written to disk and are not visible to any other request.
 
 Session overrides of the active environment, the second-priority layer.
 
-- `env.get(name)`
+- `env.get(name)` (an environment value as written in the file, its `{{ }}` markers not expanded)
 - `env.set(name, value)` (value converted with `String(value)`)
 - `env.unset(name)`
 

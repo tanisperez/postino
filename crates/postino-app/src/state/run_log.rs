@@ -54,7 +54,9 @@ pub fn details(result: &RunResult) -> String {
                     unknown.push(name);
                 }
             }
-            TemplateWarning::Function(_) => function_errors += 1,
+            TemplateWarning::Function(_) | TemplateWarning::CircularVariable(_) => {
+                function_errors += 1;
+            }
         }
     }
     let mut line = format!(

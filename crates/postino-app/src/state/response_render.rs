@@ -79,7 +79,7 @@ pub fn group_warnings(warnings: &[TemplateWarning]) -> Vec<WarningGroup> {
                     unknown_names.push(name.clone());
                 }
             }
-            TemplateWarning::Function(_) => {
+            TemplateWarning::Function(_) | TemplateWarning::CircularVariable(_) => {
                 function_groups.push(WarningGroup::Function(warning.to_string()));
             }
         }

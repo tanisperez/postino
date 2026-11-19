@@ -11,7 +11,7 @@
 use std::collections::HashSet;
 
 use postino_core::log_safe::is_sensitive_header;
-use postino_core::{KeyValue, VariableKind, VariableSpan, variable_spans};
+use postino_core::{KeyValue, VarScope, VariableKind, VariableSpan, interpolate, variable_spans};
 
 /// What a masked value is shown as.
 pub const MASK: &str = "\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}";
@@ -126,12 +126,26 @@ impl VariableContext {
             };
         }
         match (&self.environment, lookup(&self.environment_vars, name)) {
-            (Some(name), Some(value)) => VariableState::Resolved {
-                value: value.to_string(),
-                origin: Origin::Environment(name.clone()),
+            (Some(environment), Some(value)) => VariableState::Resolved {
+                value: self.expanded(name, value),
+                origin: Origin::Environment(environment.clone()),
             },
             _ => VariableState::Unknown,
         }
+    }
+
+    /// `value`, the environment value of `name`, with the variables it refers to replaced as the
+    /// runner replaces them (#301), so the tooltip shows what is sent.
+    fn expanded(&self, name: &str, value: &str) -> String {
+        if !value.contains("{{") {
+            return value.to_string();
+        }
+        let scope = VarScope {
+            request_vars: &[],
+            session_env: &self.session_vars,
+            environment: &self.environment_vars,
+        };
+        interpolate(&format!("{{{{{name}}}}}"), &scope).text
     }
 
     /// Whether `span` is drawn as defined.
@@ -292,6 +306,22 @@ mod tests {
             &[],
             HashSet::new(),
         )
+    }
+
+    #[test]
+    fn a_composed_environment_value_shows_expanded() {
+        let context = context(
+            Some("local"),
+            &[("api", "{{base}}/v2"), ("base", "https://example.com")],
+        );
+        let state = context.state(&span("{{api}}"));
+        assert_eq!(
+            state,
+            VariableState::Resolved {
+                value: "https://example.com/v2".to_string(),
+                origin: Origin::Environment("local".to_string()),
+            }
+        );
     }
 
     #[test]

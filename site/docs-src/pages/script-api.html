@@ -74,7 +74,7 @@ description: Reference of every global available to Postino pre-request and post
 <div class="table"><table>
     <thead><tr><th>Member</th><th>Description</th></tr></thead>
     <tbody>
-        <tr><td><code>env.get(name)</code></td><td>The session value if a script set one, otherwise the value from the active environment (<code>.local.env</code> over <code>.env</code>), otherwise <code>undefined</code>. Names are case sensitive.</td></tr>
+        <tr><td><code>env.get(name)</code></td><td>The session value if a script set one, otherwise the value from the active environment (<code>.local.env</code> over <code>.env</code>), as written in the file, without expanding the <a href="environments.html#composed-variables">variables it refers to</a>, otherwise <code>undefined</code>. Names are case sensitive.</td></tr>
         <tr><td><code>env.set(name, value)</code></td><td>Sets a session variable. The value is converted with <code>String(value)</code>.</td></tr>
         <tr><td><code>env.unset(name)</code></td><td>Removes the session variable, so the value from the environment files, if any, applies again.</td></tr>
     </tbody>

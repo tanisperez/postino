@@ -85,7 +85,7 @@ apiKey=sk_test_51H...
 <p>To choose another color, open the environment and click the dot next to its name, or choose <strong>Color…</strong> in its <strong>More actions</strong> menu. Pick one of the nine colors (red, orange, amber, green, teal, blue, violet, pink and grey), or <strong>Automatic</strong> to go back to the color of the name. The color shows everywhere the environment does: the panel, the editor, the environment picker and the command palette.</p>
 <p>The choice is saved in the <a href="files-and-folders.html#project-file">workspace configuration</a>, <code>.postino/project.toml</code>, under <code>[environments.colors]</code>, with the color's English name in lowercase (<code>prod = "violet"</code>), so everyone who uses the workspace sees the same colors. The file is created the first time you choose a color. A color name Postino does not know is ignored, and the environment keeps its automatic color.</p>
 
-<h2>Resolution order</h2>
+<h2 id="resolution-order">Resolution order</h2>
 <p>When Postino replaces <code>{{name}}</code>, it looks in these layers and uses the first one that has the variable:</p>
 <ol class="steps">
     <li><strong>Pre-request variables.</strong> Set with <code>vars.set()</code> by the pre-request script of this run. They exist only for this one send.</li>
@@ -94,6 +94,25 @@ apiKey=sk_test_51H...
     <li><strong><code>.env</code></strong> of the active environment.</li>
 </ol>
 <p>If no layer has it, the variable is unknown. A disabled entry is skipped as if it were not there. If a file defines the same name twice, the first definition is the one used.</p>
+
+<h2 id="composed-variables">Variables built from other variables</h2>
+<p>The value of an environment variable can use other variables, with the same <code>{{name}}</code> markers as a request, and add text around them. Define a part once and build the rest from it:</p>
+```env title="environments/staging.env"
+host=staging.api.example.com
+baseUrl=https://{{host}}
+usersUrl={{baseUrl}}/v2/users
+basicAuth={{ base64Encode(credentials) }}
+credentials={{username}}:{{password}}
+```
+<p>A request that uses <code>{{usersUrl}}</code> sends <code>https://staging.api.example.com/v2/users</code>. The order of the lines does not matter, and a reference can go through several variables.</p>
+<ul>
+    <li>The names inside a value are looked up in every layer of the <a href="#resolution-order">resolution order</a>, so a session or pre-request variable wins there too. When a script sets <code>baseUrl</code> with <code>env.set()</code>, <code>usersUrl</code> follows it.</li>
+    <li>Template functions work inside a value, and a composed variable can be the argument of one, as <code>credentials</code> above.</li>
+    <li>A name that no layer has stays as written, <code>{{name}}</code>, and is reported as an unknown variable, like in a request.</li>
+    <li>A value that leads back to its own variable, such as <code>a={{b}}</code> and <code>b={{a}}</code>, stops there: the marker stays as written and the response shows the warning <em>circular variable reference: a -&gt; b -&gt; a</em>.</li>
+    <li>Only the values of the environment files are expanded. A value set by a script, with <code>env.set()</code> or <code>vars.set()</code>, is used exactly as given, and <code>env.get()</code> returns the value as written in the file, markers included.</li>
+    <li>The tooltip of a variable in the request editor shows the expanded value, the one that is sent.</li>
+</ul>
 
 <h2>The environment editor</h2>
 <p>Click an environment in the Environments panel to open it in a tab.</p>

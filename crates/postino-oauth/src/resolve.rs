@@ -55,7 +55,7 @@ pub fn resolve_profile(
         if let Some(warning) = interpolated.warnings.first() {
             let name = match warning {
                 TemplateWarning::UnknownVariable(name) => name.clone(),
-                TemplateWarning::Function(error) => error.to_string(),
+                other => other.to_string(),
             };
             return Err(OAuthError::UnresolvedVariable { field, name });
         }

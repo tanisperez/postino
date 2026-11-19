@@ -10,6 +10,10 @@ use crate::key_value::KeyValue;
 /// 3. `environment`, the active environment (`.local.env` merged over `.env`).
 ///
 /// Entries with `enabled: false` are skipped, as if they were not present.
+///
+/// A value from `environment` may hold `{{ }}` markers of its own, such as
+/// `api_url = {{base_url}}/v2` (#301): [`interpolate`] expands them, looking the names up in all
+/// three layers. Values set by scripts are data and are never expanded.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct VarScope<'a> {
     /// Variables set by the pre script (`vars.set`), highest priority.
@@ -24,9 +28,16 @@ impl<'a> VarScope<'a> {
     /// Looks up `name` across the three layers, first hit wins. Returns `None` if no enabled
     /// entry with this key exists in any layer.
     pub fn lookup(&self, name: &str) -> Option<&'a str> {
-        [self.request_vars, self.session_env, self.environment]
-            .into_iter()
-            .find_map(|layer| Self::lookup_in(layer, name))
+        self.lookup_layer(name).map(|(value, _)| value)
+    }
+
+    /// [`Self::lookup`], and whether the value came from the environment layer, the only one
+    /// whose values are expanded.
+    fn lookup_layer(&self, name: &str) -> Option<(&'a str, bool)> {
+        Self::lookup_in(self.request_vars, name)
+            .or_else(|| Self::lookup_in(self.session_env, name))
+            .map(|value| (value, false))
+            .or_else(|| Self::lookup_in(self.environment, name).map(|value| (value, true)))
     }
 
     /// Looks up `name` in a single layer, ignoring disabled entries.
@@ -51,6 +62,10 @@ pub enum TemplateWarning {
     /// `{{ name(args) }}` failed to evaluate: unknown function, wrong arity or a bad argument.
     #[error(transparent)]
     Function(#[from] FunctionError),
+    /// An environment variable whose value refers back to itself, directly or through other
+    /// variables. Holds the chain, such as `a -> b -> a`.
+    #[error("circular variable reference: {0}")]
+    CircularVariable(String),
 }
 
 /// The result of interpolating a piece of text: the text with every resolvable `{{ }}` marker
@@ -66,15 +81,30 @@ pub struct Interpolated {
 /// Interpolates every `{{ }}` marker in `text` using `scope`.
 ///
 /// A marker is either a variable name (`{{name}}`, whitespace inside the braces is allowed) or
-/// a function call (`{{ name(arg, ...) }}`, see [`crate::functions`]). Interpolation is a single
-/// pass: the replacement text of a marker is copied into the output as is and never rescanned,
-/// so a variable whose value contains `{{x}}` does not expand further. A marker that cannot be
+/// a function call (`{{ name(arg, ...) }}`, see [`crate::functions`]). The value of an
+/// environment variable is interpolated in turn, so `api_url = {{base_url}}/v2` gives the URL
+/// with `base_url` replaced (#301); a value that leads back to its own variable stops with a
+/// [`TemplateWarning::CircularVariable`]. Any other replacement text is copied as is and never
+/// rescanned: a value set by a script, a function result. A marker that cannot be
 /// resolved (unknown variable, unknown function, wrong arity, bad argument) is left untouched in
 /// the output and reported as a warning. An unmatched `{{` with no following `}}` is also left
 /// untouched, with no warning: it is not a marker.
 pub fn interpolate(text: &str, scope: &VarScope) -> Interpolated {
-    let mut output = String::with_capacity(text.len());
+    let mut expanding = Vec::new();
     let mut warnings = Vec::new();
+    let text = interpolate_in(text, scope, &mut expanding, &mut warnings);
+    Interpolated { text, warnings }
+}
+
+/// [`interpolate`], with the environment variables being expanded (to catch a cycle) and the
+/// warnings found so far, nested ones included.
+fn interpolate_in(
+    text: &str,
+    scope: &VarScope,
+    expanding: &mut Vec<String>,
+    warnings: &mut Vec<TemplateWarning>,
+) -> String {
+    let mut output = String::with_capacity(text.len());
     let mut rest = text;
 
     loop {
@@ -91,7 +121,7 @@ pub fn interpolate(text: &str, scope: &VarScope) -> Interpolated {
         };
         let raw = &after_open[..end];
         let full_marker = &rest[start..start + 2 + end + 2];
-        match resolve_marker(raw, scope) {
+        match resolve_marker(raw, scope, expanding, warnings) {
             Ok(value) => output.push_str(&value),
             Err(warning) => {
                 output.push_str(full_marker);
@@ -100,11 +130,32 @@ pub fn interpolate(text: &str, scope: &VarScope) -> Interpolated {
         }
         rest = &after_open[end + 2..];
     }
+    output
+}
 
-    Interpolated {
-        text: output,
-        warnings,
+/// The value of the variable `name`, an environment one with its own markers expanded (#301).
+/// Warnings from inside the value go to `warnings`; the error is about `name` itself.
+fn variable_value(
+    name: &str,
+    scope: &VarScope,
+    expanding: &mut Vec<String>,
+    warnings: &mut Vec<TemplateWarning>,
+) -> Result<String, TemplateWarning> {
+    let (value, from_environment) = scope
+        .lookup_layer(name)
+        .ok_or_else(|| TemplateWarning::UnknownVariable(name.to_string()))?;
+    if !from_environment || !value.contains("{{") {
+        return Ok(value.to_string());
     }
+    if let Some(start) = expanding.iter().position(|open| open == name) {
+        let mut chain = expanding[start..].to_vec();
+        chain.push(name.to_string());
+        return Err(TemplateWarning::CircularVariable(chain.join(" -> ")));
+    }
+    expanding.push(name.to_string());
+    let text = interpolate_in(value, scope, expanding, warnings);
+    expanding.pop();
+    Ok(text)
 }
 
 /// Whether a [`VariableSpan`] is a plain variable reference or a template function call.
@@ -234,11 +285,16 @@ fn oauth_token_args(args: &[Arg]) -> Result<(String, String), FunctionError> {
 
 /// Resolves the content of a single `{{ ... }}` marker (without the braces) to its replacement
 /// text, or the warning explaining why it could not be resolved.
-fn resolve_marker(raw: &str, scope: &VarScope) -> Result<String, TemplateWarning> {
+fn resolve_marker(
+    raw: &str,
+    scope: &VarScope,
+    expanding: &mut Vec<String>,
+    warnings: &mut Vec<TemplateWarning>,
+) -> Result<String, TemplateWarning> {
     let trimmed = raw.trim();
     match parse_call(trimmed) {
         Some((OAUTH_TOKEN_FUNCTION, args)) => {
-            let args = resolve_args(args, scope)?;
+            let args = resolve_args_in(args, scope, expanding, warnings)?;
             let (profile, kind) = oauth_token_args(&args)?;
             scope
                 .lookup(&oauth_token_variable(&profile, &kind))
@@ -253,13 +309,10 @@ fn resolve_marker(raw: &str, scope: &VarScope) -> Result<String, TemplateWarning
                 })
         }
         Some((name, args)) => {
-            let args = resolve_args(args, scope)?;
+            let args = resolve_args_in(args, scope, expanding, warnings)?;
             functions::call(name, &args).map_err(TemplateWarning::from)
         }
-        None => scope
-            .lookup(trimmed)
-            .map(str::to_string)
-            .ok_or_else(|| TemplateWarning::UnknownVariable(trimmed.to_string())),
+        None => variable_value(trimmed, scope, expanding, warnings),
     }
 }
 
@@ -292,9 +345,20 @@ fn is_identifier(s: &str) -> bool {
 /// Parses and resolves a raw, comma-separated argument list into [`Arg`] values, resolving bare
 /// identifiers as variables through `scope`.
 fn resolve_args(raw: &str, scope: &VarScope) -> Result<Vec<Arg>, TemplateWarning> {
+    resolve_args_in(raw, scope, &mut Vec::new(), &mut Vec::new())
+}
+
+/// [`resolve_args`] inside an interpolation: an environment variable passed as an argument is
+/// expanded like a `{{name}}` marker.
+fn resolve_args_in(
+    raw: &str,
+    scope: &VarScope,
+    expanding: &mut Vec<String>,
+    warnings: &mut Vec<TemplateWarning>,
+) -> Result<Vec<Arg>, TemplateWarning> {
     split_args(raw)
         .into_iter()
-        .map(|token| resolve_arg(token.trim(), scope))
+        .map(|token| resolve_arg(token.trim(), scope, expanding, warnings))
         .collect()
 }
 
@@ -335,17 +399,19 @@ fn split_args(raw: &str) -> Vec<&str> {
 
 /// Resolves a single trimmed argument token to an [`Arg`]: a double-quoted string literal, an
 /// integer literal, or a bare identifier looked up as a variable.
-fn resolve_arg(token: &str, scope: &VarScope) -> Result<Arg, TemplateWarning> {
+fn resolve_arg(
+    token: &str,
+    scope: &VarScope,
+    expanding: &mut Vec<String>,
+    warnings: &mut Vec<TemplateWarning>,
+) -> Result<Arg, TemplateWarning> {
     if let Some(literal) = parse_string_literal(token) {
         return Ok(Arg::Str(literal));
     }
     if let Ok(value) = token.parse::<i64>() {
         return Ok(Arg::Int(value));
     }
-    scope
-        .lookup(token)
-        .map(|value| Arg::Str(value.to_string()))
-        .ok_or_else(|| TemplateWarning::UnknownVariable(token.to_string()))
+    variable_value(token, scope, expanding, warnings).map(Arg::Str)
 }
 
 /// Parses a double-quoted string literal with `\"` and `\\` escapes. Returns `None` if `token`
@@ -379,6 +445,92 @@ mod tests {
             session_env: &[],
             environment: vars,
         }
+    }
+
+    #[test]
+    fn an_environment_value_expands_its_own_variables() {
+        let vars = [
+            KeyValue::new("api_url", "{{base_url}}/api/{{ version }}"),
+            KeyValue::new("base_url", "https://{{host}}"),
+            KeyValue::new("host", "example.com"),
+            KeyValue::new("version", "v2"),
+        ];
+        let result = interpolate("GET {{api_url}}/users", &scope(&vars));
+        assert_eq!(result.text, "GET https://example.com/api/v2/users");
+        assert!(result.warnings.is_empty());
+    }
+
+    #[test]
+    fn a_session_override_reaches_inside_an_environment_value() {
+        let environment = [
+            KeyValue::new("api_url", "{{base_url}}/api"),
+            KeyValue::new("base_url", "https://prod.example.com"),
+        ];
+        let session_env = [KeyValue::new("base_url", "http://localhost:8080")];
+        let scope = VarScope {
+            request_vars: &[],
+            session_env: &session_env,
+            environment: &environment,
+        };
+        assert_eq!(
+            interpolate("{{api_url}}", &scope).text,
+            "http://localhost:8080/api"
+        );
+    }
+
+    #[test]
+    fn values_set_by_scripts_are_not_expanded() {
+        let environment = [KeyValue::new("x", "expanded")];
+        let request_vars = [KeyValue::new("template", "Hi {{x}}")];
+        let scope = VarScope {
+            request_vars: &request_vars,
+            session_env: &[],
+            environment: &environment,
+        };
+        let result = interpolate("{{template}}", &scope);
+        assert_eq!(result.text, "Hi {{x}}");
+        assert!(result.warnings.is_empty());
+    }
+
+    #[test]
+    fn an_unknown_name_inside_a_value_is_reported_and_kept() {
+        let vars = [KeyValue::new("url", "{{scheme}}://example.com")];
+        let result = interpolate("{{url}}", &scope(&vars));
+        assert_eq!(result.text, "{{scheme}}://example.com");
+        assert_eq!(
+            result.warnings,
+            vec![TemplateWarning::UnknownVariable("scheme".to_string())]
+        );
+    }
+
+    #[test]
+    fn a_cycle_is_reported_and_its_marker_kept() {
+        let vars = [
+            KeyValue::new("a", "<{{b}}>"),
+            KeyValue::new("b", "[{{a}}]"),
+            KeyValue::new("self", "{{self}}!"),
+        ];
+        let result = interpolate("{{a}} {{self}}", &scope(&vars));
+        assert_eq!(result.text, "<[{{a}}]> {{self}}!");
+        assert_eq!(
+            result.warnings,
+            vec![
+                TemplateWarning::CircularVariable("a -> b -> a".to_string()),
+                TemplateWarning::CircularVariable("self -> self".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_composed_variable_works_as_a_function_argument() {
+        let vars = [
+            KeyValue::new("credentials", "{{user}}:{{password}}"),
+            KeyValue::new("user", "ada"),
+            KeyValue::new("password", "secret"),
+        ];
+        let result = interpolate("{{ base64Encode(credentials) }}", &scope(&vars));
+        assert_eq!(result.text, "YWRhOnNlY3JldA==");
+        assert!(result.warnings.is_empty());
     }
 
     #[test]
@@ -446,13 +598,16 @@ mod tests {
     }
 
     #[test]
-    fn does_not_expand_twice() {
-        // The value of `outer` itself contains a marker, which must not be expanded further.
-        let vars = [
-            KeyValue::new("outer", "{{inner}}"),
-            KeyValue::new("inner", "leaked"),
-        ];
-        let result = interpolate("{{outer}}", &scope(&vars));
+    fn does_not_expand_a_script_value_twice() {
+        // A value set by a script contains a marker, which must not be expanded further.
+        let session_env = [KeyValue::new("outer", "{{inner}}")];
+        let environment = [KeyValue::new("inner", "leaked")];
+        let scope = VarScope {
+            request_vars: &[],
+            session_env: &session_env,
+            environment: &environment,
+        };
+        let result = interpolate("{{outer}}", &scope);
         assert_eq!(result.text, "{{inner}}");
         assert!(result.warnings.is_empty());
     }

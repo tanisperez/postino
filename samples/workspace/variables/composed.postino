@@ -1,0 +1,16 @@
+GET {{anythingUrl}}/vars
+
+::: query
+value = {{nested}}
+greeting = {{encodedGreeting}}
+
+::: post
+test("an environment value expands the variables it uses", () => {
+  expect(res.json().args.value).toBe("Ada Lovelace");
+  expect(res.json().args.greeting).toBe("aGVsbG8gd29ybGQ=");
+  expect(res.json().path).toBe("/anything/vars");
+});
+
+::: docs
+`nested` is `{{userName}}`, `anythingUrl` is `{{baseUrl}}/anything` and `shout` calls a template
+function on another variable (#301).

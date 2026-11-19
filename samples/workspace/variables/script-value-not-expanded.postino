@@ -1,0 +1,15 @@
+GET {{baseUrl}}/anything/vars
+
+::: query
+value = {{template}}
+
+::: pre
+vars.set("template", "{{userName}}");
+
+::: post
+test("a value set by a script is not expanded again", () => {
+  expect(res.json().args.value).toBe("{{userName}}");
+});
+
+::: docs
+Only the values of environment files are expanded: a script value is used as given.

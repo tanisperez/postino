@@ -338,9 +338,15 @@ through to the next layer.
 
 An unresolved `{{name}}` (no matching variable in any layer) is left exactly as written in the
 output, and reported as a warning (`unknown variable`) alongside the run's result; it never aborts
-anything. Interpolation is a **single pass**: the text that replaces a marker is copied into the
-output as is and never rescanned, so a variable whose own value contains `{{x}}` does not expand
-further (`{{outer}}` where `outer` = `{{inner}}` stays `{{inner}}` in the output). An unmatched
+anything.
+
+The value of a variable from the active environment (layer 3) is interpolated in turn (#301), with
+the same three-layer lookup: `usersUrl = {{baseUrl}}/v2/users` sends the URL with `baseUrl`
+replaced, and template functions inside the value are evaluated. A value that leads back to a
+variable already being expanded (`a = {{b}}`, `b = {{a}}`) is not expanded: the marker stays as
+written and a `circular variable reference: a -> b -> a` warning is reported. Values set by
+scripts (layers 1 and 2) and the results of template functions are copied as is and never
+rescanned (`{{outer}}` where a script set `outer` to `{{inner}}` stays `{{inner}}`). An unmatched
 `{{` with no following `}}` anywhere in the rest of the text is left untouched with no warning at
 all: it is simply not treated as a marker.
 
