@@ -47,7 +47,7 @@ window bootstrap and the About header), all shared with the other apps. `postino
 | Crate | Responsibility |
 | --- | --- |
 | `postino-core` | Domain model (`Request`, `Method`, `Body`, `Environment`, ...), `{{ }}` variable interpolation and the built-in template functions. No IO. |
-| `postino-format` | `.postino` and `.env` parse and serialize, code snippets (curl, fetch, Python requests), Postman import. No IO. |
+| `postino-format` | `.postino` and `.env` parse and serialize, code snippets (curl, fetch, Python requests, Postino CLI), Postman import. No IO. |
 | `postino-workspace` | Filesystem access: creates new workspace folders (with the example request), scans a folder, loads and saves requests and environments, writes environment variables, detects the git branch, imports Postman collections to disk. |
 | `postino-script` | The `ScriptEngine` trait and its QuickJS implementation (`rquickjs`). |
 | `postino-http` | Sends a resolved request with `ureq` 3 (blocking, rustls) and measures timing. |

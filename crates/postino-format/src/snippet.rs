@@ -15,6 +15,8 @@ pub enum SnippetLanguage {
     JsFetch,
     /// Python using the `requests` library.
     PythonRequests,
+    /// A `postino` command line, the one-off requests of the CLI (#297).
+    PostinoCli,
 }
 
 /// Renders `request` as a copyable code snippet in `language`.
@@ -23,6 +25,7 @@ pub fn render_snippet(request: &ResolvedRequest, language: SnippetLanguage) -> S
         SnippetLanguage::Curl => render_curl(request),
         SnippetLanguage::JsFetch => render_js_fetch(request),
         SnippetLanguage::PythonRequests => render_python_requests(request),
+        SnippetLanguage::PostinoCli => render_postino_cli(request),
     }
 }
 
@@ -227,6 +230,71 @@ fn render_curl(request: &ResolvedRequest) -> String {
         out.push_str(if index == last { "\n" } else { " \\\n" });
     }
     out.pop();
+    out
+}
+
+/// Renders `request` as a `postino` one-off request, one option per line with ` \` continuations.
+///
+/// A standard method is its own command (`postino post URL`), any other goes through
+/// `postino http METHOD URL`. Every header is a `-H`, the `Authorization` one included, so the
+/// auth of the request travels as the header it resolved to. A multipart body becomes one `-F`
+/// per field; any other body, a form one included, is a single `-d` next to its `Content-Type`
+/// header. `-d` reads a file when its text starts with `@`, so such a body is piped in with
+/// `-d @-` instead.
+fn render_postino_cli(request: &ResolvedRequest) -> String {
+    let command = match &request.method {
+        Method::Custom(method) => format!("postino http {}", shell_quote(method)),
+        method => format!("postino {}", method.to_string().to_ascii_lowercase()),
+    };
+    let mut lines = vec![shell_quote(&request.url)];
+    for header in snippet_headers(request) {
+        lines.push(format!(
+            "-H {}",
+            shell_quote(&format!("{}: {}", header.name, header.value))
+        ));
+    }
+    let mut stdin = None;
+    match (&request.body, body_shape(request)) {
+        (_, BodyShape::None) => {}
+        (_, BodyShape::Multipart(parts)) => {
+            for part in parts {
+                let value = match &part.file_name {
+                    Some(file) => format!("@{file}"),
+                    // `@@` keeps a leading `@` from naming a file.
+                    None if part.text.starts_with('@') => format!("@{}", part.text),
+                    None => part.text.clone(),
+                };
+                lines.push(format!(
+                    "-F {}",
+                    shell_quote(&format!("{}={value}", part.name))
+                ));
+            }
+        }
+        (body, BodyShape::Form(_) | BodyShape::Raw(_)) => {
+            let text = match body {
+                ResolvedBody::Bytes(bytes) => String::from_utf8_lossy(bytes).into_owned(),
+                ResolvedBody::None => String::new(),
+            };
+            if text.starts_with('@') {
+                lines.push("-d @-".to_string());
+                stdin = Some(text);
+            } else {
+                lines.push(format!("-d {}", shell_quote(&text)));
+            }
+        }
+    }
+    let mut out = match stdin {
+        Some(text) => format!("printf '%s' {} | {command} \\\n", shell_quote(&text)),
+        None => format!("{command} \\\n"),
+    };
+    let last = lines.len().saturating_sub(1);
+    for (index, line) in lines.into_iter().enumerate() {
+        out.push_str("  ");
+        out.push_str(&line);
+        if index != last {
+            out.push_str(" \\\n");
+        }
+    }
     out
 }
 
@@ -580,6 +648,56 @@ mod tests {
             "{python}"
         );
         assert!(!python.contains("boundary"), "{python}");
+    }
+
+    #[test]
+    fn postino_cli_uses_the_method_command_and_keeps_every_header() {
+        let mut request = json_post_request();
+        request.headers.push(ResolvedField {
+            name: "Authorization".to_string(),
+            value: "Bearer abc".to_string(),
+        });
+        let snippet = render_snippet(&request, SnippetLanguage::PostinoCli);
+        assert_eq!(
+            snippet,
+            "postino post \\\n  'https://example.com/users' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer abc' \\\n  -d '{\"id\": 1}'"
+        );
+        let get = render_snippet(
+            &get_request("https://example.com/?q=1"),
+            SnippetLanguage::PostinoCli,
+        );
+        assert_eq!(get, "postino get \\\n  'https://example.com/?q=1'");
+    }
+
+    #[test]
+    fn postino_cli_sends_a_custom_method_through_http() {
+        let mut request = get_request("https://cdn.example.com/a.js");
+        request.method = Method::Custom("PURGE".to_string());
+        let snippet = render_snippet(&request, SnippetLanguage::PostinoCli);
+        assert_eq!(
+            snippet,
+            "postino http 'PURGE' \\\n  'https://cdn.example.com/a.js'"
+        );
+    }
+
+    #[test]
+    fn postino_cli_bodies_form_multipart_and_a_leading_at() {
+        let form = render_snippet(&form_post_request(), SnippetLanguage::PostinoCli);
+        assert!(form.ends_with("  -d 'a=1&b=2'"), "{form}");
+
+        let multipart = render_snippet(&multipart_request(), SnippetLanguage::PostinoCli);
+        assert!(multipart.contains("-F 'note=hi'"), "{multipart}");
+        assert!(multipart.contains("-F 'doc=@a.png'"), "{multipart}");
+        assert!(!multipart.contains("boundary"), "{multipart}");
+
+        let mut at = json_post_request();
+        at.body = ResolvedBody::Bytes(b"@not-a-file".to_vec());
+        let snippet = render_snippet(&at, SnippetLanguage::PostinoCli);
+        assert!(
+            snippet.starts_with("printf '%s' '@not-a-file' | postino post \\\n"),
+            "{snippet}"
+        );
+        assert!(snippet.ends_with("  -d @-"), "{snippet}");
     }
 
     #[test]

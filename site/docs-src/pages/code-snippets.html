@@ -1,8 +1,8 @@
 title: Code snippets
-description: Turn any Postino request into a curl command, a JavaScript fetch call or a Python requests call with every variable resolved.
+description: Turn any Postino request into a curl command, a JavaScript fetch call, a Python requests call or a postino command with every variable resolved.
 ---
 <h1>Code snippets</h1>
-<p class="lead">Turn the request you are working on into code: a <code>curl</code> command for a terminal or a bug report, a JavaScript <code>fetch</code> call or a Python <code>requests</code> call.</p>
+<p class="lead">Turn the request you are working on into code: a <code>curl</code> command for a terminal or a bug report, a JavaScript <code>fetch</code> call, a Python <code>requests</code> call, or a <code>postino</code> command that sends it from a terminal without opening the window.</p>
 
 <div class="shot">
     <img class="light" src="../img/snippet-light.webp" width="2220" height="1356" loading="lazy" alt="The code snippet dialog showing a curl command.">
@@ -13,7 +13,7 @@ description: Turn any Postino request into a curl command, a JavaScript fetch ca
 <ol class="steps">
     <li>Open the request.</li>
     <li>Click <strong>Code</strong>, at the right of the request editor's tabs.</li>
-    <li>Pick <strong>cURL</strong>, <strong>fetch</strong> or <strong>Python</strong>, or press <kbd>←</kbd> and <kbd>→</kbd>. The code is highlighted like the request editor's.</li>
+    <li>Pick <strong>cURL</strong>, <strong>fetch</strong>, <strong>Python</strong> or <strong>Postino CLI</strong>, or press <kbd>←</kbd> and <kbd>→</kbd>. The code is highlighted like the request editor's.</li>
     <li>Click <strong>Copy</strong>, or press <kbd>Ctrl</kbd> <kbd>C</kbd> (<kbd>⌘</kbd> <kbd>C</kbd> on macOS). What is copied is exactly what the dialog shows, and the button says <strong>Copied</strong> for a moment. To copy only part of it, select it in the code first.</li>
 </ol>
 
@@ -34,7 +34,7 @@ description: Turn any Postino request into a curl command, a JavaScript fetch ca
 </div>
 
 <h2 id="command-line">From the command line</h2>
-<p><code>postino snippet &lt;file&gt; --lang curl|fetch|python</code> prints the same code in a terminal, and <code>postino import curl</code> goes the other way, from a curl command to a request. See the <a href="command-line.html#snippet">command line reference</a>.</p>
+<p><code>postino snippet &lt;file&gt; --lang curl|fetch|python|postino</code> prints the same code in a terminal, and <code>postino import curl</code> goes the other way, from a curl command to a request. See the <a href="command-line.html#snippet">command line reference</a>.</p>
 
 <h2>Examples</h2>
 <p>For this request, with <code>baseUrl</code> set to <code>https://api.example.com</code> and <code>token</code> to <code>abc123</code>:</p>
@@ -82,7 +82,16 @@ response = requests.request(
     json={"name": "Ada"},
 )
 ```
+<h3 id="postino-cli">Postino CLI</h3>
+<p>A <a href="command-line.html#one-off-requests">one-off request</a> of the <code>postino</code> command. A standard method is its own command, such as <code>postino post</code>, and any other goes through <code>postino http METHOD</code>. Every header is a <code>-H</code>, the <code>Authorization</code> header of the Auth tab included, so the command sends exactly what the request sends. A multipart body becomes one <code>-F</code> per field, with <code>@file</code> for files. Any other body, a form one included, is a single <code>-d</code> next to its <code>Content-Type</code> header; a body that starts with <code>@</code> is piped in with <code>-d @-</code>, since <code>-d @file</code> reads a file.</p>
+```text
+postino post \
+  'https://api.example.com/users' \
+  -H 'Authorization: Bearer abc123' \
+  -H 'Content-Type: application/json' \
+  -d '{ "name": "Ada" }'
+```
 <div class="callout note">
     <span class="title">On Windows</span>
-    <p>The cURL snippet uses POSIX shell quoting. Run it in Git Bash or WSL, or adapt the quotes for PowerShell.</p>
+    <p>The cURL and Postino CLI snippets use POSIX shell quoting. Run it in Git Bash or WSL, or adapt the quotes for PowerShell.</p>
 </div>

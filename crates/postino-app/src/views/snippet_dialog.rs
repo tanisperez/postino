@@ -1,7 +1,7 @@
 //! The Code snippet dialog: opened from the "Code" ghost button at the right of the request
 //! editor's inner tabs row (`views/request_editor.rs`). Shows the active tab's request, resolved
 //! against the current environment (`postino_runner::preview`, never running a script or sending),
-//! as a copyable cURL, `fetch` or Python snippet (`postino_format::snippet::render_snippet`).
+//! as a copyable cURL, `fetch`, Python or Postino CLI snippet (`postino_format::snippet::render_snippet`).
 //! Unresolved `{{name}}` markers are kept literally, exactly as `render_snippet` already leaves
 //! them.
 //!
@@ -41,10 +41,11 @@ const COPIED_FEEDBACK: Duration = Duration::from_millis(1500);
 
 /// Every language the dialog offers, in the order the `SegmentedControl` shows them, with their
 /// display labels and the editor's highlight language.
-const LANGUAGES: [(SnippetLanguage, &str, Language); 3] = [
+const LANGUAGES: [(SnippetLanguage, &str, Language); 4] = [
     (SnippetLanguage::Curl, "cURL", Language::Shell),
     (SnippetLanguage::JsFetch, "fetch", Language::JavaScript),
     (SnippetLanguage::PythonRequests, "Python", Language::Python),
+    (SnippetLanguage::PostinoCli, "Postino CLI", Language::Shell),
 ];
 
 impl AppView {

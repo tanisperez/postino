@@ -59,7 +59,7 @@ Postino 0.2.0
         <tr><td><a href="#list"><code>list [FOLDER]</code></a></td><td>Lists the requests of the workspace, with their methods.</td></tr>
         <tr><td><a href="#env"><code>env</code></a></td><td>Lists the environments, or the variables of one, with secrets hidden.</td></tr>
         <tr><td><a href="#import"><code>import</code></a></td><td>Imports OpenAPI, Postman or Bruno collections, or a curl command.</td></tr>
-        <tr><td><a href="#snippet"><code>snippet &lt;FILE&gt;</code></a></td><td>Prints a request as curl, <code>fetch</code> or Python code.</td></tr>
+        <tr><td><a href="#snippet"><code>snippet &lt;FILE&gt;</code></a></td><td>Prints a request as curl, <code>fetch</code>, Python code or a <code>postino</code> command.</td></tr>
         <tr><td><a href="#completions"><code>completions &lt;SHELL&gt;</code></a></td><td>Prints the shell completion script.</td></tr>
         <tr><td><a href="#one-off-requests"><code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, <code>delete</code>, <code>head</code>, <code>options</code> <code>&lt;URL&gt;</code></a></td><td>Sends one request with that method, like curl.</td></tr>
         <tr><td><a href="#one-off-requests"><code>http &lt;METHOD&gt; &lt;URL&gt;</code></a></td><td>Sends one request with any method, custom ones included.</td></tr>
@@ -248,7 +248,7 @@ $ postino import curl 'curl -X POST https://api.example.com/login --json "{}"' -
 $ postino snippet auth/login.postino --env local
 $ postino snippet auth/login.postino --lang python
 ```
-<p>Prints a request as code, as the <a href="code-snippets.html">Code dialog</a> does: <code>--lang curl</code> (the default), <code>fetch</code> or <code>python</code>. Its variables are resolved with <code>--env</code>, <code>--env-file</code> and <code>--var</code>, without running its scripts; an unknown variable is kept as written and named in a warning on standard error. The console keeps no OAuth 2.0 token between runs, so a request with OAuth 2.0 auth shows <code>&lt;access token&gt;</code> where the token goes.</p>
+<p>Prints a request as code, as the <a href="code-snippets.html">Code dialog</a> does: <code>--lang curl</code> (the default), <code>fetch</code>, <code>python</code> or <code>postino</code>, a <a href="#one-off-requests">one-off request</a> with the headers, <code>Authorization</code> included, and the body of the request. Its variables are resolved with <code>--env</code>, <code>--env-file</code> and <code>--var</code>, without running its scripts; an unknown variable is kept as written and named in a warning on standard error. The console keeps no OAuth 2.0 token between runs, so a request with OAuth 2.0 auth shows <code>&lt;access token&gt;</code> where the token goes.</p>
 
 <h3 id="completions">completions</h3>
 ```shell

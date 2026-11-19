@@ -302,6 +302,7 @@ pub fn snippet_command(args: &SnippetArgs) -> u8 {
             SnippetLang::Curl => SnippetLanguage::Curl,
             SnippetLang::Fetch => SnippetLanguage::JsFetch,
             SnippetLang::Python => SnippetLanguage::PythonRequests,
+            SnippetLang::Postino => SnippetLanguage::PostinoCli,
         };
         let mut text = render_snippet(&preview.resolved, language);
         if !text.ends_with('\n') {

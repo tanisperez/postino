@@ -66,7 +66,7 @@ pub enum ConsoleCommand {
     /// Import OpenAPI, Postman or Bruno collections, or a curl command.
     #[command(subcommand)]
     Import(ImportCommand),
-    /// Print a request as code: curl, fetch or Python.
+    /// Print a request as code: curl, fetch, Python or a postino command.
     Snippet(SnippetArgs),
     /// Print the shell completion script.
     Completions(CompletionsArgs),
@@ -389,6 +389,8 @@ pub enum SnippetLang {
     Fetch,
     /// Python with requests.
     Python,
+    /// A postino one-off request (postino get, post, ...).
+    Postino,
 }
 
 /// `postino snippet <file>`.
