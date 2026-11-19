@@ -44,9 +44,10 @@ use crate::state::load_results::{ChartData, Shared, SummaryData};
 use crate::state::load_test::{LoadTestStatus, LoadTestTab};
 use crate::state::number::format_integer;
 use crate::theme::PaletteExt;
-use crate::theme::metrics::{MODAL_HEADER_HEIGHT, MODAL_PADDING, MODAL_WIDTH_DEFAULT};
+use crate::theme::metrics::MODAL_WIDTH_DEFAULT;
 use crate::views::components::{
     ModalPlacement, ProgressBar, SecondaryButton, framed_dialog, modal_body, modal_footer,
+    modal_header_without_close,
 };
 use crate::views::root::AppView;
 
@@ -652,26 +653,12 @@ fn open_export_dialog(
                 let cancel_progress = progress.clone();
                 let cancel_view = view.clone();
                 v_flex()
-                    .child(
-                        // `modal_header` without its close button: only Cancel ends the export.
-                        h_flex()
-                            .h(px(MODAL_HEADER_HEIGHT))
-                            .flex_none()
-                            .items_center()
-                            .gap(px(10.0))
-                            .px(px(MODAL_PADDING))
-                            .text_size(px(14.0))
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .child(
-                                Icon::new(gpui_kit::assets::IconName::Download)
-                                    .size(px(15.0))
-                                    .text_color(palette.accent_text),
-                            )
-                            .child(t!(
-                                "load_test.export.progress.title",
-                                format = format.title()
-                            )),
-                    )
+                    // No close button: only Cancel ends the export.
+                    .child(modal_header_without_close(
+                        Some((gpui_kit::assets::IconName::Download, palette.accent_text)),
+                        t!("load_test.export.progress.title", format = format.title()),
+                        cx,
+                    ))
                     .child(
                         modal_body()
                             .child(
