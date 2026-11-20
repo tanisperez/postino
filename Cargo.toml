@@ -5,7 +5,7 @@ default-members = ["crates/*"]
 
 [workspace.package]
 edition = "2024"
-version = "1.1.0"
+version = "1.2.0-dev"
 publish = false
 license = "Apache-2.0"
 authors = ["Estanislao Pérez Nartallo <tanisperez@gmail.com>"]
