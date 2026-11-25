@@ -11,6 +11,7 @@ use std::sync::Arc;
 use gpui_kit::base::SelectableText;
 use gpui_kit::component::scroll::Scrollbar;
 use gpui_kit::component::spinner::Spinner;
+use gpui_kit::component::tooltip::Tooltip;
 use gpui_kit::component::*;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -55,6 +56,9 @@ pub(crate) struct ResponseEditorEntities {
     synced: Option<(String, u64, usize, bool)>,
     editor: Option<Entity<EditorView>>,
     texts: response_render::BodyTextCache,
+    /// Whether long lines wrap (#304): on until the user turns it off with the Wrap toggle or
+    /// Alt+Z, and kept when the editor is created again after its tab closes.
+    wrap: Option<bool>,
 }
 
 impl ResponseEditorEntities {
@@ -86,12 +90,13 @@ impl ResponseEditorEntities {
         raw: bool,
         cx: &mut Context<AppView>,
     ) {
+        let wrap = self.wrap.unwrap_or(true);
         let editor = self.editor.get_or_insert_with(|| {
             cx.new(|cx| {
                 let mut state = EditorState::default();
-                // Long lines stay on one line, as before, until Alt+Z: a raw body is plain text,
-                // which the editor would otherwise wrap.
-                state.wrap_override = Some(false);
+                // Long lines wrap by default, JSON included (#304), until the Wrap toggle or
+                // Alt+Z turns it off.
+                state.wrap_override = Some(wrap);
                 let mut view = EditorView::new(state, cx);
                 view.set_read_only(true, cx);
                 view.set_display(
@@ -404,6 +409,15 @@ impl AppView {
                 cx.write_to_clipboard(ClipboardItem::new_string(copy_text.to_string()));
             });
 
+        // Read from the editor, so Alt+Z and the toggle stay in agreement.
+        let wrap = self
+            .response_editor
+            .editor
+            .as_ref()
+            .is_none_or(|editor| editor.read(cx).state.wrap_override.unwrap_or(true));
+        self.response_editor.wrap = Some(wrap);
+        let wrap_button = render_wrap_toggle(wrap, self.response_editor.editor.clone(), cx);
+
         let search_editor = self.response_editor.editor.clone();
         let search_button = IconButton::new("response-search", IconName::Search)
             .tooltip(t!("common.search"))
@@ -422,6 +436,7 @@ impl AppView {
                 h_flex()
                     .gap(px(2.0))
                     .child(copy_button)
+                    .child(wrap_button)
                     .child(search_button),
             );
 
@@ -561,6 +576,53 @@ fn stage_message(stage: &FailedStage) -> String {
         }
         FailedStage::Auth => t!("oauth.stage_failed").into_owned(),
     }
+}
+
+/// The Wrap toggle of the response body (#304), as ted's status bar draws it: the wrap-text icon
+/// and "Wrap", `accent_subtle` and `accent_text` while long lines wrap. A click does what Alt+Z
+/// does.
+fn render_wrap_toggle(
+    wrap: bool,
+    editor: Option<Entity<EditorView>>,
+    cx: &mut Context<AppView>,
+) -> impl IntoElement {
+    let palette = cx.palette();
+    let hover = palette.hover;
+    let pressed = palette.pressed;
+    h_flex()
+        .id("response-wrap")
+        .h(px(24.0))
+        .px(px(6.0))
+        .gap(px(5.0))
+        .items_center()
+        .rounded(px(RADIUS_MD - 2.0))
+        .text_size(px(11.5))
+        .text_color(palette.fg_muted)
+        .cursor_pointer()
+        .when(wrap, |toggle| {
+            toggle
+                .bg(palette.accent_subtle)
+                .text_color(palette.accent_text)
+        })
+        .hover(move |style| style.bg(hover))
+        .active(move |style| style.bg(pressed))
+        .tooltip(move |window, cx| {
+            let label = match wrap {
+                true => t!("response.body.wrap_on"),
+                false => t!("response.body.wrap_off"),
+            };
+            Tooltip::new(SharedString::from(label)).build(window, cx)
+        })
+        .child(Icon::new(gpui_kit::assets::IconName::TextWrap).with_size(px(14.0)))
+        .child(t!("response.body.wrap"))
+        .on_click(move |_, _, cx| {
+            if let Some(editor) = &editor {
+                editor.update(cx, |editor, cx| {
+                    editor.state.toggle_wrap();
+                    cx.notify();
+                });
+            }
+        })
 }
 
 /// Renders the response headers as a two-column card: a header row with the column labels and

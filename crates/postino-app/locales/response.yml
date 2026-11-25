@@ -30,6 +30,21 @@ _version: 2
   es: "Sin procesar"
   gl: "Sen procesar"
   it: "Grezzo"
+"response.body.wrap":
+  en: "Wrap"
+  es: "Ajuste"
+  gl: "Axuste"
+  it: "A capo"
+"response.body.wrap_on":
+  en: "Long lines wrap (Alt+Z)"
+  es: "Las líneas largas se ajustan (Alt+Z)"
+  gl: "As liñas longas axústanse (Alt+Z)"
+  it: "Le righe lunghe vanno a capo (Alt+Z)"
+"response.body.wrap_off":
+  en: "Long lines do not wrap (Alt+Z)"
+  es: "Las líneas largas no se ajustan (Alt+Z)"
+  gl: "As liñas longas non se axustan (Alt+Z)"
+  it: "Le righe lunghe non vanno a capo (Alt+Z)"
 "response.body.not_utf8.one":
   en: "<%{count} byte, not valid UTF-8>"
   es: "<%{count} byte, no es UTF-8 válido>"
