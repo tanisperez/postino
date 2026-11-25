@@ -5384,7 +5384,7 @@ dependencies = [
 
 [[package]]
 name = "postino-app"
-version = "1.2.0-dev"
+version = "1.2.0"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -5420,7 +5420,7 @@ dependencies = [
 
 [[package]]
 name = "postino-cli"
-version = "1.2.0-dev"
+version = "1.2.0"
 dependencies = [
  "chrono",
  "clap",
@@ -5444,7 +5444,7 @@ dependencies = [
 
 [[package]]
 name = "postino-core"
-version = "1.2.0-dev"
+version = "1.2.0"
 dependencies = [
  "base64 0.23.1",
  "fastrand",
@@ -5455,7 +5455,7 @@ dependencies = [
 
 [[package]]
 name = "postino-format"
-version = "1.2.0-dev"
+version = "1.2.0"
 dependencies = [
  "postino-core",
  "pretty_assertions",
@@ -5468,7 +5468,7 @@ dependencies = [
 
 [[package]]
 name = "postino-http"
-version = "1.2.0-dev"
+version = "1.2.0"
 dependencies = [
  "log",
  "postino-core",
@@ -5485,7 +5485,7 @@ dependencies = [
 
 [[package]]
 name = "postino-load"
-version = "1.2.0-dev"
+version = "1.2.0"
 dependencies = [
  "flate2",
  "krilla",
@@ -5505,7 +5505,7 @@ dependencies = [
 
 [[package]]
 name = "postino-oauth"
-version = "1.2.0-dev"
+version = "1.2.0"
 dependencies = [
  "base64 0.23.1",
  "getrandom 0.3.4",
@@ -5523,7 +5523,7 @@ dependencies = [
 
 [[package]]
 name = "postino-runner"
-version = "1.2.0-dev"
+version = "1.2.0"
 dependencies = [
  "log",
  "postino-core",
@@ -5540,7 +5540,7 @@ dependencies = [
 
 [[package]]
 name = "postino-script"
-version = "1.2.0-dev"
+version = "1.2.0"
 dependencies = [
  "postino-core",
  "pretty_assertions",
@@ -5552,7 +5552,7 @@ dependencies = [
 
 [[package]]
 name = "postino-workspace"
-version = "1.2.0-dev"
+version = "1.2.0"
 dependencies = [
  "log",
  "postino-core",
