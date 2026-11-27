@@ -180,6 +180,11 @@ _version: 2
   es: "RESPUESTA"
   gl: "RESPOSTA"
   it: "RISPOSTA"
+"response.warning.legacy_tls":
+  en: "This server only offers outdated TLS encryption. Sent with the system TLS library."
+  es: "Este servidor solo ofrece cifrado TLS obsoleto. Enviada con la biblioteca TLS del sistema."
+  gl: "Este servidor só ofrece cifrado TLS obsoleto. Enviada coa biblioteca TLS do sistema."
+  it: "Questo server offre solo una cifratura TLS obsoleta. Inviata con la libreria TLS di sistema."
 "response.warning.tls_unverified":
   en: "TLS certificate not verified: %{reason}"
   es: "Certificado TLS no verificado: %{reason}"

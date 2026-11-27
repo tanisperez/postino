@@ -1156,6 +1156,7 @@ mod tests {
             time: Duration::from_millis(182),
             size: body.len(),
             tls_warning: None,
+            legacy_tls: false,
         }
     }
 

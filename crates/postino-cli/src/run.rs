@@ -108,6 +108,9 @@ fn record_of(id: &str, method: String, result: &RunResult) -> Record {
     {
         warnings.push(format!("TLS certificate not verified: {warning}"));
     }
+    if result.response.as_ref().is_some_and(|r| r.legacy_tls) {
+        warnings.push(crate::request::LEGACY_TLS_WARNING.to_string());
+    }
     Record {
         id: id.to_string(),
         method,

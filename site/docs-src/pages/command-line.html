@@ -116,7 +116,7 @@ $ postino run                        # the whole workspace
 
  3 requests, 1 failed · 5/6 tests passed · 99 ms
 ```
-<p>A request fails when a test fails, when its pre or post script throws, when its OAuth token cannot be obtained, or when nothing comes back. The reason is printed under it, followed by the <code>console.log</code> lines of its scripts. A variable that did not resolve and a certificate that was not verified are printed as warnings (<code>!</code>) and do not fail the request.</p>
+<p>A request fails when a test fails, when its pre or post script throws, when its OAuth token cannot be obtained, or when nothing comes back. The reason is printed under it, followed by the <code>console.log</code> lines of its scripts. A variable that did not resolve, a certificate that was not verified and <a href="settings.html#outdated-tls">outdated TLS</a> are printed as warnings (<code>!</code>) and do not fail the request.</p>
 <p>With <code>--output json</code>, each request is one line of JSON, and a last line has the totals:</p>
 ```json
 {"type":"request","request":"health.postino","method":"GET","url":"http://127.0.0.1:8080/health","status":200,"time_ms":3,"size":42,"passed":true,"tests":[{"name":"server is up","passed":true,"message":null}],"error":null,"warnings":[]}
@@ -311,6 +311,7 @@ $ postino get https://api.example.com/users -v
 <ul>
     <li>Lines starting with <code>*</code> tell each step as it happens, with the time since the request started: the addresses the host resolved to (Postino tries them in order), the open connection, and over HTTPS the TLS handshake. The handshake line gives the protocol version and the cipher suite, then the server's certificate: its subject, its issuer, its validity, up to eight of its alternative names, whether it was verified and how many certificates the server sent.</li>
     <li>A certificate that is not trusted shows <em>TLS handshake failed</em> with the reason, then the connection opened again without verification, marked <strong>NOT verified</strong>, as Postino sends it anyway with a warning. With <code>--insecure</code> the certificate is never verified.</li>
+    <li>A server that only offers <a href="settings.html#outdated-tls">outdated TLS</a> shows <em>TLS handshake failed</em>, then <em>Outdated TLS: sending again with the system TLS library</em>. That connection is not traced, and the response is followed by an <em>Outdated TLS</em> warning (<code>!</code>).</li>
     <li>Each redirect followed shows as <em>Redirected to</em> with the new URL, and the connection it opens.</li>
     <li>Once the response is in, <code>&gt;</code> lines show the request line and the headers sent, and <code>&lt;</code> lines the status and the headers received.</li>
     <li>With <code>run</code>, each request starts with a <code>*</code> line with its path. A request that goes over a connection still open shows <em>Reusing the open connection</em> instead of the connection steps.</li>

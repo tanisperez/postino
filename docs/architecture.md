@@ -50,7 +50,7 @@ window bootstrap and the About header), all shared with the other apps. `postino
 | `postino-format` | `.postino` and `.env` parse and serialize, code snippets (curl, fetch, Python requests, Postino CLI), Postman import. No IO. |
 | `postino-workspace` | Filesystem access: creates new workspace folders (with the example request), scans a folder, loads and saves requests and environments, writes environment variables, detects the git branch, imports Postman collections to disk. |
 | `postino-script` | The `ScriptEngine` trait and its QuickJS implementation (`rquickjs`). |
-| `postino-http` | Sends a resolved request with `ureq` 3 (blocking, rustls) and measures timing. |
+| `postino-http` | Sends a resolved request with `ureq` 3 (blocking, rustls; native-tls for servers that only offer outdated TLS, with OpenSSL built in on Linux) and measures timing. |
 | `postino-oauth` | OAuth 2.0: gets, renews and stores the token of a workspace profile (client credentials, password, refresh, authorization code with PKCE through a loopback listener), the token store (in memory, nothing survives the process), and the masked copy of every token request for the console. The browser part reaches the UI through the `SignInHandler` trait. No `gpui`. See `docs/oauth.md`. |
 | `postino-runner` | The pipeline: OAuth token, variables, pre script, interpolate, send, post script. Also `preview`, which resolves a request without scripts or network. |
 | `postino-load` | The load test engine, live metrics aggregation, the per request sample log, thresholds, time window statistics, run comparison, run history and the report exports (Markdown, PDF, CSV, JSON). |

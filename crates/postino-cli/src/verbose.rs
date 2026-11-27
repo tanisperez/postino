@@ -139,6 +139,9 @@ fn event_lines(event: &TraceEvent) -> Vec<String> {
         TraceEvent::Connected { host, port } => vec![format!("Connected to {host} port {port}")],
         TraceEvent::Tls(tls) => tls_lines(tls),
         TraceEvent::TlsFailed(reason) => vec![format!("TLS handshake failed: {reason}")],
+        TraceEvent::LegacyTls => {
+            vec!["Outdated TLS: sending again with the system TLS library (not traced)".to_string()]
+        }
         TraceEvent::Redirected(url) => vec![format!("Redirected to {url}")],
     }
 }

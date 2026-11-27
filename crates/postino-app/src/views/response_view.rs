@@ -530,6 +530,20 @@ impl AppView {
                 InlineMessage::new(InlineMessageKind::Warning, text).into_any_element(),
             );
         }
+        if result
+            .response
+            .as_ref()
+            .is_some_and(|response| response.legacy_tls)
+        {
+            messages.insert(
+                0,
+                InlineMessage::new(
+                    InlineMessageKind::Warning,
+                    t!("response.warning.legacy_tls"),
+                )
+                .into_any_element(),
+            );
+        }
 
         if let Some(stage) = &result.failed_stage
             && !matches!(stage, FailedStage::Auth)

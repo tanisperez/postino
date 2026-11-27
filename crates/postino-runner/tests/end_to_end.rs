@@ -370,6 +370,7 @@ fn run_sending_resolves_the_request_and_hands_it_to_the_given_sender() {
             time: Duration::ZERO,
             size: 0,
             tls_warning: None,
+            legacy_tls: false,
         })
     });
     assert_eq!(sent.as_deref(), Some("http://example.test/file"));

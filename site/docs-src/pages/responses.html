@@ -79,6 +79,8 @@ console.log({ id: res.json().id, status: res.status });
     <dd>A <code>{{ function() }}</code> call had an unknown name, the wrong number of arguments or a bad argument. The marker was sent as written and the message explains why. See <a href="template-functions.html#errors">template function errors</a>.</dd>
     <dt>Invalid TLS certificate</dt>
     <dd>The server's certificate is self-signed, expired or for another host, and the <a href="settings.html#tls">invalid certificates</a> setting is <strong>Send with warning</strong>. The request was sent without verifying the certificate and the warning says what was wrong with it.</dd>
+    <dt>Outdated TLS</dt>
+    <dd>The server only offers outdated encryption, such as TLS 1.2 with RSA key exchange and CBC cipher suites (<code>AES128-SHA</code>), or TLS 1.0 and 1.1. Postino sent the request with the operating system's TLS library, which still supports it, verifying the certificate as usual. See <a href="settings.html#outdated-tls">outdated TLS</a>.</dd>
 </dl>
 
 <h2>Errors</h2>

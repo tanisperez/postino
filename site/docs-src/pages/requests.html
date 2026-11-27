@@ -174,7 +174,7 @@ file = @fixtures/invoice.pdf
         <tr><td>Timeout</td><td>30 seconds for the whole exchange, from connecting to reading the last byte, redirects included.</td></tr>
         <tr><td>Redirects</td><td>Followed automatically, up to 10. The response shown is the final one.</td></tr>
         <tr><td>Error statuses</td><td>A 4xx or 5xx response is a normal response, shown with its body. Only failures that leave no response at all (bad URL, DNS, connection refused, timeout, too many redirects) are errors.</td></tr>
-        <tr><td>TLS</td><td>HTTPS through rustls. What happens with an invalid certificate is a <a href="settings.html#tls">setting</a>: send with a warning (default), reject, or accept silently.</td></tr>
+        <tr><td>TLS</td><td>HTTPS through rustls, or the system's TLS library for servers that only offer <a href="settings.html#outdated-tls">outdated TLS</a>. What happens with an invalid certificate is a <a href="settings.html#tls">setting</a>: send with a warning (default), reject, or accept silently.</td></tr>
         <tr><td>Response size</td><td>Bodies up to 20 MB by default. A bigger one fails with a clear error. The limit is a <a href="settings.html#responses">setting</a>.</td></tr>
         <tr><td>Compression</td><td>Postino asks for gzip and decompresses the body for you. The size shown is the decompressed size.</td></tr>
         <tr><td>Cookies</td><td>Not stored between requests. Set a <code>Cookie</code> header, or save a value from <code>Set-Cookie</code> in a post-response script.</td></tr>

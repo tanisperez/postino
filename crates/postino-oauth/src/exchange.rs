@@ -305,6 +305,7 @@ pub(crate) mod tests {
             time: Duration::ZERO,
             size: body.len(),
             tls_warning: None,
+            legacy_tls: false,
         }
     }
 

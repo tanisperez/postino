@@ -31,6 +31,9 @@ pub fn summary(result: &RunResult, elapsed: Duration) -> String {
             if response.tls_warning.is_some() {
                 outcome.push_str(", TLS certificate not verified");
             }
+            if response.legacy_tls {
+                outcome.push_str(", outdated TLS");
+            }
             if matches!(failed, Some(FailedStage::Post(_))) {
                 outcome.push_str(", the post-response script failed");
             }
@@ -95,6 +98,7 @@ mod tests {
             time: Duration::from_millis(42),
             size: 2048,
             tls_warning: None,
+            legacy_tls: false,
         }
     }
 

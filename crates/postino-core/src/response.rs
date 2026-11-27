@@ -57,6 +57,9 @@ pub struct Response {
     /// anyway without verification. Holds the reason only, such as `certificate expired`, in
     /// English: each caller adds its own frame, translated in the app.
     pub tls_warning: Option<String>,
+    /// Set when the server only offers outdated TLS (RSA key exchange, CBC cipher suites, TLS 1.0
+    /// or 1.1) and the request went through the system TLS library instead of rustls.
+    pub legacy_tls: bool,
 }
 
 /// The outcome of a single `test(name, fn)` call in a `::: post` script.

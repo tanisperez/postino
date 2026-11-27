@@ -64,7 +64,9 @@ Expo/React Native conventions here.
 - OpenAPI import (#201, #202): OpenAPI 3.1, 3.0 and Swagger 2.0, JSON or YAML (`serde_norway`),
   from a file, a URL, pasted text, a folder or a shallow clone of a Git repository, plus Backstage
   `catalog-info.yaml`, through a three step wizard. See `docs/openapi-import.md`.
-- HTTP client: `ureq` 3 (blocking, rustls), run on GPUI's background executor.
+- HTTP client: `ureq` 3 (blocking, rustls), run on GPUI's background executor. Servers that
+  only offer outdated TLS (RSA key exchange, CBC, TLS 1.0 and 1.1) are retried with `native-tls`,
+  with OpenSSL built in (`vendored`) on Linux so the binary does not depend on a `libssl` soname.
 - OAuth 2.0 (#225, #226, #227): named profiles in `.postino/project.toml` (`[oauth.<name>]`),
   referenced by requests with `::: auth oauth2`. The token is obtained or renewed on Send, per
   workspace + profile + environment (+ overridden scope), kept in memory only (#228): never in

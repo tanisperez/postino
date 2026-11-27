@@ -9,7 +9,9 @@ authors.workspace = true
 [dependencies]
 postino-core = { path = "../postino-core" }
 # platform-verifier: trust the OS certificate store, see `SendOptions::system_certificates`.
-ureq = { workspace = true, features = ["platform-verifier"] }
+# native-tls: the system TLS library, for servers that only offer cipher suites rustls does not
+# implement (RSA key exchange, CBC, TLS 1.0 and 1.1), see `is_legacy_tls_error` in src/send.rs.
+ureq = { workspace = true, features = ["platform-verifier", "native-tls"] }
 rustls = { version = "0.23", default-features = false, features = ["std", "ring"] }
 # The traced TLS step of `--verbose` (src/trace.rs) builds its own rustls configuration with the
 # roots `ureq` would use. Both are already built for `ureq`, same versions.
@@ -23,12 +25,20 @@ tiny_http = { workspace = true, optional = true }
 # src/send.rs. Already built by `rustls-platform-verifier`, same version.
 [target.'cfg(all(unix, not(target_vendor = "apple")))'.dependencies]
 rustls-native-certs = "0.8"
+# The OpenSSL behind `ureq`'s native-tls on Linux and the BSDs, built into the binary: the
+# tarball and the AppImage must run on distributions with any `libssl` soname, or none.
+native-tls = { version = "0.2", features = ["vendored"] }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 rustls = { version = "0.23", default-features = false, features = ["std", "ring"] }
 # Enables the test server helper for this crate's own tests, without shipping it in release builds.
 postino-http = { path = ".", features = ["test-support"] }
+
+# The test server of tests/legacy_tls.rs, which offers only a cipher suite rustls does not
+# implement. The same OpenSSL native-tls builds on Linux.
+[target.'cfg(all(unix, not(target_vendor = "apple")))'.dev-dependencies]
+openssl = "0.10"
 
 [features]
 test-support = ["dep:tiny_http"]

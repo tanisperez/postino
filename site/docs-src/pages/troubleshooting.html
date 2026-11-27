@@ -43,6 +43,9 @@ description: Solutions to common Postino problems: broken requests, unknown vari
 <p>With the default setting, an invalid certificate only produces a warning. If requests fail with a certificate error, the <a href="settings.html#tls">Invalid certificates</a> setting is <strong>Reject</strong>. For a local server with a self-signed certificate, use <strong>Send with warning</strong>.</p>
 <p>Postino trusts the certificate authorities of your operating system's certificate store, including the ones your company installs, as long as <a href="settings.html#tls">Use system certificates</a> is on (the default). If a server signed by a company CA is still reported as an unknown issuer, check that the CA is installed in the system store (on Linux, in the system bundle), and restart Postino on Linux after installing it.</p>
 
+<h2>Handshake failure</h2>
+<p>A request that fails with <em>received fatal alert: HandshakeFailure</em> while <code>curl</code> works usually means the server only offers outdated encryption. Postino retries those servers with the system's TLS library, see <a href="settings.html#outdated-tls">outdated TLS</a>. If the error remains, the server may ask for a client certificate, which Postino does not support yet.</p>
+
 <h2>The request times out</h2>
 <p>The timeout is 30 seconds for the whole exchange, including redirects. If the server is reachable from a browser or <code>curl</code> but not from Postino, check whether you need a proxy and set <code>HTTPS_PROXY</code> before starting Postino. See <a href="command-line.html#environment-variables">environment variables</a>.</p>
 

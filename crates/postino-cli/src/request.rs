@@ -17,6 +17,11 @@ use crate::progress::Progress;
 use crate::style::Style;
 use crate::verbose::Verbose;
 
+/// The warning of a response sent with the system TLS library, see
+/// `postino_core::Response::legacy_tls`.
+pub(crate) const LEGACY_TLS_WARNING: &str =
+    "Outdated TLS: the server only offers old cipher suites, sent with the system TLS library";
+
 /// The request the arguments describe, before interpolation.
 pub fn build_request(method: Method, args: &RequestArgs) -> Result<Request, CliError> {
     let mut headers = Vec::new();
@@ -232,6 +237,9 @@ fn execute(method: Method, args: &RequestArgs, style: Style) -> Result<u8, CliEr
                 "{}",
                 style.yellow(&format!("! TLS certificate not verified: {warning}"))
             );
+        }
+        if response.legacy_tls {
+            eprintln!("{}", style.yellow(&format!("! {LEGACY_TLS_WARNING}")));
         }
     } else if let Some(path) = &args.output {
         // Nothing came back: do not leave an empty file behind.

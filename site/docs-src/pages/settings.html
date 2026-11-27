@@ -40,6 +40,8 @@ description: Every Postino setting: language, theme, fonts, the What's new tab, 
     </tbody>
 </table></div>
 <p>A certificate error stops the TLS handshake before any request byte is written, so retrying without verification never sends a request twice.</p>
+<h4 id="outdated-tls">Outdated TLS</h4>
+<p>Postino uses rustls, which only offers modern encryption. Some servers, often internal ones, only offer outdated encryption that rustls does not implement: TLS 1.2 with RSA key exchange or CBC cipher suites (such as <code>AES128-SHA</code>), or TLS 1.0 and 1.1. With such a server the handshake fails, and Postino sends the request again with the operating system's TLS library: OpenSSL on Linux (built into Postino), SChannel on Windows and Security.framework on macOS. It is the same encryption <code>curl</code> negotiates with that server. The certificate is verified as usual and the <strong>Invalid certificates</strong> setting still applies. The response shows an <strong>outdated TLS</strong> warning, and later requests to the same host go straight to the system library. Like a certificate error, a failed handshake stops before any request byte is written, so the request is never sent twice. Outdated encryption has known weaknesses, such as no forward secrecy: ask the server's administrators to enable modern cipher suites.</p>
 
 <h3 id="responses">Responses</h3>
 <p><strong>Maximum size</strong> is the biggest response body Postino reads: 10, 20 (default), 50, 100 or 200 MB, where 1 MB is 1,000,000 bytes. A bigger response fails with an error that names the limit. A big response uses about 30 times its size in memory while it is shown, so raise the limit only as much as you need. In <code>settings.toml</code> you can set any value from 1 to 1000.</p>

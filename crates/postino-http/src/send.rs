@@ -24,6 +24,12 @@ use crate::options::{InvalidCertificates, SendOptions};
 /// (self-signed, expired, wrong host, ...), the request is sent once more with verification
 /// disabled, and the returned response carries a [`Response::tls_warning`]. This is safe for
 /// any method: a certificate error aborts the TLS handshake, before any request byte is written.
+///
+/// When the TLS handshake fails because the server only offers what rustls does not implement
+/// (RSA key exchange, CBC cipher suites, TLS 1.0 or 1.1), the request is sent once more with
+/// the system TLS library (OpenSSL on Linux, SChannel on Windows, Security.framework on macOS),
+/// verifying the certificate the same way, and the returned response has
+/// [`Response::legacy_tls`] set. The same certificate fallback applies to that connection.
 pub fn send(request: &ResolvedRequest, options: &SendOptions) -> Result<Response, HttpError> {
     // A client of its own, dropped with its connection once the response is read.
     Client::new(options.clone()).send(request)
@@ -40,15 +46,29 @@ pub fn send(request: &ResolvedRequest, options: &SendOptions) -> Result<Response
 ///
 /// With [`InvalidCertificates::SendWithWarning`], a host whose certificate is rejected once is
 /// remembered, and its later requests go straight to the connection without verification, with
-/// the same [`Response::tls_warning`].
+/// the same [`Response::tls_warning`]. A host that only works with the system TLS library is
+/// remembered the same way.
 pub struct Client {
     options: SendOptions,
     /// Sends every request, verifying certificates unless they are always accepted.
     agent: ureq::Agent,
     /// Sends without verification, built the first time a certificate is rejected.
     unverified: OnceLock<ureq::Agent>,
-    /// The warning of each origin (`scheme://host:port`) whose certificate was rejected.
-    unverified_origins: Mutex<HashMap<String, String>>,
+    /// Sends with the system TLS library, built the first time a server needs it.
+    legacy: OnceLock<ureq::Agent>,
+    /// Sends with the system TLS library without verification.
+    legacy_unverified: OnceLock<ureq::Agent>,
+    /// How each origin (`scheme://host:port`) that needed a fallback is sent to.
+    fallback_origins: Mutex<HashMap<String, TlsFallback>>,
+}
+
+/// The fallbacks a request needed to get through the TLS handshake.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct TlsFallback {
+    /// Sent with the system TLS library, see [`is_legacy_tls_error`].
+    legacy: bool,
+    /// Sent without verification, because the certificate was rejected for this reason.
+    warning: Option<String>,
 }
 
 impl Client {
@@ -57,23 +77,20 @@ impl Client {
     pub fn new(options: SendOptions) -> Self {
         let verify = options.invalid_certificates != InvalidCertificates::Accept;
         Self {
-            agent: build_agent(&options, verify),
+            agent: build_agent(&options, verify, false),
             options,
             unverified: OnceLock::new(),
-            unverified_origins: Mutex::new(HashMap::new()),
+            legacy: OnceLock::new(),
+            legacy_unverified: OnceLock::new(),
+            fallback_origins: Mutex::new(HashMap::new()),
         }
     }
 
     /// Sends a fully resolved request and returns the response, reusing an open connection to
     /// its origin when there is one. Errors and certificate handling are those of [`send`].
     pub fn send(&self, request: &ResolvedRequest) -> Result<Response, HttpError> {
-        let (response, started, tls_warning) = self.start(request)?;
-        finish(
-            response,
-            started,
-            tls_warning,
-            self.options.max_response_size,
-        )
+        let (response, started, fallback) = self.start(request)?;
+        finish(response, started, fallback, self.options.max_response_size)
     }
 
     /// [`Self::send`], writing the response body to `sink` as it arrives instead of keeping it
@@ -87,7 +104,7 @@ impl Client {
         sink: &mut dyn Write,
         progress: &mut dyn FnMut(u64, Option<u64>),
     ) -> Result<Response, HttpError> {
-        let (mut response, started, tls_warning) = self.start(request)?;
+        let (mut response, started, fallback) = self.start(request)?;
         let status = response.status().as_u16();
         let headers = collect_headers(response.headers());
         let total = response.body().content_length();
@@ -117,64 +134,127 @@ impl Client {
             body: Vec::new(),
             time: started.elapsed(),
             size: usize::try_from(written).unwrap_or(usize::MAX),
-            tls_warning,
+            tls_warning: fallback.warning,
+            legacy_tls: fallback.legacy,
         })
     }
 
     /// Sends `request` and waits for the response head, falling back to an unverified
-    /// connection as [`send`] describes. Returns the response, when it started and the
-    /// certificate warning.
+    /// connection or to the system TLS library as [`send`] describes. Returns the response, when
+    /// it started and the fallbacks it needed.
     fn start(
         &self,
         request: &ResolvedRequest,
-    ) -> Result<(ureq::http::Response<ureq::Body>, Instant, Option<String>), HttpError> {
+    ) -> Result<(ureq::http::Response<ureq::Body>, Instant, TlsFallback), HttpError> {
         if log::log_enabled!(log::Level::Trace) {
             log_request(request);
         }
         let http_request = build_http_request(request)?;
         let started = Instant::now();
 
-        let fallback = self.options.invalid_certificates == InvalidCertificates::SendWithWarning;
         let origin = origin_of(&http_request);
-        let known_warning = if fallback {
-            self.origins().get(&origin).cloned()
-        } else {
-            None
-        };
-        let (response, tls_warning) = match known_warning {
-            Some(warning) => {
-                let response = run(self.unverified_agent(), &http_request);
-                (response.map_err(map_ureq_error)?, Some(warning))
+        let known = self.origins().get(&origin).cloned();
+        let (response, fallback) = match known {
+            Some(fallback) => {
+                let response = run(self.agent_for(&fallback), &http_request);
+                (response.map_err(map_ureq_error)?, fallback)
             }
-            None => match run(&self.agent, &http_request) {
-                Err(error) if fallback && is_certificate_error(&error) => {
-                    let warning = certificate_reason(&error);
-                    log::debug!(
-                        "TLS certificate not verified: {warning}, sending again without verification"
-                    );
-                    self.origins().insert(origin, warning.clone());
-                    let retry = run(self.unverified_agent(), &http_request);
-                    (retry.map_err(map_ureq_error)?, Some(warning))
-                }
-                other => (other.map_err(map_ureq_error)?, None),
-            },
+            None => self.first_send(&http_request, origin)?,
         };
         if let Some(trace) = &self.options.trace {
             trace_redirects(trace, &response);
         }
-        Ok((response, started, tls_warning))
+        Ok((response, started, fallback))
     }
 
-    /// The agent that sends without verifying certificates.
-    fn unverified_agent(&self) -> &ureq::Agent {
-        self.unverified
-            .get_or_init(|| build_agent(&self.options, false))
+    /// Sends a request to an origin with no known fallback, trying the fallbacks [`send`]
+    /// describes when the handshake fails, and remembers the one that worked. Every retry is
+    /// safe for any method: each one follows a failed handshake, before any request byte.
+    fn first_send(
+        &self,
+        request: &ureq::http::Request<Vec<u8>>,
+        origin: String,
+    ) -> Result<(ureq::http::Response<ureq::Body>, TlsFallback), HttpError> {
+        let accept_with_warning =
+            self.options.invalid_certificates == InvalidCertificates::SendWithWarning;
+        let error = match run(&self.agent, request) {
+            Ok(response) => return Ok((response, TlsFallback::default())),
+            Err(error) => error,
+        };
+        if accept_with_warning && is_certificate_error(&error) {
+            let warning = certificate_reason(&error);
+            log::debug!(
+                "TLS certificate not verified: {warning}, sending again without verification"
+            );
+            let fallback = TlsFallback {
+                legacy: false,
+                warning: Some(warning),
+            };
+            let response = run(self.agent_for(&fallback), request).map_err(map_ureq_error)?;
+            self.origins().insert(origin, fallback.clone());
+            return Ok((response, fallback));
+        }
+        if !is_legacy_tls_error(&error) {
+            return Err(map_ureq_error(error));
+        }
+
+        log::info!(
+            "TLS handshake with {origin} failed ({error}), sending again with the system TLS library"
+        );
+        if let Some(trace) = &self.options.trace {
+            trace.emit(&crate::TraceEvent::LegacyTls);
+        }
+        let fallback = TlsFallback {
+            legacy: true,
+            warning: None,
+        };
+        let legacy_error = match run(self.agent_for(&fallback), request) {
+            Ok(response) => {
+                self.origins().insert(origin, fallback.clone());
+                return Ok((response, fallback));
+            }
+            Err(error) => error,
+        };
+        // The system library does not tell a rejected certificate from other handshake
+        // failures in a portable way: try once more without verification, and keep its reason.
+        if accept_with_warning && matches!(legacy_error, ureq::Error::NativeTls(_)) {
+            let fallback = TlsFallback {
+                legacy: true,
+                warning: Some(native_certificate_reason(&legacy_error)),
+            };
+            if let Ok(response) = run(self.agent_for(&fallback), request) {
+                log::debug!("TLS certificate not verified by the system TLS library");
+                self.origins().insert(origin, fallback.clone());
+                return Ok((response, fallback));
+            }
+        }
+        Err(map_ureq_error(legacy_error))
     }
 
-    /// The origins whose certificate was rejected. Recovers from a poisoned lock: the map is
-    /// only read and inserted into, so it is never left half updated.
-    fn origins(&self) -> std::sync::MutexGuard<'_, HashMap<String, String>> {
-        self.unverified_origins
+    /// The agent that sends with `fallback`, built the first time it is needed.
+    fn agent_for(&self, fallback: &TlsFallback) -> &ureq::Agent {
+        match (fallback.legacy, fallback.warning.is_some()) {
+            (false, false) => &self.agent,
+            (false, true) => self
+                .unverified
+                .get_or_init(|| build_agent(&self.options, false, false)),
+            (true, unverified) => {
+                let verify =
+                    !unverified && self.options.invalid_certificates != InvalidCertificates::Accept;
+                let cell = if unverified {
+                    &self.legacy_unverified
+                } else {
+                    &self.legacy
+                };
+                cell.get_or_init(|| build_agent(&self.options, verify, true))
+            }
+        }
+    }
+
+    /// The origins that needed a fallback. Recovers from a poisoned lock: the map is only read
+    /// and inserted into, so it is never left half updated.
+    fn origins(&self) -> std::sync::MutexGuard<'_, HashMap<String, TlsFallback>> {
+        self.fallback_origins
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
     }
@@ -235,7 +315,7 @@ fn run(
 fn finish(
     mut response: ureq::http::Response<ureq::Body>,
     started: Instant,
-    tls_warning: Option<String>,
+    fallback: TlsFallback,
     max_response_size: u64,
 ) -> Result<Response, HttpError> {
     let status = response.status().as_u16();
@@ -261,7 +341,8 @@ fn finish(
         body,
         time,
         size,
-        tls_warning,
+        tls_warning: fallback.warning,
+        legacy_tls: fallback.legacy,
     })
 }
 
@@ -301,6 +382,41 @@ fn is_certificate_error(error: &ureq::Error) -> bool {
     )
 }
 
+/// Whether the TLS handshake failed because the server only offers what rustls does not
+/// implement: RSA key exchange, CBC cipher suites, TLS 1.0 or 1.1. Such a server answers the
+/// client hello with a `handshake_failure` or `protocol_version` alert, or picks a version rustls
+/// refuses. The system TLS library still speaks these, like curl does (#305).
+fn is_legacy_tls_error(error: &ureq::Error) -> bool {
+    use rustls::AlertDescription;
+    matches!(
+        rustls_error(error),
+        Some(
+            rustls::Error::AlertReceived(
+                AlertDescription::HandshakeFailure
+                    | AlertDescription::ProtocolVersion
+                    | AlertDescription::InsufficientSecurity
+            ) | rustls::Error::PeerIncompatible(_)
+        )
+    )
+}
+
+/// The reason the system TLS library rejected a certificate. OpenSSL appends it in parentheses,
+/// such as `... certificate verify failed ... (self-signed certificate)`. Other libraries give
+/// their whole message.
+fn native_certificate_reason(error: &ureq::Error) -> String {
+    let text = match error {
+        ureq::Error::NativeTls(inner) => inner.to_string(),
+        other => other.to_string(),
+    };
+    match text
+        .strip_suffix(')')
+        .and_then(|rest| rest.rsplit_once(" ("))
+    {
+        Some((_, reason)) => reason.to_string(),
+        None => text,
+    }
+}
+
 /// A short description of why the certificate was rejected.
 fn certificate_reason(error: &ureq::Error) -> String {
     match rustls_error(error) {
@@ -327,10 +443,17 @@ fn certificate_reason(error: &ureq::Error) -> String {
 ///
 /// This disables `ureq`'s default behavior of treating 4xx/5xx as errors, allows the
 /// non-standard HTTP methods a `.postino` file may use, and applies the timeout, redirect and
-/// TLS verification settings.
-fn build_agent(options: &SendOptions, verify_tls: bool) -> ureq::Agent {
+/// TLS verification settings. With `legacy`, TLS goes through the system library instead of
+/// rustls, see [`is_legacy_tls_error`].
+fn build_agent(options: &SendOptions, verify_tls: bool, legacy: bool) -> ureq::Agent {
     let root_certs = root_certs_of(options);
+    let provider = if legacy {
+        ureq::tls::TlsProvider::NativeTls
+    } else {
+        ureq::tls::TlsProvider::Rustls
+    };
     let tls_config = ureq::tls::TlsConfig::builder()
+        .provider(provider)
         .root_certs(root_certs)
         .disable_verification(!verify_tls)
         .build();
@@ -357,13 +480,15 @@ fn build_agent(options: &SendOptions, verify_tls: bool) -> ureq::Agent {
         .save_redirect_history(options.trace.is_some())
         .build();
 
+    // The traced connector does TLS with rustls: a legacy agent is not traced past the
+    // `LegacyTls` event its first request emits.
     match &options.trace {
-        Some(trace) => ureq::Agent::with_parts(
+        Some(trace) if !legacy => ureq::Agent::with_parts(
             config,
             crate::trace::connector(trace.clone(), root_certs_of(options), verify_tls),
             ureq::unversioned::resolver::DefaultResolver::default(),
         ),
-        None => config.new_agent(),
+        _ => config.new_agent(),
     }
 }
 

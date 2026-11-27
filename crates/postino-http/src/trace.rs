@@ -49,6 +49,9 @@ pub enum TraceEvent {
     Tls(TlsInfo),
     /// The TLS handshake failed, for the reason given, such as a rejected certificate.
     TlsFailed(String),
+    /// The server only offers TLS that rustls does not implement, and the request is sent again
+    /// with the system TLS library. That connection is not traced.
+    LegacyTls,
     /// A redirect was followed to this URL.
     Redirected(String),
 }
